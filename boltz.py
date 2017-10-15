@@ -12,8 +12,8 @@ from itertools import chain, zip_longest
 Boltzmann = 0.0019872041 #kcal/(mol*K)
 
 def get_regexs():
-
-    ens = re.compile(r''' Zero-point correction=\s*(-?\d+\.?\d*).*
+    regexs = {}
+    regexs['ens'] = re.compile(r''' Zero-point correction=\s*(-?\d+\.?\d*).*
  Thermal correction to Energy=\s*(-?\d+\.?\d*)
  Thermal correction to Enthalpy=\s*(-?\d+\.?\d*)
  Thermal correction to Gibbs Free Energy=\s*(-?\d+\.?\d*)
@@ -21,9 +21,9 @@ def get_regexs():
  Sum of electronic and thermal Energies=\s*(-?\d+\.?\d*)
  Sum of electronic and thermal Enthalpies=\s*(-?\d+\.?\d*)
  Sum of electronic and thermal Free Energies=\s*(-?\d+\.?\d*)''')
-    scf = re.compile(r'SCF Done.*=\s+(-?\d+\.?\d*)')
-    freq = re.compile(r'Frequencies --\s+(-?\d+\.?\d*)\s+(-?\d+\.?\d*)?\s+(-?\d+\.?\d*)?')
-    return ens, scf, freq
+    regexs['scf'] = re.compile(r'SCF Done.*=\s+(-?\d+\.?\d*)')
+    regexs['freq'] = re.compile(r'Frequencies --\s+(-?\d+\.?\d*)\s+(-?\d+\.?\d*)?\s+(-?\d+\.?\d*)?')
+    return regexs
 
 def filter_files(files):
     outs, logs = [], []
@@ -41,12 +41,13 @@ def filter_files(files):
         no = len(filtered)
         return filtered, no
         
-def get_data(file, regexs):     
-    ens, scf, freq = regexs
-    found_ens = ens.search(file).groups()
-    found_scf = scf.findall(file)[-1]
-    found_freq = np.array(list(chain(*freq.findall(file))), dtype='float')
-    return (*found_ens, found_scf, found_freq)
+def get_data(file, regexs):
+    """Extract data from file using regexs."""
+    energies = 'zpec tenc entc gibc zpe ten ent gib'.split(' ')
+    file_data = {k:v for k, v in zip(energies, regexs['ens'].search(file).groups())}
+    file_data['scf'] = regexs['scf'].findall(file)[-1]
+    file_data['freq'] = np.array(list(chain(*regexs['freq'].findall(file))), dtype='float')
+    return file_data
 
 def read_file(file):
     with open(file, 'r') as f:
@@ -71,12 +72,14 @@ def main_func(path):
     keys = 'zpec tenc entc gibc zpe ten ent gib scf freq imag'.split(' ')
     data = OrderedDict((k,np.zeros(no)) for k in keys)
     data['freq'] = [0 for _ in range(no)]
+    data['fname'] = []
     for curr_no, file in enumerate(filtered):
-        print('Working on file {} of {}'.format(curr_no, no))
+        print('Working on file {} of {}'.format(curr_no+1, no))
         file_cont = read_file(file)
-        for arr, val in zip(data.values(), get_data(file_cont, regexs)):
-            arr[curr_no] = val
+        for key, val in get_data(file_cont, regexs).items():
+            data[key][curr_no] = val
         data['imag'][curr_no] = (data['freq'][curr_no] < 0).sum()
+        data['fname'].append(file)
     for item in ('ent', 'gib', 'scf'):
         data['{}d'.format(item)], data['{}p'.format(item)] = \
             boltzmann_dist(data['{}'.format(item)])
