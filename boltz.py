@@ -13,6 +13,11 @@ from tabulate import tabulate
 from datetime import datetime
 import win32gui
 
+
+######################
+#####   GLOBALS  #####
+######################
+
 __author__ = "Michał Więcław"
 __date__ = "15.10.2017"
 __version__ = "0.1"
@@ -31,30 +36,16 @@ welcome_message = 'Welcome to Tesliper: Teoretical Spectra Little Helper.'
 help_text = "Sorry, no help available yet. You're on own, mate."
 indiv_help_text = {}
 
+#########################
+#####   EXCEPTIONS  #####
+#########################
+
 class ParserError(Exception): pass
 
 
-def get_regexs():
-#TO DO: remove func parameter and create all regexs explicitly.
-    """Responsible for preparing regular expresions for parsing Gaussian files.
-    Returns dictionary of re compiled objects.
-    """
-    regexs = {}
-    regexs['ens'] = re.compile(r''' Zero-point correction=\s*(-?\d+\.?\d*).*
- Thermal correction to Energy=\s*(-?\d+\.?\d*)
- Thermal correction to Enthalpy=\s*(-?\d+\.?\d*)
- Thermal correction to Gibbs Free Energy=\s*(-?\d+\.?\d*)
- Sum of electronic and zero-point Energies=\s*(-?\d+\.?\d*)
- Sum of electronic and thermal Energies=\s*(-?\d+\.?\d*)
- Sum of electronic and thermal Enthalpies=\s*(-?\d+\.?\d*)
- Sum of electronic and thermal Free Energies=\s*(-?\d+\.?\d*)''')
-    regexs['scf'] = re.compile(r'SCF Done.*=\s+(-?\d+\.?\d*)')
-    keys = 'freq dip rot ir e-m raman1 roa1'.split(' ')
-    pats = 'Frequencies', 'Dip. str.', 'Rot. str.', 'E-M angle', 'Raman1', 'ROA1'
-    for k, p in zip(keys, pats):
-        regexs[k] = re.compile(r'{}.*--\s+(.*)\n'.format(p))
-    return regexs
-
+###############################
+#####   FILES MANAGEMENT  #####
+###############################
     
 def filter_files(files, ext):
     """Filters files from file names list.
@@ -118,96 +109,6 @@ def read_file(file):
         return f.read()
 
         
-def boltzmann_dist(energies, t=298.15):
-    """
-    """
-    global Boltzmann
-    delta = (energies - energies.min()) * 627.5095
-    x = np.exp(-delta/(t*Boltzmann))
-    popul = x/x.sum()
-    return delta, popul
-
-#def rot_spectra_point(freq, '''fr_max?,''' strght, '''step?,''' fwhm):
-    #fwhm - full width at half maximum
-    #strght - rotator/dipole strenght
-#    pass
-
-# change np.arange for custom iterator?
-def old_uv_spectra(dip_str, freqs, spectra_base, fwhm):
-    spectra = np.zeros(spectra_base.shape)
-    A_UV = 2.29046299E+4 * 1.772453851
-    B = -3.07441575E+6
-    for no, lam in enumerate(spectra_base):
-        a = A_UV * dip_str * freqs / (fwhm * 2**0.5) / lam
-        b = math.exp(B * ((lam - freqs) / (freqs * lam * fwhm * 2**0.5))**2)
-        spectra[no] = (a*b).sum()
-    return spectra
-   
-   
-def old_ecd_spectra(rot_str, freqs, spectra_base, fwhm):
-    spectra = np.zeros(spectra_base.shape)
-    A_CD = 4.30767847E+41 * 1E-40
-    B = -3.07441575E+6
-    for no, lam in enumerate(spectra_base):
-        a = A_CD * rot_str / (fwhm * 2**0.5) / lam
-        b = math.exp(B * ((lam - freqs) / (freqs * lam * fwhm * 2**0.5))**2)
-        spectra[no] = (a*b).sum()
-    return spectra
-
-    
-def old_vcd_spectra(rot_str, freqs, spectra_base, fwhm):
-    spectra = np.zeros(spectra_base.shape)
-    for no, lam in enumerate(spectra_base):
-        a = rot_str * freqs * fwhm * 1.38607595
-        b = fwhm**2 + (freqs - lam)**2
-        spectra[no] = (a / (b * 1000000)).sum()
-    return spectra
-
-    
-def new_vcd_spectra(rot_str, freqs, spectra_base, fwhm):
-    #dip or rot?
-    it = np.nditer([spectra_base, None])
-    hwhm = fwhm/2
-    for lam, val in it:
-        s = rot_str/((lam - freqs)**2 + hwhm**2)
-        val[...] = lam * hwhm / (math.pi * 9.184e-39) * s.sum()
-    return it.operands[1]
-    
-    
-def old_ir_spectra(dip_str, freqs, spectra_base, fwhm):
-    spectra = np.zeros(spectra_base.shape)
-    for no, lam in enumerate(spectra_base):
-        a = dip_str * freqs * fwhm * 3.46518986
-        b = fwhm**2 + (freqs - lam)**2
-        spectra[no] = (a / (b * 1000)).sum()
-    return spectra
-    
-    
-def save_output(files, to_extract, data):
-    headers = [item+end for end in ('p', 'd', '', 'c') for item in ('scf', 'ent', 'gib') if item+end != 'scfc']
-    table = zip(files,*[data[item] for item in headers])
-    with open('BoltzmannDistribution.txt', 'w') as output:
-        output.write(tabulate(table, headers=headers))
-    #TO DO: own output formatting, without tabulate
-    #TO DO: better headers
-    #TO DO: other output files
-      
-      
-def get_things_to_extract():
-    #TO DO: better valid_things
-    #TO DO: shorscuts for Boltzman Distribution, bar substraction, Spectra creation, ect.
-    inp = input('What to extract?')
-    #valid_things = 'Red. masses,Frc consts,IR Inten,Dip. str.,Rot. str.,E-M angle,\
-    #    RamAct,Dep-P,Dep-U,Alpha2,Beta2,AlphaG,Gamma2,Delta2,Raman1,ROA1,CID1,\
-    #    Raman2,ROA2,CID2,Raman3,ROA3,CID3,RC180'
-    valid_things = 'dip rot ir e-m raman1 roa1'.split(' ')
-    inp = [i.lower() for i in inp.split(' ')] if inp else []
-    for item in inp:
-        if item not in valid_things:
-            raise ValueError('{} is not valid input.'.format(item))
-    return inp
-
-    
 def change_directory(path=None):
     if not path:
         window = win32gui.GetForegroundWindow()
@@ -231,6 +132,143 @@ def change_directory(path=None):
               'with no additional arguments.'.format(path))
         return
     return path
+
+    
+def save_output(files, to_extract, data):
+    headers = [item+end for end in ('p', 'd', '', 'c') for item in ('scf', 'ent', 'gib') if item+end != 'scfc']
+    table = zip(files,*[data[item] for item in headers])
+    with open('BoltzmannDistribution.txt', 'w') as output:
+        output.write(tabulate(table, headers=headers))
+    #TO DO: own output formatting, without tabulate
+    #TO DO: better headers
+    #TO DO: other output files
+
+  
+#################################
+#####   DATA MANIPULATION   #####
+#################################
+
+def init_data_container():
+    pass
+        
+def boltzmann_dist(energies, t=298.15):
+    """
+    """
+    global Boltzmann
+    delta = (energies - energies.min()) * 627.5095
+    x = np.exp(-delta/(t*Boltzmann))
+    popul = x/x.sum()
+    return delta, popul
+    
+
+def average_spaecra(spectra, populations):
+    return sum(s * p for s, p in zip(spectra, populations))
+    
+    
+def calculate_spectrum(bars, freqs, factor, start, stop, step, fwhm, line_shape):
+    line_shapes_functions = {'lorentzian':lorentzian, 'gaussian':gaussian}
+    function = line_shapes_functions[line_shape]
+    spectrum_base = np.arange(start, stop, step)
+    spectrum = factor * function(bars, freqs, spectrum_base, fwhm)
+    return spectrum
+    
+    
+def lorentzian(bars, freqs, spectrum_base, fwhm):
+    hwhm = fwhm/2
+    it = np.nditer([spectrum_base, None])
+    for lam, peaks in it:
+        s = bars/((lam - freqs)**2 + hwhm**2)
+        peaks[...] = s.sum() * lam * hwhm / math.pi
+    return it.operands[1]
+    
+# ???    
+def gaussian(bars, freqs, spectrum_base, fwhm):
+    sigm = fwhm / (2 * math.sqrt(2 * math.log(2)))
+    betha = fwhm * math.sqrt(math.pi / math.log(2)) / 2
+    it = np.nditer([spectrum_base, None])
+    for lam, peaks in it:
+        e = exp(-math.pi * (lam - freqs) ** 2 / betha ** 2)
+        
+        
+#def rot_spectra_point(freq, '''fr_max?,''' strght, '''step?,''' fwhm):
+    #fwhm - full width at half maximum
+    #strght - rotator/dipole strenght
+#    pass
+
+# change np.arange for custom iterator?
+def old_uv_spectra(dip_str, freqs, spectrum_base, fwhm):
+    spectra = np.zeros(spectrum_base.shape)
+    A_UV = 2.29046299E+4 * 1.772453851
+    B = -3.07441575E+6
+    for no, lam in enumerate(spectrum_base):
+        a = A_UV * dip_str * freqs / (fwhm * 2**0.5) / lam
+        b = math.exp(B * ((lam - freqs) / (freqs * lam * fwhm * 2**0.5))**2)
+        spectra[no] = (a*b).sum()
+    return spectra
+   
+   
+def old_ecd_spectra(rot_str, freqs, spectrum_base, fwhm):
+    spectra = np.zeros(spectrum_base.shape)
+    A_CD = 4.30767847E+41 * 1E-40
+    B = -3.07441575E+6
+    for no, lam in enumerate(spectrum_base):
+        a = A_CD * rot_str / (fwhm * 2**0.5) / lam
+        b = math.exp(B * ((lam - freqs) / (freqs * lam * fwhm * 2**0.5))**2)
+        spectra[no] = (a*b).sum()
+    return spectra
+
+    
+def old_vcd_spectra(rot_str, freqs, spectrum_base, fwhm):
+    spectra = np.zeros(spectrum_base.shape)
+    for no, lam in enumerate(spectrum_base):
+        a = rot_str * freqs * fwhm * 1.38607595
+        b = fwhm**2 + (freqs - lam)**2
+        spectra[no] = (a / (b * 1000000)).sum()
+    return spectra
+
+
+def old_ir_spectra(dip_str, freqs, spectrum_base, fwhm):
+    spectra = np.zeros(spectrum_base.shape)
+    for no, lam in enumerate(spectrum_base):
+        a = dip_str * freqs * fwhm * 3.46518986
+        b = fwhm**2 + (freqs - lam)**2
+        spectra[no] = (a / (b * 1000)).sum()
+    return spectra
+    
+    
+def new_vcd_spectra(rot_str, freqs, spectrum_base, fwhm):
+    it = np.nditer([spectrum_base, None])
+    hwhm = fwhm/2
+    for lam, val in it:
+        s = rot_str/((lam - freqs)**2 + hwhm**2)
+        val[...] = lam * hwhm / (math.pi * 9.184e-39) * s.sum()
+    return it.operands[1]
+
+    
+#########################
+#####   WORKFLOW    #####
+#########################    
+      
+def get_regexs():
+#TO DO: remove func parameter and create all regexs explicitly.
+    """Responsible for preparing regular expresions for parsing Gaussian files.
+    Returns dictionary of re compiled objects.
+    """
+    regexs = {}
+    regexs['ens'] = re.compile(r''' Zero-point correction=\s*(-?\d+\.?\d*).*
+ Thermal correction to Energy=\s*(-?\d+\.?\d*)
+ Thermal correction to Enthalpy=\s*(-?\d+\.?\d*)
+ Thermal correction to Gibbs Free Energy=\s*(-?\d+\.?\d*)
+ Sum of electronic and zero-point Energies=\s*(-?\d+\.?\d*)
+ Sum of electronic and thermal Energies=\s*(-?\d+\.?\d*)
+ Sum of electronic and thermal Enthalpies=\s*(-?\d+\.?\d*)
+ Sum of electronic and thermal Free Energies=\s*(-?\d+\.?\d*)''')
+    regexs['scf'] = re.compile(r'SCF Done.*=\s+(-?\d+\.?\d*)')
+    keys = 'freq dip rot ir e-m raman1 roa1'.split(' ')
+    pats = 'Frequencies', 'Dip. str.', 'Rot. str.', 'E-M angle', 'Raman1', 'ROA1'
+    for k, p in zip(keys, pats):
+        regexs[k] = re.compile(r'{}.*--\s+(.*)\n'.format(p))
+    return regexs
 
     
 def parse_query(query):
@@ -267,7 +305,7 @@ def parse_query(query):
         return
         
     elif commands[0] == 'CD':
-        PATH = change_directory(query[2:])
+        PATH = change_directory(query[3:])
         return
         
     elif commands[0] == 'INFO':
@@ -301,29 +339,33 @@ def main_func(to_extract):
     data = {k:np.zeros(no) for k in keys}
     data.update({k:[0 for _ in range(no)] for k in ['freq'] + to_extract})
     data.update({k:[] for k in ('vcd_spec', 'ir_spec')})
-    #spectra_base = np.arange(start, stop, step)
-    spectra_base = np.arange(800, 2100, 1.92867)
+    #spectrum_base = np.arange(start, stop, step)
+    spectrum_base = np.arange(800, 2100, 1.92867)
     for curr_no, file in enumerate(filtered):
         print('Working on file {} of {}'.format(curr_no+1, no))
         file_cont = read_file(file)
         for key, val in get_data(file_cont, regexs, to_extract).items():
             data[key][curr_no] = val
         data['imag'][curr_no] = (data['freq'][curr_no] < 0).sum()
-        data['vcd_spec'].append(old_vcd_spectra(data['rot'][curr_no], data['freq'][curr_no], spectra_base, 6))
-        data['ir_spec'].append(old_ir_spectra(data['dip'][curr_no], data['freq'][curr_no], spectra_base, 6))
+        data['vcd_spec'].append(old_vcd_spectra(data['rot'][curr_no], data['freq'][curr_no], spectrum_base, 6))
+        data['ir_spec'].append(old_ir_spectra(data['dip'][curr_no], data['freq'][curr_no], spectrum_base, 6))
     for item in ('ent', 'gib', 'scf'):
         data['{}d'.format(item)], data['{}p'.format(item)] = boltzmann_dist(data[item])
     for item in data:
         print(item, data[item][0])
     #save_output(filtered, to_extract, data)
-     
+
+
+#########################
+#####   MAIN LOOP   #####
+#########################
+    
 if __name__ == '__main__':
     print(welcome_message, '\n')
     try:
         PATH = sys.argv[1]
     except IndexError:
         print('Free hint: to specify working directory type "cd" and hit Enter. ;)')
-    #TO DO: get_things_to_extract must ask for each thing (only energies by default)
     while True:
         query = parse_query(input('What can I do for you? '))
         if query:
