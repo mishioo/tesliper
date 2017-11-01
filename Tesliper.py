@@ -18,7 +18,7 @@ import win32gui
 
 __author__ = "Michał Więcław"
 __date__ = "15.10.2017"
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 
 #Constants
 Boltzmann = 0.0019872041 #kcal/(mol*K)
@@ -27,9 +27,13 @@ Boltzmann = 0.0019872041 #kcal/(mol*K)
 PATH = ''
 #uzupełnić
 extractibles = {'POPUL':('ens', 'scf'), 'ECD':('freq', 'rot'), 'VCD':('freq', 'rot'),
-                'IR':('freq', 'dip'), 'UV':('freq', 'dip'), 'RAMAN':'', 'E-M':'e-m'}
+                'IR':('freq', 'dip'), 'UV':('freq', 'dip'), 'RAMAN':('freq', 'raman'),
+                'E-M':'e-m'}
 
-standard_setup = {'HWHM': 6, 'START': 800, 'STOP': 2100, 'STEP': 2,
+vibrational_standard_setup = {'HWHM': 6, 'START': 800, 'STOP': 2100, 'STEP': 2,
+                  'FITTING': 'LORENTZIAN'}
+                  
+electronic_standard_setup = {'HWHM': 6, 'START': 800, 'STOP': 2100, 'STEP': 2,
                   'FITTING': 'LORENTZIAN'}
 settings = {}
 #Messages
@@ -156,82 +160,37 @@ def boltzmann_dist(energies, t=298.15):
 #MISSING DOCSTRING
 def average_spaecra(spectra, populations):
     return sum(s * p for s, p in zip(spectra, populations))
-    
-#MISSING DOCSTRING        
-def calculate_spectrum(bars, freqs, factor, start, stop, step, fwhm, line_shape):
-    line_shapes_functions = {'lorentzian':lorentzian, 'gaussian':gaussian}
-    function = line_shapes_functions[line_shape]
-    spectrum_base = np.arange(start, stop, step)
-    spectrum = factor * function(bars, freqs, spectrum_base, fwhm)
+
+
+#TO DO: add factors of each spectra type    
+#UP: in separate function with settings distincion?
+#MISSING DOCSTRING
+def calculate_spectrum(bars, freqs, factor, settings):
+    function = settings['FITTING']
+    params = [settings['{}'].format(X) for X in ('START', 'STOP', 'STEP')]
+    spectrum_base = np.arange(*params)
+    spectrum = factor * function(bars, freqs, spectrum_base, settings['HWHM'])
     return spectrum
     
 #MISSING DOCSTRING    
-def lorentzian(bars, freqs, spectrum_base, fwhm):
-    hwhm = fwhm/2
+def lorentzian(bars, freqs, spectrum_base, hwhm):
     it = np.nditer([spectrum_base, None])
     for lam, peaks in it:
         s = bars/((lam - freqs)**2 + hwhm**2)
         peaks[...] = s.sum() * lam * hwhm / math.pi
     return it.operands[1]
     
-# ???    
-def gaussian(bars, freqs, spectrum_base, fwhm):
-    sigm = fwhm / (2 * math.sqrt(2 * math.log(2)))
-    betha = fwhm * math.sqrt(math.pi / math.log(2)) / 2
+#MISSING DOCSTRING    
+def gaussian(bars, freqs, spectrum_base, hwhm):
+    sigm = hwhm / math.sqrt(2 * math.log(2))
     it = np.nditer([spectrum_base, None])
     for lam, peaks in it:
-        e = exp(-math.pi * (lam - freqs) ** 2 / betha ** 2)
+        e = bars * exp(-0.5 * (lam - freqs) ** 2 / sigm ** 2)
+        peaks[...] = e.sum() / (sigm * (2 * math.pi)**0.5)
+    return it.operands[1]
         
-        
-#def rot_spectra_point(freq, '''fr_max?,''' strght, '''step?,''' fwhm):
-    #fwhm - full width at half maximum
-    #strght - rotator/dipole strenght
-#    pass
-
-# change np.arange for custom iterator?
-def old_uv_spectra(dip_str, freqs, spectrum_base, fwhm):
-    spectra = np.zeros(spectrum_base.shape)
-    A_UV = 2.29046299E+4 * 1.772453851
-    B = -3.07441575E+6
-    for no, lam in enumerate(spectrum_base):
-        a = A_UV * dip_str * freqs / (fwhm * 2**0.5) / lam
-        b = math.exp(B * ((lam - freqs) / (freqs * lam * fwhm * 2**0.5))**2)
-        spectra[no] = (a*b).sum()
-    return spectra
-   
-   
-def old_ecd_spectra(rot_str, freqs, spectrum_base, fwhm):
-    spectra = np.zeros(spectrum_base.shape)
-    A_CD = 4.30767847E+41 * 1E-40
-    B = -3.07441575E+6
-    for no, lam in enumerate(spectrum_base):
-        a = A_CD * rot_str / (fwhm * 2**0.5) / lam
-        b = math.exp(B * ((lam - freqs) / (freqs * lam * fwhm * 2**0.5))**2)
-        spectra[no] = (a*b).sum()
-    return spectra
-
-    
-def old_vcd_spectra(rot_str, freqs, spectrum_base, fwhm):
-    spectra = np.zeros(spectrum_base.shape)
-    for no, lam in enumerate(spectrum_base):
-        a = rot_str * freqs * fwhm * 1.38607595
-        b = fwhm**2 + (freqs - lam)**2
-        spectra[no] = (a / (b * 1000000)).sum()
-    return spectra
-
-
-def old_ir_spectra(dip_str, freqs, spectrum_base, fwhm):
-    spectra = np.zeros(spectrum_base.shape)
-    for no, lam in enumerate(spectrum_base):
-        a = dip_str * freqs * fwhm * 3.46518986
-        b = fwhm**2 + (freqs - lam)**2
-        spectra[no] = (a / (b * 1000)).sum()
-    return spectra
-    
-    
-def new_vcd_spectra(rot_str, freqs, spectrum_base, fwhm):
+def new_vcd_spectra(rot_str, freqs, spectrum_base, hwhm):
     it = np.nditer([spectrum_base, None])
-    hwhm = fwhm/2
     for lam, val in it:
         s = rot_str/((lam - freqs)**2 + hwhm**2)
         val[...] = lam * hwhm / (math.pi * 9.184e-39) * s.sum()
