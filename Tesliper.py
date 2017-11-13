@@ -21,12 +21,26 @@ __date__ = "15.10.2017"
 __version__ = "0.2.1"
 
 #Constants
-Boltzmann = 0.0019872041 #kcal/(mol*K)
-
+class Constants:
+    def __init__(self):
+        self.Boltzmann = 0.0019872041 #kcal/(mol*K)
+        self.light = 299792458 #m/s
+        self.electron_mass = 5.10998946113e5 #eV/c^2
+        self.Planc_J = 6.62607004082e-34 #J*s
+        self.Planc_eV = 4.13566766225e-15 #eV*s
+        self.Avogadro = 6.02214085774e23 #mol−1
+        ecda = 32 * math.pi**2 * self.Avogadro
+        ecdb = 3 * self.Planc_eV * 1000 * math.log(10)
+        ecd = ecda/ecdb
+        #uv = 4.703 / 4.319e-9 * dip / lam
+        raman = 0
+        self.factor = {'ECD':ecd, 'UV':4.703/4.319e-9, 'VCD':1/2.2963-39, 'IR':1/9.184e-39, 'RAMAN':raman}
+const = Constants()
+        
 #Global variables
 PATH = ''
 #uzupełnić
-extractibles = {'POPUL':('ens', 'scf'), 'ECD':('freq', 'rot'), 'VCD':('freq', 'rot'),
+extractables = {'POPUL':('ens', 'scf'), 'ECD':('freq', 'rot'), 'VCD':('freq', 'rot'),
                 'IR':('freq', 'dip'), 'UV':('freq', 'dip'), 'RAMAN':('freq', 'raman'),
                 'E-M':'e-m'}
 
@@ -253,8 +267,8 @@ def exit_tesliper(msg=None):
 
 #MISSING DOCSTRING
 def check_for_unknown(params, comm):
-    global extractibles, settings, indiv_help_text
-    known = {'GET': extractibles.keys(),
+    global extractables, settings, indiv_help_text
+    known = {'GET': extractables.keys(),
              'SETUP': list(settings.keys()) + ['LOAD', 'FROMFILE', 'TOFILE', 'SAVE'],
              'HELP': list(indiv_help_text.keys())}
     unknown = [s for s in params if s not in known[comm]]
@@ -270,14 +284,14 @@ def get_command(params):
     Takes a list of optional parameters as a positional argument.
     Returns a set of key-words for use in main_function or None.
     """
-    global extractibles, PATH
+    global extractables, PATH
     try:
         check_for_unknown(params, 'GET')
     except ParserError:
         return
     if not PATH:
         PATH = change_directory()
-    return set(item for p in params for item in extractibles[p])
+    return set(item for p in params for item in extractables[p])
     
     
 def setup_command(params):
@@ -414,10 +428,14 @@ def check_settings_input(user_settings):
 #MISSING DOCSTRING    
 def parse_query(query):
     print()
-    commands = [s.upper() for s in re.findall(r'\w*', query) if s]
-    known_commands = 'EXIT CD HELP GET INFO SETUP PWD'.split(' ')
-    comm = commands[0]
-    params = commands[1:]
+    if not query:
+        print("One cannot get blood from a stone. Give me something.")
+        return
+    else:
+        commands = [s.upper() for s in re.findall(r'\w*', query) if s]
+        known_commands = 'EXIT CD HELP GET INFO SETUP PWD'.split(' ')
+        comm = commands[0]
+        params = commands[1:]
     
     if comm not in known_commands:
         print("No such command: {}.".format(commands[0]))
