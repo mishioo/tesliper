@@ -34,6 +34,7 @@ class Extractor(Mapping):
     def __len__(self):
         return len(self._storage)
     
+    
     def get_regexs(self):
     
         def electr_dict(pat1, pat2):
@@ -46,15 +47,15 @@ class Extractor(Mapping):
         r = {}
         
         d = {'freq': ('nm',''),
-            'energy': ('eV', ''),
-            'vosc': ('velocity dipole', '\n'),
-            'vrot': (r'R(velocity)', r'\s*\d+\.?\d*\n'),
-            'lrot': ('electric dipole', '\n'),
-            'losc': (r'R(length)', '\n')}
+             'energy': ('eV', ''),
+             'vosc': ('velocity dipole', '\n'),
+             'vrot': (r'R(velocity)', r'\s*\d+\.?\d*\n'),
+             'lrot': ('electric dipole', '\n'),
+             'losc': (r'R(length)', '\n')}
         r['electr'] = {k:electr_dict(*v) for k,v in d.items()}
         
-        r['command'] = re.compile(r'\#(.*)\n\-+')
-        r['stoich'] = re.compile(r'Stoichiometry\s*(\w*)$')
+        r['command'] = re.compile(r'\#(.*)\n')
+        r['stoich'] = re.compile(r'Stoichiometry\s*(\w*)\n')
         
         ens_patt = (r' Zero-point correction=\s*(-?\d+\.?\d*).*\n'
             r' Thermal correction to Energy=\s*(-?\d+\.?\d*)\n'
@@ -115,12 +116,58 @@ class Extractor(Mapping):
         
 class Soxhlet:
     
-    def init(self, files):
-        self.files = files
+    def __init__(self):
         self.extractor = Extractor()
-     
-     
-    def filter_files(self, ext):
+        self.settings = Settings()
+
+    
+    def smart_extract(self, path=None):
+        if path:
+            self.settings.change_dir(path)
+        else:
+            path = self.settings.work_dir
+        files = self.load_files(path)
+        filtered = self.filtered = filter_files(log_or_out(path))
+        spectra_type = self.set_type()
+        # establish to_get
+        data = self.get_data(to_get)
+        if 'energies' in to_get:
+            pass
+        if 'vibra' in to_get:
+            pass
+        if 'electr' in to_get:
+            pass
+        if ('vibra' in to_get or 'electr' in to_get) and 'energies' in to_get:
+            #do it better
+            pass
+        
+    def set_type(self, spectra_type=None):
+        if spectra_type:
+            self.settings.set_type(spectra_type)
+        else:
+            self.settings.set_type(self.get_type())
+        return self.settings.spectra_type
+            
+            
+    def get_type(self):
+        f = self.filtered[0]
+        with open(f) as f:
+            f = f.read()
+        command = self.extractor['command'](f).lower()
+        if 'freq' in command:
+            return 'vibra'
+        elif 'nd=' in command:
+            return 'electr'
+        else:
+            return 'none'
+    
+    
+    def load_files(self, path=None):
+        path = path if path else self.settings.work_dir
+        self.files = os.listdir(path)
+        
+        
+    def filter_files(self, ext, files=None):
         """Filters files from file names list.
         
         Positional parameter:
@@ -131,7 +178,8 @@ class Soxhlet:
         file names ending with prowided ext string, representing file
         extention and number of files in created list as tuple.
         """
-        filtered = [f for f in self.files if f.endswith(ext)]
+        files = files if files else self.files
+        filtered = [f for f in files if f.endswith(ext)]
         return filtered
          
          
@@ -155,14 +203,153 @@ class Soxhlet:
         else:
             return '.log' if logs else '.out'
 
-
+            
+    def get_data(self, to_get, settings=None):
+        settings = self.settings if not settings else settings
+        try:
+            to_get = to_get.split(' ')
+        except AttributeError:
+            pass
+        self.data = Data(settings)
+        return self.data
+        
+        
     def load_bars(self):
         pass
         
+        
+        
 class Data(MutableMapping):
-    pass
+
+    Boltzmann = 0.0019872041 #kcal/(mol*K)
+
+    def __init__(self):
+        energies = 'zpec tenc entc gibc zpe ten ent gib scf'.split(' ')
+        vibra = 'freq dip rot ir e-m raman1 roa1'.split(' ')
+        electr = 'freq energy vosc vrot lrot losc'.split(' ')
+        self._data = dict.fromkeys(*energies, *vibra, *electr)
+        
+    
+    def __getitem__(self, key):
+        return self._data[key]
+    
+    
+    def __setitem__(self, key, value):
+        self._data[key] = value
+    
+    
+    def __delitem__(self):
+        del self._data[key]
+    
+    
+    def __iter__(self):
+        return iter(self._data)
+    
+    
+    def __len__(self):
+        return len(self._data)
+    
+    
+    def calc_popul(self, t=298.15):
+        for e in ('ent', 'gib', 'scf'):
+            self._data['{}d'.format(e)], self._data['{}p'.format(e)] = \
+                boltzmann_dist(data[e], t)
+                
+    
+    def boltzmann_dist(energies, t):
+        delta = (energies - energies.min()) * 627.5095
+        x = np.exp(-delta/(t*self.Boltzmann))
+        popul = x/x.sum()
+        return delta, popul
     
 class Settings:
-    pass
+
+    def __init__(self):
     
+        self._output_dir = ''
+        self._work_dir = ''
         
+        self.spectra_type = '' #'vibra', 'electr' or 'none'
+        self.parameters = {}
+        self.standard_parameters = {
+            'vibra': {'HWHM': 6,
+                      'START': 800,
+                      'STOP': 2100,
+                      'STEP': 2,
+                      'FITTING': 'LORENTZIAN'},
+            'electr': {'HWHM': 6,
+                       'START': 800,
+                       'STOP': 2100,
+                       'STEP': 2,
+                       'FITTING': 'GAUSSIAN'}
+            }
+        self._units = {
+            'vibra': {'HWHM': 'cm-1',
+                      'START': 'cm-1',
+                      'STOP': 'cm-1',
+                      'STEP': 'cm-1'},
+            'electr': {'HWHM': 'eV',
+                       'START': 'nm',
+                       'STOP': 'nm',
+                       'STEP': 'nm'}
+            }
+
+        
+    def set_standard_parameters(self, spectra_type=None):
+        spectra_type = self.spectra_type if not spectra_type else spectra_type
+        self.parameters = self.standard_parameters[spectra_type]
+    
+    
+    @property
+    def work_dir(self):
+        if not self._work_dir:
+            self.change_work_dir
+        return self._work_dir
+    
+
+    @property
+    def output_dir(self):
+        if not self._output_dir:
+            self.change_output_dir
+        return self._output_dir
+
+        
+    @property
+    def units(self):
+        return self._units[self.spectra_type]
+    
+
+    def _ch_dir(self, dest, path):
+        if not path:
+            Tk().withdraw()
+            path = askdirectory()
+        if not path:
+            print("Directory not choosen.")
+        else:
+            os.chdir(path)
+            dest = path
+            
+            
+    def change_dir(self, path=None):
+        self._ch_dir(self.work_dir, path)
+        self._ch_dir(self.output_dir, path)
+        return self.work_dir
+        
+        
+    def change_work_dir(self, path=None):
+        self._ch_dir(self._work_dir, path)
+        return self.work_dir
+        
+        
+    def change_output_dir(self, path=None):
+        self._ch_dir(self._output_dir, path)
+        return self.output_dir
+
+        
+    def set_type(self, spectra_type):
+        if spectra_type not in ('vibra', 'electr', 'none'):
+            raise ValueError("Settings.spectra_type \
+                cannot be set to {}.".format(spectra_type))
+        else:
+            self.spectra_type = spectra_type
+            return self.spectra_type
