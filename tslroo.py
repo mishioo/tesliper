@@ -4,7 +4,11 @@ import numpy as np
 from time import clock
 from datetime import datetime
 from collections.abc import Mapping, MutableMapping
+from collections import defaultdict
 import win32gui
+import csv
+from tkinter import Tk
+from tkinter.filedialog import askdirectory, askopenfilename
 
 __author__ = "Michał Więcław"
 __version__ = "0.3.0"
@@ -13,27 +17,23 @@ __version__ = "0.3.0"
 class Extractor(Mapping):
     
     def __init__(self):
-        
         self.regexs = self.get_regexs()
         self._storage = {'command': self.get_command,
                          'stoich': self.get_stoich,
                          'energies': self.get_energies,
                          'vibra': self.get_vibra_dict(),
-                         'eletcr': self.get_electr_dict()
+                         'eletcr': self.get_electr_dict(),
+                         'popul': self.get_popul
                         }
-
 
     def __getitem__(self, key):
         return self._storage[key]
     
-    
     def __iter__(self):
         for item in self._storage: yield item
     
-    
     def __len__(self):
         return len(self._storage)
-    
     
     def get_regexs(self):
     
@@ -45,7 +45,6 @@ class Extractor(Mapping):
                 return temp, re.compile(r'(-?\d+\.?\d*){}'.format(pat2))
 
         r = {}
-        
         d = {'freq': ('nm',''),
              'energy': ('eV', ''),
              'vosc': ('velocity dipole', '\n'),
@@ -53,10 +52,8 @@ class Extractor(Mapping):
              'lrot': ('electric dipole', '\n'),
              'losc': (r'R(length)', '\n')}
         r['electr'] = {k:electr_dict(*v) for k,v in d.items()}
-        
-        r['command'] = re.compile(r'\#(.*)\n')
+        r['command'] = re.compile(r'\#(.*?)\n\s-', flags=re.DOTALL)
         r['stoich'] = re.compile(r'Stoichiometry\s*(\w*)\n')
-        
         ens_patt = (r' Zero-point correction=\s*(-?\d+\.?\d*).*\n'
             r' Thermal correction to Energy=\s*(-?\d+\.?\d*)\n'
             r' Thermal correction to Enthalpy=\s*(-?\d+\.?\d*)\n'
@@ -67,41 +64,33 @@ class Extractor(Mapping):
             r' Sum of electronic and thermal Free Energies=\s*(-?\d+\.?\d*)')
         r['ens'] = re.compile(ens_patt)
         r['scf'] = re.compile(r'SCF Done.*=\s+(-?\d+\.?\d*)')
-        
         keys = 'freq dip rot ir e-m raman1 roa1'.split(' ')
         pats = 'Frequencies', 'Dip. str.', 'Rot. str.', 'IR Inten', 'E-M angle', 'Raman1', 'ROA1'
         r['vibra'] = {key: re.compile(r'{}\s*--\s+(.*)\n'.format(patt))
                       for key, patt in zip(keys, pats)}
+        r['popul'] = re.compile(r'(-?\w.*?)\s')
         return r
     
-        
     def get_command(self, text):
         return self.regexs['command'].search(text).group(1)
     
-    
     def get_stoich(self, text):
         return self.regexs['stoich'].search(text).group(1)
-    
     
     def get_energies(self, text):
         ens = self.regexs['ens'].search(text).groups()
         scf = self.regexs['scf'].findall(text)[-1]
         return (*ens, scf)
         
-        
     def get_vibra_dict(self):
-    
         def wrapper(patt):
             def inner(text):
                 match = patt.findall(text)
                 return [s for g in match for s in g.split(' ') if s]
             return inner
-            
         return {key:wrapper(patt) for key, patt in self.regexs['vibra'].items()}
         
-        
     def get_electr_dict(self):
-    
         def wrapper(pat1, pat2=None):
             def inner(text):
                 if not pat2:
@@ -110,16 +99,257 @@ class Extractor(Mapping):
                     temp = pat1.search(text).group(1)
                     return pat2.findall(temp)
             return inner
-        
         return {k:wrapper(*v) for k,v in self.regexs['electr'].items()}
+        
+    def get_popul(self, text):
+        return self.regexs['popul'].findall(text)
         
         
 class Soxhlet:
-    
-    def __init__(self):
-        self.extractor = Extractor()
-        self.settings = Settings()
 
+    @classmethod
+    def from_pointer(cls):
+        window = win32gui.GetForegroundWindow()
+        Tk().withdraw()
+        path = askdirectory()
+        win32gui.SetForegroundWindow(window)
+        return cls(path)
+    
+    def __init__(self, path):
+        self.path = path
+        self.files = os.listdir(path)
+        self.extractor = Extractor()
+        self.command = self.get_command()
+        self.spectra_type = self.get_spectra_type()
+    
+    @property
+    def gaussian_files(self):
+        """Get list of (sorted by file name) gaussian output files from files
+        list associated with Soxhlet instance.
+        """
+        try:
+            return self.__gf
+        except AttributeError:
+            try:
+                ext = self.log_or_out()
+                gf = sorted(self.filter_files(ext))
+            except ValueError:
+                gf = None
+            self.__gf = gf
+            return self.__gf        
+    
+    @property
+    def bar_files(self):
+        """Get list of (sorted by file name) *.bar files from files list
+        associated with Soxhlet instance.
+        """
+        try:
+            return self.__bar
+        except AttributeError:
+            try:
+                ext = '.bar'
+                bar = sorted(self.filter_files(ext))
+            except ValueError:
+                bar = None
+            self.__bar = bar
+            return self.__bar
+        
+    def filter_files(self, ext, files=None):
+        """Filters files from file names list.
+        
+        Positional parameter:
+        files --    list of strings representing file names
+        ext --      string representing file extention
+        
+        Function filters file names in provided list. It returns list of
+        file names ending with prowided ext string, representing file
+        extention and number of files in created list as tuple.
+        
+        Parameters
+        ----------
+        ext : str
+            List of strings containing keywords for extractiong.
+        files : list, optional
+            List of strings containing filenames to filter. If omitted,
+            list of filenames associated with object is used.
+                
+        Returns
+        -------
+        list
+            List of filtered filenames as strings.
+        """
+        files = files if files else self.files
+        filtered = [f for f in files if f.endswith(ext)]
+        return filtered
+         
+    def log_or_out(self, files=None):
+        """Checks list of file extentions in list of file names.
+        
+        Function checks for .log and .out files in passed list of file names.
+        If both are present, it raises TypeError exception.
+        If either is present, it raises ValueError exception.
+        It returns string representing file extention present in files list.
+        
+        Parameters
+        ----------
+        files : list, optional
+            List of strings containing filenames to check. If omitted,
+            list of filenames associated with object is used.
+                
+        Returns
+        -------
+        str
+            '.log' if *.log files are present in filenames list or '.out' if
+            *.out files are present in filenames list.
+            
+        Raises
+        ------
+        TypeError
+            If both *.log and *.out files are present in list of filenames.
+        ValueError
+            If neither *.log nor *.out files are present in list of filenames.
+        """
+        files = files if files else self.files
+        logs, outs = (any(f.endswith(ext) for f in files) \
+                      for ext in ('.log', '.out'))
+        if outs and logs:
+            raise TypeError(".log and .out files mixed in directory.")
+        elif not outs and not logs:
+            raise ValueError("Didn't found any .log or .out files.")
+        else:
+            return '.log' if logs else '.out'        
+        
+    def get_command(self):
+        """Parses first gaussian output file associated with Soxhlet instance
+        and extracts gaussian command used to initialized calculations.
+        
+        Returns
+        -------
+        str:
+            String representing extracted gaussian command.
+        """
+        if not self.gaussian_files:
+            return None
+        with open(os.path.join(self.path, self.gaussian_files[0])) as f:
+            cont = f.read()
+        command = self.extractor['command'](cont).lower()
+        return command
+ 
+    def get_spectra_type(self):
+        """Parses gaussian command to determine spectra type.
+        
+        Returns
+        -------
+        str: {'vibra', 'electr'}
+            'vibra' if vibrational or 'electr' if electronic spectra was
+            calculated.
+        None:
+            None is returned if nor vibrational neitherelectronic spectra was
+            calculated.
+        """
+        if not self.command:
+            return None
+        elif 'freq' in self.command:
+            return 'vibra'
+        elif 'nd=' in self.command:
+            return 'electr'
+        else:
+            return None
+            
+    def extract(self, request, spectra_type=None):
+        """From gaussian files associated with object extracts values related
+        to keywords provided in arguments. Assumes spectra_type associated
+        with object if not specified.
+        
+        Parameters
+        ----------
+        request : list
+            List of strings containing keywords for extractiong.
+        spectra_type : str, optional
+            Type of spectra which is to extract; valid values are
+            'vibra', 'electr' or '' (if spectrum is not present
+            in gaussian output files); if omitted, spectra_type
+            associated with object is used.
+                
+        Returns
+        -------
+        dict
+            dictionary with extracted data
+        """
+        spectra_type = spectra_type if spectra_type else self.spectra_type 
+        no = len(self.gaussian_files)
+        keys = [t for t in request if t != 'energies']
+        energies_requested = 'energies' in request
+        if energies_requested:
+            keys[-1:-1] = ('zpec tenc entc gibc zpe ten ent gib scf freq '\
+                           'imag'.split(' '))
+        output = dict.fromkeys(keys, [None for _ in range(no)])
+        output['filenames'] = self.gaussian_files
+        for num, file in enumerate(self.gaussian_files):
+            with open(os.path.join(self.path, file)) as handle:
+                cont = handle.read()
+            for thing in request:
+                if thing == 'energies':
+                    energies = self.extractor[thing](cont)
+                    for k, e in zip(keys, energies):
+                        output[k][num] = e
+                elif thing == 'stoich':
+                    output[thing][num] = self.extractor[thing](cont)
+                elif spectra_type:
+                    temp = self.extractor[spectra_type][thing](cont)
+                    output[thing][num] = temp
+        return output
+        
+    def load_bars(self):
+        """Parses *.bar files associated with object and loads spectral data
+        previously extracted from gaussian output files.
+                
+        Returns
+        -------
+        dict
+            dictionary with extracted spectral data
+        """
+        no = len(self.bar_files)
+        #Create empty dict with list of empty lists as default value.
+        output = defaultdict(lambda: [[] for _ in range(no)])
+        for num, bar in enumerate(self.bar_files):
+            with open(os.path.join(self.path, bar), newline='') as handle:
+                header = handle.readline()
+                reader = csv.reader(handle, delimiter='\t')
+                keys = next(reader)
+                for row in reader:
+                    #For each row in *.bar file copy value to corresponding
+                    #position in prepared output dict
+                    for k, v in zip(keys, row):
+                        #output[value type][file position in sorted list]
+                        output[k][num].append(float(v))
+        return output
+        
+    def load_popul(self):
+        """Parses BoltzmanDistribution.txt file associated with object and
+        loads conformers' energies previously extracted from gaussian output
+        files and calculated populations.
+                
+        Returns
+        -------
+        dict
+            dictionary with extracted data
+        """
+        keys = 'filenames scfp entp gibp scfd entd gibd scf ent gib imag '\
+               'stoich'.split(' ')
+        output = defaultdict(list)
+        with open(os.path.join(self.path, 'BoltzmanDistribution.txt')) as blz:
+            header1 = blz.readline()
+            header2 = blz.readline()
+            for row in blz.readlines():
+                for k, v in zip(keys, self.extractor['popul'](row)):
+                    try:
+                        v = float(v)
+                    except ValueError:
+                        if '%' in v:
+                            v = float(v[:-1])/100
+                    output[k].append(v)
+        return output
     
     def smart_extract(self, path=None):
         if path:
@@ -147,62 +377,10 @@ class Soxhlet:
         else:
             self.settings.set_type(self.get_type())
         return self.settings.spectra_type
-            
-            
-    def get_type(self):
-        f = self.filtered[0]
-        with open(f) as f:
-            f = f.read()
-        command = self.extractor['command'](f).lower()
-        if 'freq' in command:
-            return 'vibra'
-        elif 'nd=' in command:
-            return 'electr'
-        else:
-            return 'none'
-    
-    
+
     def load_files(self, path=None):
         path = path if path else self.settings.work_dir
         self.files = os.listdir(path)
-        
-        
-    def filter_files(self, ext, files=None):
-        """Filters files from file names list.
-        
-        Positional parameter:
-        files --    list of strings representing file names
-        ext --      string representing file extention
-        
-        Function filters file names in provided list. It returns list of
-        file names ending with prowided ext string, representing file
-        extention and number of files in created list as tuple.
-        """
-        files = files if files else self.files
-        filtered = [f for f in files if f.endswith(ext)]
-        return filtered
-         
-         
-    def log_or_out(self):
-        """Checks list of file extentions in list of file names.
-        
-        Positional parameter:
-        files --    list of strings representing file names
-        
-        Function checks for .log and .out files in passed list of file names.
-        If both are present, it raises TypeError exception.
-        If either is present, it raises ValueError exception.
-        It returns string representing file extention present in files list.
-        """
-        logs, outs = (any(f.endswith(ext) for f in eslf.files) \
-                      for ext in ('.log', '.out'))
-        if outs and logs:
-            raise TypeError(".log and .out files mixed in directory.")
-        elif not outs and not logs:
-            raise ValueError("Didn't found any .log or .out files.")
-        else:
-            return '.log' if logs else '.out'
-
             
     def get_data(self, to_get, settings=None):
         settings = self.settings if not settings else settings
@@ -212,12 +390,7 @@ class Soxhlet:
             pass
         self.data = Data(settings)
         return self.data
-        
-        
-    def load_bars(self):
-        pass
-        
-        
+
         
 class Data(MutableMapping):
 
@@ -228,39 +401,35 @@ class Data(MutableMapping):
         vibra = 'freq dip rot ir e-m raman1 roa1'.split(' ')
         electr = 'freq energy vosc vrot lrot losc'.split(' ')
         self._data = dict.fromkeys(*energies, *vibra, *electr)
-        
     
     def __getitem__(self, key):
         return self._data[key]
     
-    
     def __setitem__(self, key, value):
         self._data[key] = value
-    
     
     def __delitem__(self):
         del self._data[key]
     
-    
     def __iter__(self):
         return iter(self._data)
     
-    
     def __len__(self):
         return len(self._data)
-    
     
     def calc_popul(self, t=298.15):
         for e in ('ent', 'gib', 'scf'):
             self._data['{}d'.format(e)], self._data['{}p'.format(e)] = \
                 boltzmann_dist(data[e], t)
                 
-    
     def boltzmann_dist(energies, t):
         delta = (energies - energies.min()) * 627.5095
         x = np.exp(-delta/(t*self.Boltzmann))
         popul = x/x.sum()
         return delta, popul
+        
+    def find_imag(self):
+        pass
     
 class Settings:
 
@@ -294,11 +463,9 @@ class Settings:
                        'STEP': 'nm'}
             }
 
-        
     def set_standard_parameters(self, spectra_type=None):
         spectra_type = self.spectra_type if not spectra_type else spectra_type
         self.parameters = self.standard_parameters[spectra_type]
-    
     
     @property
     def work_dir(self):
@@ -306,45 +473,40 @@ class Settings:
             self.change_work_dir
         return self._work_dir
     
-
     @property
     def output_dir(self):
         if not self._output_dir:
             self.change_output_dir
         return self._output_dir
 
-        
     @property
     def units(self):
         return self._units[self.spectra_type]
     
-
     def _ch_dir(self, dest, path):
         if not path:
+            window = win32gui.GetForegroundWindow()
             Tk().withdraw()
             path = askdirectory()
+            win32gui.SetForegroundWindow(window)
         if not path:
             print("Directory not choosen.")
         else:
             os.chdir(path)
             dest = path
             
-            
     def change_dir(self, path=None):
         self._ch_dir(self.work_dir, path)
         self._ch_dir(self.output_dir, path)
         return self.work_dir
         
-        
     def change_work_dir(self, path=None):
         self._ch_dir(self._work_dir, path)
         return self.work_dir
         
-        
     def change_output_dir(self, path=None):
         self._ch_dir(self._output_dir, path)
         return self.output_dir
-
         
     def set_type(self, spectra_type):
         if spectra_type not in ('vibra', 'electr', 'none'):
