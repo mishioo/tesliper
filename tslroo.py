@@ -9,12 +9,36 @@ import win32gui
 import csv
 from tkinter import Tk
 from tkinter.filedialog import askdirectory, askopenfilename
+import matplotlib.pyplot as plt
+
 
 __author__ = "Michał Więcław"
 __version__ = "0.3.0"
 
 
 class Extractor(Mapping):
+    """A tool for data extraction from gaussian output file.
+    
+    This object is a dict-like container with set of compiled regular
+    expresion objects and set of methods which can be used to extract data
+    from gaussian output files. Extracting methods can be acessed by getting
+    value bound to keyword. Typical use:
+    
+    >>> e = Extractor()
+    >>> extracted = e['keyword']('text to extract from')
+    
+    extracted is then a string or list of strings, depending on keyword.
+    Re objects can be get as dictionary under 'regexs' attribute if needed.
+    
+    Attributes
+    ----------
+    regexs: dict
+        Dictionary of compiled regular expresion objects.
+    
+    TO DO
+    -----
+    Unify inner dict to only work as in example.
+    """
     
     def __init__(self):
         self.regexs = self.get_regexs()
@@ -41,7 +65,8 @@ class Extractor(Mapping):
             if not pat2:
                 return re.compile(r'(\d*\.\d+) {}'.format(pat1)), ''
             else:
-                temp = re.compile(r'{}.*:\n.*\n((?:\s*-?\d+\.?\d*)*)'.format(pat1))
+                temp = re.compile(r'{}.*:\n.*\n((?:\s*-?\d+\.?\d*)*)'\
+                                  .format(pat1))
                 return temp, re.compile(r'(-?\d+\.?\d*){}'.format(pat2))
 
         r = {}
@@ -65,7 +90,8 @@ class Extractor(Mapping):
         r['ens'] = re.compile(ens_patt)
         r['scf'] = re.compile(r'SCF Done.*=\s+(-?\d+\.?\d*)')
         keys = 'freq dip rot ir e-m raman1 roa1'.split(' ')
-        pats = 'Frequencies', 'Dip. str.', 'Rot. str.', 'IR Inten', 'E-M angle', 'Raman1', 'ROA1'
+        pats = 'Frequencies', 'Dip. str.', 'Rot. str.', 'IR Inten',\
+               'E-M angle', 'Raman1', 'ROA1'
         r['vibra'] = {key: re.compile(r'{}\s*--\s+(.*)\n'.format(patt))
                       for key, patt in zip(keys, pats)}
         r['popul'] = re.compile(r'(-?\w.*?)\s')
@@ -88,7 +114,8 @@ class Extractor(Mapping):
                 match = patt.findall(text)
                 return [s for g in match for s in g.split(' ') if s]
             return inner
-        return {key:wrapper(patt) for key, patt in self.regexs['vibra'].items()}
+        return {key:wrapper(patt)
+                for key, patt in self.regexs['vibra'].items()}
         
     def get_electr_dict(self):
         def wrapper(pat1, pat2=None):
@@ -106,7 +133,30 @@ class Extractor(Mapping):
         
         
 class Soxhlet:
-
+    """A tool for data extraction from files in specific directory.
+    
+    Attributes
+    ----------
+    path: str
+        Path of directory bounded to Soxhlet instance.
+    files: list
+        List of files present in directory bounded to Soxhlet instance.
+    extractor: Extractor object
+        Extractor class instance used to extract data from files.
+    command: str or None
+        
+    spectra_type: str or None
+    
+    gaussian_files
+    bar_files
+    
+    TO DO
+    -----
+    Supplement this docstring.
+    After Unifying Extractor class, do same with this class.
+    Move/Remove unnececery methods.
+    """
+    
     @classmethod
     def from_pointer(cls):
         window = win32gui.GetForegroundWindow()
@@ -124,7 +174,7 @@ class Soxhlet:
     
     @property
     def gaussian_files(self):
-        """Get list of (sorted by file name) gaussian output files from files
+        """List of (sorted by file name) gaussian output files from files
         list associated with Soxhlet instance.
         """
         try:
@@ -136,11 +186,11 @@ class Soxhlet:
             except ValueError:
                 gf = None
             self.__gf = gf
-            return self.__gf        
+            return self.__gf
     
     @property
     def bar_files(self):
-        """Get list of (sorted by file name) *.bar files from files list
+        """List of (sorted by file name) *.bar files from files list
         associated with Soxhlet instance.
         """
         try:
@@ -281,9 +331,10 @@ class Soxhlet:
         keys = [t for t in request if t != 'energies']
         energies_requested = 'energies' in request
         if energies_requested:
-            keys[-1:-1] = ('zpec tenc entc gibc zpe ten ent gib scf freq '\
-                           'imag'.split(' '))
-        output = dict.fromkeys(keys, [None for _ in range(no)])
+            energies_keywords = \
+                'zpec tenc entc gibc zpe ten ent gib scf'.split(' ')
+            keys[-1:-1] = energies_keywords
+        output = defaultdict(lambda: [None] * no)
         output['filenames'] = self.gaussian_files
         for num, file in enumerate(self.gaussian_files):
             with open(os.path.join(self.path, file)) as handle:
@@ -291,7 +342,7 @@ class Soxhlet:
             for thing in request:
                 if thing == 'energies':
                     energies = self.extractor[thing](cont)
-                    for k, e in zip(keys, energies):
+                    for k, e in zip(energies_keywords, energies):
                         output[k][num] = e
                 elif thing == 'stoich':
                     output[thing][num] = self.extractor[thing](cont)
@@ -399,13 +450,21 @@ class Data(MutableMapping):
     def __init__(self):
         energies = 'zpec tenc entc gibc zpe ten ent gib scf'.split(' ')
         vibra = 'freq dip rot ir e-m raman1 roa1'.split(' ')
-        electr = 'freq energy vosc vrot lrot losc'.split(' ')
-        self._data = dict.fromkeys(*energies, *vibra, *electr)
+        electr = 'efreq energy vosc vrot lrot losc'.split(' ')
+        self._data = dict.fromkeys([*energies, *vibra, *electr])
     
     def __getitem__(self, key):
+        #TO DO: calculate value if not calculated yet
         return self._data[key]
     
     def __setitem__(self, key, value):
+        if isinstance(value[0], list):
+            value = [np.array(v, dtype=float) for v in value]
+        elif isinstance(value, list):
+            try:
+                value = np.array(value, dtype=float)
+            except ValueError:
+                pass
         self._data[key] = value
     
     def __delitem__(self):
@@ -419,18 +478,113 @@ class Data(MutableMapping):
     
     def calc_popul(self, t=298.15):
         for e in ('ent', 'gib', 'scf'):
-            self._data['{}d'.format(e)], self._data['{}p'.format(e)] = \
-                boltzmann_dist(data[e], t)
+            self['{}d'.format(e)], self['{}p'.format(e)] = \
+                self._boltzmann_dist(self[e], t)
                 
-    def boltzmann_dist(energies, t):
+    def _boltzmann_dist(self, energies, t):
         delta = (energies - energies.min()) * 627.5095
         x = np.exp(-delta/(t*self.Boltzmann))
         popul = x/x.sum()
         return delta, popul
         
     def find_imag(self):
-        pass
+        #still as float. why? fix
+        self['imag'] = [(freq < 0).astype(int) for freq in self['freq']]
+        return [imag.sum() for imag in self['imag']]
     
+    # gives to many (many!) arrays
+    def get_spectrum(self, type, start, stop, step, hwhm, fitting):
+        """
+        Parameters
+        ----------
+        type: str
+            Name of spectrum, which is to be calculated. Valid names are:
+            vcd, ir, raman, roa, ecd, uv.
+        start: int or float
+            Number representing start of spectral range in relevant units.
+        stop: int or float
+            Number representing end of spectral range in relevant units.
+        step: int or float
+            Number representing step of spectral range in relevant units.
+        hwhm: int or float
+            Number representing half width of maximum peak hight.
+        fitting: str
+            String representing desired spectrum fitting. Valid values are
+            gaussian and lorentzian.
+        """
+        base = np.arange(start, stop, step)
+        #spectrum base, 1d numpy.array of wavelengths/wave numbers
+        if fitting.lower() == 'gaussian':
+            fitting = self._gaussian
+        elif fitting.lower() == 'lorentzian':
+            fitting = self._lorentzian
+        else:
+            raise NameError("Unknown fitting name: '{}'".format(fitting))
+        bars, freqs, factor = self._spectr_type_ref[type] #make this
+        factor = factor(base) if callable(factor) else factor
+        spectrum = self.calculate_spectrum(bars, freqs, base, hwhm, factor,
+                                           fitting)
+        self[type] = np.array([base, spectrum])
+        return self[type]
+        
+    def calculate_spectrum(self, bars, freqs, base, hwhm, factor, fitting):
+        """
+        Parameters
+        ----------
+        bars: numpy.array
+            Appropiate values extracted from gaussian output files.
+        freqs: numpy.array
+            Frequencies extracted from gaussian output files.
+        base: numpy.array
+            List of wavelength/wave number points on spectrum range.
+        hwhm: int or float
+            Number representing half width of maximum peak hight.
+        factor: int or float or numpy.array
+            Factor (or numpy.array of factors), which non-corrected spectrum
+            points obtained from fitting function will be multiplied by.
+        fitting: function
+            Function, which takes bars, freqs, base, hwhm as parameters and
+            returns numpy.array of calculated, non-corrected spectrum points.
+        """
+        spectrum = factor * fitting(bars, freqs, base, hwhm)
+        return spectrum
+        
+    def _gaussian(self, bars, freqs, base, hwhm):
+        sigm = hwhm / math.sqrt(2 * math.log(2))
+        it = np.nditer([base, None])
+        for lam, peaks in it:
+            e = bars * exp(-0.5 * (lam - freqs) ** 2 / sigm ** 2)
+            peaks[...] = e.sum() / (sigm * (2 * math.pi)**0.5)
+        return it.operands[1]
+        
+    def _lorentzian(self, bars, freqs, base, hwhm):
+        it = np.nditer([base, None])
+        for lam, val in it:
+            print(lam, freqs)
+            s = bars/((lam - freqs)**2 + hwhm**2)
+            val[...] = lam * hwhm / (math.pi * 9.184e-39) * s.sum()
+        return it.operands[1]
+    
+    @property
+    def _spectr_type_ref(self):
+        def uv_factor(freqs):
+            return freqs * 3.07441575e-12 
+        r = dict(
+            #type = (bars, freqs, factor)
+            vcd = (self['rot'], self['freq'], 1.38607595e38),
+            ir = (self['dip'], self['freq'], 3.46518986e37),
+            raman = (self['raman1'], self['freq'], 0),
+            roa = (self['roa1'], self['freq'], 0),
+            ecd = (self['rot'], self['freq'], 3.07441575e+6),
+            uv = (self['dip'], self['freq'], uv_factor)
+                )
+        return r
+        
+    def show_spectrum(self, spectrum):
+        plt.plot(*spectrum)
+        plt.show()
+
+        
 class Settings:
 
     def __init__(self):
