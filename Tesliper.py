@@ -527,10 +527,13 @@ class Data(MutableMapping):
         bars, freqs, factor = self._spectr_type_ref[type]
         factor = factor(base) if callable(factor) else factor
         self[type] = np.zeros(base.shape)
+        #TO DO: do it numpy way
+        temp = []
         for bar, freq in zip(bars, freqs):
             spectrum = self.calculate_spectrum(bar, freq, base, hwhm, factor,
                                                fitting)
-            self[type][num] = np.array([base, spectrum])
+            temp.append(np.array([base, spectrum]))
+        self[type] = temp
         return self[type]
         
     def calculate_spectrum(self, bar, freq, base, hwhm, factor, fitting):
@@ -563,7 +566,7 @@ class Data(MutableMapping):
                         op_dtypes=[np.float64,np.float64]
                         )
         for lam, peaks in it:
-            e = bar * exp(-0.5 * (lam - freq) ** 2 / sigm ** 2)
+            e = bar * np.exp(-0.5 * (lam - freq) ** 2 / sigm ** 2)
             peaks[...] = e.sum() / (sigm * (2 * math.pi)**0.5)
         return it.operands[1]
         
