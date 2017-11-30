@@ -1,6 +1,6 @@
 import unittest
 import os
-import tslroo as tsl
+import tesliper as tsl
 
 
 class TestSoxhlet(unittest.TestCase):
