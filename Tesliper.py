@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 
 
 __author__ = "Michał Więcław"
-__version__ = "0.4.0"
+__version__ = "0.4.1"
 
 
 class Extractor(Mapping):
@@ -47,7 +47,8 @@ class Extractor(Mapping):
                          'energies': self.get_energies,
                          'vibra': self.get_vibra_dict(),
                          'eletcr': self.get_electr_dict(),
-                         'popul': self.get_popul
+                         'popul': self.get_popul,
+                         'settings': self.get_settings
                         }
 
     def __getitem__(self, key):
@@ -95,6 +96,7 @@ class Extractor(Mapping):
         r['vibra'] = {key: re.compile(r'{}\s*--\s+(.*)\n'.format(patt))
                       for key, patt in zip(keys, pats)}
         r['popul'] = re.compile(r'(-?\w.*?)\s')
+        r['settings'] = re.compile(r'(-?\d+.?d\*|lorentzian|gaussian)')
         return r
     
     def get_command(self, text):
@@ -131,6 +133,11 @@ class Extractor(Mapping):
     def get_popul(self, text):
         return self.regexs['popul'].findall(text)
         
+    def get_settings(self, text):
+        sett = self.regexs['settings'].findall(text.lower()).groups()
+        sett = {k: v for k, v in zip(('hwhm start stop step fitting'\
+                                      .split(' '), sett)}
+        return sett
         
 class Soxhlet:
     """A tool for data extraction from files in specific directory.
@@ -351,7 +358,7 @@ class Soxhlet:
                     output[thing][num] = temp
         return output
         
-    def load_bars(self):
+    def load_bars(self, spectra_type=None):
         """Parses *.bar files associated with object and loads spectral data
         previously extracted from gaussian output files.
                 
@@ -359,7 +366,12 @@ class Soxhlet:
         -------
         dict
             dictionary with extracted spectral data
+            
+        TO DO
+        -----
+        make it compatibile with ecd bar files
         """
+        spectra_type = spectra_type if spectra_type else self.spectra_type
         no = len(self.bar_files)
         #Create empty dict with list of empty lists as default value.
         output = defaultdict(lambda: [[] for _ in range(no)])
@@ -401,60 +413,52 @@ class Soxhlet:
                             v = float(v[:-1])/100
                     output[k].append(v)
         return output
-    
-    def smart_extract(self, path=None):
-        if path:
-            self.settings.change_dir(path)
-        else:
-            path = self.settings.work_dir
-        files = self.load_files(path)
-        filtered = self.filtered = filter_files(log_or_out(path))
-        spectra_type = self.set_type()
-        # establish to_get
-        data = self.get_data(to_get)
-        if 'energies' in to_get:
-            pass
-        if 'vibra' in to_get:
-            pass
-        if 'electr' in to_get:
-            pass
-        if ('vibra' in to_get or 'electr' in to_get) and 'energies' in to_get:
-            #do it better
-            pass
         
-    def set_type(self, spectra_type=None):
-        if spectra_type:
-            self.settings.set_type(spectra_type)
-        else:
-            self.settings.set_type(self.get_type())
-        return self.settings.spectra_type
-
-    def load_files(self, path=None):
-        path = path if path else self.settings.work_dir
-        self.files = os.listdir(path)
+    def load_settings(self):
+        """Parses Setup.txt file associated with object and returns dict with
+        extracted values. Prefers Setup.txt file over *Setup.txt files.
+        
+        Returns
+        -------
+        dict
+            Dictionary eith extracted settings data.
             
-    def get_data(self, to_get, settings=None):
-        settings = self.settings if not settings else settings
+        Raises
+        ------
+        FileNotFoundError
+            If no or multiple setup.txt files found.
+        """
         try:
-            to_get = to_get.split(' ')
-        except AttributeError:
-            pass
-        self.data = Data(settings)
-        return self.data
-
+            f = open("Setup.txt", "r")
+        except FileNotFoundError:
+            fls = [file.endswith('Setup.txt') for file in self.files]
+            if len(fls) != 1:
+                raise FileNotFoundError("No or multiple setup files in "\
+                                        "directory.")
+            else:
+                f = open(fls[0], "r")
+        sett = self.extractor["settings"](f)
+        f.close()
+        return sett
+        
+    def parse_command(self):
+        #TO DO: do it
+        pass
+            
         
 class Data(MutableMapping):
 
     Boltzmann = 0.0019872041 #kcal/(mol*K)
 
     def __init__(self):
-        energies = 'zpec tenc entc gibc zpe ten ent gib scf'.split(' ')
-        vibra = 'freq dip rot ir e-m raman1 roa1'.split(' ')
-        electr = 'efreq energy vosc vrot lrot losc'.split(' ')
-        self._data = dict.fromkeys([*energies, *vibra, *electr])
+        #energies = 'zpec tenc entc gibc zpe ten ent gib scf'.split(' ')
+        #vibra = 'freq dip rot ir e-m raman1 roa1'.split(' ')
+        #electr = 'efreq energy vosc vrot lrot losc'.split(' ')
+        #self._data = dict.fromkeys([*energies, *vibra, *electr])
+        self._data = {}
     
     def __getitem__(self, key):
-        #TO DO: calculate value if not calculated yet
+        #TO DO: calculate value if not calculated yet ?
         return self._data[key]
     
     def __setitem__(self, key, value):
@@ -463,6 +467,7 @@ class Data(MutableMapping):
                 value = np.array(value, dtype=float)
             except ValueError:
                 pass
+        self._validate(key, value)
         self._data[key] = value
     
     def __delitem__(self):
@@ -473,6 +478,27 @@ class Data(MutableMapping):
     
     def __len__(self):
         return len(self._data)
+        
+    def _validate(self, key, value):
+        if not self:
+            return
+        files = self['filenames']
+        spectra = 'vcd ir raman1 roa1 ecd uv'
+        if not (len(files) == len(value) or key in spectra):
+            raise ValueError(
+                "Loaded data must contain same number of entries (files "
+                "of certain type in directory) as data already got."
+                "Loaded data marked as {} has {} entries, shoud have {}."\
+                .format(key, len(value), len(files))
+                )
+        if key == 'stoich' and 'stoich' in self:
+            stoich = self['stoich']
+            check = value != stoich
+            if check.sum():
+                raise TypeError(
+                    "Stoichiometry from loaded files does not match in {}/{} "
+                    "entries.".format(check,sum(), len(stoich)), check
+                    )
     
     def calc_popul(self, t=298.15):
         for e in ('ent', 'gib', 'scf'):
@@ -493,17 +519,17 @@ class Data(MutableMapping):
         spectra, popul = self[spectra_type], self[popul_type]
         av = (spectra[0,1,:] * popul[:, np.newaxis]).sum(0)
         av_spec = np.array([spectra[0][0], av])
-        self['av_{}'.format(spectra_type)] = av_spec
+        #self['av_{}'.format(spectra_type)] = av_spec
         return av_spec
         #av_spec = sum(s * p for s, p in zip(spectra[1], populations))
     
-    def get_spectra(self, type, start, stop, step, hwhm, fitting):
+    def calculate_spectra(self, type, start, stop, step, hwhm, fitting):
         """
         Parameters
         ----------
         type: str
-            Name of spectrum, which is to be calculated. Valid names are:
-            vcd, ir, raman, roa, ecd, uv.
+            Name of spectrum, which is going to be calculated. Valid names
+            are: vcd, ir, raman, roa, ecd, uv.
         start: int or float
             Number representing start of spectral range in relevant units.
         stop: int or float
@@ -512,24 +538,18 @@ class Data(MutableMapping):
             Number representing step of spectral range in relevant units.
         hwhm: int or float
             Number representing half width of maximum peak hight.
-        fitting: str
-            String representing desired spectrum fitting. Valid values are
-            gaussian and lorentzian.
+        fitting: function
+            Function, which takes bars, freqs, base, hwhm as parameters and
+            returns numpy.array of calculated, non-corrected spectrum points.
         """
         base = np.arange(start, stop, step)
             #spectrum base, 1d numpy.array of wavelengths/wave numbers
-        if fitting.lower() == 'gaussian':
-            fitting = self._gaussian
-        elif fitting.lower() == 'lorentzian':
-            fitting = self._lorentzian
-        else:
-            raise NameError("Unknown fitting name: '{}'".format(fitting))
-        bars, freqs, factor = self._spectr_type_ref[type]
+        bars, freqs, factor = self.spectr_type_ref[type]
         factor = factor(base) if callable(factor) else factor
         self[type] = np.zeros(base.shape)
         #TO DO: do it numpy way
         temp = []
-        for bar, freq in zip(bars, freqs):
+        for bar, freq in zip(self[bars], self[freqs]):
             spectrum = self.calculate_spectrum(bar, freq, base, hwhm, factor,
                                                fitting)
             temp.append(np.array([base, spectrum]))
@@ -558,7 +578,7 @@ class Data(MutableMapping):
         spectrum = factor * fitting(bar, freq, base, hwhm)
         return spectrum
         
-    def _gaussian(self, bar, freq, base, hwhm):
+    def gaussian(self, bar, freq, base, hwhm):
         sigm = hwhm / math.sqrt(2 * math.log(2))
         it = np.nditer([base, None], flags = ['buffered'],
                         op_flags = [['readonly'],
@@ -570,7 +590,7 @@ class Data(MutableMapping):
             peaks[...] = e.sum() / (sigm * (2 * math.pi)**0.5)
         return it.operands[1]
         
-    def _lorentzian(self, bar, freq, base, hwhm):
+    def lorentzian(self, bar, freq, base, hwhm):
         it = np.nditer([base, None], flags = ['buffered'],
                             op_flags = [['readonly'],
                                 ['writeonly', 'allocate', 'no_broadcast']],
@@ -582,17 +602,17 @@ class Data(MutableMapping):
         return it.operands[1]
     
     @property
-    def _spectr_type_ref(self):
+    def spectr_type_ref(self):
         def uv_factor(freqs):
             return freqs * 3.07441575e-12 
         r = dict(
             #type = (bars, freqs, factor)
-            vcd = (self['rot'], self['freq'], 1.38607595e38),
-            ir = (self['dip'], self['freq'], 3.46518986e37),
-            raman = (self['raman1'], self['freq'], 0),
-            roa = (self['roa1'], self['freq'], 0),
-            ecd = (self['rot'], self['freq'], 3.07441575e+6),
-            uv = (self['dip'], self['freq'], uv_factor)
+            vcd = ('rot', 'freq', 1.38607595e38),
+            ir = ('dip', 'freq', 3.46518986e37),
+            raman = ('raman1', 'freq', 0),
+            roa = ('roa1', 'freq', 0),
+            ecd = ('rot', 'freq', 3.07441575e+6),
+            uv = ('dip', 'freq', uv_factor)
                 )
         return r
         
@@ -605,23 +625,23 @@ class Settings:
 
     def __init__(self):
     
-        self._output_dir = ''
-        self._work_dir = ''
+        self._output_dir = os.getcwd()
+        self._work_dir = os.getcwd()
         
-        self.spectra_type = '' #'vibra', 'electr' or 'none'
-        self.parameters = {}
+        self.spectra_type = None #'vibra', 'electr' or None
         self.standard_parameters = {
             'vibra': {'HWHM': 6,
                       'START': 800,
                       'STOP': 2100,
                       'STEP': 2,
-                      'FITTING': 'LORENTZIAN'},
-            'electr': {'HWHM': 6,
-                       'START': 800,
-                       'STOP': 2100,
-                       'STEP': 2,
-                       'FITTING': 'GAUSSIAN'}
+                      'FITTING': 'lorentzian'},
+            'electr': {'HWHM': 0.35,
+                       'START': 150,
+                       'STOP': 650,
+                       'STEP': 1,
+                       'FITTING': 'gaussian'}
             }
+        self.set_standard_parameters()
         self._units = {
             'vibra': {'HWHM': 'cm-1',
                       'START': 'cm-1',
@@ -633,9 +653,11 @@ class Settings:
                        'STEP': 'nm'}
             }
 
-    def set_standard_parameters(self, spectra_type=None):
-        spectra_type = self.spectra_type if not spectra_type else spectra_type
-        self.parameters = self.standard_parameters[spectra_type]
+    def set_standard_parameters(self):
+        self.parameters = {
+            'vibra': self.standard_parameters['vibra'].copy(),
+            'electr': self.standard_parameters['electr'].copy()
+            }
     
     @property
     def work_dir(self):
@@ -653,7 +675,7 @@ class Settings:
     def units(self):
         return self._units[self.spectra_type]
     
-    def _ch_dir(self, dest, path):
+    def change_dir(self, path=None, work=True, output=True):
         if not path:
             window = win32gui.GetForegroundWindow()
             Tk().withdraw()
@@ -662,26 +684,125 @@ class Settings:
         if not path:
             print("Directory not choosen.")
         else:
-            os.chdir(path)
-            dest = path
+            if work:
+                os.chdir(path)
+                self._work_dir = path
+            if output:
+                if not os.path.isdir(path):
+                    os.makedirs(path)
+                self._output_dir = path
+            return path
             
-    def change_dir(self, path=None):
-        self._ch_dir(self.work_dir, path)
-        self._ch_dir(self.output_dir, path)
-        return self.work_dir
-        
-    def change_work_dir(self, path=None):
-        self._ch_dir(self._work_dir, path)
-        return self.work_dir
-        
-    def change_output_dir(self, path=None):
-        self._ch_dir(self._output_dir, path)
-        return self.output_dir
-        
     def set_type(self, spectra_type):
-        if spectra_type not in ('vibra', 'electr', 'none'):
+        if spectra_type not in ('vibra', 'electr') or \
+                spectra_type is not None:
             raise ValueError("Settings.spectra_type \
                 cannot be set to {}.".format(spectra_type))
         else:
             self.spectra_type = spectra_type
             return self.spectra_type
+            
+class Tesliper:
+    """
+    """
+    
+    def __init__(self):
+        self.settings = Settings()
+        self.data = Data()
+        
+    def load_files(self, path):
+        self.soxhlet = Soxhlet(path)
+        self.settings.set_type(self.soxhlet.spectra_type)
+        self.settings.change_dir(path)
+        
+    def extract(self, *args, spectra_type=None, path=None):
+        soxhlet = Soxhlet(path) if path else self.soxhlet
+        data = soxhlet.extract(args, spectra_type)
+        self.data.update(data)
+        return self.data
+    
+    def smart_extract(self, deep_search=True, calculations=True,
+                      average=True, save=True, with_load=True):
+        #TO DO: do it
+        pass
+                
+    def load_bars(self, spectra_type=None, path=None):
+        soxhlet = Soxhlet(path) if path else self.soxhlet
+        bars = soxhlet.load_bars(spectra_type)
+        self.data.update(bars)
+        return self.data
+        
+    def load_populations(self, path=None):
+        soxhlet = Soxhlet(path) if path else self.soxhlet
+        popul = soxhlet.load_popul()
+        self.data.update(popul)
+        return self.data
+        
+    def load_spectra(self, path=None):
+        soxhlet = Soxhlet(path) if path else self.soxhlet
+        spectra = soxhlet.load_spectra()
+        self.data.update(spectra)
+        return self.data
+    
+    def load_settings(self, path=None):
+        soxhlet = Soxhlet(path) if path else self.soxhlet
+        settings = soxhlet.load_settings()
+        self.settings[self.settings.spectra_type].update(settings)
+        return self.settings
+            
+    def change_dir(self, path=None):
+        path = self.settings.change_dir(path)
+        return path
+        
+    def change_work_dir(self, path=None):
+        path = self.settings.change_dir(path, output=False)
+        return path
+        
+    def change_output_dir(self, path=None):
+        path = self.settings.change_dir(path, work=False)
+        return path
+                
+    def calculate_populations(self, t=None):
+        self.data.calc_popul(t)
+        return self.data
+        
+    def calculate_spectra(*args, start=None, stop=None, step=None,
+                          hwhm=None, fitting=None):
+        if fitting == 'lorentzian':
+            fit = self.data.lorentzian
+        elif fitting == 'gaussian':
+            fit = self.data.gaussian
+        else:
+            raise ValueError("Fitting style not recognized: {}"\
+                             .format(fitting))
+        settings = {k: v for k, v in
+                    zip(('start', 'stop', 'step', 'hwhm', 'fitting'),
+                        (start, stop, step, hwhm, fitting))
+                    if v}
+        for spectr in args:
+            spectra_type = 'electr' if spectr in ('ecd', 'uv') else 'vibra'
+            self.settings[spectra_type].update(settings)
+            sett = self.settings[spectra_type]
+            sett.update({'fitting': fit})
+            self.data.calculate_spectra(spectr, **sett)
+        
+    def get_averaged_spectrum(type, popul_type):
+        try:
+            output = data.average_spectra(spectr, popul_type)
+        except KeyError:
+            self.smart_extract(average=False, save=False)
+            output = data.average_spectra(spectr, popul_type)
+        return output
+
+    def save_output(self, *args):
+        #TO DO: do it
+        pass
+        #populations, bars (with e-m), spectra, averaged, settings
+        if 'popul' in args:
+            pass
+        if 'bars' in args:
+            pass
+        if 'averaged' in args:
+            pass
+        if 'settings' in args:
+            pass
