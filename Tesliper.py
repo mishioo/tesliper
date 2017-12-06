@@ -66,17 +66,21 @@ class Extractor(Mapping):
             if not pat2:
                 return re.compile(r'(\d*\.\d+) {}'.format(pat1)), ''
             else:
+                #THIS SHOULD NOT WORK FOR VROT, LROT, EE-M !!!
+                #CHECK IF '{}.*:?\n.*\n((?:\s*-?\d+\.?\d*)*)' WORKS
+                #IF NOT, FIGURE OUT THE WAY FOR THIS
                 temp = re.compile(r'{}.*:\n.*\n((?:\s*-?\d+\.?\d*)*)'\
                                   .format(pat1))
                 return temp, re.compile(r'(-?\d+\.?\d*){}'.format(pat2))
 
         r = {}
-        d = {'freq': ('nm',''),
+        d = {'efreq': ('nm',''),
              'energy': ('eV', ''),
              'vosc': ('velocity dipole', '\n'),
              'vrot': (r'R(velocity)', r'\s*\d+\.?\d*\n'),
              'lrot': ('electric dipole', '\n'),
-             'losc': (r'R(length)', '\n')}
+             'losc': (r'R(length)', '\n'),
+             'ee-m': (r'E-M Angle', '\n')}
         r['electr'] = {k:electr_dict(*v) for k,v in d.items()}
         r['command'] = re.compile(r'\#(.*?)\n\s-', flags=re.DOTALL)
         r['stoich'] = re.compile(r'Stoichiometry\s*(\w*)\n')
@@ -90,7 +94,7 @@ class Extractor(Mapping):
             r' Sum of electronic and thermal Free Energies=\s*(-?\d+\.?\d*)')
         r['ens'] = re.compile(ens_patt)
         r['scf'] = re.compile(r'SCF Done.*=\s+(-?\d+\.?\d*)')
-        keys = 'freq dip rot ir e-m raman1 roa1'.split(' ')
+        keys = 'vfreq dip rot ir ve-m raman1 roa1'.split(' ')
         pats = 'Frequencies', 'Dip. str.', 'Rot. str.', 'IR Inten',\
                'E-M angle', 'Raman1', 'ROA1'
         r['vibra'] = {key: re.compile(r'{}\s*--\s+(.*)\n'.format(patt))
@@ -442,8 +446,23 @@ class Soxhlet:
         return sett
         
     def parse_command(self):
-        #TO DO: do it
-        pass
+        """Parses gaussian command extractet from first output file
+        in associated files list.
+        
+        Returns
+        -------
+        list
+            List of key-words needed for data extraction.
+        """
+        cmd = self.command.lower()
+        prsr = {'opt': 'energies',
+                'freq=': 'vfreq'
+                'freq=vcd': 'dip rot ir ve-m',
+                'freq=roa': 'raman1 roa1',
+                'td=': 'efreq energy vosc vrot lrot losc ee-m',
+                }
+        args = ' '.join(v for k, v in prsr if k in cmd).split(' ')
+        return args
             
         
 class Data(MutableMapping):
@@ -480,6 +499,18 @@ class Data(MutableMapping):
         return len(self._data)
         
     def _validate(self, key, value):
+        """Method for validating data for inner compatibility during setting
+        as value of this dict-like object.
+        
+        Raises
+        ------
+        ValueError
+            If loded list/array is of different length than expected (does
+            not match length of files' list stored under 'filenames' key).
+        TypeError
+            If stoichiometry of conformers which data is loaded does not match
+            stoichioetry of conformers already associated with data object.
+        """
         if not self:
             return
         files = self['filenames']
@@ -550,19 +581,53 @@ class Data(MutableMapping):
         #TO DO: do it numpy way
         temp = []
         for bar, freq in zip(self[bars], self[freqs]):
-            spectrum = self.calculate_spectrum(bar, freq, base, hwhm, factor,
+            spectrum = self._calc_spectr(bar, freq, base, hwhm, factor,
                                                fitting)
             temp.append(np.array([base, spectrum]))
         self[type] = temp
         return self[type]
         
-    def calculate_spectrum(self, bar, freq, base, hwhm, factor, fitting):
+    def calc_single_spectrum(self, type, start, stop, step, hwhm, fitting):
+        """A method for calculating spectrum of single conformer.
+        
+        Parameters
+        ----------
+        type: str
+            Name of spectrum, which is going to be calculated. Valid names
+            are: vcd, ir, raman, roa, ecd, uv.
+        start: int or float
+            Number representing start of spectral range in relevant units.
+        stop: int or float
+            Number representing end of spectral range in relevant units.
+        step: int or float
+            Number representing step of spectral range in relevant units.
+        hwhm: int or float
+            Number representing half width of maximum peak hight.
+        fitting: function
+            Function, which takes bars, freqs, base, hwhm as parameters and
+            returns numpy.array of calculated, non-corrected spectrum points.
+            
+        Returns
+        -------
+        numpy.ndarray
+            2d numpy array where arr[0] is list of wavelengths/wave numbers
+            and arr[1] is list of corresponding intensity values.
+        """
+        base = np.arange(start, stop, step)
+            #spectrum base, 1d numpy.array of wavelengths/wave numbers
+        bars, freqs, factor = self.spectr_type_ref[type]
+        factor = factor(base) if callable(factor) else factor
+        self[type] = np.zeros(base.shape)
+        spectrum = self._calc_spectr(bar, freq, base, hwhm, factor, fitting)
+        return np.array([base, spectrum])
+        
+    def _calc_spectr(self, bar, freq, base, hwhm, factor, fitting):
         """
         Parameters
         ----------
-        bars: numpy.array
+        bar: numpy.array
             Appropiate values extracted from gaussian output files.
-        freqs: numpy.array
+        freq: numpy.array
             Frequencies extracted from gaussian output files.
         base: numpy.array
             List of wavelength/wave number points on spectrum range.
