@@ -38,6 +38,8 @@ class Extractor(Mapping):
     TO DO
     -----
     Unify inner dict to only work as in example.
+    Add handling of AttributeError when match not found (group() method
+    called on None).
     """
     
     def __init__(self):
@@ -46,7 +48,7 @@ class Extractor(Mapping):
                          'stoich': self.get_stoich,
                          'energies': self.get_energies,
                          'vibra': self.get_vibra_dict(),
-                         'eletcr': self.get_electr_dict(),
+                         'electr': self.get_electr_dict(),
                          'popul': self.get_popul,
                          'settings': self.get_settings
                         }
@@ -66,20 +68,17 @@ class Extractor(Mapping):
             if not pat2:
                 return re.compile(r'(\d*\.\d+) {}'.format(pat1)), ''
             else:
-                #THIS SHOULD NOT WORK FOR VROT, LROT, EE-M !!!
-                #CHECK IF '{}.*:?\n.*\n((?:\s*-?\d+\.?\d*)*)' WORKS
-                #IF NOT, FIGURE OUT THE WAY FOR THIS
-                temp = re.compile(r'{}.*:\n.*\n((?:\s*-?\d+\.?\d*)*)'\
+                temp = re.compile(r'{}.*?\n((?:\s*-?\d+\.?\d*\s*)*)'\
                                   .format(pat1))
                 return temp, re.compile(r'(-?\d+\.?\d*){}'.format(pat2))
 
         r = {}
         d = {'efreq': ('nm',''),
              'energy': ('eV', ''),
-             'vosc': ('velocity dipole', '\n'),
-             'vrot': (r'R(velocity)', r'\s*\d+\.?\d*\n'),
-             'lrot': ('electric dipole', '\n'),
-             'losc': (r'R(length)', '\n'),
+             'vosc': ('velocity dipole.*:\n', '\n'),
+             'vrot': (r'R\(velocity\)', r'\s*\d+\.?\d*\n'),
+             'losc': ('electric dipole.*:\n', '\n'),
+             'lrot': (r'R\(length\)', '\n'),
              'ee-m': (r'E-M Angle', '\n')}
         r['electr'] = {k:electr_dict(*v) for k,v in d.items()}
         r['command'] = re.compile(r'\#(.*?)\n\s-', flags=re.DOTALL)
@@ -140,7 +139,7 @@ class Extractor(Mapping):
     def get_settings(self, text):
         sett = self.regexs['settings'].findall(text.lower()).groups()
         sett = {k: v for k, v in zip(('hwhm start stop step fitting'\
-                                      .split(' '), sett)}
+                                      .split(' '), sett))}
         return sett
         
 class Soxhlet:
@@ -182,7 +181,7 @@ class Soxhlet:
         self.extractor = Extractor()
         self.command = self.get_command()
         self.spectra_type = self.get_spectra_type()
-    
+
     @property
     def gaussian_files(self):
         """List of (sorted by file name) gaussian output files from files
@@ -312,7 +311,7 @@ class Soxhlet:
             return None
         elif 'freq' in self.command:
             return 'vibra'
-        elif 'nd=' in self.command:
+        elif 'td=' in self.command:
             return 'electr'
         else:
             return None
@@ -456,10 +455,10 @@ class Soxhlet:
         """
         cmd = self.command.lower()
         prsr = {'opt': 'energies',
-                'freq=': 'vfreq'
+                'freq=': 'vfreq',
                 'freq=vcd': 'dip rot ir ve-m',
                 'freq=roa': 'raman1 roa1',
-                'td=': 'efreq energy vosc vrot lrot losc ee-m',
+                'td=': 'efreq energy vosc vrot lrot losc ee-m'
                 }
         args = ' '.join(v for k, v in prsr if k in cmd).split(' ')
         return args
@@ -676,8 +675,8 @@ class Data(MutableMapping):
             ir = ('dip', 'freq', 3.46518986e37),
             raman = ('raman1', 'freq', 0),
             roa = ('roa1', 'freq', 0),
-            ecd = ('rot', 'freq', 3.07441575e+6),
-            uv = ('dip', 'freq', uv_factor)
+            ecd = ('vrot', 'efreq', 3.07441575e+6),
+            uv = ('vdip', 'efreq', uv_factor)
                 )
         return r
         
