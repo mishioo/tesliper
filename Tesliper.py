@@ -37,7 +37,7 @@ class Extractor(Mapping):
     
     TO DO
     -----
-    Unify inner dict to only work as in example.
+    Unify inner dict to only work as in example. ?
     Add handling of AttributeError when match not found (group() method
     called on None).
     """
@@ -164,7 +164,6 @@ class Soxhlet:
     -----
     Supplement this docstring.
     After Unifying Extractor class, do same with this class.
-    Move/Remove unnececery methods.
     """
     
     @classmethod
@@ -334,7 +333,7 @@ class Soxhlet:
         Returns
         -------
         dict
-            dictionary with extracted data
+            Dictionary with extracted data.
         """
         spectra_type = spectra_type if spectra_type else self.spectra_type 
         no = len(self.gaussian_files)
@@ -368,21 +367,25 @@ class Soxhlet:
         Returns
         -------
         dict
-            dictionary with extracted spectral data
+            Dictionary with extracted spectral data.
             
         TO DO
         -----
-        make it compatibile with ecd bar files
+        Make sure Transitions not needed.
         """
         spectra_type = spectra_type if spectra_type else self.spectra_type
         no = len(self.bar_files)
         #Create empty dict with list of empty lists as default value.
         output = defaultdict(lambda: [[] for _ in range(no)])
+        keys = 'vfreq dip rot ve-m'.split(' ') if spectra_type == 'vibra' else \
+               'efreq vosc srot losc lrot energy ee-m'.split(' ')
         for num, bar in enumerate(self.bar_files):
             with open(os.path.join(self.path, bar), newline='') as handle:
                 header = handle.readline()
+                col_names = handle.readline()
+                if 'Transition' in col_names and 'ee-m' in keys:
+                    keys = keys[:-1]
                 reader = csv.reader(handle, delimiter='\t')
-                keys = next(reader)
                 for row in reader:
                     #For each row in *.bar file copy value to corresponding
                     #position in prepared output dict
@@ -399,7 +402,7 @@ class Soxhlet:
         Returns
         -------
         dict
-            dictionary with extracted data
+            Dictionary with extracted data.
         """
         keys = 'filenames scfp entp gibp scfd entd gibd scf ent gib imag '\
                'stoich'.split(' ')
@@ -465,21 +468,106 @@ class Soxhlet:
             
         
 class Data(MutableMapping):
+    """Dict-like storage for all spectra-related data. Contains methods for
+    calculating populations of conformers and theoretical spectra.
+    
+    Note
+    ----
+    Calculated values are automatically bounded to instance on which the 
+    corresponding method was called. All data should be stored as
+    numpy.ndarray. Below is the list of key-words used by this class:
+    filenames
+        List of filenames of gaussian output files, from whitch data were
+        extracted.
+    stoich
+        Stoichiometry of each conformer.
+    zpec
+        Zero-point correction.
+    tenc
+        Thermal correction to Energy.
+    entc
+        Thermal correction to Enthalpy.
+    gibc
+        Thermal correction to Gibbs Free Energy.
+    zpe
+        Sum of electronic and zero-point Energies.
+    ten
+        Sum of electronic and thermal Energies.
+    ent
+        Sum of electronic and thermal Enthalpies.
+    gib
+        Sum of electronic and thermal Free Energies.
+    scf
+        Self-consistent field energy.
+    entd
+        Excess of energy of each conformer based on ent.
+    gibd
+        Excess of energy of each conformer based on gib.
+    scfd
+        Excess of energy of each conformer based on scf.
+    entp
+        Distribution of conformers' population based on ent.
+    gibp
+        Distribution of conformers' population based on gib.
+    scfp
+        Distribution of conformers' population based on scf.
+    vfreq
+        Frequencies (corresponding to vibrational spectra).
+    dip
+        Dip. Str. bars.
+    rot
+        Rot. Str. bars.
+    raman1
+        Raman 1 bars.
+    roa1
+        ROA1 bars.
+    ve-m
+        Values of E-M Angle (vibrational spectra).
+    efreq
+        Frequencies (corresponding to electronic spectra).
+    vosc
+        Velocity oscillator strength bars.
+    vrot
+        R(velocity) bars.
+    losc
+        Length oscillator strength bars.
+    lrot
+        R(length) bars.
+    ee-m
+        Values of E-M Angle (electronic spectra).
+    
+    Attributes
+    ----------
+    Boltzmann: float
+        Value of Boltzmann constant in kcal/(mol*K).
+        
+    TO DO
+    -----
+    Check calculations of ecd spectrum, on HWHM = 0.35 peaks should be much
+    broader (close to as on HWHM = 7.0)
+    """
 
     Boltzmann = 0.0019872041 #kcal/(mol*K)
 
     def __init__(self):
         #energies = 'zpec tenc entc gibc zpe ten ent gib scf'.split(' ')
-        #vibra = 'freq dip rot ir e-m raman1 roa1'.split(' ')
+        #vibra = 'vfreq dip rot ir ve-m raman1 roa1'.split(' ')
         #electr = 'efreq energy vosc vrot lrot losc'.split(' ')
         #self._data = dict.fromkeys([*energies, *vibra, *electr])
         self._data = {}
+        self._av_spectr = {}
     
     def __getitem__(self, key):
         #TO DO: calculate value if not calculated yet ?
-        return self._data[key]
+        try:
+            return self._av_spectr[key]
+        except KeyError:
+            return self._data[key]
     
     def __setitem__(self, key, value):
+        if key.startswith(('gib_', 'ent_', 'scf_')):
+            self._av_spectr[key] = value
+            return
         if isinstance(value, list):
             try:
                 value = np.array(value, dtype=float)
@@ -509,12 +597,16 @@ class Data(MutableMapping):
         TypeError
             If stoichiometry of conformers which data is loaded does not match
             stoichioetry of conformers already associated with data object.
+            
+        TO DO
+        -----
+        In case of non-matchnig length check filenames and filter accordingly.
         """
         if not self:
             return
         files = self['filenames']
-        spectra = 'vcd ir raman1 roa1 ecd uv'
-        if not (len(files) == len(value) or key in spectra):
+        #spectra = 'vcd ir raman1 roa1 ecd uv'
+        if not (len(files) == len(value)): # or key in spectra):
             raise ValueError(
                 "Loaded data must contain same number of entries (files "
                 "of certain type in directory) as data already got."
@@ -531,30 +623,82 @@ class Data(MutableMapping):
                     )
     
     def calc_popul(self, t=298.15):
+        """Calculates populations and energy excesses for all tree types of
+        energy (ent, gib, scf) in given temperature and bounds outcome to
+        Data instance on which method was called.
+        
+        Parameters
+        ----------
+        t: int or float
+            Temperature of calculated state.
+        """
         for e in ('ent', 'gib', 'scf'):
             self['{}d'.format(e)], self['{}p'.format(e)] = \
                 self._boltzmann_dist(self[e], t)
                 
     def _boltzmann_dist(self, energies, t):
+        """Calculates populations and energy excesses of conformers, based on
+        energy array and temperature passed to function.
+        
+        Parameters
+        ----------
+        energies: numpy.ndarray
+            List of conformers' energies.
+        t: int or float
+            Temperature of calculated state.
+            
+        Returns
+        -------
+        tuple of numpy.ndarray
+            Tuple of arrays with energy excess for each conformer and population
+            distribution in given temperature.
+        """
         delta = (energies - energies.min()) * 627.5095
         x = np.exp(-delta/(t*self.Boltzmann))
         popul = x/x.sum()
         return delta, popul
         
     def find_imag(self):
-        self['imag'] = self['freq'] < 0
+        """Finds all freqs with imaginary values and creates 'imag' entry with
+        list of indicants of imaginery values presence.
+        
+        Returns
+        -------
+        numpy.ndarray
+            List of number of imaginary values in each file.
+        """
+        self['imag'] = self['vfreq'] < 0
         return self['imag'].sum(0)
         
-    def average_spectra(self, spectra_type, popul_type):
-        spectra, popul = self[spectra_type], self[popul_type]
+    def average_spectra(self, spectra_name, popul_type):
+        """A method for averaging spectra by population of conformers.
+        
+        Parameters
+        ----------
+        spectra_name: str
+            Key-word corresponding to spectra of certain type.
+        popul_type: str
+            Key-word corresponding to population distribution of certain type.
+            
+        Returns
+        -------
+        numpy.ndarray
+            2d numpy array where arr[0] is list of wavelengths/wave numbers
+            and arr[1] is list of corresponding averaged intensity values.
+        """
+        spectra, popul = self[spectra_name], self[popul_type]
+        #popul must be of same shape as spectra
+        #so we expand popul with np.newaxis
         av = (spectra[0,1,:] * popul[:, np.newaxis]).sum(0)
         av_spec = np.array([spectra[0][0], av])
-        #self['av_{}'.format(spectra_type)] = av_spec
+        #self['av_{}'.format(spectra_name)] = av_spec
+        self._av_spectr["{}_{}".format(popul_type[:3], spectra_name)] = av_spec
         return av_spec
         #av_spec = sum(s * p for s, p in zip(spectra[1], populations))
     
     def calculate_spectra(self, type, start, stop, step, hwhm, fitting):
-        """
+        """Calculates spectrum of desider type for each individual conformer.
+        
         Parameters
         ----------
         type: str
@@ -571,12 +715,19 @@ class Data(MutableMapping):
         fitting: function
             Function, which takes bars, freqs, base, hwhm as parameters and
             returns numpy.array of calculated, non-corrected spectrum points.
+            
+        Returns
+        -------
+        numpy.ndarray
+            Array of 2d arrays containing spectrum (arr[0] is list of
+            wavelengths/wave numbers, arr[1] is list of corresponding
+            intensity values).
         """
-        base = np.arange(start, stop, step)
+        base = np.arange(start, stop+step, step)
             #spectrum base, 1d numpy.array of wavelengths/wave numbers
         bars, freqs, factor = self.spectr_type_ref[type]
         factor = factor(base) if callable(factor) else factor
-        self[type] = np.zeros(base.shape)
+        #self[type] = np.zeros(base.shape) - unnececery
         #TO DO: do it numpy way
         temp = []
         for bar, freq in zip(self[bars], self[freqs]):
@@ -588,6 +739,10 @@ class Data(MutableMapping):
         
     def calc_single_spectrum(self, type, start, stop, step, hwhm, fitting):
         """A method for calculating spectrum of single conformer.
+        
+        Note
+        ----
+        This method does not bound resultiong spectrum to its instance.
         
         Parameters
         ----------
@@ -612,7 +767,7 @@ class Data(MutableMapping):
             2d numpy array where arr[0] is list of wavelengths/wave numbers
             and arr[1] is list of corresponding intensity values.
         """
-        base = np.arange(start, stop, step)
+        base = np.arange(start, stop+step, step)
             #spectrum base, 1d numpy.array of wavelengths/wave numbers
         bars, freqs, factor = self.spectr_type_ref[type]
         factor = factor(base) if callable(factor) else factor
@@ -621,7 +776,8 @@ class Data(MutableMapping):
         return np.array([base, spectrum])
         
     def _calc_spectr(self, bar, freq, base, hwhm, factor, fitting):
-        """
+        """A method used for calculating single spectra.
+        
         Parameters
         ----------
         bar: numpy.array
@@ -638,11 +794,34 @@ class Data(MutableMapping):
         fitting: function
             Function, which takes bars, freqs, base, hwhm as parameters and
             returns numpy.array of calculated, non-corrected spectrum points.
+            
+        Returns
+        -------
+        numpy.ndarray
+            List of calculated intensity values.
         """
         spectrum = factor * fitting(bar, freq, base, hwhm)
         return spectrum
         
     def gaussian(self, bar, freq, base, hwhm):
+        """Gaussian fitting function for spectra calculation.
+        
+        Parameters
+        ----------
+        bar: numpy.array
+            Appropiate values extracted from gaussian output files.
+        freq: numpy.array
+            Frequencies extracted from gaussian output files.
+        base: numpy.array
+            List of wavelength/wave number points on spectrum range.
+        hwhm: int or float
+            Number representing half width of maximum peak hight.
+        
+        Returns
+        -------
+        numpy.ndarray
+            List of calculated intensity values.
+        """
         sigm = hwhm / math.sqrt(2 * math.log(2))
         it = np.nditer([base, None], flags = ['buffered'],
                         op_flags = [['readonly'],
@@ -655,6 +834,24 @@ class Data(MutableMapping):
         return it.operands[1]
         
     def lorentzian(self, bar, freq, base, hwhm):
+        """Lorentzian fitting function for spectra calculation.
+        
+        Parameters
+        ----------
+        bar: numpy.array
+            Appropiate values extracted from gaussian output files.
+        freq: numpy.array
+            Frequencies extracted from gaussian output files.
+        base: numpy.array
+            List of wavelength/wave number points on spectrum range.
+        hwhm: int or float
+            Number representing half width of maximum peak hight.
+        
+        Returns
+        -------
+        numpy.ndarray
+            List of calculated intensity values.
+        """
         it = np.nditer([base, None], flags = ['buffered'],
                             op_flags = [['readonly'],
                                 ['writeonly', 'allocate', 'no_broadcast']],
@@ -667,20 +864,30 @@ class Data(MutableMapping):
     
     @property
     def spectr_type_ref(self):
+        """Dictionary of bar key-words, frequency key-words anf values of
+        factor needed for calculation of spectrum of certain type.
+        """
         def uv_factor(freqs):
             return freqs * 3.07441575e-12 
         r = dict(
             #type = (bars, freqs, factor)
-            vcd = ('rot', 'freq', 1.38607595e38),
-            ir = ('dip', 'freq', 3.46518986e37),
-            raman = ('raman1', 'freq', 0),
-            roa = ('roa1', 'freq', 0),
+            vcd = ('rot', 'vfreq', 1.38607595e38),
+            ir = ('dip', 'vfreq', 3.46518986e37),
+            raman = ('raman1', 'vfreq', 0),
+            roa = ('roa1', 'vfreq', 0),
             ecd = ('vrot', 'efreq', 3.07441575e+6),
             uv = ('vdip', 'efreq', uv_factor)
                 )
         return r
         
     def show_spectrum(self, spectrum):
+        """Simple method for ploting spectrum.
+        
+        Parameters
+        ----------
+        spectrum: iterable
+            Two-element unpackable iterable of list of x and y coordinates.
+        """
         plt.plot(*spectrum)
         plt.show()
 
@@ -696,12 +903,12 @@ class Settings:
         self.standard_parameters = {
             'vibra': {'HWHM': 6,
                       'START': 800,
-                      'STOP': 2100,
+                      'STOP': 2900,
                       'STEP': 2,
                       'FITTING': 'lorentzian'},
             'electr': {'HWHM': 0.35,
                        'START': 150,
-                       'STOP': 650,
+                       'STOP': 800,
                        'STEP': 1,
                        'FITTING': 'gaussian'}
             }
@@ -850,9 +1057,9 @@ class Tesliper:
             sett.update({'fitting': fit})
             self.data.calculate_spectra(spectr, **sett)
         
-    def get_averaged_spectrum(type, popul_type):
+    def get_averaged_spectrum(self, spectr, popul_type):
         try:
-            output = data.average_spectra(spectr, popul_type)
+            output = self.data.average_spectra(spectr, popul_type)
         except KeyError:
             self.smart_extract(average=False, save=False)
             output = data.average_spectra(spectr, popul_type)
