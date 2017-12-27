@@ -16,6 +16,67 @@ __author__ = "Michał Więcław"
 __version__ = "0.4.1"
 
 
+def gaussian(bar, freq, base, hwhm):
+    """Gaussian fitting function for spectra calculation.
+    
+    Parameters
+    ----------
+    bar: numpy.array
+        Appropiate values extracted from gaussian output files.
+    freq: numpy.array
+        Frequencies extracted from gaussian output files.
+    base: numpy.array
+        List of wavelength/wave number points on spectrum range.
+    hwhm: int or float
+        Number representing half width of maximum peak hight.
+    
+    Returns
+    -------
+    numpy.ndarray
+        List of calculated intensity values.
+    """
+    sigm = hwhm / math.sqrt(2 * math.log(2))
+    it = np.nditer([base, None], flags = ['buffered'],
+                    op_flags = [['readonly'],
+                        ['writeonly', 'allocate', 'no_broadcast']],
+                    op_dtypes=[np.float64,np.float64]
+                    )
+    for lam, peaks in it:
+        e = bar * np.exp(-0.5 * ((lam - freq) / sigm) ** 2)
+        peaks[...] = e.sum() / (sigm * (2 * math.pi)**0.5)
+    return it.operands[1]
+    
+    
+def lorentzian(bar, freq, base, hwhm):
+    """Lorentzian fitting function for spectra calculation.
+    
+    Parameters
+    ----------
+    bar: numpy.array
+        Appropiate values extracted from gaussian output files.
+    freq: numpy.array
+        Frequencies extracted from gaussian output files.
+    base: numpy.array
+        List of wavelength/wave number points on spectrum range.
+    hwhm: int or float
+        Number representing half width of maximum peak hight.
+    
+    Returns
+    -------
+    numpy.ndarray
+        List of calculated intensity values.
+    """
+    it = np.nditer([base, None], flags = ['buffered'],
+                        op_flags = [['readonly'],
+                            ['writeonly', 'allocate', 'no_broadcast']],
+                        op_dtypes=[np.float64,np.float64])
+    for lam, val in it:
+        s = bar /((freq - lam)**2 + hwhm**2)
+        s2 = hwhm / math.pi * s.sum()
+        val[...] = s2
+    return it.operands[1]
+
+    
 class Extractor(Mapping):
     """A tool for data extraction from gaussian output file.
     
@@ -73,13 +134,13 @@ class Extractor(Mapping):
                 return temp, re.compile(r'(-?\d+\.?\d*){}'.format(pat2))
 
         r = {}
-        d = {'efreq': ('nm',''),
+        d = {'freq': ('nm',''),
              'energy': ('eV', ''),
              'vosc': ('velocity dipole.*:\n', '\n'),
              'vrot': (r'R\(velocity\)', r'\s*\d+\.?\d*\n'),
              'losc': ('electric dipole.*:\n', '\n'),
              'lrot': (r'R\(length\)', '\n'),
-             'ee-m': (r'E-M Angle', '\n')}
+             'e-m': (r'E-M Angle', '\n')}
         r['electr'] = {k:electr_dict(*v) for k,v in d.items()}
         r['command'] = re.compile(r'\#(.*?)\n\s-', flags=re.DOTALL)
         r['stoich'] = re.compile(r'Stoichiometry\s*(\w*)\n')
@@ -93,9 +154,9 @@ class Extractor(Mapping):
             r' Sum of electronic and thermal Free Energies=\s*(-?\d+\.?\d*)')
         r['ens'] = re.compile(ens_patt)
         r['scf'] = re.compile(r'SCF Done.*=\s+(-?\d+\.?\d*)')
-        keys = 'vfreq dip rot ir ve-m raman1 roa1'.split(' ')
+        keys = 'freq dip rot ir e-m raman1 roa1'.split(' ')
         pats = 'Frequencies', 'Dip. str.', 'Rot. str.', 'IR Inten',\
-               'E-M angle', 'Raman1', 'ROA1'
+               'E-M angle', 'Raman1\s*Fr=\s*\d', 'ROA1\s*Fr=\s*\d'
         r['vibra'] = {key: re.compile(r'{}\s*--\s+(.*)\n'.format(patt))
                       for key, patt in zip(keys, pats)}
         r['popul'] = re.compile(r'(-?\w.*?)\s')
@@ -303,7 +364,7 @@ class Soxhlet:
             'vibra' if vibrational or 'electr' if electronic spectra was
             calculated.
         None:
-            None is returned if nor vibrational neitherelectronic spectra was
+            None is returned if nor vibrational neither electronic spectra was
             calculated.
         """
         if not self.command:
@@ -323,7 +384,7 @@ class Soxhlet:
         Parameters
         ----------
         request : list
-            List of strings containing keywords for extractiong.
+            List of strings containing keywords for extracting.
         spectra_type : str, optional
             Type of spectra which is to extract; valid values are
             'vibra', 'electr' or '' (if spectrum is not present
@@ -343,8 +404,8 @@ class Soxhlet:
             energies_keywords = \
                 'zpec tenc entc gibc zpe ten ent gib scf'.split(' ')
             keys[-1:-1] = energies_keywords
-        output = defaultdict(lambda: [None] * no)
-        output['filenames'] = self.gaussian_files
+        extracted = defaultdict(lambda: [None] * no)
+        extracted['filenames'] = self.gaussian_files
         for num, file in enumerate(self.gaussian_files):
             with open(os.path.join(self.path, file)) as handle:
                 cont = handle.read()
@@ -352,12 +413,32 @@ class Soxhlet:
                 if thing == 'energies':
                     energies = self.extractor[thing](cont)
                     for k, e in zip(energies_keywords, energies):
-                        output[k][num] = e
+                        extracted[k][num] = e
                 elif thing == 'stoich':
-                    output[thing][num] = self.extractor[thing](cont)
+                    extracted[thing][num] = self.extractor[thing](cont)
                 elif spectra_type:
-                    temp = self.extractor[spectra_type][thing](cont)
-                    output[thing][num] = temp
+                    extracted[thing][num] = \
+                        self.extractor[spectra_type][thing](cont)
+        output = {}
+        for key, value in extracted.items():
+            if key in 'zpe ten ent gib scf'.split(' '):
+                try:
+                    corr = extracted['{}c'.format(key)]
+                except KeyError:
+                    corr = None
+                output[key] = Energies(type=key,
+                                       filenames=extracted['filenames'],
+                                       stoich=extracted['stoich'],
+                                       energies=value,
+                                       corrections=corr
+                                       )
+            if key in 'dip rot voc vrot losc lrot raman1 roa1 e-m'.split(' '):
+                output[key] = Bars(type=key,
+                                   filenames=extracted['filenames'],
+                                   stoich=extracted['stoich'],
+                                   frequencies=extracted['freq'],
+                                   bars=value
+                                   )
         return output
         
     def load_bars(self, spectra_type=None):
@@ -447,8 +528,12 @@ class Soxhlet:
         f.close()
         return sett
         
+    def load_spectra(self):
+        #TO DO: do it
+        pass
+        
     def parse_command(self):
-        """Parses gaussian command extractet from first output file
+        """Parses gaussian command extracted from first output file
         in associated files list.
         
         Returns
@@ -467,6 +552,203 @@ class Soxhlet:
         return args
             
         
+class Energies:
+
+    Boltzmann = 0.0019872041 #kcal/(mol*K)
+    
+    def __init__(self, type, filenames, stoich, energies, corrections=None,
+                 populations=None, deltas=None, t=None):
+        self.type = type
+        self.filenames = filenames
+        self.stoich = stoich
+        self.energies = energies
+        if corrections:
+            self.corrections = corrections
+        if populations:
+            self.populations = populations
+        if deltas:
+            self.deltas = deltas
+        self.t = t if t else 298.15
+    
+    def calc_popul(self, t=self.t):
+        """Calculates populations and energy excesses for all tree types of
+        energy (ent, gib, scf) in given temperature and bounds outcome to
+        Data instance on which method was called.
+        
+        Parameters
+        ----------
+        t: int or float
+            Temperature of calculated state.
+        """
+        self.t = t
+        self.deltas, self.populations = self._boltzmann_dist(self.energies, t)
+        return self.populations
+                
+    def _boltzmann_dist(self, energies, t):
+        """Calculates populations and energy excesses of conformers, based on
+        energy array and temperature passed to function.
+        
+        Parameters
+        ----------
+        energies: numpy.ndarray
+            List of conformers' energies.
+        t: int or float
+            Temperature of calculated state.
+            
+        Returns
+        -------
+        tuple of numpy.ndarray
+            Tuple of arrays with energy excess for each conformer and population
+            distribution in given temperature.
+        """
+        delta = (energies - energies.min()) * 627.5095
+        x = np.exp(-delta/(t*self.Boltzmann))
+        popul = x/x.sum()
+        return delta, popul
+        
+        
+class Bars:
+    
+    def __init__(self, type, stoich, filenames, frequencies, bars, imag=None):
+        self.type = type
+        self.filenames = filenames
+        self.stoich = stoich
+        self.frequencies = frequencies
+        self.bars = bars
+        if imag:
+            self.imag = imag
+        
+    def find_imag(self):
+        """Finds all freqs with imaginary values and creates 'imag' entry with
+        list of indicants of imaginery values presence.
+        
+        Returns
+        -------
+        numpy.ndarray
+            List of number of imaginary values in each file.
+        """
+        self.imag = self.frequencies < 0
+        return self.imag.sum(0)
+        
+    def calculate_spectra(self, start, stop, step, hwhm, fitting,
+                          conformers=None):
+        """Calculates spectrum of desider type for each individual conformer.
+        
+        Parameters
+        ----------
+        type: str
+            Name of spectrum, which is going to be calculated. Valid names
+            are: vcd, ir, raman, roa, ecd, uv.
+        start: int or float
+            Number representing start of spectral range in relevant units.
+        stop: int or float
+            Number representing end of spectral range in relevant units.
+        step: int or float
+            Number representing step of spectral range in relevant units.
+        hwhm: int or float
+            Number representing half width of maximum peak hight.
+        fitting: function
+            Function, which takes bars, freqs, base, hwhm as parameters and
+            returns numpy.array of calculated, non-corrected spectrum points.
+            
+        Returns
+        -------
+        numpy.ndarray
+            Array of 2d arrays containing spectrum (arr[0] is list of
+            wavelengths/wave numbers, arr[1] is list of corresponding
+            intensity values).
+        """
+        base = np.arange(start, stop+step, step)
+            #spectrum base, 1d numpy.array of wavelengths/wave numbers
+        factor = self.spectr_type_ref[type]
+        if self.type in ('ecd', 'uv'):
+            width = hwhm / 1.23984e-4 #from eV to cm-1
+            w_nums = 1e7 / base #from nm to cm-1
+            freqs = 1e7 / self.frequencies #from nm to cm-1
+        else: 
+            width = hwhm
+            w_nums = base
+            freqs = self.frequencies
+        if conformers:
+            freqs = self.freqs[conformers]
+            bars = self.bars[conformers]
+        else:
+            freqs = self.freqs
+            bars = self.bars
+        #self[type] = np.zeros(base.shape) - unnececery
+        #TO DO: do it numpy way
+        it = np.nditer([bars, freqs, None])
+        for bar, freq, spr in it:
+            spr[...] = self._calc_spectr(bar, freq, w_nums, width, factor,
+                                               fitting)
+        spectra = Spectra(self.type, self.filenames, base, it.operands[2],
+                          hwhm, fitting)
+        return spectra
+        
+    def _calc_spectr(self, bar, freq, base, hwhm, factor, fitting):
+        """A method used for calculating single spectra.
+        
+        Parameters
+        ----------
+        bar: numpy.array
+            Appropiate values extracted from gaussian output files.
+        freq: numpy.array
+            Frequencies extracted from gaussian output files.
+        base: numpy.array
+            List of wavelength/wave number points on spectrum range.
+        hwhm: int or float
+            Number representing half width of maximum peak hight.
+        factor: int or float or numpy.array
+            Factor (or numpy.array of factors), which non-corrected spectrum
+            points obtained from fitting function will be multiplied by.
+        fitting: function
+            Function, which takes bars, freqs, base, hwhm as parameters and
+            returns numpy.array of calculated, non-corrected spectrum points.
+            
+        Returns
+        -------
+        numpy.ndarray
+            List of calculated intensity values.
+        """
+        spectrum = factor * fitting(bar, freq, base, hwhm)
+        return spectrum
+
+        
+class Spectra:
+    
+    def __init__(self, type, filenames, base, values, hwhm, fitting):
+        self.type = type
+        self.filenames = filenames
+        self.base = base
+        self.values = values
+        self.start = base[0]
+        self.stop = base[-1]
+        self.step = abs(bsse[0] - base[1])
+        self.hwhm = hwhm
+        self.fitting = fitting
+        
+    def average(self, populations):
+        """A method for averaging spectra by population of conformers.
+        
+        Parameters
+        ----------
+        spectra_name: str
+            Key-word corresponding to spectra of certain type.
+        popul_type: str
+            Key-word corresponding to population distribution of certain type.
+            
+        Returns
+        -------
+        numpy.ndarray
+            2d numpy array where arr[0] is list of wavelengths/wave numbers
+            and arr[1] is list of corresponding averaged intensity values.
+        """
+        #populations must be of same shape as spectra
+        #so we expand populations with np.newaxis
+        av = (self.values * populations[:, np.newaxis]).sum(0)
+        av_spec = np.array([self.base, av])
+        return av_spec
+    
 class Data(MutableMapping):
     """Dict-like storage for all spectra-related data. Contains methods for
     calculating populations of conformers and theoretical spectra.
@@ -547,7 +829,6 @@ class Data(MutableMapping):
     broader (close to as on HWHM = 7.0)
     """
 
-    Boltzmann = 0.0019872041 #kcal/(mol*K)
 
     def __init__(self):
         #energies = 'zpec tenc entc gibc zpe ten ent gib scf'.split(' ')
@@ -621,262 +902,22 @@ class Data(MutableMapping):
                     "Stoichiometry from loaded files does not match in {}/{} "
                     "entries.".format(check,sum(), len(stoich)), check
                     )
-    
-    def calc_popul(self, t=298.15):
-        """Calculates populations and energy excesses for all tree types of
-        energy (ent, gib, scf) in given temperature and bounds outcome to
-        Data instance on which method was called.
-        
-        Parameters
-        ----------
-        t: int or float
-            Temperature of calculated state.
-        """
-        for e in ('ent', 'gib', 'scf'):
-            self['{}d'.format(e)], self['{}p'.format(e)] = \
-                self._boltzmann_dist(self[e], t)
-                
-    def _boltzmann_dist(self, energies, t):
-        """Calculates populations and energy excesses of conformers, based on
-        energy array and temperature passed to function.
-        
-        Parameters
-        ----------
-        energies: numpy.ndarray
-            List of conformers' energies.
-        t: int or float
-            Temperature of calculated state.
-            
-        Returns
-        -------
-        tuple of numpy.ndarray
-            Tuple of arrays with energy excess for each conformer and population
-            distribution in given temperature.
-        """
-        delta = (energies - energies.min()) * 627.5095
-        x = np.exp(-delta/(t*self.Boltzmann))
-        popul = x/x.sum()
-        return delta, popul
-        
-    def find_imag(self):
-        """Finds all freqs with imaginary values and creates 'imag' entry with
-        list of indicants of imaginery values presence.
-        
-        Returns
-        -------
-        numpy.ndarray
-            List of number of imaginary values in each file.
-        """
-        self['imag'] = self['vfreq'] < 0
-        return self['imag'].sum(0)
-        
-    def average_spectra(self, spectra_name, popul_type):
-        """A method for averaging spectra by population of conformers.
-        
-        Parameters
-        ----------
-        spectra_name: str
-            Key-word corresponding to spectra of certain type.
-        popul_type: str
-            Key-word corresponding to population distribution of certain type.
-            
-        Returns
-        -------
-        numpy.ndarray
-            2d numpy array where arr[0] is list of wavelengths/wave numbers
-            and arr[1] is list of corresponding averaged intensity values.
-        """
-        spectra, popul = self[spectra_name], self[popul_type]
-        #popul must be of same shape as spectra
-        #so we expand popul with np.newaxis
-        av = (spectra[0,1,:] * popul[:, np.newaxis]).sum(0)
-        av_spec = np.array([spectra[0][0], av])
-        #self['av_{}'.format(spectra_name)] = av_spec
-        self._av_spectr["{}_{}".format(popul_type[:3], spectra_name)] = av_spec
-        return av_spec
-        #av_spec = sum(s * p for s, p in zip(spectra[1], populations))
-    
-    def calculate_spectra(self, type, start, stop, step, hwhm, fitting):
-        """Calculates spectrum of desider type for each individual conformer.
-        
-        Parameters
-        ----------
-        type: str
-            Name of spectrum, which is going to be calculated. Valid names
-            are: vcd, ir, raman, roa, ecd, uv.
-        start: int or float
-            Number representing start of spectral range in relevant units.
-        stop: int or float
-            Number representing end of spectral range in relevant units.
-        step: int or float
-            Number representing step of spectral range in relevant units.
-        hwhm: int or float
-            Number representing half width of maximum peak hight.
-        fitting: function
-            Function, which takes bars, freqs, base, hwhm as parameters and
-            returns numpy.array of calculated, non-corrected spectrum points.
-            
-        Returns
-        -------
-        numpy.ndarray
-            Array of 2d arrays containing spectrum (arr[0] is list of
-            wavelengths/wave numbers, arr[1] is list of corresponding
-            intensity values).
-        """
-        base = np.arange(start, stop+step, step)
-            #spectrum base, 1d numpy.array of wavelengths/wave numbers
-        bars, freqs, factor = self.spectr_type_ref[type]
-        factor = factor(base) if callable(factor) else factor
-        #self[type] = np.zeros(base.shape) - unnececery
-        #TO DO: do it numpy way
-        temp = []
-        for bar, freq in zip(self[bars], self[freqs]):
-            spectrum = self._calc_spectr(bar, freq, base, hwhm, factor,
-                                               fitting)
-            temp.append(np.array([base, spectrum]))
-        self[type] = temp
-        return self[type]
-        
-    def calc_single_spectrum(self, type, start, stop, step, hwhm, fitting):
-        """A method for calculating spectrum of single conformer.
-        
-        Note
-        ----
-        This method does not bound resultiong spectrum to its instance.
-        
-        Parameters
-        ----------
-        type: str
-            Name of spectrum, which is going to be calculated. Valid names
-            are: vcd, ir, raman, roa, ecd, uv.
-        start: int or float
-            Number representing start of spectral range in relevant units.
-        stop: int or float
-            Number representing end of spectral range in relevant units.
-        step: int or float
-            Number representing step of spectral range in relevant units.
-        hwhm: int or float
-            Number representing half width of maximum peak hight.
-        fitting: function
-            Function, which takes bars, freqs, base, hwhm as parameters and
-            returns numpy.array of calculated, non-corrected spectrum points.
-            
-        Returns
-        -------
-        numpy.ndarray
-            2d numpy array where arr[0] is list of wavelengths/wave numbers
-            and arr[1] is list of corresponding intensity values.
-        """
-        base = np.arange(start, stop+step, step)
-            #spectrum base, 1d numpy.array of wavelengths/wave numbers
-        bars, freqs, factor = self.spectr_type_ref[type]
-        factor = factor(base) if callable(factor) else factor
-        self[type] = np.zeros(base.shape)
-        spectrum = self._calc_spectr(bar, freq, base, hwhm, factor, fitting)
-        return np.array([base, spectrum])
-        
-    def _calc_spectr(self, bar, freq, base, hwhm, factor, fitting):
-        """A method used for calculating single spectra.
-        
-        Parameters
-        ----------
-        bar: numpy.array
-            Appropiate values extracted from gaussian output files.
-        freq: numpy.array
-            Frequencies extracted from gaussian output files.
-        base: numpy.array
-            List of wavelength/wave number points on spectrum range.
-        hwhm: int or float
-            Number representing half width of maximum peak hight.
-        factor: int or float or numpy.array
-            Factor (or numpy.array of factors), which non-corrected spectrum
-            points obtained from fitting function will be multiplied by.
-        fitting: function
-            Function, which takes bars, freqs, base, hwhm as parameters and
-            returns numpy.array of calculated, non-corrected spectrum points.
-            
-        Returns
-        -------
-        numpy.ndarray
-            List of calculated intensity values.
-        """
-        spectrum = factor * fitting(bar, freq, base, hwhm)
-        return spectrum
-        
-    def gaussian(self, bar, freq, base, hwhm):
-        """Gaussian fitting function for spectra calculation.
-        
-        Parameters
-        ----------
-        bar: numpy.array
-            Appropiate values extracted from gaussian output files.
-        freq: numpy.array
-            Frequencies extracted from gaussian output files.
-        base: numpy.array
-            List of wavelength/wave number points on spectrum range.
-        hwhm: int or float
-            Number representing half width of maximum peak hight.
-        
-        Returns
-        -------
-        numpy.ndarray
-            List of calculated intensity values.
-        """
-        sigm = hwhm / math.sqrt(2 * math.log(2))
-        it = np.nditer([base, None], flags = ['buffered'],
-                        op_flags = [['readonly'],
-                            ['writeonly', 'allocate', 'no_broadcast']],
-                        op_dtypes=[np.float64,np.float64]
-                        )
-        for lam, peaks in it:
-            e = bar * np.exp(-0.5 * (lam - freq) ** 2 / sigm ** 2)
-            peaks[...] = e.sum() / (sigm * (2 * math.pi)**0.5)
-        return it.operands[1]
-        
-    def lorentzian(self, bar, freq, base, hwhm):
-        """Lorentzian fitting function for spectra calculation.
-        
-        Parameters
-        ----------
-        bar: numpy.array
-            Appropiate values extracted from gaussian output files.
-        freq: numpy.array
-            Frequencies extracted from gaussian output files.
-        base: numpy.array
-            List of wavelength/wave number points on spectrum range.
-        hwhm: int or float
-            Number representing half width of maximum peak hight.
-        
-        Returns
-        -------
-        numpy.ndarray
-            List of calculated intensity values.
-        """
-        it = np.nditer([base, None], flags = ['buffered'],
-                            op_flags = [['readonly'],
-                                ['writeonly', 'allocate', 'no_broadcast']],
-                            op_dtypes=[np.float64,np.float64])
-        for lam, val in it:
-            s = bar/((lam - freq)**2 + hwhm**2)
-            s2 = lam * hwhm / (math.pi * 9.184e-39) * s.sum()
-            val[...] = s2
-        return it.operands[1]
+
     
     @property
     def spectr_type_ref(self):
-        """Dictionary of bar key-words, frequency key-words anf values of
+        """Dictionary of bar key-words, frequency key-words and values of
         factor needed for calculation of spectrum of certain type.
         """
-        def uv_factor(freqs):
-            return freqs * 3.07441575e-12 
+        #ecd = math.sqrt(2)*16*math.pi**2*6.022140858e23 / (3*planck*1000*math.log(10))
         r = dict(
-            #type = (bars, freqs, factor)
-            vcd = ('rot', 'vfreq', 1.38607595e38),
-            ir = ('dip', 'vfreq', 3.46518986e37),
-            raman = ('raman1', 'vfreq', 0),
-            roa = ('roa1', 'vfreq', 0),
-            ecd = ('vrot', 'efreq', 3.07441575e+6),
-            uv = ('vdip', 'efreq', uv_factor)
+            #type = (bars, freqs, factor, unit_conversion) 
+            vcd = ('rot', 'vfreq', 1.38607595e38, False),
+            ir = ('dip', 'vfreq', 3.46518986e37, False),
+            raman = ('raman1', 'vfreq', 1, False),
+            roa = ('roa1', 'vfreq', 1, False),
+            ecd = ('vrot', 'efreq',  2.9578961915624465e+37, True),
+            uv = ('vosc', 'efreq', 231535185.70578632, True)
                 )
         return r
         
