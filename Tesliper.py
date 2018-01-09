@@ -757,9 +757,20 @@ class Energies(Data):
         
         
 class Bars(Data):
+
+    spectra_type_ref = dict(
+        rot = 'vcd',
+        dip = 'ir',
+        roa1 = 'roa',
+        raman1 = 'raman',
+        vrot = 'ecd',
+        lrot = 'ecd',
+        vosc = 'uv',
+        losc = 'uv'
+        )
     
     def __init__(self, type, stoich, filenames, frequencies, bars, imag=None,
-                 t=None):
+                 t=None, laser=None):
         self.type = type
         self.filenames = filenames
         self.stoich = stoich
@@ -770,38 +781,26 @@ class Bars(Data):
         else:
             self.imag = self.frequencies < 0
         t = 298.15 if t is None else t #temperature in K
+        if self.type in ('raman', 'roa'): #valid only for raman & roa
+            laser = laser if laser is not None else 532 #in nm
     
     @property
     def spectra_type(self):
         return self.spectra_type_ref[self.type]
-
-    @property
-    def spectra_type_ref(self):
-        r = dict(
-            rot = 'vcd',
-            dip = 'ir',
-            roa1 = 'roa',
-            raman1 = 'raman',
-            vrot = 'ecd',
-            lrot = 'ecd',
-            vosc = 'uv',
-            losc = 'uv'
-            )
-        return r
     
     @property
-    def intensity_ref(self):
-        def raman(x):
+    def _intensity_ref(self):
+        def raman(v):
             f = 9.695104081272649e-08
-            e = 1 - np.exp(-14387.751601679205 * x / self.t)
-            return f * (self.laser - x) ** 4 / (x * e)
+            e = 1 - np.exp(-14387.751601679205 * v / self.t)
+            return f * (self.laser - v) ** 4 / (v * e)
         r = dict(
-            vcd = 1.38607595e38,
-            ir = 3.46518986e37,
+            vcd = lambda v: v * 4.3535e-50,
+            ir = lambda v: v * 1.0884e-42,
             raman = raman,
-            roa = 1,
-            ecd = 2.9578961915624465e+37,
-            uv = 231535185.70578632
+            roa = raman,
+            ecd = lambda v: v * 4.3535e-46,
+            uv = lambda v: v ** 2 * 23.1504
             )
         return r
             
@@ -810,9 +809,8 @@ class Bars(Data):
         try:
             return self._inten
         except AttributeError:
-            inten = self.intensity_ref[self.spectra_type]
-            inten = inten(self.frequencies) if callable(inten) else inten
-            self._inten = self.bars * inten
+            inten = self._intensity_ref[self.spectra_type]
+            self._inten = self.bars * inten(self.frequencies)
             return self._inten
 
     def find_imag(self):
@@ -862,24 +860,17 @@ class Bars(Data):
         """
         base = np.arange(start, stop+step, step)
             #spectrum base, 1d numpy.array of wavelengths/wave numbers
-        if self.type in ('losc', 'rosc', 'lrot', 'vrot'):
-            width = hwhm / 1.23984e-4 #from eV to cm-1
-            w_nums = 1e7 / base #from nm to cm-1
-            freqs = 1e7 / self.frequencies #from nm to cm-1
-        else: 
-            width = hwhm
-            w_nums = base
-            freqs = self.frequencies
-        
-        freqs = freqs[conformers] if conformers else freqs
+        width = hwhm if self.type not in ('losc', 'rosc', 'lrot', 'vrot') \
+            else 1240 / hwhm #from eV to nm
+        freqs = self.frequencies[conformers] \
+            if conformers else self.frequencies
         inten = self.intensities[conformers] \
             if conformers else self.intensities
         spectra = np.zeros([len(freqs), base.shape[0]])
         for bar, freq, spr in zip(inten, freqs, spectra):
             spr[...] = fitting(bar, freq, w_nums, width)
-        values = spectra * base if self.type in ('rot', 'dip') else spectra
         output = Spectra(self.spectra_type, self.filenames, base,
-                          values, hwhm, fitting)
+                          spectra, hwhm, fitting)
         return output
         
         
