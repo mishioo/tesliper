@@ -562,79 +562,9 @@ class Soxhlet:
             
         
 class Data:
-    """Dict-like storage for all spectra-related data. Contains methods for
-    calculating populations of conformers and theoretical spectra.
+    """Mix-in class used to force conversion of list to numpy.ndarray during
+    attribute setting.
     
-    Note
-    ----
-    Calculated values are automatically bounded to instance on which the 
-    corresponding method was called. All data should be stored as
-    numpy.ndarray. Below is the list of key-words used by this class:
-    filenames
-        List of filenames of gaussian output files, from whitch data were
-        extracted.
-    stoich
-        Stoichiometry of each conformer.
-    zpec
-        Zero-point correction.
-    tenc
-        Thermal correction to Energy.
-    entc
-        Thermal correction to Enthalpy.
-    gibc
-        Thermal correction to Gibbs Free Energy.
-    zpe
-        Sum of electronic and zero-point Energies.
-    ten
-        Sum of electronic and thermal Energies.
-    ent
-        Sum of electronic and thermal Enthalpies.
-    gib
-        Sum of electronic and thermal Free Energies.
-    scf
-        Self-consistent field energy.
-    entd
-        Excess of energy of each conformer based on ent.
-    gibd
-        Excess of energy of each conformer based on gib.
-    scfd
-        Excess of energy of each conformer based on scf.
-    entp
-        Distribution of conformers' population based on ent.
-    gibp
-        Distribution of conformers' population based on gib.
-    scfp
-        Distribution of conformers' population based on scf.
-    vfreq
-        Frequencies (corresponding to vibrational spectra).
-    dip
-        Dip. Str. bars.
-    rot
-        Rot. Str. bars.
-    raman1
-        Raman 1 bars.
-    roa1
-        ROA1 bars.
-    ve-m
-        Values of E-M Angle (vibrational spectra).
-    efreq
-        Frequencies (corresponding to electronic spectra).
-    vosc
-        Velocity oscillator strength bars.
-    vrot
-        R(velocity) bars.
-    losc
-        Length oscillator strength bars.
-    lrot
-        R(length) bars.
-    ee-m
-        Values of E-M Angle (electronic spectra).
-    
-    Attributes
-    ----------
-    Boltzmann: float
-        Value of Boltzmann constant in kcal/(mol*K).
-        
     TO DO
     -----
     Check calculations of ecd spectrum, on HWHM = 0.35 peaks should be much
@@ -699,7 +629,28 @@ class Data:
 
                     
 class Energies(Data):
-
+    """
+    Parameters
+    ----------
+    type: str
+        Type of energy.
+    filenames: numpy.ndarray(dtype=str)
+        List of filenames of gaussian output files, from whitch data were
+        extracted.
+    stoich: numpy.ndarray(dtype=str)
+        Stoichiometry of each conformer.
+    energies: numpy.ndarray(dtype=float)
+        Energy value for each conformer.
+    corrections: numpy.ndarray(dtype=float)
+        Energy correction value for each conformer.
+    populations: numpy.ndarray(dtype=float)
+        Population value for each conformer.
+    deltas: numpy.ndarray(dtype=float)
+        Energy excess value for each conformer.
+    t: int or float
+        Temperature of calculated state in K.
+    """
+    
     Boltzmann = 0.0019872041 #kcal/(mol*K)
     
     def __init__(self, type, filenames, stoich, energies, corrections=None,
@@ -716,7 +667,7 @@ class Energies(Data):
             self.deltas = deltas
         self.t = t if t else 298.15
     
-    def calc_popul(self, t=None):
+    def calculate_populations(self, t=None):
         """Calculates populations and energy excesses for all tree types of
         energy (ent, gib, scf) in given temperature and bounds outcome to
         Data instance on which method was called.
@@ -724,7 +675,7 @@ class Energies(Data):
         Parameters
         ----------
         t: int or float
-            Temperature of calculated state.
+            Temperature of calculated state in K.
         """
         if t is not None:
             self.t = t
@@ -860,10 +811,15 @@ class Bars(Data):
         """
         base = np.arange(start, stop+step, step)
             #spectrum base, 1d numpy.array of wavelengths/wave numbers
-        width = hwhm if self.type not in ('losc', 'rosc', 'lrot', 'vrot') \
-            else 1240 / hwhm #from eV to nm
-        freqs = self.frequencies[conformers] \
-            if conformers else self.frequencies
+        if self.type in ('losc', 'rosc', 'lrot', 'vrot'):
+            width = hwhm / 1.23984e-4 #from eV to cm-1
+            w_nums = 1e7 / base #from nm to cm-1
+            freqs = 1e7 / self.frequencies #from nm to cm-1
+        else: 
+            width = hwhm
+            w_nums = base
+            freqs = self.frequencies
+        freqs = freqs[conformers] if conformers else freqs
         inten = self.intensities[conformers] \
             if conformers else self.intensities
         spectra = np.zeros([len(freqs), base.shape[0]])
@@ -923,12 +879,12 @@ class Settings:
                       'START': 800,
                       'STOP': 2900,
                       'STEP': 2,
-                      'FITTING': 'lorentzian'},
+                      'FITTING': lorentzian},
             'electr': {'HWHM': 0.35,
                        'START': 150,
                        'STOP': 800,
                        'STEP': 1,
-                       'FITTING': 'gaussian'}
+                       'FITTING': gaussian}
             }
         self.set_standard_parameters()
         self._units = {
@@ -990,48 +946,116 @@ class Settings:
         else:
             self.spectra_type = spectra_type
             return self.spectra_type
+
+class DataHolder(MutableMapping):
+
+    def __init__(self):
+        self._storage = {}
+
+    def __getitem__(self, key):
+        return self._storage[key]
+    
+    def __setitem__(self, key, value):
+        self._storage[key] = value
+    
+    def __delitem__(self, key):
+        del self._storage[key]
+    
+    def __iter__(self):
+        return iter(self._storage)
+    
+    def __len__(self):
+        return len(self._storage)
+        
+    def __setattr__(self, name, value):
+        if name in self._storage:
+            self[name] = value
+        else:
+            super().__setattr__(name, value)
+
+    def __getattr__(self, name):
+        try:
+            return self._storage[name]
+        except KeyError:
+            return super().__getattr__(name)
+
             
 class Tesliper:
     """
     """
     
-    def __init__(self):
-        self.settings = Settings()
-        self.data = Data()
+    def __init__(self, input_dir=None, output_dir=None):
+        if input_dir or output_dir:
+            self.change_dir(input_dir, output_dir)
+        if input_dir:
+            self.soxhlet = Soxhlet(self.input_dir)
+        self.energies = DataHolder()
+        self.bars = DataHolder()
+        self.spectra = DataHolder()
         
-    def load_files(self, path):
-        self.soxhlet = Soxhlet(path)
-        self.settings.set_type(self.soxhlet.spectra_type)
-        self.settings.change_dir(path)
+    def update(self, *args, **kwargs):
+        for key, value in chain(*args, kwargs):
+            if isinstance(value, Energies):
+                self.energies[key] = value
+            elif isinstance(value, Bars):
+                self.bars[key] = value
+            elif isinstance(value, Spectra):
+                self.spectra[key] = value
+            else:
+                raise TypeError("Tesliper instance can not be updated with "
+                                "type {}".format(type(value)))
+                                
+    def change_dir(self, input_dir=None, output_dir=None):
+        if input_dir:
+            if not os.path.isdir(input_dir):
+                raise FileNotFoundError(
+                    "Invalid path or directory not found: {}"\
+                    .format(input_dir)
+                    )
+            else:
+                self.input_dir = input_dir
+        if output_dir:
+            self.output_dir = output_dir
+        elif input_dir:
+            output_dir = os.path.join(input_dir, 'tesliper_output')
+            os.makedirs(output_dir, exists_ok=True)
+            self.output_dir = output_dir
+        else:
+            raise TypeError("Tesliper.change_dir() requires at least one "
+                            "argument: input_dir or output_dir.")
+        
+    def load_files(self):
+        self.soxhlet = Soxhlet(self.input_dir)
+        return self.soxhlet
         
     def extract(self, *args, spectra_type=None, path=None):
         soxhlet = Soxhlet(path) if path else self.soxhlet
         data = soxhlet.extract(args, spectra_type)
-        self.data.update(data)
-        return self.data
+        self.update(data)
+        return data
     
     def smart_extract(self, deep_search=True, calculations=True,
                       average=True, save=True, with_load=True):
         #TO DO: do it
         pass
                 
-    def load_bars(self, spectra_type=None, path=None):
+    def load_bars(self, path=None, spectra_type=None):
         soxhlet = Soxhlet(path) if path else self.soxhlet
-        bars = soxhlet.load_bars(spectra_type)
-        self.data.update(bars)
-        return self.data
+        data = soxhlet.load_bars(spectra_type)
+        self.update(data)
+        return data
         
     def load_populations(self, path=None):
         soxhlet = Soxhlet(path) if path else self.soxhlet
-        popul = soxhlet.load_popul()
-        self.data.update(popul)
+        data = soxhlet.load_popul()
+        self.update(data)
         return self.data
         
     def load_spectra(self, path=None):
         soxhlet = Soxhlet(path) if path else self.soxhlet
-        spectra = soxhlet.load_spectra()
-        self.data.update(spectra)
-        return self.data
+        data = soxhlet.load_spectra()
+        self.update(data)
+        return data
     
     def load_settings(self, path=None):
         soxhlet = Soxhlet(path) if path else self.soxhlet
