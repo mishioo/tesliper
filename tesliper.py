@@ -1,16 +1,16 @@
 import os, sys, re
 import math
+import copy
 import numpy as np
-from time import clock
-from datetime import datetime
+import csv
 from collections.abc import Mapping, MutableMapping
-from collections import defaultdict
+from collections import Counter, defaultdict
 from itertools import chain, cycle
 import win32gui
-import csv
 from tkinter import Tk
 from tkinter.filedialog import askdirectory, askopenfilename
 import matplotlib.pyplot as plt
+import descriptors as dscr
 
 
 __author__ = "Michał Więcław"
@@ -87,7 +87,7 @@ def from_dict(data):
             corr = None if not '{}c'.format(key) in data else \
                 data['{}c'.format(key)]
             output[key] = Energies(type = key, filenames = filenames,
-                                   stoich = stoich, energies = value,
+                                   stoich = stoich, values = value,
                                    corrections = corr
                                    )
         elif key in 'freq dip rot vosc vrot losc lrot raman1 roa1 e-m energy'\
@@ -95,7 +95,7 @@ def from_dict(data):
             output[key] = Bars(type = key, filenames = filenames,
                                stoich = stoich,
                                frequencies = data['freq'],
-                               bars = value
+                               values = value
                                )
         elif key in 'uv ir ecd vcd roa raman'.split(' '):
             output[key] = Spectra(type = key,
@@ -562,7 +562,59 @@ class Soxhlet:
                 }
         args = ' '.join(v for k, v in prsr if k in cmd).split(' ')
         return args
-            
+
+class Trimmer:
+    
+    blade = dscr.BladeDescr()
+    
+    def __init__(self, owner):
+        self.owner = owner
+        self.blade = np.ones(self.owner.true_size, dtype=bool)
+        
+    def set(self, value):
+        self.blade = value
+        
+    def update(self, other):
+        if isinstance(other, Data):
+            value = other.trimmer.blade
+        elif isinstance(other, Trimmer):
+            value = other.blade
+        else:
+            value = other
+        other_blade = np.array(value, dtype=bool)
+        self.blade = np.logical_and(self.blade, other_blade)
+        
+    def match(self, other, preserve_blade=True):
+        curr_trimm = self.owner.trimming
+        if not preserve_blade:
+            self.owner.trimming = False
+        if other.filenames.size > self.owner.filenames.size:
+            raise ValueError("{} can't match bigger object: {}."\
+                .format(self.owner, other))
+        func = self.update if preserve_blade else self.set
+        blade = np.isin(self.owner.filenames, other.filenames)
+        if np.isin(other.filenames, self.owner.filenames).all():
+            func(blade)
+            self.owner.trimming = True
+        else:
+            self.owner.trimming = curr_trimm
+            raise ValueError("Can't match objects: {0} and {1}. {1} has "
+                             "entries absent in {0}.".format(self.owner,
+                                                             other)
+                            )
+    
+    def unify(self, other, preserve_blade=True):
+        if not preserve_blade: self.owner.trimming = other.trimming = False
+        if not np.intersect1d(other.filenames, self.owner.filenames).size:
+            raise ValueError("Can't unify objects without common entries.")
+        func = self.update if preserve_blade else self.set
+        blade = np.isin(other.filenames, self.owner.filenames)
+        func(blade)
+        self.owner.trimming = True
+        other.trimmer.match(self, preserve_blade)
+        
+    def reset(self):
+        self.blade = np.ones(self.owner.true_size, dtype=bool)
         
 class Data:
     """Mix-in class used to force conversion of list to numpy.ndarray during
@@ -574,25 +626,57 @@ class Data:
     broader (close to as on HWHM = 7.0)
     """
     
-
-    _set_ref = dict(
-        filenames = lambda x: np.array(x, dtype=str),
-        stoich = lambda x: np.array(x, dtype=str),
-        imag = lambda x: np.array(x, dtype=int),
-        )
+    #######################
+    ###   Descriptors   ###
+    #######################
     
-    def __setattr__(self, name, value):
-        if isinstance(value, np.ndarray):
-            validated = value
-        elif isinstance(value, list):
-            try:
-                validated = self._set_ref[name](value)
-            except KeyError:
-                validated = np.array(value, dtype=float)
-        else:
-            validated = value
-        super().__setattr__(name, validated)
+    filenames = dscr.StrTypeArray('filenames')
+    stoich = dscr.StrTypeArray('stoich')
+    values = dscr.FloatTypeArray('values')
+    #Bars specific:
+    frequencies = dscr.FloatTypeArray('frequencies')
+    imag = dscr.IntTypeArray('imag')
+    #Energies specific:
+    corrections = dscr.FloatTypeArray('corrections')
+    #populations = dscr.FloatTypeArray('populations')
+    #deltas = dscr.FloatTypeArray('deltas')
+
+    full_name_ref = dict(
+        rot = 'vcd',
+        dip = 'ir',
+        roa1 = 'roa',
+        raman1 = 'raman',
+        vrot = 'ecd',
+        lrot = 'ecd',
+        vosc = 'uv',
+        losc = 'uv'
+        )
+
+    def __init__(self, filenames, stoich=None, values=None):
+        self.filenames = filenames
+        self.stoich = stoich
+        self.values = values
+        self.true_size = len(filenames)
+        self.trimming = False
+        self.trimmer = Trimmer(self)
+
+    @property
+    def trimmed(self):
+        temp = copy(self)
+        temp.trimming = True
+        return temp
         
+    def trimm_by_stoich(self, stoich=None):
+        if stoich:
+            wanted = stoich
+        else:
+            counter = Counter(self.stoich)
+            wanted = counter.most_common(1)[0][0]
+        blade = self.stoich == wanted
+        self.trimmer.update(blade)
+        self.trimming = True
+        return self
+    
     def _validate(self, key, value):
         """Method for validating data for inner compatibility during setting
         as value of this dict-like object.
@@ -656,18 +740,16 @@ class Energies(Data):
     
     Boltzmann = 0.0019872041 #kcal/(mol*K)
     
-    def __init__(self, type, filenames, stoich, energies, corrections=None,
+    def __init__(self, type, filenames, stoich, values, corrections=None,
                  populations=None, deltas=None, t=None):
         self.type = type
-        self.filenames = filenames
-        self.stoich = stoich
-        self.energies = self.values = energies
+        super().__init__(filenames, stoich, values)
         if corrections:
             self.corrections = corrections
         if populations:
-            self.populations = populations
+            self.populations = np.array(populations, dtype=float)
         if deltas:
-            self.deltas = deltas
+            self.deltas = np.array(deltas, dtype=float)
         self.t = t if t else 298.15
     
     def calculate_populations(self, t=None):
@@ -684,16 +766,16 @@ class Energies(Data):
             self.t = t
         else:
             t = self.t
-        self.deltas, self.populations = self._boltzmann_dist(self.energies, t)
+        self.deltas, self.populations = self._boltzmann_dist(self.values, t)
         return self.populations
                 
-    def _boltzmann_dist(self, energies, t):
+    def _boltzmann_dist(self, values, t):
         """Calculates populations and energy excesses of conformers, based on
         energy array and temperature passed to function.
         
         Parameters
         ----------
-        energies: numpy.ndarray
+        values: numpy.ndarray
             List of conformers' energies.
         t: int or float
             Temperature of calculated state.
@@ -704,24 +786,13 @@ class Energies(Data):
             Tuple of arrays with energy excess for each conformer and population
             distribution in given temperature.
         """
-        delta = (energies - energies.min()) * 627.5095
+        delta = (values - values.min()) * 627.5095
         x = np.exp(-delta/(t*self.Boltzmann))
         popul = x/x.sum()
         return delta, popul
         
         
 class Bars(Data):
-
-    full_name_ref = dict(
-        rot = 'vcd',
-        dip = 'ir',
-        roa1 = 'roa',
-        raman1 = 'raman',
-        vrot = 'ecd',
-        lrot = 'ecd',
-        vosc = 'uv',
-        losc = 'uv'
-        )
     
     spectra_name_ref = dict(
         rot = 'vcd',
@@ -743,15 +814,12 @@ class Bars(Data):
         uv = 'electr'
         )
     
-    def __init__(self, type, stoich, filenames, frequencies, bars=None,
+    def __init__(self, type, stoich, filenames, frequencies, values=None,
                  imag=None, t=None, laser=None):
         self.type = type
-        self.filenames = filenames
-        self.stoich = stoich
+        super().__init__(filenames, stoich, values)
         self.frequencies = frequencies
-        if bars:
-            self.bars = self.values = bars
-        else:
+        if self.values is not None:
             self.values = self.frequencies
         if imag:
             self.imag = imag
@@ -789,12 +857,10 @@ class Bars(Data):
             
     @property
     def intensities(self):
-        try:
-            return self._inten
-        except AttributeError:
-            inten = self._intensity_ref[self.spectra_name]
-            self._inten = self.bars * inten(self.frequencies)
-            return self._inten
+        #TO DO: fit to use of trimming
+        inten = self._intensity_ref[self.spectra_name]
+        self._inten = self.values * inten(self.frequencies)
+        return self._inten
 
     def find_imag(self):
         """Finds all freqs with imaginary values and creates 'imag' entry with
@@ -866,7 +932,7 @@ class Spectra(Data):
     
     def __init__(self, type, filenames, base, values, hwhm, fitting):
         self.type = type
-        self.filenames = filenames
+        super().__init__(filenames)
         self.base = base
         self.values = values
         self.start = base[0]
@@ -1005,6 +1071,7 @@ class Tesliper:
                     )
             else:
                 self.input_dir = input_dir
+                self.soxhlet = Soxhlet(input_dir)
         if output_dir:
             self.output_dir = output_dir
         elif input_dir:
@@ -1095,12 +1162,8 @@ class Tesliper:
                 sett.update(sett_from_args)
             self.spectra[bar.spectra_name] = bar.calculate_spectra(**sett)
         
-    def get_averaged_spectrum(self, spectr, popul_type):
-        try:
-            output = self.data.average_spectra(spectr, popul_type)
-        except KeyError:
-            self.smart_extract(average=False, save=False)
-            output = data.average_spectra(spectr, popul_type)
+    def get_averaged_spectrum(self, spectr, energies):
+        output = self.spectra[spectr].average(energies)
         return output
         
     def __save_vibra(self, fnms):
@@ -1134,7 +1197,7 @@ class Tesliper:
                 writer.writerow(['Gaussian output file', 'Population', 'DE',
                                  'Energy', 'Imag', 'Stoichiometry'])
                 writer.writerows([[f, p, d, e, i, s] for f, p, d, e, i, s in \
-                    zip(en.filenames, en.populations, en.deltas, en.energies,
+                    zip(en.filenames, en.populations, en.deltas, en.values,
                         self.bars.freq.imag.sum(0), en.stoich)])
                 f.close()
         if 'bars' in args:
