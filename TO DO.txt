@@ -1,0 +1,11 @@
+CURRENT:
+correct intensity calculations
+add saving functionality
+finish gui
+add filtering low populated conformers
+suplement docstrings
+add some code commentary
+create testing suite
+
+FUTURE:
+geometry analysis
