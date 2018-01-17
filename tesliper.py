@@ -1,20 +1,20 @@
-import os, sys, re
-import math
 import copy
-import numpy as np
 import csv
+import math
+import os, sys, re
+import numpy as np
 from collections.abc import Mapping, MutableMapping
 from collections import Counter, defaultdict
 from itertools import chain, cycle
-import win32gui
 from tkinter import Tk
 from tkinter.filedialog import askdirectory, askopenfilename
 import matplotlib.pyplot as plt
+import win32gui
 import descriptors as dscr
 
 
 __author__ = "Michał Więcław"
-__version__ = "0.4.1"
+__version__ = "0.5.0"
 
 
 def gaussian(bar, freq, base, hwhm):
@@ -79,6 +79,24 @@ def lorentzian(bar, freq, base, hwhm):
 
     
 def from_dict(data):
+    """Creates dictionary of Data objects from dictionary containing
+    appropriate key-word as keys and lists of extracted data as values.
+    
+    Parameters
+    ----------
+    data: dict
+        Dictionary containing lists or numpy.ndarrays of data.
+        
+    Returns
+    -------
+    dict
+        Dictionary with Data objects created from input data.
+        
+    Raises
+    ------
+    ValueError
+        If any of input dictionary keys is not recognized.
+    """
     output = {}
     filenames = data.pop('filenames')
     stoich = data.pop('stoich')
@@ -102,6 +120,10 @@ def from_dict(data):
                                   filenames = filenames, stoich = stoich,
                                   base = base, values = value, hwhm = hwhm,
                                   fitting = fitting)
+        elif key in 'zpec tenc entc gibc scfc'.split(' '):
+            pass
+        else:
+            raise ValueError("Unknown key-word: {}".format(key))
     return output
 
         
@@ -116,7 +138,14 @@ class Extractor(Mapping):
     >>> e = Extractor()
     >>> extracted = e['keyword']('text to extract from')
     
-    extracted is then a string or list of strings, depending on keyword.
+    or, if spectra-type dependent data is to be extracted:
+    
+    >>> extracted = e['spectra_type']['keyword']('text to extract from')
+    
+    Extracted is then a list of strings or list of lists, depending on keyword.
+    
+    Notes
+    -----
     Re objects can be get as dictionary under 'regexs' attribute if needed.
     
     Attributes
@@ -126,7 +155,7 @@ class Extractor(Mapping):
     
     TO DO
     -----
-    Unify inner dict to only work as in example. ?
+    ? Unify inner dict to only work as in example. ?
     Add handling of AttributeError when match not found (group() method
     called on None).
     """
@@ -232,7 +261,11 @@ class Extractor(Mapping):
         return sett
         
 class Soxhlet:
-    """A tool for data extraction from files in specific directory.
+    """A tool for data extraction from files in specific directory. Typical
+    use:
+    
+    >>> s = Soxhlet('absolute path to working dir')
+    >>> data = s.extract('key', 'words', 'specifying', 'query')
     
     Attributes
     ----------
@@ -243,16 +276,16 @@ class Soxhlet:
     extractor: Extractor object
         Extractor class instance used to extract data from files.
     command: str or None
-        
+        Initial command line extracted from first gaussian output file.
     spectra_type: str or None
-    
+        Type of spectra calculated. 'vibra' for vibrational spectra, 'electr'
+        for electric spectra or None if only optimization was calculated.
     gaussian_files
     bar_files
     
     TO DO
     -----
-    Supplement this docstring.
-    After Unifying Extractor class, do same with this class.
+    ? After Unifying Extractor class, do same with this class. ?
     """
     
     @classmethod
@@ -263,9 +296,27 @@ class Soxhlet:
         win32gui.SetForegroundWindow(window)
         return cls(path)
     
-    def __init__(self, path):
+    def __init__(self, path, files=None):
+        """Initialization of Soxhlet object.
+        
+        Parameters
+        ----------
+        path : str
+            String representing absolute path to directory containing files, which
+            will be the subject of data extraction.
+        files : list, optional
+            List of files, that should be loaded for further extraction. If
+            omitted, all files present in directory will be taken.
+            
+        Raises
+        ------
+        FileNotFoundError
+            If path passed as argument to constructor doesn't exist.
+        """
+        if not os.path.isdir(path):
+            raise FileNotFoundError("Path not found: {}".format(path))
         self.path = path
-        self.files = os.listdir(path)
+        self.files = files if files else os.listdir(path)
         self.extractor = Extractor()
         self.command = self.get_command()
         self.spectra_type = self.get_spectra_type()
@@ -304,10 +355,6 @@ class Soxhlet:
         
     def filter_files(self, ext, files=None):
         """Filters files from file names list.
-        
-        Positional parameter:
-        files --    list of strings representing file names
-        ext --      string representing file extention
         
         Function filters file names in provided list. It returns list of
         file names ending with prowided ext string, representing file
@@ -456,6 +503,14 @@ class Soxhlet:
     def load_bars(self, spectra_type=None):
         """Parses *.bar files associated with object and loads spectral data
         previously extracted from gaussian output files.
+        
+        Parameters
+        ----------
+        spectra_type : str, optional
+            Type of spectra which is to extract; valid values are
+            'vibra', 'electr' or '' (if spectrum is not present
+            in gaussian output files); if omitted, spectra_type
+            associated with object is used.
                 
         Returns
         -------
@@ -564,6 +619,8 @@ class Soxhlet:
         return args
 
 class Trimmer:
+    """
+    """
     
     blade = dscr.BladeDescr()
     
@@ -617,13 +674,29 @@ class Trimmer:
         self.blade = np.ones(self.owner.true_size, dtype=bool)
         
 class Data:
-    """Mix-in class used to force conversion of list to numpy.ndarray during
-    attribute setting.
+    """Base class for data holding objects. It provides trimming functionality
+    for filtering data based on other objects content or arbitrary choice.
     
+    Parameters
+    ----------
+    filenames : numpy.ndarray(dtype=str)
+        List of filenames of gaussian output files, from whitch data were
+        extracted.
+    stoich : numpy.ndarray(dtype=str)
+        Stoichiometry of each conformer.
+    values : numpy.ndarray(dtype=float)
+        List of appropriate data values.
+    true_size : int
+        Number of files from which data was extracted.
+    trimming : bool
+        If set to True causes descriptors to return trimmed values.
+    trimmer : Trimmer object instance
+        Object providing trimming functionality.
+    trimmed
+        
     TO DO
     -----
-    Check calculations of ecd spectrum, on HWHM = 0.35 peaks should be much
-    broader (close to as on HWHM = 7.0)
+    Create full_name_ref
     """
     
     #######################
@@ -654,9 +727,9 @@ class Data:
 
     def __init__(self, filenames, stoich=None, values=None):
         self.filenames = filenames
+        self.true_size = len(self._filenames) #self._filenames set by descriptor
         self.stoich = stoich
         self.values = values
-        self.true_size = len(filenames)
         self.trimming = False
         self.trimmer = Trimmer(self)
 
@@ -677,64 +750,27 @@ class Data:
         self.trimming = True
         return self
     
-    def _validate(self, key, value):
-        """Method for validating data for inner compatibility during setting
-        as value of this dict-like object.
-        
-        Raises
-        ------
-        ValueError
-            If loded list/array is of different length than expected (does
-            not match length of files' list stored under 'filenames' key).
-        TypeError
-            If stoichiometry of conformers which data is loaded does not match
-            stoichioetry of conformers already associated with data object.
-            
-        TO DO
-        -----
-        In case of non-matchnig length check filenames and filter accordingly.
-        """
-        if not self:
-            return
-        files = self['filenames']
-        #spectra = 'vcd ir raman1 roa1 ecd uv'
-        if not (len(files) == len(value)): # or key in spectra):
-            raise ValueError(
-                "Loaded data must contain same number of entries (files "
-                "of certain type in directory) as data already got."
-                "Loaded data marked as {} has {} entries, shoud have {}."\
-                .format(key, len(value), len(files))
-                )
-        if key == 'stoich' and 'stoich' in self:
-            stoich = self['stoich']
-            check = value != stoich
-            if check.sum():
-                raise TypeError(
-                    "Stoichiometry from loaded files does not match in {}/{} "
-                    "entries.".format(check,sum(), len(stoich)), check
-                    )
-
                     
 class Energies(Data):
     """
     Parameters
     ----------
-    type: str
+    type : str
         Type of energy.
-    filenames: numpy.ndarray(dtype=str)
+    filenames : numpy.ndarray(dtype=str)
         List of filenames of gaussian output files, from whitch data were
         extracted.
-    stoich: numpy.ndarray(dtype=str)
+    stoich : numpy.ndarray(dtype=str)
         Stoichiometry of each conformer.
-    energies: numpy.ndarray(dtype=float)
+    values : numpy.ndarray(dtype=float)
         Energy value for each conformer.
-    corrections: numpy.ndarray(dtype=float)
+    corrections : numpy.ndarray(dtype=float)
         Energy correction value for each conformer.
-    populations: numpy.ndarray(dtype=float)
+    populations : numpy.ndarray(dtype=float)
         Population value for each conformer.
-    deltas: numpy.ndarray(dtype=float)
+    deltas : numpy.ndarray(dtype=float)
         Energy excess value for each conformer.
-    t: int or float
+    t : int or float
         Temperature of calculated state in K.
     """
     
@@ -757,10 +793,16 @@ class Energies(Data):
         energy (ent, gib, scf) in given temperature and bounds outcome to
         Data instance on which method was called.
         
+        Notes
+        -----
+        If trimming functionality is used, populations should be recalculated
+        after each change of trimming blade.
+        
         Parameters
         ----------
-        t: int or float
-            Temperature of calculated state in K.
+        t : int or float, optional
+            Temperature of calculated state in K. If omitted, value bounded to
+            instance is used (298.15 K by default).
         """
         if t is not None:
             self.t = t
@@ -775,9 +817,9 @@ class Energies(Data):
         
         Parameters
         ----------
-        values: numpy.ndarray
+        values : numpy.ndarray
             List of conformers' energies.
-        t: int or float
+        t : int or float
             Temperature of calculated state.
             
         Returns
@@ -879,25 +921,25 @@ class Bars(Data):
         
     def calculate_spectra(self, start, stop, step, hwhm, fitting,
                           conformers=None):
-        """Calculates spectrum of desider type for each individual conformer.
+        """Calculates spectrum of desired type for each individual conformer.
         
         Parameters
         ----------
-        type: str
+        type : str
             Name of spectrum, which is going to be calculated. Valid names
             are: vcd, ir, raman, roa, ecd, uv.
-        start: int or float
+        start : int or float
             Number representing start of spectral range in relevant units.
-        stop: int or float
+        stop : int or float
             Number representing end of spectral range in relevant units.
-        step: int or float
+        step : int or float
             Number representing step of spectral range in relevant units.
-        hwhm: int or float
+        hwhm : int or float
             Number representing half width of maximum peak hight.
-        fitting: function
+        fitting : function
             Function, which takes bars, freqs, base, hwhm as parameters and
             returns numpy.array of calculated, non-corrected spectrum points.
-        conformers: ndarray or list
+        conformers : ndarray or list, optional
             List used for indexing.
             
         Returns
@@ -946,7 +988,7 @@ class Spectra(Data):
         
         Parameters
         ----------
-        energies: Energies object instance
+        energies : Energies object instance
             Object with populations and type attributes containing
             respectively: list of populations values as numpy.ndarray and
             string specifying energy type.
@@ -967,6 +1009,10 @@ class Spectra(Data):
         return av_spec
     
 class DataHolder(MutableMapping):
+    """Convenience dict-like holder for data objects. It enables accessing its
+    values through standard dictionary syntax (holder['key']), as well as
+    through attribute syntax (holder.key).
+    """
 
     def __init__(self):
         self._storage = {}
@@ -1007,7 +1053,10 @@ class Tesliper:
     """
     TO DO
     -----
-    separate spectra types
+    Finish saving functionality.
+    Add trimming support.
+    Supplement docstrings.
+    ? separate spectra types ?
     """
     
     def __init__(self, input_dir=None, output_dir=None):
@@ -1146,7 +1195,8 @@ class Tesliper:
         unknown = query - set(self.bars.keys())
         if unknown: raise ValueError("Don't have those bar types: {}"\
                                      .format(unknown))
-        #TO DO: bar.spectra_type sucks :(
+        #TO DO: better method to distinguish bars with spectra information
+        #'cause bar.spectra_type sucks :(
         bars = (v for k, v in self.bars.items() if k in query and v.spectra_type is not None)
         sett_from_args = {
             k: v for k, v in zip(('start', 'stop', 'step', 'hwhm', 'fitting'),

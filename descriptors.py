@@ -1,14 +1,9 @@
 import numpy as np
 
-'''
-    @property
-    def trimmed(self):
-        temp = copy.copy(self)
-        temp.trimming = True
-        return temp
-'''      
         
 class BaseDescr:
+    '''Base class for numpy.ndarray-holding descriptors.
+    '''      
 
     def __init__(self, name):
         self.name = name
