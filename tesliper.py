@@ -96,6 +96,10 @@ def from_dict(data):
     ------
     ValueError
         If any of input dictionary keys is not recognized.
+    
+    TO DO
+    -----
+    handling spectra
     """
     output = {}
     filenames = data.pop('filenames')
@@ -108,8 +112,8 @@ def from_dict(data):
                                    stoich = stoich, values = value,
                                    corrections = corr
                                    )
-        elif key in 'freq dip rot vosc vrot losc lrot raman1 roa1 e-m energy'\
-                    .split(' '):
+        elif key in 'freq dip rot iri vosc vrot losc lrot raman1 roa1 e-m '\
+                    'energy'.split(' '):
             output[key] = Bars(type = key, filenames = filenames,
                                stoich = stoich,
                                frequencies = data['freq'],
@@ -211,7 +215,7 @@ class Extractor(Mapping):
             r' Sum of electronic and thermal Free Energies=\s*(-?\d+\.?\d*)')
         r['ens'] = re.compile(ens_patt)
         r['scf'] = re.compile(r'SCF Done.*=\s+(-?\d+\.?\d*)')
-        keys = 'freq dip rot ir e-m raman1 roa1'.split(' ')
+        keys = 'freq dip rot iri e-m raman1 roa1'.split(' ')
         pats = 'Frequencies', 'Dip. str.', 'Rot. str.', 'IR Inten',\
                'E-M angle', 'Raman1\s*Fr=\s*\d', 'ROA1\s*Fr=\s*\d'
         r['vibra'] = {key: re.compile(r'{}\s*--\s+(.*)\n'.format(patt))
@@ -482,6 +486,7 @@ class Soxhlet:
         extracted = defaultdict(lambda: [None] * no)
         request = set(request)
         request.add('stoich')
+        request.add('freq')
         if spectra_type == 'electr':
             request.add('energy')
         extracted['filenames'] = self.gaussian_files
@@ -520,6 +525,7 @@ class Soxhlet:
         TO DO
         -----
         Make sure Transitions not needed.
+        Rewrite to match current keys handling
         """
         spectra_type = spectra_type if spectra_type else self.spectra_type
         no = len(self.bar_files)
@@ -611,8 +617,8 @@ class Soxhlet:
         cmd = self.command.lower()
         prsr = {'opt': 'energies',
                 'freq=': 'freq',
-                'freq=vcd': 'dip rot ir e-m',
-                'freq=roa': 'raman1 roa1',
+                'freq=vcd': 'dip rot iri e-m',
+                'freq=roa': 'iri raman1 roa1',
                 'td=': 'freq energy vosc vrot lrot losc e-m'
                 }
         args = ' '.join(v for k, v in prsr if k in cmd).split(' ')
@@ -745,7 +751,7 @@ class Data:
         else:
             counter = Counter(self.stoich)
             wanted = counter.most_common(1)[0][0]
-        blade = self.stoich == wanted
+        blade = self._stoich == wanted
         self.trimmer.update(blade)
         self.trimming = True
         return self
@@ -839,12 +845,13 @@ class Bars(Data):
     spectra_name_ref = dict(
         rot = 'vcd',
         dip = 'ir',
+        iri = 'ir',
         roa1 = 'roa',
         raman1 = 'raman',
         vrot = 'ecd',
         lrot = 'ecd',
         vosc = 'uv',
-        losc = 'uv',
+        losc = 'uv'
         )
     
     spectra_type_ref = dict(
@@ -867,7 +874,7 @@ class Bars(Data):
             self.imag = imag
         else:
             self.imag = self.frequencies < 0
-        t = 298.15 if t is None else t #temperature in K
+        self.t = 298.15 if t is None else t #temperature in K
         if self.spectra_name in ('raman', 'roa'): #valid only for raman & roa
             self.laser = laser if laser is not None else 532 #in nm
     
@@ -1195,7 +1202,7 @@ class Tesliper:
         unknown = query - set(self.bars.keys())
         if unknown: raise ValueError("Don't have those bar types: {}"\
                                      .format(unknown))
-        #TO DO: better method to distinguish bars with spectra information
+        #TO DO: better method to distinguish bars with spectral information
         #'cause bar.spectra_type sucks :(
         bars = (v for k, v in self.bars.items() if k in query and v.spectra_type is not None)
         sett_from_args = {
