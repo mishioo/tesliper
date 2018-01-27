@@ -1,3 +1,4 @@
+from functools import reduce
 from tkinter import *
 from tkinter.ttk import *
 from tkinter import messagebox
@@ -8,133 +9,6 @@ from threading import Thread
 
 from tesliper import Tesliper
 
-
-class Checkbox(Checkbutton):
-    def __init__(self, master, tree, index, *args, **kwargs):
-        self.frame = Frame(master, width=17, height=20)
-        self.tree = tree
-        self.index = index
-        super().__init__(self.frame, *args, command=self.clicked, **kwargs)
-        self.frame.pack_propagate(False)
-        self.frame.grid_propagate(False)
-        self.grid(column=0, row=0)
-        
-    def clicked(self):
-        self.tree.selection_set(str(self.index))
-
-
-class CheckTree(Treeview):
-    def __init__(self, master, **kwargs):
-        self.frame = Frame(master)
-        kwargs['columns'] = 'ten ent gib scf zpe imag stoich'.split(' ')
-        super().__init__(self.frame, **kwargs)
-        self.grid(column=0, row=0, rowspan=2, columnspan=2, sticky=(N,W,S,E))
-        Grid.columnconfigure(self.frame, 1, weight=1)
-        Grid.rowconfigure(self.frame, 1, weight=1)
-        self.vsb = Scrollbar(self.frame, orient='vertical', command=self.on_bar)
-        self.vsb.grid(column=2, row=0, rowspan=2, sticky=(N,S))
-        
-        #Columns
-        for cid, text in zip('#0 stoich imag ten ent gib scf zpe'.split(' '),
-                             'Filenames, Stoichiometry, Imag, Thermal, '\
-                             'Enthalpy, Gibbs, SCF, Zero-Point'.split(', ')):
-            if not cid in ('#0', 'stoich', 'imag'): self.column(cid, width=20, anchor='e')
-            self.heading(cid, text=text)
-        self.column('#0', width=100)
-        self.column('stoich', width=100)
-        self.column('imag', width=40, anchor='center', stretch=False)
-
-            
-        #Sort button
-        but_frame = Frame(self.frame, height=24, width=17)
-        but_frame.grid(column=0, row=0)
-        but_frame.grid_propagate(False)
-        Grid.columnconfigure(but_frame, 0, weight=1)
-        Grid.rowconfigure(but_frame, 0, weight=1)
-        style = Style()
-        style.configure('sorting.TButton',
-            borderwidth=5,
-            highlightthickness=1,
-            relief='flat')
-        self.but_sort = Button(but_frame, style='sorting.TButton', command=self._sort_button)
-        self.but_sort.grid(column=0, row=0, sticky='nwes')
-        
-        #Boxes
-        self.canvas = Canvas(self.frame, width=17, borderwidth=0, 
-                             background="#ffffff", highlightthickness=0)
-        self.canvas.configure(yscrollcommand=self.vsb.set)
-        self.canvas.grid(column=0, row=1, sticky=(N,S))
-        self.boxes_frame = Frame(self.canvas)
-        self.canvas.create_window((0,0), window=self.boxes_frame, anchor="nw", 
-                                  tags="boxes_frame")
-        
-        self.boxes_frame.bind("<Configure>", self.onFrameConfigure)
-        self.configure(yscrollcommand=self.yscroll)
-        self.boxes = []
-
-    
-    def _sort_button(self, reverse=True):
-        ls = [(b.var.get(), b.index) for b in self.boxes]
-        ls.sort(reverse=reverse)
-        for i, (val, k) in enumerate(ls):
-            box = self.boxes[k]
-            self.move(k, '', i)
-            box.frame.grid_forget()
-            box.frame.grid_propagate(False)
-            box.frame.grid(column=0, row=i, sticky='n', pady=0)
-        self.but_sort.configure(command=lambda: self._sort_button(not reverse))
-        
-    def _sort(self, col, reverse=True):
-        try:
-            ls = [(self.set(k, col), k) for k in self.get_children('')]
-        except TclError:
-            ls = [(self.item(k)['text'], k) for k in self.get_children('')]
-        try:
-            ls = [(float(v), k) for v, k in ls]
-        except ValueError:
-            pass
-        ls.sort(reverse=reverse)
-        for i, (val, k) in enumerate(ls):
-            self.move(k, '', i)
-            box = self.boxes[int(k)]
-            box.frame.grid_forget()
-            box.frame.grid_propagate(False)
-            box.frame.grid(column=0, row=i, sticky='n', pady=0)
-        self.heading(col, command=lambda: self._sort(col, not reverse))
-        
-    def heading(self, col, *args, command=None, **kwargs):
-        command = command if command is not None else lambda: self._sort(col)
-        return super().heading(col, *args, command=command, **kwargs)
-        
-    @classmethod
-    def test_populate(cls, master, num=30):
-        import string, random
-        new = cls(master, columns=('b'))
-        new.heading('b', text='afasdgf')
-        new.heading('#0', text='asdgasdfg')
-        gen = (''.join(random.choices(string.ascii_lowercase, k=7)) for x in range(num))
-        for x, bla in enumerate(gen):
-            new.insert(text=bla + ' ' + str(x), values=[x])
-        return(new)
-        
-    def onFrameConfigure(self, event):
-        '''Reset the scroll region to encompass the inner frame'''
-        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
-        
-    def yscroll(self, *args):
-        self.canvas.yview_moveto(args[0])
-        
-    def insert(self, parent='', index=END, iid=None, **kw):
-        var = BooleanVar()
-        box = Checkbox(self.boxes_frame, self, index=len(self.boxes), variable=var)
-        box.var = var
-        box.frame.grid(column=0, row=box.index)
-        self.boxes.append(box)
-        var.set(True)
-        return super().insert(parent, index, iid=str(box.index), **kw)
-        
-    def on_bar(self, *args):
-        self.yview(*args)
 
 class ReadOnlyText(Text):
 
@@ -437,6 +311,139 @@ class Spectra(Frame):
         self.canvas.show()
         self.canvas.get_tk_widget().grid(column=0, row=0, sticky=(N,S,W,E))
 
+        
+class Checkbox(Checkbutton):
+    def __init__(self, master, tree, index, box_command, *args, **kwargs):
+        self.frame = Frame(master, width=17, height=20)
+        self.tree = tree
+        self.index = index
+        super().__init__(self.frame, *args, command=self.clicked, **kwargs)
+        self.frame.pack_propagate(False)
+        self.frame.grid_propagate(False)
+        self.grid(column=0, row=0)
+        self.box_command = box_command
+        
+    def clicked(self):
+        self.box_command()
+        self.tree.selection_set(str(self.index))
+
+
+class CheckTree(Treeview):
+    def __init__(self, master, box_command=None, **kwargs):
+        self.frame = Frame(master)
+        kwargs['columns'] = 'ten ent gib scf zpe imag stoich'.split(' ')
+        super().__init__(self.frame, **kwargs)
+        self.grid(column=0, row=0, rowspan=2, columnspan=2, sticky=(N,W,S,E))
+        Grid.columnconfigure(self.frame, 1, weight=1)
+        Grid.rowconfigure(self.frame, 1, weight=1)
+        self.vsb = Scrollbar(self.frame, orient='vertical', command=self.on_bar)
+        self.vsb.grid(column=2, row=0, rowspan=2, sticky=(N,S))
+        
+        #Columns
+        for cid, text in zip('#0 stoich imag ten ent gib scf zpe'.split(' '),
+                             'Filenames, Stoichiometry, Imag, Thermal, '\
+                             'Enthalpy, Gibbs, SCF, Zero-Point'.split(', ')):
+            if not cid in ('#0', 'stoich', 'imag'): self.column(cid, width=20, anchor='e')
+            self.heading(cid, text=text)
+        self.column('#0', width=100)
+        self.column('stoich', width=100)
+        self.column('imag', width=40, anchor='center', stretch=False)
+
+            
+        #Sort button
+        but_frame = Frame(self.frame, height=24, width=17)
+        but_frame.grid(column=0, row=0)
+        but_frame.grid_propagate(False)
+        Grid.columnconfigure(but_frame, 0, weight=1)
+        Grid.rowconfigure(but_frame, 0, weight=1)
+        style = Style()
+        style.configure('sorting.TButton',
+            borderwidth=5,
+            highlightthickness=1,
+            relief='flat')
+        self.but_sort = Button(but_frame, style='sorting.TButton', command=self._sort_button)
+        self.but_sort.grid(column=0, row=0, sticky='nwes')
+        
+        #Boxes
+        self.box_command = box_command
+        self.canvas = Canvas(self.frame, width=17, borderwidth=0, 
+                             background="#ffffff", highlightthickness=0)
+        self.canvas.configure(yscrollcommand=self.vsb.set)
+        self.canvas.grid(column=0, row=1, sticky=(N,S))
+        self.boxes_frame = Frame(self.canvas)
+        self.canvas.create_window((0,0), window=self.boxes_frame, anchor="nw", 
+                                  tags="boxes_frame")
+        
+        self.boxes_frame.bind("<Configure>", self.onFrameConfigure)
+        self.configure(yscrollcommand=self.yscroll)
+        self.boxes = []
+
+    
+    def _sort_button(self, reverse=True):
+        ls = [(b.var.get(), b.index) for b in self.boxes]
+        ls.sort(reverse=reverse)
+        for i, (val, k) in enumerate(ls):
+            box = self.boxes[k]
+            self.move(k, '', i)
+            box.frame.grid_forget()
+            box.frame.grid_propagate(False)
+            box.frame.grid(column=0, row=i, sticky='n', pady=0)
+        self.but_sort.configure(command=lambda: self._sort_button(not reverse))
+        
+    def _sort(self, col, reverse=True):
+        try:
+            ls = [(self.set(k, col), k) for k in self.get_children('')]
+        except TclError:
+            ls = [(self.item(k)['text'], k) for k in self.get_children('')]
+        try:
+            ls = [(-1e10 if v == '--' else float(v), k) for v, k in ls]
+        except ValueError:
+            pass
+        ls.sort(reverse=reverse)
+        for i, (val, k) in enumerate(ls):
+            self.move(k, '', i)
+            box = self.boxes[int(k)]
+            box.frame.grid_forget()
+            box.frame.grid_propagate(False)
+            box.frame.grid(column=0, row=i, sticky='n', pady=0)
+        self.heading(col, command=lambda: self._sort(col, not reverse))
+        
+    def heading(self, col, *args, command=None, **kwargs):
+        command = command if command is not None else lambda: self._sort(col)
+        return super().heading(col, *args, command=command, **kwargs)
+        
+    @classmethod
+    def test_populate(cls, master, num=30):
+        import string, random
+        new = cls(master, columns=('b'))
+        new.heading('b', text='afasdgf')
+        new.heading('#0', text='asdgasdfg')
+        gen = (''.join(random.choices(string.ascii_lowercase, k=7)) for x in range(num))
+        for x, bla in enumerate(gen):
+            new.insert(text=bla + ' ' + str(x), values=[x])
+        return(new)
+        
+    def onFrameConfigure(self, event):
+        '''Reset the scroll region to encompass the inner frame'''
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+        
+    def yscroll(self, *args):
+        self.canvas.yview_moveto(args[0])
+        
+    def insert(self, parent='', index=END, iid=None, **kw):
+        var = BooleanVar()
+        box = Checkbox(self.boxes_frame, self, box_command = self.box_command,
+                       index=len(self.boxes), variable=var)
+        box.var = var
+        box.frame.grid(column=0, row=box.index)
+        self.boxes.append(box)
+        var.set(True)
+        return super().insert(parent, index, iid=str(box.index), **kw)
+        
+    def on_bar(self, *args):
+        self.yview(*args)
+
+        
 class Conformers(Frame):
 
     def __init__(self, parent):
@@ -453,9 +460,9 @@ class Conformers(Frame):
         self.conf_list = None
         self.make_new_conf_list()
 
-        Button(self, text='Select all', command=lambda: [box.var.set(True) for box in self.conf_list.boxes]).grid(column=0, row=1)
+        Button(self, text='Select all', command=self.select_all).grid(column=0, row=1)
         Button(self, text='Disselect all', command=lambda: [box.var.set(False) for box in self.conf_list.boxes]).grid(column=0, row=2)
-        Button(self, text='Recalculate').grid(column=3, row=2, sticky=(S,W))
+        Button(self, text='Refresh', command=self.refresh).grid(column=3, row=2, sticky=(S,W))
         Label(self, text='Show:').grid(column=2, row=1)
         self.show_var = StringVar()
         show_values = ('Energy', 'Delta', 'Population')
@@ -483,27 +490,53 @@ class Conformers(Frame):
             .grid(column=4, row=0, rowspan=2)
         Button(filter_frame, text='Imaginary\nfrequencies').grid(column=5, row=0, rowspan=2)
         
+    @property
+    def energies(self):
+        return reduce(lambda obj, attr: getattr(obj, attr, None), ('tslr', 'energies'), self.parent)
+
+    @property
+    def showing(self):
+        return self.show_ref[self.show_var.get()]
+        
+    def select_all(self):
+        for box in self.conf_list.boxes:
+            box.var.set(True)
+        self.update(self.showing)
+
+    def disselect_all(self):
+        for box in self.conf_list.boxes:
+            box.var.set(False)
+        self.update(self.showing)
+
+    def refresh(self):
+        blade = [box.var.get() for box in self.conf_list.boxes]
+        for en in self.energies.values():
+            en.trimmer.update(blade)
+        self.update(self.showing)
+    
     def make_new_conf_list(self):
         if self.conf_list:
             self.conf_list.destroy()
-        self.conf_list = CheckTree(self.overview)
+        self.conf_list = CheckTree(self.overview, box_command = self.refresh)
         self.conf_list.frame.grid(column=0, row=0, sticky='nswe')
         
     def filter_energy(self):
         pass
         
     def filter_stoich(self):
-        names = self.parent.tslr.bars.freq.trimm_by_stoich().filenames
-        for num, child in enumerate(self.conf_list.get_children('')):
-            if self.conf_list.item(child)['text'] not in names:
-                self.conf_list.boxes[num].var.set(False)
+        for en in self.energies.values():
+            en.trimm_by_stoich()
+        for box, kept in zip(self.conf_list.boxes, en.trimmer.blade):
+            box.var.set(1 if kept else 0)
+            #need to check kept value this way
+            #because tkinter doesn't understand numpy.bool_ type
+        self.update(self.showing)
         
     def filter_imag(self):
         pass
     
     def show_combo_sel(self, event):
-        show = self.show_ref[self.show_var.get()]
-        self.update(show)
+        self.update(self.showing)
             
     def establish(self):
         freq = self.parent.tslr.bars.freq
@@ -514,18 +547,23 @@ class Conformers(Frame):
         self.update('values')
             
     def update(self, show):
-        ens = self.parent.tslr.energies
+        blade = [box.var.get() for box in self.conf_list.boxes]
+        for en in self.energies.values(): en.trimmer.set(blade)
         e_keys = 'ten ent gib scf zpe'.split(' ')
         formats = dict(
             values = lambda v: '{:.4f}'.format(v),
             deltas = lambda v: '{:.4f}'.format(v),
             populations = lambda v: '{:.2f}'.format(v * 100)
             )
-        for num, attr in enumerate(zip(*[getattr(ens[e], show) for e in e_keys])):
-            for (e, a) in zip(e_keys, attr):
-                value = formats[show](a)
-                self.parent.conf_tab.conf_list.set(num, column=e, value=value)
+        scope = 'full' if show == 'values' else 'trimmed'
+        en_get_attr = lambda e, scope, show: reduce(lambda obj, attr: getattr(obj, attr), (e, scope, show), self.energies)
+        trimmed = zip(*[en_get_attr(e, scope, show) for e in e_keys])
+        for index, kept in enumerate(blade):
+            values = ['--' for _ in range(5)] if not kept else map(formats[show], next(trimmed))
+            for energy, value in zip(e_keys, values):
+                self.parent.conf_tab.conf_list.set(index, column=energy, value=value)
 
+                
 class TslrNotebook(Notebook):
     
     def __init__(self, parent):
@@ -546,6 +584,7 @@ class TslrNotebook(Notebook):
         self.add(self.info_tab, text='Info')
         
         self.pack(fill=BOTH, expand=True)
+        
         
 if __name__ == '__main__':
     
