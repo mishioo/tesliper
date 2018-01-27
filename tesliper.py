@@ -1,10 +1,10 @@
-import copy
 import csv
 import math
 import os, sys, re
 import numpy as np
 from collections.abc import Mapping, MutableMapping
 from collections import Counter, defaultdict
+from copy import copy
 from itertools import chain, cycle
 from tkinter import Tk
 from tkinter.filedialog import askdirectory, askopenfilename
@@ -745,6 +745,12 @@ class Data:
         temp.trimming = True
         return temp
         
+    @property
+    def full(self):
+        temp = copy(self)
+        temp.trimming = False
+        return temp
+
     def trimm_by_stoich(self, stoich=None):
         if stoich:
             wanted = stoich
@@ -783,17 +789,22 @@ class Energies(Data):
     Boltzmann = 0.0019872041 #kcal/(mol*K)
     
     def __init__(self, type, filenames, stoich, values, corrections=None,
-                 populations=None, deltas=None, t=None):
+                 t=None):
         self.type = type
         super().__init__(filenames, stoich, values)
         if corrections:
             self.corrections = corrections
-        if populations:
-            self.populations = np.array(populations, dtype=float)
-        if deltas:
-            self.deltas = np.array(deltas, dtype=float)
         self.t = t if t else 298.15
-    
+        
+    @property
+    def deltas(self):
+        return (self.values - self.values.min()) * 627.5095
+        
+    @property
+    def populations(self):
+        x = np.exp(-self.deltas / (self.t * self.Boltzmann))
+        return x/x.sum()    
+        
     def calculate_populations(self, t=None):
         """Calculates populations and energy excesses for all tree types of
         energy (ent, gib, scf) in given temperature and bounds outcome to
@@ -814,8 +825,8 @@ class Energies(Data):
             self.t = t
         else:
             t = self.t
-        self.deltas, self.populations = self._boltzmann_dist(self.values, t)
-        return self.populations
+        deltas, populations = self._boltzmann_dist(self.values, t)
+        return populations
                 
     def _boltzmann_dist(self, values, t):
         """Calculates populations and energy excesses of conformers, based on
