@@ -798,7 +798,10 @@ class Energies(Data):
         
     @property
     def deltas(self):
-        return (self.values - self.values.min()) * 627.5095
+        try:
+            return (self.values - self.values.min()) * 627.5095
+        except ValueError:
+            return np.array([])
         
     @property
     def populations(self):

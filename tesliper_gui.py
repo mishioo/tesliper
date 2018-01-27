@@ -79,7 +79,7 @@ class Loader(Frame):
         #New session
         self.label_new = Labelframe(self, text='New session')
         self.label_new.grid(column=0, row=0, rowspan=3, sticky=N)
-        Button(self.label_new, text='From dir', command=self.from_dir).grid(column=0, row=0)
+        Button(self.label_new, text='From folder', command=self.from_dir).grid(column=0, row=0)
         Button(self.label_new, text='From files', command=self.not_impl).grid(column=0, row=1)
         
         #Smart
@@ -103,8 +103,8 @@ class Loader(Frame):
         #Calculate
         self.label_calc = Labelframe(self, text='Calculate')
         self.label_calc.grid(column=1, row=0, rowspan=4, sticky=N)
-        self.b_c_p = Button(self.label_calc, text='Populations', command=self.calc_popul)
-        self.b_c_p.grid(column=0, row=0)
+        #self.b_c_p = Button(self.label_calc, text='Populations', command=self.calc_popul)
+        #self.b_c_p.grid(column=0, row=0)
         self.b_c_s = Button(self.label_calc, text='Spectra', command=self.calc_spectra)
         self.b_c_s.grid(column=0, row=1)
         self.b_c_a = Button(self.label_calc, text='Average')
@@ -179,7 +179,6 @@ class Loader(Frame):
     def extract_energies(self):
         self.parent.tslr.extract('energies')
         self.parent.conf_tab.establish()
-        self.parent.conf_tab.show_combo.set('Energy')
             
     @GUIFeedback('Extracting...')  
     def execute_extract_bars(self, query):
@@ -228,8 +227,9 @@ class Loader(Frame):
         popup.geometry('220x190')
         
     def tslr_dependent_change_state(self, state):
+        #b_c_p removed
         tslr_dep = [getattr(self, 'b_{}'.format(name)) for name in \
-                    's_e s_c s_s e_e e_b c_p c_s c_a l_p l_b l_s l_t w_d o_d'\
+                    's_e s_c s_s e_e e_b c_s c_a l_p l_b l_s l_t w_d o_d'\
                     .split(' ')]
         en_dep = []
         bar_dep = []
@@ -311,23 +311,43 @@ class Spectra(Frame):
         self.canvas.show()
         self.canvas.get_tk_widget().grid(column=0, row=0, sticky=(N,S,W,E))
 
+class BoxVar(BooleanVar):
+    
+    def __init__(self, box, *args, **kwargs):
+        self.box = box
+        super().__init__(*args, **kwargs)
+        super().set(True)
+        
+    def set(self, value):
+        super().set(value)
+        if value:
+            self.box.tree.item(self.box.index, tags=())
+        else:
+            self.box.tree.item(self.box.index, tags='discarded')
+
         
 class Checkbox(Checkbutton):
     def __init__(self, master, tree, index, box_command, *args, **kwargs):
         self.frame = Frame(master, width=17, height=20)
         self.tree = tree
         self.index = index
+        self.box_command = box_command
+        self.var = BoxVar(self)
+        kwargs['variable'] = self.var
         super().__init__(self.frame, *args, command=self.clicked, **kwargs)
         self.frame.pack_propagate(False)
         self.frame.grid_propagate(False)
         self.grid(column=0, row=0)
-        self.box_command = box_command
         
     def clicked(self):
+        if self.var.get():
+            self.tree.item(self.index, tags=())
+        else:
+            self.tree.item(self.index, tags='discarded')
         self.box_command()
-        self.tree.selection_set(str(self.index))
+        #self.tree.selection_set(str(self.index))
 
-
+        
 class CheckTree(Treeview):
     def __init__(self, master, box_command=None, **kwargs):
         self.frame = Frame(master)
@@ -339,6 +359,8 @@ class CheckTree(Treeview):
         self.vsb = Scrollbar(self.frame, orient='vertical', command=self.on_bar)
         self.vsb.grid(column=2, row=0, rowspan=2, sticky=(N,S))
         
+        self.tag_configure('discarded', foreground='gray')
+                
         #Columns
         for cid, text in zip('#0 stoich imag ten ent gib scf zpe'.split(' '),
                              'Filenames, Stoichiometry, Imag, Thermal, '\
@@ -349,7 +371,6 @@ class CheckTree(Treeview):
         self.column('stoich', width=100)
         self.column('imag', width=40, anchor='center', stretch=False)
 
-            
         #Sort button
         but_frame = Frame(self.frame, height=24, width=17)
         but_frame.grid(column=0, row=0)
@@ -431,13 +452,10 @@ class CheckTree(Treeview):
         self.canvas.yview_moveto(args[0])
         
     def insert(self, parent='', index=END, iid=None, **kw):
-        var = BooleanVar()
         box = Checkbox(self.boxes_frame, self, box_command = self.box_command,
-                       index=len(self.boxes), variable=var)
-        box.var = var
+                       index=len(self.boxes))
         box.frame.grid(column=0, row=box.index)
         self.boxes.append(box)
-        var.set(True)
         return super().insert(parent, index, iid=str(box.index), **kw)
         
     def on_bar(self, *args):
@@ -462,8 +480,8 @@ class Conformers(Frame):
 
         Button(self, text='Select all', command=self.select_all).grid(column=0, row=1)
         Button(self, text='Disselect all', command=lambda: [box.var.set(False) for box in self.conf_list.boxes]).grid(column=0, row=2)
-        Button(self, text='Refresh', command=self.refresh).grid(column=3, row=2, sticky=(S,W))
-        Label(self, text='Show:').grid(column=2, row=1)
+        #Button(self, text='Refresh', command=self.refresh).grid(column=3, row=2, sticky=(S,W))
+        Label(self, text='Show:').grid(column=2, row=1, sticky='sw')
         self.show_var = StringVar()
         show_values = ('Energy', 'Delta', 'Population')
         show_id = ('values', 'deltas', 'populations')
@@ -472,24 +490,63 @@ class Conformers(Frame):
                                    values=show_values, state='readonly')
         self.show_combo.bind('<<ComboboxSelected>>', self.show_combo_sel)
         self.show_combo.grid(column=2, row=2)
+        
+        #filter
         filter_frame = Labelframe(self, text='Filter')
         filter_frame.grid(column=1, row=1, rowspan=2)
-        Label(filter_frame, text='From: ').grid(column=0, row=0)
-        Label(filter_frame, text='To: ').grid(column=0, row=1)
-        self.from_var = StringVar()
-        self.to_var = StringVar()
-        Entry(filter_frame, textvariable=self.from_var).grid(column=1, row=0)
-        Entry(filter_frame, textvariable=self.to_var).grid(column=1, row=1)
+        Label(filter_frame, text='Lower limit').grid(column=0, row=0)
+        Label(filter_frame, text='Upper limit').grid(column=0, row=1)
+        self.lower_var = DoubleVar()
+        self.upper_var = DoubleVar()
+        validate_entry = (self.register(self.validate_entry), '%S', '%P')
+        Entry(filter_frame, textvariable=self.lower_var, validate='key', validatecommand=validate_entry).grid(column=1, row=0)
+        Entry(filter_frame, textvariable=self.upper_var, validate='key', validatecommand=validate_entry).grid(column=1, row=1)
         self.en_filter_var = StringVar()
-        self.filter_combo = Combobox(filter_frame, textvariable=self.en_filter_var, state='readonly')
+        filter_values = 'Thermal Enthalpy Gibbs SCF Zero-Point'.split(' ')
+        filter_id = 'ten ent gib scf zpe'.split(' ')
+        self.filter_ref = {k: v for k, v in zip(filter_values, filter_id)}
+        self.filter_combo = Combobox(filter_frame, textvariable=self.en_filter_var, values=filter_values, state='readonly')
         self.filter_combo.grid(column=3, row=0)
-        self.filter_combo['values'] = 'Thermal Enthalpy Gibbs SCF Zero-Point'.split(' ')
-        
-        Button(filter_frame, text='By energy type').grid(column=3, row=1)
+        self.filter_combo.bind('<<ComboboxSelected>>', self.set_upper_and_lower)
+
+        Button(filter_frame, text='By energy type', command=self.filter_energy).grid(column=3, row=1)
         Button(filter_frame, text='Non-matching\nstoichiometry', command=self.filter_stoich)\
             .grid(column=4, row=0, rowspan=2)
-        Button(filter_frame, text='Imaginary\nfrequencies').grid(column=5, row=0, rowspan=2)
+        Button(filter_frame, text='Imaginary\nfrequencies', command=self.filter_imag).grid(column=5, row=0, rowspan=2)
+    
+    def set_upper_and_lower(self, event=None):
+        energy = self.filter_ref[self.en_filter_var.get()]
+        arr = getattr(self.energies[energy], self.showing)
+        factor = 100 if self.showing == 'populations' else 1
+        lower, upper = arr.min(), arr.max()
+        n = 2 if self.showing == 'populations' else 4
+        lower, upper = map(lambda v: '{:.{}f}'.format(v * factor, n), (lower - 0.0001, upper + 0.0001))
+        self.lower_var.set(lower)
+        self.upper_var.set(upper)
+    
+    def filter_energy(self):
+        lower = self.lower_var.get()
+        upper = self.upper_var.get()
+        energy = self.filter_ref[self.en_filter_var.get()]
+        values = iter(getattr(self.energies[energy], self.showing))
+        factor = 100 if self.showing == 'populations' else 1
+        for box in self.conf_list.boxes:
+            if box.var.get():
+                value = next(values)
+                if not lower <= value * factor <= upper:
+                    box.var.set(False)
+        self.update()
         
+    def validate_entry(self, inserted, text_if_allowed):
+        if any(i not in '0123456789.+-' for i in inserted):
+            return False
+        else:
+            try:
+                if text_if_allowed: float(text_if_allowed)
+            except ValueError:
+                return False
+        return True
+    
     @property
     def energies(self):
         return reduce(lambda obj, attr: getattr(obj, attr, None), ('tslr', 'energies'), self.parent)
@@ -501,27 +558,24 @@ class Conformers(Frame):
     def select_all(self):
         for box in self.conf_list.boxes:
             box.var.set(True)
-        self.update(self.showing)
+        self.update()
 
     def disselect_all(self):
         for box in self.conf_list.boxes:
             box.var.set(False)
-        self.update(self.showing)
+        self.update()
 
     def refresh(self):
         blade = [box.var.get() for box in self.conf_list.boxes]
         for en in self.energies.values():
             en.trimmer.update(blade)
-        self.update(self.showing)
+        self.update()
     
     def make_new_conf_list(self):
         if self.conf_list:
             self.conf_list.destroy()
         self.conf_list = CheckTree(self.overview, box_command = self.refresh)
         self.conf_list.frame.grid(column=0, row=0, sticky='nswe')
-        
-    def filter_energy(self):
-        pass
         
     def filter_stoich(self):
         for en in self.energies.values():
@@ -530,13 +584,19 @@ class Conformers(Frame):
             box.var.set(1 if kept else 0)
             #need to check kept value this way
             #because tkinter doesn't understand numpy.bool_ type
-        self.update(self.showing)
+        self.update()
         
     def filter_imag(self):
-        pass
+        blade = [box.var.get() for box in self.conf_list.boxes]
+        freq = self.parent.tslr.bars.freq.full
+        for box, imag in zip(self.conf_list.boxes, freq.imag):
+            if imag.sum(0): box.var.set(False)
+        self.update()
+        self.set_upper_and_lower()
     
     def show_combo_sel(self, event):
-        self.update(self.showing)
+        self.set_upper_and_lower()
+        self.update()
             
     def establish(self):
         freq = self.parent.tslr.bars.freq
@@ -544,9 +604,13 @@ class Conformers(Frame):
             self.parent.conf_tab.conf_list.insert('', 'end', text=fnm)
             self.parent.conf_tab.conf_list.set(num, column='stoich', value=stoich)
             self.parent.conf_tab.conf_list.set(num, column='imag', value=imag.sum(0))
+        self.show_combo.set('Energy')
+        self.filter_combo.set('Thermal')
+        self.set_upper_and_lower()
         self.update('values')
             
-    def update(self, show):
+    def update(self, show=None):
+        show = show if show else self.showing
         blade = [box.var.get() for box in self.conf_list.boxes]
         for en in self.energies.values(): en.trimmer.set(blade)
         e_keys = 'ten ent gib scf zpe'.split(' ')
@@ -558,7 +622,8 @@ class Conformers(Frame):
         scope = 'full' if show == 'values' else 'trimmed'
         en_get_attr = lambda e, scope, show: reduce(lambda obj, attr: getattr(obj, attr), (e, scope, show), self.energies)
         trimmed = zip(*[en_get_attr(e, scope, show) for e in e_keys])
-        for index, kept in enumerate(blade):
+        what_to_show = blade if show != 'values' else [True for _ in blade]
+        for index, kept in enumerate(what_to_show):
             values = ['--' for _ in range(5)] if not kept else map(formats[show], next(trimmed))
             for energy, value in zip(e_keys, values):
                 self.parent.conf_tab.conf_list.set(index, column=energy, value=value)
