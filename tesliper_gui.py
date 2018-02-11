@@ -5,6 +5,7 @@ from tkinter import messagebox
 from tkinter.filedialog import askdirectory, askopenfilename
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
+from matplotlib import cm
 from threading import Thread
 
 import tesliper
@@ -257,15 +258,16 @@ class Spectra(Frame):
         Grid.rowconfigure(self, 8, weight=1)
 
         #Spectra name
-        s_name = Labelframe(self, text="Spectra type:")
-        s_name.grid(column=0, row=0)
+        s_name_frame = Labelframe(self, text="Spectra type:")
+        s_name_frame.grid(column=0, row=0)
         self.s_name = StringVar()
         self.s_name_radio = {}
         names = 'IR UV Raman VCD ECD ROA'.split(' ')
         values = 'ir uv raman vcd ecd roa'.split(' ')
         positions = [(c,r) for c in range(2) for r in range(3)]
         for n, v, (c, r) in zip(names, values, positions):
-            b = Radiobutton(s_name, text=n, variable=s_name, value=v)
+            b = Radiobutton(s_name_frame, text=n, variable=self.s_name, value=v,
+                command=lambda v=v: self.spectra_choosen(v))
             b.configure(state='disabled')
             b.grid(column=c, row=r, sticky=W, padx=5)
             self.s_name_radio[v] = b
@@ -297,34 +299,44 @@ class Spectra(Frame):
         
         #Calculation Mode
         self.mode = StringVar()
-        self.average_radio = Radiobutton(self, text='Average by:',
-                                         variable=self.mode, value='average',
-                                         state='disabled')
-        self.average_radio.grid(column=0, row=2, sticky=W)
         self.single_radio = Radiobutton(self, text='Single file:',
                                         variable=self.mode, value='single',
                                         state='disabled')
-        self.single_radio.grid(column=0, row=4, sticky=W)
+        self.single_radio.grid(column=0, row=2, sticky=W)
+        self.average_radio = Radiobutton(self, text='Average by:',
+                                         variable=self.mode, value='average',
+                                         state='disabled')
+        self.average_radio.grid(column=0, row=4, sticky=W)
         self.stack_radio = Radiobutton(self, text='Stack by overview',
                                        variable=self.mode, value='stack',
                                        state='disabled')
         self.stack_radio.grid(column=0, row=6, sticky=W)
         
+        self.single = StringVar()
+        self.single.set('Choose conformer...')
+        self.single_box = Combobox(self, textvariable=self.single, state='disabled')
+        self.single_box.bind('<<ComboboxSelected>>', 
+            lambda event: self.live_preview_callback(event, forced=True))
+        self.single_box.grid(column=0, row=3)
+        self.single_box['values'] = ()
         self.average = StringVar()
+        self.average.set('Choose energy...')
         self.average_box = Combobox(self, textvariable=self.average, state='disabled')
-        self.average_box.grid(column=0, row=3)
+        self.average_box.bind('<<ComboboxSelected>>', 
+            lambda event: self.live_preview_callback(event, forced=True))
+        self.average_box.grid(column=0, row=5)
         average_names = 'Thermal Enthalpy Gibbs SCF Zero-Point'.split(' ')
         self.average_box['values'] = average_names
         average_keys = 'ten ent gib scf zpe'.split(' ')
         self.average_ref = {k:v for k,v in zip(average_names, average_keys)}
-        self.single = StringVar()
-        self.single_box = Combobox(self, textvariable=self.single, state='disabled')
-        self.single_box.grid(column=0, row=5)
-        self.single_box['values'] = ()
         self.stack = StringVar()
+        self.stack.set('Choose colour...')
         self.stack_box = Combobox(self, textvariable=self.stack, state='disabled')
+        self.stack_box.bind('<<ComboboxSelected>>', self.change_colour)
         self.stack_box.grid(column=0, row=7)
-        self.stack_box['values'] = ()
+        self.stack_box['values'] = ('Blues Reds Greens spring summer autumn '
+                                    'winter copper ocean rainbow jet '
+                                    'nipy_spectral gist_ncar'.split(' '))
         
         #Live preview
         #Recalculate
@@ -336,7 +348,8 @@ class Spectra(Frame):
                                      state='disabled')
         self.live_prev.grid(column=0, row=0)
         self.live_prev.var = var
-        self.recalc_b = Button(frame, text='Recalculate', state='disabled',
+        #previously labeled 'Recalculate'
+        self.recalc_b = Button(frame, text='Redraw', state='disabled',
                                command=self.recalculate_command)
         self.recalc_b.grid(column=1, row=0)
         
@@ -356,15 +369,11 @@ class Spectra(Frame):
         self.canvas.show()
         self.canvas.get_tk_widget().grid(column=0, row=0, sticky=(N,S,W,E))
         self.ax = None
+        self.last_used_settings = None
         #self.axes = []
         
         #TO DO:
         #add save/save img buttons
-        
-    def s_name_radio_callback(self):
-        self.visualize_settings()
-        self.s_name
-        pass
         
     def enable_widgets(self):
         #print('enable')
@@ -386,10 +395,20 @@ class Spectra(Frame):
                 widget.configure(state='normal')
         #print(bar.type, bar.spectra_name)
         self.s_name_radio[bar.spectra_name].invoke()
-        self.s_name.set(bar.spectra_name)
+        #self.s_name.set(bar.spectra_name)
         if not self.settings_established:
             self.establish_settings()
         self.visualize_settings()
+        
+    def spectra_choosen(self, value):
+        tslr = self.parent.tslr
+        bar_name = tslr.default_spectra_bars[value]
+        bar = tslr.bars[bar_name]
+        self.visualize_settings()
+        if self.mode.get():
+            self.live_preview_callback(forced=True)
+        else:
+            self.single_radio.invoke()
             
     def visualize_settings(self):
         spectra_type = 'electr' if self.s_name.get() in ('uv', 'ecd') else 'vibra'
@@ -409,22 +428,28 @@ class Spectra(Frame):
         self.fitting.configure(state='readonly')
         self.settings_established = True
 
-    def live_preview_callback(self, event=None):
-        #TO DO: recalculate only when something changed
-        if self.live_prev:
-            # spc = self.parent.tslr.spectra[self.s_name.get()]
-            # spc_settings = {k: getattr(spc, k) for k
-                            # in 'start stop step hwhm fitting'.split(' ')}
-            if not self.ax or self.current_settings != self.last_used_settings:
-                self.recalculate_command()
+    def live_preview_callback(self, event=None, forced=False):
+        if all([
+            self.live_prev, self.mode.get(),
+            any([not self.ax, forced,
+                self.current_settings != self.last_used_settings])
+            ]): self.recalculate_command()
     
-    def show_spectra(self, x ,y):
+    def new_plot(self):
         if self.ax: self.figure.delaxes(self.ax)
         self.ax = self.figure.add_subplot(111)
-        self.ax.plot(x, y)
+        
+    def show_spectra(self, x, y, colour=None, width=0.5, stack=False):
+        self.new_plot()
+        if stack:
+            col = cm.get_cmap(colour)
+            no = len(y)
+            for num, y_ in enumerate(y):
+                self.ax.plot(x, y_, lw=width, color=col(num/no))
+        else:
+            self.ax.plot(x, y, lw=width)
         self.canvas.show()
-        # for ax in self.axes:
-            # self.figure.delaxes(ax)
+        # map(self.figure.delaxes, self.axes)
         # self.axes = []
         # for num, spc in enumerate(spectra):
             # ax = self.figure.add_subplot(len(spectra), 1, num)
@@ -448,10 +473,31 @@ class Spectra(Frame):
         tslr = self.parent.tslr
         spc = tslr.calculate_single_spectrum(spectra_name=spectra_name,
             conformer=option, **self.current_settings)
-        self.show_spectra(spc.base, *spc.values)
+        print(spc.values)
+        self.show_spectra(spc.base, spc.values[0])
         
     def stack_draw(self, spectra_name, option):
-        pass
+        #TO DO: color of line depending on population
+        tslr = self.parent.tslr
+        blade = self.parent.conf_tab.blade
+        bar_name = tslr.default_spectra_bars[spectra_name]
+        bars = tslr.bars[bar_name]
+        bars.trimmer.set(blade)
+        tslr.calculate_spectra(spectra_name, **self.current_settings)
+        spc = tslr.spectra[spectra_name]
+        if self.ax: self.figure.delaxes(self.ax)
+        self.ax = self.figure.add_subplot(111)
+        self.show_spectra(spc.base, spc.values, colour=option, stack=True)
+        
+    def change_colour(self, event=None):
+        if not self.ax: return
+        colour = self.stack.get()
+        col = cm.get_cmap(colour)
+        lines = self.ax.get_lines()
+        no = len(lines)
+        for num, line in enumerate(lines):
+            line.set_color(col(num/no))
+        self.canvas.draw()
 
     @property
     def current_settings(self):
