@@ -667,10 +667,12 @@ class Trimmer:
                             )
     
     def unify(self, other, preserve_blade=True):
+        #TO DO: repair this function
         if not preserve_blade: self.owner.trimming = other.trimming = False
         if not np.intersect1d(other.filenames, self.owner.filenames).size:
             raise ValueError("Can't unify objects without common entries.")
         func = self.update if preserve_blade else self.set
+        #wrong blade size if preserve_blade
         blade = np.isin(other.filenames, self.owner.filenames)
         func(blade)
         self.owner.trimming = True
@@ -1102,15 +1104,24 @@ class Tesliper:
                        'fitting': gaussian}
             }
         self.set_standard_parameters()
-        self._units = {
+        self.units = {
             'vibra': {'hwhm': 'cm-1',
                       'start': 'cm-1',
                       'stop': 'cm-1',
                       'step': 'cm-1'},
-            'electr': {'hwhm': 'ev',
+            'electr': {'hwhm': 'eV',
                        'start': 'nm',
                        'stop': 'nm',
                        'step': 'nm'}
+            }
+            
+        self.default_spectra_bars = {
+            'ir': 'dip',
+            'vcd': 'rot',
+            'uv': 'vosc',
+            'ecd': 'vrot',
+            'raman': 'raman1',
+            'roa': 'roa1'
             }
 
     def set_standard_parameters(self):
@@ -1196,20 +1207,28 @@ class Tesliper:
         settings = soxhlet.load_settings()
         self.settings[spectra_type].update(settings)
         return self.settings
-
-    def calculate_populations(self, *args, t=None):
-        query = args if args else self.energies.keys()
-        gen = (v for k, v in self.energies.items() if k in query)
-        t = [t] if isinstance(t, (int, float, type(None))) else t
-        for value, temp in zip(gen, cycle(t)):
-            value.calculate_populations(t=temp)
-        return {k: v.populations for k, v in self.energies.items() \
-                if k in query}
         
-    def calculate_spectra(self, *args, sett_from_dict=None, start=None,
-                          stop=None, step=None, hwhm=None, fitting=None):
-        bar_names = {v: k for k, v in Bars.spectra_name_ref.items() \
-            if not k.startswith('l')} #take velo for ecd by default
+    def calculate_single_spectrum(self, spectra_name, conformer, start=None,
+                                  stop=None, step=None, hwhm=None,
+                                  fitting=None):
+        bar = self.bars[self.default_spectra_bars[spectra_name]].full
+        blade = [False if fname != conformer else True
+                 for fname in bar.filenames]
+        bar.trimmer.set(blade)
+        bar.trimming = True
+        sett_from_args = {
+            k: v for k, v in zip(('start', 'stop', 'step', 'hwhm', 'fitting'),
+                                 (start, stop, step, hwhm, fitting))
+            if v is not None
+            }
+        sett = self.parameters[bar.spectra_type].copy()
+        sett.update(sett_from_args)
+        spc = bar.calculate_spectra(**sett)
+        return spc
+        
+    def calculate_spectra(self, *args, start=None, stop=None,
+                          step=None, hwhm=None, fitting=None):
+        bar_names = self.default_spectra_bars
         query = args if args else self.bars.keys()
         query = [bar_names[v] if v in bar_names else v for v in query]
         query = set(query) #ensure no duplicates
@@ -1218,20 +1237,21 @@ class Tesliper:
                                      .format(unknown))
         #TO DO: better method to distinguish bars with spectral information
         #'cause bar.spectra_type sucks :(
-        bars = (v for k, v in self.bars.items() if k in query and v.spectra_type is not None)
+        bars = (v for k, v in self.bars.items()
+                if k in query and v.spectra_type is not None)
         sett_from_args = {
             k: v for k, v in zip(('start', 'stop', 'step', 'hwhm', 'fitting'),
                                  (start, stop, step, hwhm, fitting))
             if v is not None
             }
+        output = {}
         for bar in bars:
             sett = self.parameters[bar.spectra_type].copy()
-            try:
-                if sett_from_dict:
-                    sett.update(sett_from_dict[bar.type])
-            except KeyError:
-                sett.update(sett_from_args)
-            self.spectra[bar.spectra_name] = bar.calculate_spectra(**sett)
+            sett.update(sett_from_args)
+            spc = bar.calculate_spectra(**sett)
+            self.spectra[bar.spectra_name] = spc
+            output[bar.spectra_name] = spc
+        return output
         
     def get_averaged_spectrum(self, spectr, energies):
         output = self.spectra[spectr].average(energies)

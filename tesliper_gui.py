@@ -7,7 +7,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 from threading import Thread
 
-from tesliper import Tesliper
+import tesliper
 
 
 class ReadOnlyText(Text):
@@ -70,6 +70,11 @@ class GUIFeedback:
 class Loader(Frame):
     
     def __init__(self, parent):
+        """
+        TO DO
+        -----
+        don't allow energy extraction if already extracted
+        """
         super().__init__(parent)
         self.parent = parent
         self.grid(column=0, row=0, sticky=(N,W,S,E))
@@ -79,7 +84,7 @@ class Loader(Frame):
         #New session
         self.label_new = Labelframe(self, text='New session')
         self.label_new.grid(column=0, row=0, rowspan=3, sticky=N)
-        Button(self.label_new, text='From folder', command=self.from_dir).grid(column=0, row=0)
+        Button(self.label_new, text='From location', command=self.from_dir).grid(column=0, row=0)
         Button(self.label_new, text='From files', command=self.not_impl).grid(column=0, row=1)
         
         #Smart
@@ -165,7 +170,7 @@ class Loader(Frame):
         new_dir = askdirectory()
         if not new_dir:
             return
-        self.parent.tslr = Tesliper(new_dir)
+        self.parent.tslr = tesliper.Tesliper(new_dir)
         self.work_dir.set(new_dir)
         self.out_dir.set(self.parent.tslr.output_dir)
         self.tslr_dependent_change_state('normal')
@@ -183,6 +188,10 @@ class Loader(Frame):
     @GUIFeedback('Extracting...')  
     def execute_extract_bars(self, query):
         self.parent.tslr.extract(*query)
+        #stype = self.parent.tslr.soxhlet.spectra_type
+        self.parent.spectra_tab.enable_widgets()
+        if not self.parent.spectra_tab.settings_established:
+            self.parent.spectra_tab.establish_settings()
      
     @GUIFeedback('Calculating populations...')
     def calc_popul(self):
@@ -200,9 +209,9 @@ class Loader(Frame):
         Grid.columnconfigure(popup, 2, weight=1)
         Label(popup, text="Chose bars you wish to extract:").grid(
             column=0, row=0, columnspan=2, sticky=W, padx=5, pady=5)
-        bar_names = "IR Inten.,E-M Angle,Dip. Str.,Rot. Str.,Raman1,"\
-                    "ROA1,Osc. (velo), Osc. (length),R(velocity),R(length)".split(',')
-        bar_keys = "iri e-m dip rot raman1 roa1 vosc losc vrot lrot".split(' ')
+        bar_names = "IR Inten.,E-M Angle,Dip. Str.,Rot. Str.,Osc. (velo),"\
+                    "R(velocity), Osc. (length),R(length),Raman1,ROA1".split(',')
+        bar_keys = "iri e-m dip rot vosc vrot losc lrot raman1 roa1".split(' ')
         positions = [(c,r) for r in range(1,6) for c in range(2)]
         vars = [BooleanVar() for _ in bar_keys]
         for v, k, n, (c, r) in zip(vars, bar_keys, bar_names, positions):
@@ -247,15 +256,19 @@ class Spectra(Frame):
         Grid.columnconfigure(self, 1, weight=1)
         Grid.rowconfigure(self, 8, weight=1)
 
-        #Spectra type
-        s_type = Labelframe(self, text="Spectra type:")
-        s_type.grid(column=0, row=0)
-        self.s_type = StringVar()
-        names = 'IR UV Raman IR/VCD UV/ECD Raman/ROA'.split(' ')
-        values = 'ir uv ra vcd ecd roa'.split(' ')
+        #Spectra name
+        s_name = Labelframe(self, text="Spectra type:")
+        s_name.grid(column=0, row=0)
+        self.s_name = StringVar()
+        self.s_name_radio = {}
+        names = 'IR UV Raman VCD ECD ROA'.split(' ')
+        values = 'ir uv raman vcd ecd roa'.split(' ')
         positions = [(c,r) for c in range(2) for r in range(3)]
         for n, v, (c, r) in zip(names, values, positions):
-            Radiobutton(s_type, text=n, variable=s_type, value=v).grid(column=c, row=r, sticky=W)
+            b = Radiobutton(s_name, text=n, variable=s_name, value=v)
+            b.configure(state='disabled')
+            b.grid(column=c, row=r, sticky=W, padx=5)
+            self.s_name_radio[v] = b
         
         #Settings
         sett = Labelframe(self, text="Settings:")
@@ -263,43 +276,75 @@ class Spectra(Frame):
         for no, name in enumerate('Start Stop Step HWHM'.split(' ')):
             Label(sett, text=name).grid(column=0, row=no)
             var = StringVar()
-            setattr(self, name.lower(), var)
-            entry = Entry(sett, textvariable=var, width=10)
+            entry = Entry(sett, textvariable=var, width=10, state='disabled')
+            entry.bind('<FocusOut>', self.live_preview_callback)
+            setattr(self, name.lower(), entry)
+            entry.var = var
             entry.grid(column=1, row=no)
             unit = StringVar()
-            unit.set('cm-1')
-            setattr(self, '{}_unit'.format(name).lower(), unit)
+            unit.set('-')
+            entry.unit = unit
             label = Label(sett, textvariable=unit)
             label.grid(column=2, row=no)
         Label(sett, text='Fitting').grid(column=0, row=4)
-        self.fitting = StringVar()
-        fit = Combobox(sett, textvariable=self.fitting, width=13, state='readonly')
-        fit.grid(column=1, row=4, columnspan=2)
-        fit['values'] = ('lorentzian', 'gaussian')
+        fit = StringVar()
+        self.fitting = Combobox(sett, textvariable=fit, state='disabled', width=13)
+        self.fitting.bind('<<ComboboxSelected>>', self.live_preview_callback)
+        self.fitting.var = fit
+        self.fitting.grid(column=1, row=4, columnspan=2)
+        self.fitting['values'] = ('lorentzian', 'gaussian')
+        self.settings_established = False
         
         #Calculation Mode
         self.mode = StringVar()
-        Radiobutton(self, text='Average by:', variable=self.mode, value='average').grid(column=0, row=2, sticky=W)
-        Radiobutton(self, text='Single file:', variable=self.mode, value='single').grid(column=0, row=4, sticky=W)
-        Radiobutton(self, text='Stack by overview', variable=self.mode, value='stack').grid(column=0, row=6, sticky=W)
+        self.average_radio = Radiobutton(self, text='Average by:',
+                                         variable=self.mode, value='average',
+                                         state='disabled')
+        self.average_radio.grid(column=0, row=2, sticky=W)
+        self.single_radio = Radiobutton(self, text='Single file:',
+                                        variable=self.mode, value='single',
+                                        state='disabled')
+        self.single_radio.grid(column=0, row=4, sticky=W)
+        self.stack_radio = Radiobutton(self, text='Stack by overview',
+                                       variable=self.mode, value='stack',
+                                       state='disabled')
+        self.stack_radio.grid(column=0, row=6, sticky=W)
         
         self.average = StringVar()
-        self.average_box = Combobox(self, textvariable=self.average, state='readonly')
+        self.average_box = Combobox(self, textvariable=self.average, state='disabled')
         self.average_box.grid(column=0, row=3)
-        self.average_box['values'] = 'Thermal Enthalpy Gibbs SCF Zero-Point'.split(' ')
+        average_names = 'Thermal Enthalpy Gibbs SCF Zero-Point'.split(' ')
+        self.average_box['values'] = average_names
+        average_keys = 'ten ent gib scf zpe'.split(' ')
+        self.average_ref = {k:v for k,v in zip(average_names, average_keys)}
         self.single = StringVar()
-        self.single_box = Combobox(self, textvariable=self.single, state='readonly')
+        self.single_box = Combobox(self, textvariable=self.single, state='disabled')
         self.single_box.grid(column=0, row=5)
         self.single_box['values'] = ()
-
+        self.stack = StringVar()
+        self.stack_box = Combobox(self, textvariable=self.stack, state='disabled')
+        self.stack_box.grid(column=0, row=7)
+        self.stack_box['values'] = ()
+        
+        #Live preview
         #Recalculate
-        Button(self, text='Recalculate').grid(column=0, row=7)
+        frame = Frame(self)
+        frame.grid(column=0, row=8, sticky='n')
+        var = BooleanVar()
+        var.set(False)
+        self.live_prev = Checkbutton(frame, variable=var, text='Live preview', 
+                                     state='disabled')
+        self.live_prev.grid(column=0, row=0)
+        self.live_prev.var = var
+        self.recalc_b = Button(frame, text='Recalculate', state='disabled',
+                               command=self.recalculate_command)
+        self.recalc_b.grid(column=1, row=0)
         
         #Progress bar
         lab = Label(self, textvariable=parent.main_tab.progtext, anchor=W, foreground='gray')
-        lab.grid(column=0, row=8, sticky=(S,W))
+        lab.grid(column=0, row=9, sticky=(S,W))
         self.progbar = Progressbar(self, orient=HORIZONTAL, mode='indeterminate')
-        self.progbar.grid(column=0, row=9, sticky=(S,W,E))
+        self.progbar.grid(column=0, row=10, sticky=(S,W,E))
         
         #Spectrum
         spectra_view = Labelframe(self, text='Spectra view')
@@ -310,7 +355,123 @@ class Spectra(Frame):
         self.canvas = FigureCanvasTkAgg(self.figure, master=spectra_view)
         self.canvas.show()
         self.canvas.get_tk_widget().grid(column=0, row=0, sticky=(N,S,W,E))
+        self.ax = None
+        #self.axes = []
+        
+        #TO DO:
+        #add save/save img buttons
+        
+    def s_name_radio_callback(self):
+        self.visualize_settings()
+        self.s_name
+        pass
+        
+    def enable_widgets(self):
+        #print('enable')
+        tslr = self.parent.tslr
+        bar = None
+        bars = [tslr.bars[key] for key in tslr.bars if key != 'freq']
+        for bar in bars:
+            self.s_name_radio[bar.spectra_name].configure(state='normal')
+        if not bar: return
+        self.single_box.configure(state='readonly')
+        self.single_radio.configure(state='normal')
+        self.single_box['values'] = list(bar.filenames)
+        self.live_prev.configure(state='normal')
+        self.recalc_b.configure(state='normal')
+        if tslr.energies:
+            for widget in (self.average_box, self.stack_box):
+                widget.configure(state='readonly')
+            for widget in (self.average_radio, self.stack_radio):
+                widget.configure(state='normal')
+        #print(bar.type, bar.spectra_name)
+        self.s_name_radio[bar.spectra_name].invoke()
+        self.s_name.set(bar.spectra_name)
+        if not self.settings_established:
+            self.establish_settings()
+        self.visualize_settings()
+            
+    def visualize_settings(self):
+        spectra_type = 'electr' if self.s_name.get() in ('uv', 'ecd') else 'vibra'
+        #print(self.s_name.get(), spectra_type)
+        for name in 'start stop step hwhm'.split(' '):
+            entry = getattr(self, name)
+            tslr = self.parent.tslr
+            entry.var.set(tslr.parameters[spectra_type][name])
+            entry.unit.set(tslr.units[spectra_type][name])
+        self.fitting.var.set(tslr.parameters[spectra_type]['fitting'].__name__)
+        
+    def establish_settings(self):
+        #print('establish')
+        for name in 'start stop step hwhm'.split(' '):
+            entry = getattr(self, name)
+            entry.configure(state='normal')
+        self.fitting.configure(state='readonly')
+        self.settings_established = True
 
+    def live_preview_callback(self, event=None):
+        #TO DO: recalculate only when something changed
+        if self.live_prev:
+            # spc = self.parent.tslr.spectra[self.s_name.get()]
+            # spc_settings = {k: getattr(spc, k) for k
+                            # in 'start stop step hwhm fitting'.split(' ')}
+            if not self.ax or self.current_settings != self.last_used_settings:
+                self.recalculate_command()
+    
+    def show_spectra(self, x ,y):
+        if self.ax: self.figure.delaxes(self.ax)
+        self.ax = self.figure.add_subplot(111)
+        self.ax.plot(x, y)
+        self.canvas.show()
+        # for ax in self.axes:
+            # self.figure.delaxes(ax)
+        # self.axes = []
+        # for num, spc in enumerate(spectra):
+            # ax = self.figure.add_subplot(len(spectra), 1, num)
+            # self.axes.append(ax)
+            # ax.plot(spc.base)
+            
+    def average_draw(self, spectra_name, option):
+        #CURRENTLY ASUMES SAME SIZE OF DATA
+        tslr = self.parent.tslr
+        en = tslr.energies[self.average_ref[option]]
+        blade = self.parent.conf_tab.blade
+        en.trimmer.set(blade)
+        bar_name = tslr.default_spectra_bars[spectra_name]
+        bars = tslr.bars[bar_name]
+        bars.trimmer.set(blade)
+        tslr.calculate_spectra(spectra_name, **self.current_settings)
+        spc = tslr.get_averaged_spectrum(spectra_name, en)
+        self.show_spectra(*spc)
+
+    def single_draw(self, spectra_name, option):
+        tslr = self.parent.tslr
+        spc = tslr.calculate_single_spectrum(spectra_name=spectra_name,
+            conformer=option, **self.current_settings)
+        self.show_spectra(spc.base, *spc.values)
+        
+    def stack_draw(self, spectra_name, option):
+        pass
+
+    @property
+    def current_settings(self):
+        settings = {key: float(getattr(self, key).get())
+                for key in ('start stop step hwhm'.split(' '))
+                }
+        fit = self.fitting.get()
+        settings['fitting'] = getattr(tesliper, fit)
+        return settings
+        
+    @GUIFeedback("Calculating...")
+    def recalculate_command(self):
+        self.last_used_settings = self.current_settings.copy()
+        spectra_name = self.s_name.get()
+        mode = self.mode.get()
+        option = getattr(self, mode).get()
+        spectra_drawer = getattr(self, '{}_draw'.format(mode))
+        spectra_drawer(spectra_name, option)
+
+        
 class BoxVar(BooleanVar):
     
     def __init__(self, box, *args, **kwargs):
@@ -555,6 +716,10 @@ class Conformers(Frame):
     def showing(self):
         return self.show_ref[self.show_var.get()]
         
+    @property
+    def blade(self):
+        return [box.var.get() for box in self.conf_list.boxes]
+        
     def select_all(self):
         for box in self.conf_list.boxes:
             box.var.set(True)
@@ -566,9 +731,8 @@ class Conformers(Frame):
         self.update()
 
     def refresh(self):
-        blade = [box.var.get() for box in self.conf_list.boxes]
         for en in self.energies.values():
-            en.trimmer.update(blade)
+            en.trimmer.update(self.blade)
         self.update()
     
     def make_new_conf_list(self):
@@ -587,7 +751,6 @@ class Conformers(Frame):
         self.update()
         
     def filter_imag(self):
-        blade = [box.var.get() for box in self.conf_list.boxes]
         freq = self.parent.tslr.bars.freq.full
         for box, imag in zip(self.conf_list.boxes, freq.imag):
             if imag.sum(0): box.var.set(False)
@@ -599,6 +762,7 @@ class Conformers(Frame):
         self.update()
             
     def establish(self):
+        self.make_new_conf_list()
         freq = self.parent.tslr.bars.freq
         for num, (fnm, stoich, imag) in enumerate(zip(freq.filenames, freq.stoich, freq.imag)):
             self.parent.conf_tab.conf_list.insert('', 'end', text=fnm)
@@ -611,8 +775,7 @@ class Conformers(Frame):
             
     def update(self, show=None):
         show = show if show else self.showing
-        blade = [box.var.get() for box in self.conf_list.boxes]
-        for en in self.energies.values(): en.trimmer.set(blade)
+        for en in self.energies.values(): en.trimmer.set(self.blade)
         e_keys = 'ten ent gib scf zpe'.split(' ')
         formats = dict(
             values = lambda v: '{:.4f}'.format(v),
@@ -620,9 +783,11 @@ class Conformers(Frame):
             populations = lambda v: '{:.2f}'.format(v * 100)
             )
         scope = 'full' if show == 'values' else 'trimmed'
-        en_get_attr = lambda e, scope, show: reduce(lambda obj, attr: getattr(obj, attr), (e, scope, show), self.energies)
+        en_get_attr = lambda e, scope, show: reduce(
+            lambda obj, attr: getattr(obj, attr), (e, scope, show), self.energies
+            )
         trimmed = zip(*[en_get_attr(e, scope, show) for e in e_keys])
-        what_to_show = blade if show != 'values' else [True for _ in blade]
+        what_to_show = self.blade if show != 'values' else (True for _ in self.blade)
         for index, kept in enumerate(what_to_show):
             values = ['--' for _ in range(5)] if not kept else map(formats[show], next(trimmed))
             for energy, value in zip(e_keys, values):
