@@ -9,7 +9,6 @@ from itertools import chain, cycle
 from tkinter import Tk
 from tkinter.filedialog import askdirectory, askopenfilename
 import matplotlib.pyplot as plt
-import win32gui
 import descriptors as dscr
 
 
@@ -291,14 +290,6 @@ class Soxhlet:
     -----
     ? After Unifying Extractor class, do same with this class. ?
     """
-    
-    @classmethod
-    def from_pointer(cls):
-        window = win32gui.GetForegroundWindow()
-        Tk().withdraw()
-        path = askdirectory()
-        win32gui.SetForegroundWindow(window)
-        return cls(path)
     
     def __init__(self, path, files=None):
         """Initialization of Soxhlet object.
