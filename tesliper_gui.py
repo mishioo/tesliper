@@ -62,7 +62,11 @@ class GUIFeedback:
             if other.parent.thread.is_alive():
                 raise RuntimeError
             else:
-                other.parent.thread = LoggingThread(other.parent, self.progbar, function, [other]+list(args), kwargs)
+                other.parent.thread = LoggingThread(other.parent,
+                                                    self.progbar,
+                                                    function,
+                                                    [other]+list(args),
+                                                    kwargs)
             other.parent.thread.start()
             #other.parent.thread.join()
         return wrapper
@@ -278,8 +282,13 @@ class Spectra(Frame):
         for no, name in enumerate('Start Stop Step HWHM'.split(' ')):
             Label(sett, text=name).grid(column=0, row=no)
             var = StringVar()
-            entry = Entry(sett, textvariable=var, width=10, state='disabled')
-            entry.bind('<FocusOut>', self.live_preview_callback)
+            entry = Entry(sett, textvariable=var, width=10, state='disabled',
+                validate='key', validatecommand=self.parent.validate_entry)
+            entry.bind('<FocusOut>',
+                lambda e, var=var: (self.parent.entry_out_validation(var),
+                                    self.live_preview_callback()
+                                    )
+                        )
             setattr(self, name.lower(), entry)
             entry.var = var
             entry.grid(column=1, row=no)
@@ -316,14 +325,14 @@ class Spectra(Frame):
         self.single.set('Choose conformer...')
         self.single_box = Combobox(self, textvariable=self.single, state='disabled')
         self.single_box.bind('<<ComboboxSelected>>', 
-            lambda event: self.live_preview_callback(event, forced=True))
+            lambda event: self.live_preview_callback(event, mode='single'))
         self.single_box.grid(column=0, row=3)
         self.single_box['values'] = ()
         self.average = StringVar()
         self.average.set('Choose energy...')
         self.average_box = Combobox(self, textvariable=self.average, state='disabled')
         self.average_box.bind('<<ComboboxSelected>>', 
-            lambda event: self.live_preview_callback(event, forced=True))
+            lambda event: self.live_preview_callback(event, mode='average'))
         self.average_box.grid(column=0, row=5)
         average_names = 'Thermal Enthalpy Gibbs SCF Zero-Point'.split(' ')
         self.average_box['values'] = average_names
@@ -406,7 +415,7 @@ class Spectra(Frame):
         bar = tslr.bars[bar_name]
         self.visualize_settings()
         if self.mode.get():
-            self.live_preview_callback(forced=True)
+            self.live_preview_callback()
         else:
             self.single_radio.invoke()
             
@@ -428,12 +437,12 @@ class Spectra(Frame):
         self.fitting.configure(state='readonly')
         self.settings_established = True
 
-    def live_preview_callback(self, event=None, forced=False):
-        if all([
-            self.live_prev, self.mode.get(),
-            any([not self.ax, forced,
-                self.current_settings != self.last_used_settings])
-            ]): self.recalculate_command()
+    def live_preview_callback(self, event=None, mode=False):
+        mode_con = self.mode.get() == mode if mode else True
+        core = any([not self.ax, mode_con,
+                   self.current_settings != self.last_used_settings])      
+        if all([core, self.live_prev.var.get(), self.mode.get()]):
+            self.recalculate_command()
     
     def new_plot(self):
         if self.ax: self.figure.delaxes(self.ax)
@@ -491,6 +500,7 @@ class Spectra(Frame):
         
     def change_colour(self, event=None):
         if not self.ax: return
+        if self.mode.get() != 'stack': return
         colour = self.stack.get()
         col = cm.get_cmap(colour)
         lines = self.ax.get_lines()
@@ -514,6 +524,8 @@ class Spectra(Frame):
         spectra_name = self.s_name.get()
         mode = self.mode.get()
         option = getattr(self, mode).get()
+        if option.startswith('Choose '): return
+        #call self.single_draw, self.average_draw or self.stack_draw respectively
         spectra_drawer = getattr(self, '{}_draw'.format(mode))
         spectra_drawer(spectra_name, option)
 
@@ -703,11 +715,20 @@ class Conformers(Frame):
         filter_frame.grid(column=1, row=1, rowspan=2)
         Label(filter_frame, text='Lower limit').grid(column=0, row=0)
         Label(filter_frame, text='Upper limit').grid(column=0, row=1)
-        self.lower_var = DoubleVar()
-        self.upper_var = DoubleVar()
-        validate_entry = (self.register(self.validate_entry), '%S', '%P')
-        Entry(filter_frame, textvariable=self.lower_var, validate='key', validatecommand=validate_entry).grid(column=1, row=0)
-        Entry(filter_frame, textvariable=self.upper_var, validate='key', validatecommand=validate_entry).grid(column=1, row=1)
+        self.lower_var = StringVar()
+        self.upper_var = StringVar()
+        entry = Entry(filter_frame, textvariable=self.lower_var, validate='key',
+                      validatecommand=self.parent.validate_entry)
+        entry.grid(column=1, row=0)
+        entry.bind('<FocusOut>',
+            lambda e, var=self.lower_var: self.parent.entry_out_validation(var)
+            )
+        entry = Entry(filter_frame, textvariable=self.upper_var, validate='key',
+              validatecommand=self.parent.validate_entry)
+        entry.grid(column=1, row=1)
+        entry.bind('<FocusOut>',
+            lambda e, var=self.upper_var: self.parent.entry_out_validation(var)
+            )
         self.en_filter_var = StringVar()
         filter_values = 'Thermal Enthalpy Gibbs SCF Zero-Point'.split(' ')
         filter_id = 'ten ent gib scf zpe'.split(' ')
@@ -732,8 +753,8 @@ class Conformers(Frame):
         self.upper_var.set(upper)
     
     def filter_energy(self):
-        lower = self.lower_var.get()
-        upper = self.upper_var.get()
+        lower = float(self.lower_var.get())
+        upper = float(self.upper_var.get())
         energy = self.filter_ref[self.en_filter_var.get()]
         values = iter(getattr(self.energies[energy], self.showing))
         factor = 100 if self.showing == 'populations' else 1
@@ -744,16 +765,6 @@ class Conformers(Frame):
                     box.var.set(False)
         self.update()
         
-    def validate_entry(self, inserted, text_if_allowed):
-        if any(i not in '0123456789.+-' for i in inserted):
-            return False
-        else:
-            try:
-                if text_if_allowed: float(text_if_allowed)
-            except ValueError:
-                return False
-        return True
-    
     @property
     def energies(self):
         return reduce(lambda obj, attr: getattr(obj, attr, None), ('tslr', 'energies'), self.parent)
@@ -847,6 +858,8 @@ class TslrNotebook(Notebook):
         self.tslr = None
         self.thread = Thread()
         
+        self.validate_entry = (self.register(self.validate_entry), '%S', '%P')
+
         self.main_tab = Loader(self)
         self.add(self.main_tab, text='Main')
         
@@ -861,6 +874,22 @@ class TslrNotebook(Notebook):
         
         self.pack(fill=BOTH, expand=True)
         
+    def validate_entry(self, inserted, text_if_allowed):
+        if any(i not in '0123456789.+-' for i in inserted):
+            return False
+        else:
+            try:
+                if text_if_allowed == '.': return True
+                if text_if_allowed: float(text_if_allowed)
+            except ValueError:
+                return False
+        return True
+        
+    def entry_out_validation(self, var):
+        value = var.get()
+        if value.endswith('.'):
+            var.set(value + '0')
+    
         
 if __name__ == '__main__':
     
