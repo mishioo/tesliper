@@ -85,70 +85,76 @@ class Loader(Frame):
         self.grid(column=0, row=0, sticky=(N,W,S,E))
         Grid.columnconfigure(self, 3, weight=1)
         Grid.rowconfigure(self, 10, weight=1)
-        
+        buttons_frame = Frame(self)
+        buttons_frame.grid(column=0, row=0, columnspan=2, rowspan=10, sticky='nwe')
         #New session
-        self.label_new = Labelframe(self, text='New session')
-        self.label_new.grid(column=0, row=0, rowspan=3, sticky=N)
-        Button(self.label_new, text='From location', command=self.from_dir).grid(column=0, row=0)
-        Button(self.label_new, text='From files', command=self.not_impl).grid(column=0, row=1)
+        self.label_new = Labelframe(buttons_frame, text='New session')
+        self.label_new.grid(column=0, row=0, sticky=N)
+        Button(self.label_new, text='Location', command=self.from_dir).grid(column=0, row=0)
+        Button(self.label_new, text='From files', command=self.not_impl).grid(column=1, row=0)
         
-        #Smart
-        self.label_smart = Labelframe(self, text='Smart')
-        self.label_smart.grid(column=0, row=3, rowspan=4, sticky=N)
-        self.b_s_e = Button(self.label_smart, text='Extract', command=self.not_impl)
-        self.b_s_e.grid(column=0, row=0)
-        self.b_s_c = Button(self.label_smart, text='Calculate', command=self.not_impl)
-        self.b_s_c.grid(column=0, row=1)
-        self.b_s_s = Button(self.label_smart, text='Save', command=self.not_impl)
-        self.b_s_s.grid(column=0, row=2)
-
         #Extract
-        self.label_extr = Labelframe(self, text='Extract')
-        self.label_extr.grid(column=0, row=7, rowspan=3, sticky=N)
+        self.label_extr = Labelframe(buttons_frame, text='Extract')
+        self.label_extr.grid(column=0, row=1, sticky=N)
         self.b_e_e = Button(self.label_extr, text='Energies', command=self.extract_energies)
         self.b_e_e.grid(column=0, row=0)
         self.b_e_b = Button(self.label_extr, text='Bars', command=self.get_wanted_bars)
-        self.b_e_b.grid(column=0, row=1)
+        self.b_e_b.grid(column=1, row=0)
 
         #Calculate
-        self.label_calc = Labelframe(self, text='Calculate')
-        self.label_calc.grid(column=1, row=0, rowspan=4, sticky=N)
+        self.label_calc = Labelframe(buttons_frame, text='Calculate')
+        self.label_calc.grid(column=0, row=2, sticky=N)
         #self.b_c_p = Button(self.label_calc, text='Populations', command=self.calc_popul)
         #self.b_c_p.grid(column=0, row=0)
         self.b_c_s = Button(self.label_calc, text='Spectra', command=self.calc_spectra)
-        self.b_c_s.grid(column=0, row=1)
+        self.b_c_s.grid(column=0, row=0)
         self.b_c_a = Button(self.label_calc, text='Average')
-        self.b_c_a.grid(column=0, row=2)
+        self.b_c_a.grid(column=1, row=0)
+
+        #Smart
+        self.label_smart = Labelframe(buttons_frame, text='Smart')
+        self.label_smart.grid(column=0, row=3, sticky=N)
+        self.b_s_e = Button(self.label_smart, text='Extract', command=self.not_impl)
+        self.b_s_e.grid(column=0, row=0)
+        self.b_s_c = Button(self.label_smart, text='Calculate', command=self.not_impl)
+        self.b_s_c.grid(column=1, row=0)
+        self.b_s_s = Button(self.label_smart, text='Save', command=self.not_impl)
+        self.b_s_s.grid(column=1, row=1)
 
         #Load
-        self.label_load = Labelframe(self, text='Load')
-        self.label_load.grid(column=1, row=4, rowspan=5, sticky=N)
+        self.label_load = Labelframe(buttons_frame, text='Load')
+        self.label_load.grid(column=0, row=4, sticky=N)
         self.b_l_p = Button(self.label_load, text='Populations')
         self.b_l_p.grid(column=0, row=0)
         self.b_l_b = Button(self.label_load, text='Bars')
-        self.b_l_b.grid(column=0, row=1)
+        self.b_l_b.grid(column=1, row=0)
         self.b_l_s = Button(self.label_load, text='Spectra')
-        self.b_l_s.grid(column=0, row=2)
+        self.b_l_s.grid(column=0, row=1)
         self.b_l_t = Button(self.label_load, text='Settings')
-        self.b_l_t.grid(column=0, row=3)
+        self.b_l_t.grid(column=1, row=1)
+        
+        #Dir frame
+        dir_frame = Frame(self)
+        dir_frame.grid(column=2, row=0, columnspan=3, rowspan=2, sticky='nwe')
+        Grid.columnconfigure(dir_frame, 1, weight=1)
         
         #Work dir
-        Label(self, text='Work dir').grid(column=2, row=0)
+        Label(dir_frame, text='Work dir').grid(column=0, row=0)
         self.work_dir = StringVar()
         self.work_dir.set('Not specified.')
-        self.work_entry = Entry(self, textvariable=self.work_dir, state='readonly')
-        self.work_entry.grid(column=3, row=0, columnspan=2, sticky=(W,E))
-        self.b_w_d = Button(self, text="Change")
-        self.b_w_d.grid(column=4, row=0, sticky=E)
+        self.work_entry = Entry(dir_frame, textvariable=self.work_dir, state='readonly')
+        self.work_entry.grid(column=1, row=0, sticky=(W,E))
+        self.b_w_d = Button(dir_frame, text="Change")
+        self.b_w_d.grid(column=2, row=0, sticky=E)
         
         #Output dir
-        Label(self, text='Output dir').grid(column=2, row=1)
+        Label(dir_frame, text='Output dir').grid(column=0, row=1)
         self.out_dir = StringVar()
         self.out_dir.set('Not specified.')
-        self.out_entry = Entry(self, textvariable=self.out_dir, state='readonly')
-        self.out_entry.grid(column=3, row=1, columnspan=2, sticky=(W,E))
-        self.b_o_d = Button(self, text="Change")
-        self.b_o_d.grid(column=4, row=1, sticky=E)
+        self.out_entry = Entry(dir_frame, textvariable=self.out_dir, state='readonly')
+        self.out_entry.grid(column=1, row=1, sticky=(W,E))
+        self.b_o_d = Button(dir_frame, text="Change")
+        self.b_o_d.grid(column=2, row=1, sticky=E)
         
         #Log window
         self.label_log = Labelframe(self, text='Log')
@@ -171,10 +177,13 @@ class Loader(Frame):
     def not_impl(self):
         messagebox.showinfo("Sorry!", "We are sorry, but this function is not implemented yet.")
         
+    def clear_session(self):
+        pass
+        
     def from_dir(self):
         new_dir = askdirectory()
-        if not new_dir:
-            return
+        if not new_dir: return
+        self.clear_session()
         self.parent.tslr = tesliper.Tesliper(new_dir)
         self.work_dir.set(new_dir)
         self.out_dir.set(self.parent.tslr.output_dir)
@@ -184,7 +193,14 @@ class Loader(Frame):
     def from_files(self):
         pass
         
-                
+    def change_work_dir(self):
+        new_dir = askdirectory()
+        if not new_dir: return
+        
+    def change_output_dir(self):
+        new_dir = askdirectory()
+        if not new_dir: return
+        
     @GUIFeedback('Extracting...')  
     def extract_energies(self):
         self.parent.tslr.extract('energies')
@@ -206,39 +222,45 @@ class Loader(Frame):
     def calc_spectra(self):
         self.parent.tslr.calculate_spectra()
         
-    def get_wanted_bars(self):
-        popup = Toplevel(self)
-        popup.grab_set()
-        popup.title("Bars extraction")
-        Grid.rowconfigure(popup, 6, weight=1)
-        Grid.columnconfigure(popup, 2, weight=1)
-        Label(popup, text="Chose bars you wish to extract:").grid(
-            column=0, row=0, columnspan=2, sticky=W, padx=5, pady=5)
+    class BarsPopup(Toplevel):
         bar_names = "IR Inten.,E-M Angle,Dip. Str.,Rot. Str.,Osc. (velo),"\
                     "R(velocity), Osc. (length),R(length),Raman1,ROA1".split(',')
         bar_keys = "iri e-m dip rot vosc vrot losc lrot raman1 roa1".split(' ')
-        positions = [(c,r) for r in range(1,6) for c in range(2)]
-        vars = [BooleanVar() for _ in bar_keys]
-        for v, k, n, (c, r) in zip(vars, bar_keys, bar_names, positions):
-            Checkbutton(popup, text=n, variable=v).grid(column=c, row=r, sticky=W, pady=2, padx=5)
-        def ok_command():
-            vals = [v.get() for v in vars]
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.grab_set()
+            self.title("Bars extraction")
+            Grid.rowconfigure(self, 6, weight=1)
+            Grid.columnconfigure(self, 2, weight=1)
+            Label(self, text="Chose bars you wish to extract:").grid(
+                column=0, row=0, columnspan=2, sticky=W, padx=5, pady=5)
+            positions = [(c,r) for r in range(1,6) for c in range(2)]
+            self.vars = [BooleanVar() for _ in bar_keys]
+            for v, k, n, (c, r) in zip(self.vars, bar_keys, bar_names, positions):
+                Checkbutton(self, text=n, variable=v).grid(column=c, row=r, sticky=W, pady=2, padx=5)
+            buttons_frame = Frame(self)
+            buttons_frame.grid(column=0, row=6, columnspan=3, sticky=(S,E), pady=5)
+            Grid.rowconfigure(buttons_frame, 0, weight=1)
+            Grid.columnconfigure(buttons_frame, 0, weight=1)
+            b_cancel = Button(buttons_frame, text="Cancel", command=self.cancel_command)
+            b_cancel.grid(column=0, row=0, sticky=(S,E))
+            b_ok = Button(buttons_frame, text="OK", command=self.ok_command)
+            b_ok.grid(column=1, row=0, sticky=(S,E), padx=5)
+            self.geometry('220x190')
+        def ok_command(self):
+            vals = [v.get() for v in self.vars]
             query = [b for b, v in zip(bar_keys, vals) if v]
             if query:
                 self.execute_extract_bars(query)
-                popup.destroy()
+                self.destroy()
             else:
                 messagebox.showinfo("Nothing choosen!", "You must chose which bars you want to extract.")
-                popup.focus_set()
-        def cancel_command():
-            popup.destroy()
-        buttons_frame = Frame(popup)
-        buttons_frame.grid(column=0, row=6, columnspan=3, sticky=(S,E), pady=5)
-        Grid.rowconfigure(buttons_frame, 0, weight=1)
-        Grid.columnconfigure(buttons_frame, 0, weight=1)
-        Button(buttons_frame, text="Cancel", command=cancel_command).grid(column=0, row=0, sticky=(S,E))
-        Button(buttons_frame, text="OK", command=ok_command).grid(column=1, row=0, sticky=(S,E), padx=5)
-        popup.geometry('220x190')
+                self.focus_set()
+        def cancel_command(self):
+            self.destroy()
+        
+    def get_wanted_bars(self):
+        popup = self.BarsPopup(self)
         
     def tslr_dependent_change_state(self, state):
         #b_c_p removed
