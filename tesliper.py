@@ -291,7 +291,7 @@ class Soxhlet:
     ? After Unifying Extractor class, do same with this class. ?
     """
     
-    def __init__(self, path, files=None):
+    def __init__(self, path, wanted_files=None):
         """Initialization of Soxhlet object.
         
         Parameters
@@ -311,26 +311,38 @@ class Soxhlet:
         if not os.path.isdir(path):
             raise FileNotFoundError("Path not found: {}".format(path))
         self.path = path
-        self.files = files if files else os.listdir(path)
+        self.files = os.listdir(path)
+        self.wanted_files = wanted_files
         self.extractor = Extractor()
         self.command = self.get_command()
         self.spectra_type = self.get_spectra_type()
 
+    @property
+    def wanted_files(self):
+        return self._wanted_files
+        
+    @wanted_files.setter
+    def wanted_files(self, files):
+        if files:
+            wanted_files = tuple(map(
+                lambda f: '.'.join(f.split('.')[:-1]) if '.' in f else f, files
+                ))
+        else:
+            wanted_files = tuple()
+        self._wanted_files = wanted_files
+        return wanted_files
+        
     @property
     def gaussian_files(self):
         """List of (sorted by file name) gaussian output files from files
         list associated with Soxhlet instance.
         """
         try:
-            return self.__gf
-        except AttributeError:
-            try:
-                ext = self.log_or_out()
-                gf = sorted(self.filter_files(ext))
-            except ValueError:
-                gf = None
-            self.__gf = gf
-            return self.__gf
+            ext = self.log_or_out()
+            gf = sorted(self.filter_files(ext))
+        except ValueError:
+            gf = None
+        return gf
     
     @property
     def bar_files(self):
@@ -338,38 +350,35 @@ class Soxhlet:
         associated with Soxhlet instance.
         """
         try:
-            return self.__bar
-        except AttributeError:
-            try:
-                ext = '.bar'
-                bar = sorted(self.filter_files(ext))
-            except ValueError:
-                bar = None
-            self.__bar = bar
-            return self.__bar
+            ext = '.bar'
+            bar = sorted(self.filter_files(ext))
+        except ValueError:
+            bar = None
+        return bar
         
-    def filter_files(self, ext, files=None):
+    def filter_files(self, ext):
         """Filters files from file names list.
         
-        Function filters file names in provided list. It returns list of
-        file names ending with prowided ext string, representing file
-        extention and number of files in created list as tuple.
+        Function filters file names in list associated with Soxhlet object
+        instance. It returns list of file names ending with provided ext
+        string, representing file extension and starting with any of filenames
+        associated with instance as wanted_files if those were provided.
         
         Parameters
         ----------
         ext : str
-            List of strings containing keywords for extractiong.
-        files : list, optional
-            List of strings containing filenames to filter. If omitted,
-            list of filenames associated with object is used.
+            List of strings containing keywords for extraction.
                 
         Returns
         -------
         list
             List of filtered filenames as strings.
         """
-        files = files if files else self.files
-        filtered = [f for f in files if f.endswith(ext)]
+        files = self.files
+        wanted_files = self.wanted_files if self.wanted_files else ''
+        filtered = [
+            f for f in files if f.endswith(ext) and f.startswith(wanted_files)
+            ]
         return filtered
          
     def log_or_out(self, files=None):
@@ -1135,15 +1144,15 @@ class Tesliper:
                                 "type {}".format(type(value)))
                                 
     def change_dir(self, input_dir=None, output_dir=None):
-        if input_dir:
-            if not os.path.isdir(input_dir):
+        for dir in input_dir, output_dir:
+            if dir and not os.path.isdir(dir):
                 raise FileNotFoundError(
                     "Invalid path or directory not found: {}"\
-                    .format(input_dir)
+                    .format(dir)
                     )
-            else:
-                self.input_dir = input_dir
-                self.soxhlet = Soxhlet(input_dir)
+        if input_dir:
+            self.input_dir = input_dir
+            self.soxhlet = Soxhlet(input_dir)
         if output_dir:
             self.output_dir = output_dir
         elif input_dir:
