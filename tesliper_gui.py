@@ -1,8 +1,10 @@
+import os
+
 from functools import reduce
 from tkinter import *
 from tkinter.ttk import *
 from tkinter import messagebox
-from tkinter.filedialog import askdirectory, askopenfilename
+from tkinter.filedialog import askdirectory, askopenfilenames
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 from matplotlib import cm
@@ -91,7 +93,7 @@ class Loader(Frame):
         self.label_new = Labelframe(buttons_frame, text='New session')
         self.label_new.grid(column=0, row=0, sticky=N)
         Button(self.label_new, text='Location', command=self.from_dir).grid(column=0, row=0)
-        Button(self.label_new, text='From files', command=self.not_impl).grid(column=1, row=0)
+        Button(self.label_new, text='From files', command=self.from_files).grid(column=1, row=0)
         
         #Extract
         self.label_extr = Labelframe(buttons_frame, text='Extract')
@@ -108,7 +110,7 @@ class Loader(Frame):
         #self.b_c_p.grid(column=0, row=0)
         self.b_c_s = Button(self.label_calc, text='Spectra', command=self.calc_spectra)
         self.b_c_s.grid(column=0, row=0)
-        self.b_c_a = Button(self.label_calc, text='Average')
+        self.b_c_a = Button(self.label_calc, text='Average', command=self.calc_average)
         self.b_c_a.grid(column=1, row=0)
 
         #Smart
@@ -142,18 +144,22 @@ class Loader(Frame):
         Label(dir_frame, text='Work dir').grid(column=0, row=0)
         self.work_dir = StringVar()
         self.work_dir.set('Not specified.')
-        self.work_entry = Entry(dir_frame, textvariable=self.work_dir, state='readonly')
+        self.work_entry = Entry(dir_frame, textvariable=self.work_dir,
+                                state='readonly')
         self.work_entry.grid(column=1, row=0, sticky=(W,E))
-        self.b_w_d = Button(dir_frame, text="Change")
+        self.b_w_d = Button(dir_frame, text="Change",
+                            command=self.change_work_dir)
         self.b_w_d.grid(column=2, row=0, sticky=E)
         
         #Output dir
         Label(dir_frame, text='Output dir').grid(column=0, row=1)
         self.out_dir = StringVar()
         self.out_dir.set('Not specified.')
-        self.out_entry = Entry(dir_frame, textvariable=self.out_dir, state='readonly')
+        self.out_entry = Entry(dir_frame, textvariable=self.out_dir,
+                               state='readonly')
         self.out_entry.grid(column=1, row=1, sticky=(W,E))
-        self.b_o_d = Button(dir_frame, text="Change")
+        self.b_o_d = Button(dir_frame, text="Change",
+                            command=self.change_output_dir)
         self.b_o_d.grid(column=2, row=1, sticky=E)
         
         #Log window
@@ -191,15 +197,34 @@ class Loader(Frame):
         self.parent.conf_tab.make_new_conf_list()
         
     def from_files(self):
-        pass
+        files = askopenfilenames(
+            filetypes = [("log files","*.log"), ("out files","*.out")],
+            defaultextension='.log'
+            )
+        if not files: return
+        new_dir = os.path.split(files[0])[0]
+        filenames = map(lambda p: os.path.split(p)[1], files)
+        self.clear_session()
+        self.parent.tslr = tesliper.Tesliper(new_dir)
+        #global tslr
+        #tslr = self.parent.tslr
+        self.parent.tslr.soxhlet.wanted_files = filenames
+        self.work_dir.set(new_dir)
+        self.out_dir.set(self.parent.tslr.output_dir)
+        self.tslr_dependent_change_state('normal')
+        self.parent.conf_tab.make_new_conf_list()
         
     def change_work_dir(self):
         new_dir = askdirectory()
         if not new_dir: return
+        self.parent.tslr.change_dir(input_dir=new_dir)
+        self.work_dir.set(new_dir)
         
     def change_output_dir(self):
         new_dir = askdirectory()
         if not new_dir: return
+        self.parent.tslr.change_dir(output_dir=new_dir)
+        self.out_dir.set(new_dir)
         
     @GUIFeedback('Extracting...')  
     def extract_energies(self):
@@ -222,12 +247,19 @@ class Loader(Frame):
     def calc_spectra(self):
         self.parent.tslr.calculate_spectra()
         
+    @GUIFeedback('Calculating averages...')
+    def calc_average(self):
+        pass
+        
     class BarsPopup(Toplevel):
+    
         bar_names = "IR Inten.,E-M Angle,Dip. Str.,Rot. Str.,Osc. (velo),"\
                     "R(velocity), Osc. (length),R(length),Raman1,ROA1".split(',')
         bar_keys = "iri e-m dip rot vosc vrot losc lrot raman1 roa1".split(' ')
-        def __init__(self, *args, **kwargs):
-            super().__init__(*args, **kwargs)
+        
+        def __init__(self, master, *args, **kwargs):
+            super().__init__(master, *args, **kwargs)
+            self.master = master
             self.grab_set()
             self.title("Bars extraction")
             Grid.rowconfigure(self, 6, weight=1)
@@ -235,8 +267,8 @@ class Loader(Frame):
             Label(self, text="Chose bars you wish to extract:").grid(
                 column=0, row=0, columnspan=2, sticky=W, padx=5, pady=5)
             positions = [(c,r) for r in range(1,6) for c in range(2)]
-            self.vars = [BooleanVar() for _ in bar_keys]
-            for v, k, n, (c, r) in zip(self.vars, bar_keys, bar_names, positions):
+            self.vars = [BooleanVar() for _ in self.bar_keys]
+            for v, k, n, (c, r) in zip(self.vars, self.bar_keys, self.bar_names, positions):
                 Checkbutton(self, text=n, variable=v).grid(column=c, row=r, sticky=W, pady=2, padx=5)
             buttons_frame = Frame(self)
             buttons_frame.grid(column=0, row=6, columnspan=3, sticky=(S,E), pady=5)
@@ -247,15 +279,17 @@ class Loader(Frame):
             b_ok = Button(buttons_frame, text="OK", command=self.ok_command)
             b_ok.grid(column=1, row=0, sticky=(S,E), padx=5)
             self.geometry('220x190')
+            
         def ok_command(self):
             vals = [v.get() for v in self.vars]
-            query = [b for b, v in zip(bar_keys, vals) if v]
+            query = [b for b, v in zip(self.bar_keys, vals) if v]
             if query:
-                self.execute_extract_bars(query)
                 self.destroy()
+                self.master.execute_extract_bars(query)
             else:
                 messagebox.showinfo("Nothing choosen!", "You must chose which bars you want to extract.")
                 self.focus_set()
+                
         def cancel_command(self):
             self.destroy()
         
@@ -859,7 +893,7 @@ class Conformers(Frame):
         formats = dict(
             values = lambda v: '{:.4f}'.format(v),
             deltas = lambda v: '{:.4f}'.format(v),
-            populations = lambda v: '{:.2f}'.format(v * 100)
+            populations = lambda v: '{:.4f}'.format(v * 100)
             )
         scope = 'full' if show == 'values' else 'trimmed'
         en_get_attr = lambda e, scope, show: reduce(
@@ -918,5 +952,6 @@ if __name__ == '__main__':
     root = Tk()
     root.title("Tesliper")
     n = TslrNotebook(root)
+    tslr = n.tslr
 
     root.mainloop()
