@@ -111,12 +111,18 @@ def from_dict(data):
                                    stoich = stoich, values = value,
                                    corrections = corr
                                    )
-        elif key in 'freq dip rot iri vosc vrot losc lrot raman1 roa1 e-m '\
-                    'energy'.split(' '):
+        elif key in 'freq dip rot iri raman1 roa1 e-m'.split(' '):
             output[key] = Bars(type = key, filenames = filenames,
                                stoich = stoich,
                                frequencies = data['freq'],
                                values = value
+                               )
+        elif key in 'vosc vrot losc lrot'.split(' '):
+            output[key] = Bars(type = key, filenames = filenames,
+                               stoich = stoich,
+                               frequencies = data['freq'],
+                               values = value,
+                               excitation_energies = data['ex_en']
                                )
         elif key in 'uv ir ecd vcd roa raman'.split(' '):
             output[key] = Spectra(type = key,
@@ -195,7 +201,7 @@ class Extractor(Mapping):
 
         r = {}
         d = {'freq': ('nm',''),
-             'energy': ('eV', ''),
+             'ex_en': ('eV', ''),
              'vosc': ('velocity dipole.*:\n', '\n'),
              'vrot': (r'R\(velocity\)', r'\s*\d+\.?\d*\n'),
              'losc': ('electric dipole.*:\n', '\n'),
@@ -488,7 +494,7 @@ class Soxhlet:
         request.add('stoich')
         request.add('freq')
         if spectra_type == 'electr':
-            request.add('energy')
+            request.add('ex_en')
         extracted['filenames'] = self.gaussian_files
         for num, file in enumerate(self.gaussian_files):
             with open(os.path.join(self.path, file)) as handle:
@@ -619,7 +625,7 @@ class Soxhlet:
                 'freq=': 'freq',
                 'freq=vcd': 'dip rot iri e-m',
                 'freq=roa': 'iri raman1 roa1',
-                'td=': 'freq energy vosc vrot lrot losc e-m'
+                'td=': 'freq ex_en vosc vrot lrot losc e-m'
                 }
         args = ' '.join(v for k, v in prsr if k in cmd).split(' ')
         return args
@@ -707,20 +713,10 @@ class Data:
     Create full_name_ref
     """
     
-    #######################
-    ###   Descriptors   ###
-    #######################
-    
+    #Descriptors:
     filenames = dscr.StrTypeArray('filenames')
     stoich = dscr.StrTypeArray('stoich')
     values = dscr.FloatTypeArray('values')
-    #Bars specific:
-    frequencies = dscr.FloatTypeArray('frequencies')
-    imag = dscr.IntTypeArray('imag')
-    #Energies specific:
-    corrections = dscr.FloatTypeArray('corrections')
-    #populations = dscr.FloatTypeArray('populations')
-    #deltas = dscr.FloatTypeArray('deltas')
 
     full_name_ref = dict(
         rot = 'vcd',
@@ -788,6 +784,9 @@ class Energies(Data):
         Temperature of calculated state in K.
     """
     
+    #Descriptors:
+    corrections = dscr.FloatTypeArray('corrections')
+
     Boltzmann = 0.0019872041 #kcal/(mol*K)
     
     def __init__(self, type, filenames, stoich, values, corrections=None,
@@ -858,6 +857,11 @@ class Energies(Data):
         
 class Bars(Data):
     
+    #Bars specific:
+    frequencies = dscr.FloatTypeArray('frequencies')
+    imag = dscr.IntTypeArray('imag')
+    excitation_energies = dscr.FloatTypeArray('excitation_energies')
+
     spectra_name_ref = dict(
         rot = 'vcd',
         dip = 'ir',
@@ -880,7 +884,7 @@ class Bars(Data):
         )
     
     def __init__(self, type, stoich, filenames, frequencies, values=None,
-                 imag=None, t=None, laser=None):
+                 imag=None, t=None, laser=None, excitation_energies=None):
         self.type = type
         super().__init__(filenames, stoich, values)
         self.frequencies = frequencies
@@ -893,7 +897,9 @@ class Bars(Data):
         self.t = 298.15 if t is None else t #temperature in K
         if self.spectra_name in ('raman', 'roa'): #valid only for raman & roa
             self.laser = laser if laser is not None else 532 #in nm
-    
+        if self.spectra_name in ('uv', 'ecd'): #valid only for uv & ecd
+            self.excitation_energies = excitation_energies
+            
     @property
     def spectra_name(self):
         if self.type in self.spectra_name_ref:
