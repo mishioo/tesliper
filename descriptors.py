@@ -1,4 +1,5 @@
 import numpy as np
+from math import pi, sqrt
 
         
 class BaseDescr:
@@ -54,3 +55,39 @@ class BladeDescr:
 
     def __set__(self, obj, value):
         obj._blade = np.array(value, dtype=bool)
+        
+class IntensityArray:
+
+    def __init__(self):
+        self.name = 'intensities'
+    
+    def __get__(self, obj, objtype):
+        if obj is None:
+            # instance attribute accessed on class, return self
+            return self
+        else:
+            get_inten = self.intensity_ref[obj.spectra_name]
+            intensities = obj.values * get_inten(obj)
+            print(obj.values.min(), obj.values.max())
+            return intensities
+            if not obj.trimming:
+                return intensities
+            else:
+                return intensities[obj.trimmer.blade]
+
+    @property
+    def intensity_ref(self):
+        def raman(obj):
+            f = 9.695104081272649e-08
+            e = 1 - np.exp(-14387.751601679205 * obj.frequencies / obj.t)
+            return f * (obj.laser - obj.frequencies) ** 4 / (obj.frequencies * e)
+        r = dict(
+            raman = raman,
+            roa = raman,
+            vcd = lambda obj: obj.frequencies / 2.296e-5,
+            ir = lambda obj: obj.frequencies / 91.48,
+            ecd = lambda obj: obj.frequencies * sqrt(pi) / 2.296e-39,
+            uv = lambda obj: obj.frequencies * sqrt(pi) / 2.87e4
+            )
+        return r
+
