@@ -441,7 +441,6 @@ class Spectra(Frame):
         #add save/save img buttons
         
     def enable_widgets(self):
-        #print('enable')
         tslr = self.parent.tslr
         bar = None
         bars = [tslr.bars[key] for key in tslr.bars if key != 'freq']
@@ -458,7 +457,6 @@ class Spectra(Frame):
                 widget.configure(state='readonly')
             for widget in (self.average_radio, self.stack_radio):
                 widget.configure(state='normal')
-        #print(bar.type, bar.spectra_name)
         self.s_name_radio[bar.spectra_name].invoke()
         #self.s_name.set(bar.spectra_name)
         if not self.settings_established:
@@ -477,7 +475,6 @@ class Spectra(Frame):
             
     def visualize_settings(self):
         spectra_type = 'electr' if self.s_name.get() in ('uv', 'ecd') else 'vibra'
-        #print(self.s_name.get(), spectra_type)
         for name in 'start stop step hwhm'.split(' '):
             entry = getattr(self, name)
             tslr = self.parent.tslr
@@ -486,7 +483,6 @@ class Spectra(Frame):
         self.fitting.var.set(tslr.parameters[spectra_type]['fitting'].__name__)
         
     def establish_settings(self):
-        #print('establish')
         for name in 'start stop step hwhm'.split(' '):
             entry = getattr(self, name)
             entry.configure(state='normal')
@@ -538,7 +534,6 @@ class Spectra(Frame):
         tslr = self.parent.tslr
         spc = tslr.calculate_single_spectrum(spectra_name=spectra_name,
             conformer=option, **self.current_settings)
-        print(spc.values)
         self.show_spectra(spc.base, spc.values[0])
         
     def stack_draw(self, spectra_name, option):
