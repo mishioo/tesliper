@@ -888,7 +888,7 @@ class Bars(Data):
         self.type = type
         super().__init__(filenames, stoich, values)
         self.frequencies = frequencies
-        if self.values is not None:
+        if self.values is None:
             self.values = self.frequencies
         if imag:
             self.imag = imag
