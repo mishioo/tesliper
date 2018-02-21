@@ -445,8 +445,10 @@ class Spectra(Frame):
         tslr = self.parent.tslr
         bar = None
         bars = [tslr.bars[key] for key in tslr.bars if key != 'freq']
+        print(bars)
         for bar in bars:
-            self.s_name_radio[bar.spectra_name].configure(state='normal')
+            print(bar.type, bar.spectra_name)
+            #self.s_name_radio[bar.spectra_name].configure(state='normal')
         if not bar: return
         self.single_box.configure(state='readonly')
         self.single_radio.configure(state='normal')
@@ -575,6 +577,7 @@ class Spectra(Frame):
         self.last_used_settings = self.current_settings.copy()
         spectra_name = self.s_name.get()
         mode = self.mode.get()
+        #get value of self.single, self.average or self.stack respectively
         option = getattr(self, mode).get()
         if option.startswith('Choose '): return
         #call self.single_draw, self.average_draw or self.stack_draw respectively
