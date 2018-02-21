@@ -297,7 +297,8 @@ class Loader(Frame):
         popup = self.BarsPopup(self)
         
     def tslr_dependent_change_state(self, state):
-        #b_c_p removed
+        #TO DO: unify methods changing widgets' state
+        #TO DO: change widgets' state on each user action
         tslr_dep = [getattr(self, 'b_{}'.format(name)) for name in \
                     's_e s_c s_s e_e e_b c_s c_a l_p l_b l_s l_t w_d o_d'\
                     .split(' ')]
@@ -449,7 +450,6 @@ class Spectra(Frame):
         if not bar: return
         self.single_box.configure(state='readonly')
         self.single_radio.configure(state='normal')
-        self.single_box['values'] = list(bar.filenames)
         self.live_prev.configure(state='normal')
         self.recalc_b.configure(state='normal')
         if tslr.energies:
@@ -468,6 +468,7 @@ class Spectra(Frame):
         bar_name = tslr.default_spectra_bars[value]
         bar = tslr.bars[bar_name]
         self.visualize_settings()
+        self.single_box['values'] = list(bar.filenames)
         if self.mode.get():
             self.live_preview_callback()
         else:

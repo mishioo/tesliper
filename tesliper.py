@@ -103,6 +103,8 @@ def from_dict(data):
     output = {}
     filenames = data.pop('filenames')
     stoich = data.pop('stoich')
+    if 'ex_en' in data:
+        ex_en = data.pop('ex_en')
     for key, value in data.items():
         if key in 'zpe ten ent gib scf'.split(' '):
             corr = None if not '{}c'.format(key) in data else \
@@ -122,7 +124,7 @@ def from_dict(data):
                                stoich = stoich,
                                frequencies = data['freq'],
                                values = value,
-                               excitation_energies = data['ex_en']
+                               excitation_energies = ex_en
                                )
         elif key in 'uv ir ecd vcd roa raman'.split(' '):
             output[key] = Spectra(type = key,
