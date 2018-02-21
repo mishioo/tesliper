@@ -858,6 +858,11 @@ class Energies(Data):
         
         
 class Bars(Data):
+
+    #Descriptors:
+    frequencies = dscr.FloatTypeArray('frequencies')
+    imag = dscr.IntTypeArray('imag')
+    intensities = dscr.IntensityArray()
     
     #Bars specific:
     frequencies = dscr.FloatTypeArray('frequencies')
@@ -912,29 +917,6 @@ class Bars(Data):
         if self.type in self.spectra_name_ref:
             return self.spectra_type_ref[self.spectra_name]
         
-    @property
-    def _intensity_ref(self):
-        def raman(v):
-            f = 9.695104081272649e-08
-            e = 1 - np.exp(-14387.751601679205 * v / self.t)
-            return f * (self.laser - v) ** 4 / (v * e)
-        r = dict(
-            vcd = lambda v: v * 4.3535e-50,
-            ir = lambda v: v * 1.0884e-42,
-            raman = raman,
-            roa = raman,
-            ecd = lambda v: v * 4.3535e-46,
-            uv = lambda v: v ** 2 * 23.1504
-            )
-        return r
-            
-    @property
-    def intensities(self):
-        #TO DO: fit to use of trimming
-        inten = self._intensity_ref[self.spectra_name]
-        self._inten = self.values * inten(self.frequencies)
-        return self._inten
-
     def find_imag(self):
         """Finds all freqs with imaginary values and creates 'imag' entry with
         list of indicants of imaginery values presence.
@@ -950,8 +932,7 @@ class Bars(Data):
         pairs = np.array([self.filenames, imag]).T
         return {k: v for k, v in pairs[indices]}
         
-    def calculate_spectra(self, start, stop, step, hwhm, fitting,
-                          conformers=None):
+    def calculate_spectra(self, start, stop, step, hwhm, fitting):
         """Calculates spectrum of desired type for each individual conformer.
         
         Parameters
@@ -970,8 +951,6 @@ class Bars(Data):
         fitting : function
             Function, which takes bars, freqs, base, hwhm as parameters and
             returns numpy.array of calculated, non-corrected spectrum points.
-        conformers : ndarray or list, optional
-            List used for indexing.
             
         Returns
         -------
@@ -990,9 +969,7 @@ class Bars(Data):
             width = hwhm
             w_nums = base
             freqs = self.frequencies
-        freqs = freqs[conformers] if conformers else freqs
-        inten = self.intensities[conformers] \
-            if conformers else self.intensities
+        inten =  self.intensities
         spectra = np.zeros([len(freqs), base.shape[0]])
         for bar, freq, spr in zip(inten, freqs, spectra):
             spr[...] = fitting(bar, freq, w_nums, width)
