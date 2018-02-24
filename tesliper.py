@@ -13,7 +13,7 @@ import descriptors as dscr
 
 
 __author__ = "Michał Więcław"
-__version__ = "0.5.0"
+__version__ = "0.5.1"
 
 
 def gaussian(bar, freq, base, hwhm):
@@ -861,13 +861,9 @@ class Bars(Data):
 
     #Descriptors:
     frequencies = dscr.FloatTypeArray('frequencies')
+    excitation_energies = dscr.FloatTypeArray('excitation_energies')
     imag = dscr.IntTypeArray('imag')
     intensities = dscr.IntensityArray()
-    
-    #Bars specific:
-    frequencies = dscr.FloatTypeArray('frequencies')
-    imag = dscr.IntTypeArray('imag')
-    excitation_energies = dscr.FloatTypeArray('excitation_energies')
 
     spectra_name_ref = dict(
         rot = 'vcd',
@@ -961,7 +957,7 @@ class Bars(Data):
         """
         base = np.arange(start, stop+step, step)
             #spectrum base, 1d numpy.array of wavelengths/wave numbers
-        if self.type in ('losc', 'rosc', 'lrot', 'vrot'):
+        if self.type in ('losc', 'vosc', 'lrot', 'vrot'):
             width = hwhm / 1.23984e-4 #from eV to cm-1
             w_nums = 1e7 / base #from nm to cm-1
             freqs = 1e7 / self.frequencies #from nm to cm-1
@@ -979,6 +975,7 @@ class Bars(Data):
         
         
 class Spectra(Data):
+    #TO DO: make Spectra not inherit Data to prevent unintended trimming
     
     def __init__(self, type, filenames, base, values, hwhm, fitting):
         self.type = type
@@ -1055,6 +1052,11 @@ class DataHolder(MutableMapping):
             return self[name]
         else:
             return object.__getattribute__(self, name)
+    
+    @property
+    def spectral(self):
+        return {k: v for k, v in self.items() if k in \
+                'dip rot vosc vrot losc lrot raman1 roa1'.split(' ')}
 
             
 class Tesliper:
@@ -1129,6 +1131,14 @@ class Tesliper:
                                 "type {}".format(type(value)))
                                 
     def change_dir(self, input_dir=None, output_dir=None):
+        if not input_dir and not output_dir:
+            raise TypeError("Tesliper.change_dir() requires at least one "
+                            "argument: input_dir or output_dir.")
+        input_dir, output_dir = map(
+            lambda s: os.path.normpath(s) if s else None,
+            (input_dir, output_dir)
+            )
+        print(input_dir)
         for dir in input_dir, output_dir:
             if dir and not os.path.isdir(dir):
                 raise FileNotFoundError(
@@ -1140,13 +1150,13 @@ class Tesliper:
             self.soxhlet = Soxhlet(input_dir)
         if output_dir:
             self.output_dir = output_dir
-        elif input_dir:
+        elif input_dir and not hasattr(self, 'output_dir'):
             output_dir = os.path.join(input_dir, 'tesliper_output')
             os.makedirs(output_dir, exist_ok=True)
             self.output_dir = output_dir
         else:
-            raise TypeError("Tesliper.change_dir() requires at least one "
-                            "argument: input_dir or output_dir.")
+            return
+
         
     def load_files(self, path=None):
         if path:

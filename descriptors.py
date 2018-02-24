@@ -84,10 +84,10 @@ class IntensityArray:
         r = dict(
             raman = raman,
             roa = raman,
-            vcd = lambda obj: obj.frequencies / 2.296e-5,
             ir = lambda obj: obj.frequencies / 91.48,
-            ecd = lambda obj: obj.frequencies * sqrt(pi) / 2.296e-39,
-            uv = lambda obj: obj.frequencies * sqrt(pi) / 2.87e4
+            vcd = lambda obj: obj.frequencies / 2.296e5,
+            uv = lambda obj: obj.frequencies * 2.87e4,
+            ecd = lambda obj: obj.frequencies / 22.96
             )
         return r
 
