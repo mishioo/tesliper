@@ -1,6 +1,6 @@
 import os
 
-from functools import reduce
+from functools import reduce, partial
 from tkinter import *
 from tkinter.ttk import *
 from tkinter import messagebox
@@ -29,18 +29,90 @@ class ReadOnlyText(Text):
         super().delete(*args, **kwargs)
         self.configure(state='disabled')
 
-class LoggingThread(Thread):
-    def __init__(self, gui, progbar, target, args, kwargs):
+        
+class WgtStateChanger:
+
+    """
+    TO DO
+    -----
+    Consider excluding recalculate_command from state changers (currently 
+    it is state changer through GUIFeedback and FeedbackThread).
+    """
+
+    tslr = []
+    energies = []
+    bars = []
+    either = []
+    both = []
+    
+    def __init__(self, function):
+        self.function = function
+    
+    def __call__(self, other, *args, **kwargs):
+        outcome = self.function(other, *args, **kwargs)
+        try:
+            self.gui = other.parent
+        except AttributeError:
+            self.gui = other.gui
+        self.tslr_inst = self.gui.tslr
+        for dependency, changer in self.changers.items():
+            for widget in getattr(self, dependency):
+                changer(widget)
+        self.change_spectra_radio()
+        return outcome
+        
+    def __get__(self, obj, objtype):
+        if obj is None:
+            # instance attribute accessed on class, return self
+            return self
+        else:
+            return partial(self.__call__, obj)
+        
+    @property
+    def changers(self):
+        bars = None if not self.tslr_inst else self.tslr_inst.bars.spectral
+        energies = None if not self.tslr_inst else self.tslr_inst.energies
+        return dict(
+            tslr = self.enable if self.tslr_inst else self.disable,
+            energies = self.enable if energies else self.disable,
+            bars = self.enable if bars else self.disable,
+            either = self.enable if (bars or energies) else self.disable,
+            both = self.enable if (bars and energies) else self.disable
+            )
+        
+    def enable(self, widget):
+        if isinstance(widget, Combobox):
+            widget.configure(state='readonly')
+        else:
+            widget.configure(state='normal')
+            
+    def disable(self, widget):
+        widget.configure(state='disabled')
+        
+    def change_spectra_radio(self):
+        if self.tslr_inst:
+            bars = self.tslr_inst.bars.spectral.values()
+            spectra_avaiable = [bar.spectra_name for bar in bars]
+        radio = self.gui.spectra_tab.s_name_radio
+        for option, widget in radio.items():
+            state = 'disabled' if not self.tslr_inst or not \
+                    option in spectra_avaiable else 'normal'
+            widget.configure(state=state)
+            
+
+class FeedbackThread(Thread):
+    def __init__(self, gui, progbar_msg, target, args, kwargs):
         self.target = target
         self.args = args
         self.kwargs = kwargs
-        self.progbar = progbar
+        self.progbar_msg = progbar_msg
         self.gui = gui
         super().__init__()
 
+    @WgtStateChanger
     def run(self):
         self.exc = None
-        self.gui.main_tab.progtext.set(self.progbar)
+        self.gui.main_tab.progtext.set(self.progbar_msg)
         self.gui.main_tab.progbar.start()
         self.gui.spectra_tab.progbar.start()
         try:
@@ -54,26 +126,26 @@ class LoggingThread(Thread):
             raise self.exc
         return return_value
 
+        
 class GUIFeedback:
             
-    def __init__(self, progbar):
-        self.progbar = progbar
+    def __init__(self, progbar_msg):
+        self.progbar_msg = progbar_msg
         
     def __call__(self, function):
         def wrapper(other, *args, **kwargs):
+            #other becomes self from decorated method
             if other.parent.thread.is_alive():
                 raise RuntimeError
             else:
-                other.parent.thread = LoggingThread(other.parent,
-                                                    self.progbar,
-                                                    function,
-                                                    [other]+list(args),
-                                                    kwargs)
+                other.parent.thread = FeedbackThread(
+                    other.parent, self.progbar_msg, function,
+                    [other]+list(args), kwargs
+                    )
             other.parent.thread.start()
-            #other.parent.thread.join()
         return wrapper
-
-
+        
+        
 class Loader(Frame):
     
     def __init__(self, parent):
@@ -102,6 +174,7 @@ class Loader(Frame):
         self.b_e_e.grid(column=0, row=0)
         self.b_e_b = Button(self.label_extr, text='Bars', command=self.get_wanted_bars)
         self.b_e_b.grid(column=1, row=0)
+        WgtStateChanger.tslr.extend([self.b_e_e, self.b_e_b])
 
         #Calculate
         self.label_calc = Labelframe(buttons_frame, text='Calculate')
@@ -112,6 +185,8 @@ class Loader(Frame):
         self.b_c_s.grid(column=0, row=0)
         self.b_c_a = Button(self.label_calc, text='Average', command=self.calc_average)
         self.b_c_a.grid(column=1, row=0)
+        WgtStateChanger.bars.append(self.b_c_s)
+        WgtStateChanger.both.append(self.b_c_a)
 
         #Smart
         self.label_smart = Labelframe(buttons_frame, text='Smart')
@@ -122,6 +197,9 @@ class Loader(Frame):
         self.b_s_c.grid(column=1, row=0)
         self.b_s_s = Button(self.label_smart, text='Save', command=self.not_impl)
         self.b_s_s.grid(column=1, row=1)
+        WgtStateChanger.tslr.append(self.b_s_e)
+        WgtStateChanger.bars.append(self.b_s_c)
+        WgtStateChanger.either.append(self.b_s_s)
 
         #Load
         self.label_load = Labelframe(buttons_frame, text='Load')
@@ -134,6 +212,7 @@ class Loader(Frame):
         self.b_l_s.grid(column=0, row=1)
         self.b_l_t = Button(self.label_load, text='Settings')
         self.b_l_t.grid(column=1, row=1)
+        WgtStateChanger.tslr.extend([self.b_l_p, self.b_l_b, self.b_l_s, self.b_l_t])
         
         #Dir frame
         dir_frame = Frame(self)
@@ -161,6 +240,7 @@ class Loader(Frame):
         self.b_o_d = Button(dir_frame, text="Change",
                             command=self.change_output_dir)
         self.b_o_d.grid(column=2, row=1, sticky=E)
+        WgtStateChanger.tslr.extend([self.b_o_d, self.b_w_d])
         
         #Log window
         self.label_log = Labelframe(self, text='Log')
@@ -178,24 +258,24 @@ class Loader(Frame):
         self.progbar = Progressbar(self, orient=HORIZONTAL, mode='indeterminate')
         self.progbar.grid(column=0, row=11, columnspan=2, sticky=(S,W,E))
         
-        if not self.parent.tslr: self.tslr_dependent_change_state('disabled')
-        
     def not_impl(self):
         messagebox.showinfo("Sorry!", "We are sorry, but this function is not implemented yet.")
-        
+    
+    @WgtStateChanger
     def clear_session(self):
         pass
-        
-    def from_dir(self):
-        new_dir = askdirectory()
+
+    @WgtStateChanger        
+    def from_dir(self, new_dir=None):
+        if not new_dir: new_dir = askdirectory()
         if not new_dir: return
         self.clear_session()
         self.parent.tslr = tesliper.Tesliper(new_dir)
         self.work_dir.set(new_dir)
         self.out_dir.set(self.parent.tslr.output_dir)
-        self.tslr_dependent_change_state('normal')
         self.parent.conf_tab.make_new_conf_list()
         
+    @WgtStateChanger
     def from_files(self):
         files = askopenfilenames(
             filetypes = [("log files","*.log"), ("out files","*.out")],
@@ -206,12 +286,9 @@ class Loader(Frame):
         filenames = map(lambda p: os.path.split(p)[1], files)
         self.clear_session()
         self.parent.tslr = tesliper.Tesliper(new_dir)
-        #global tslr
-        #tslr = self.parent.tslr
         self.parent.tslr.soxhlet.wanted_files = filenames
         self.work_dir.set(new_dir)
         self.out_dir.set(self.parent.tslr.output_dir)
-        self.tslr_dependent_change_state('normal')
         self.parent.conf_tab.make_new_conf_list()
         
     def change_work_dir(self):
@@ -234,10 +311,7 @@ class Loader(Frame):
     @GUIFeedback('Extracting...')  
     def execute_extract_bars(self, query):
         self.parent.tslr.extract(*query)
-        #stype = self.parent.tslr.soxhlet.spectra_type
-        self.parent.spectra_tab.enable_widgets()
-        if not self.parent.spectra_tab.settings_established:
-            self.parent.spectra_tab.establish_settings()
+        #self.parent.conf_tab.establish()
      
     @GUIFeedback('Calculating populations...')
     def calc_popul(self):
@@ -296,18 +370,6 @@ class Loader(Frame):
     def get_wanted_bars(self):
         popup = self.BarsPopup(self)
         
-    def tslr_dependent_change_state(self, state):
-        #TO DO: unify methods changing widgets' state
-        #TO DO: change widgets' state on each user action
-        tslr_dep = [getattr(self, 'b_{}'.format(name)) for name in \
-                    's_e s_c s_s e_e e_b c_s c_a l_p l_b l_s l_t w_d o_d'\
-                    .split(' ')]
-        en_dep = []
-        bar_dep = []
-        spc_dep = []
-        for widget in tslr_dep:
-            widget.config(state=state)
-
 
 class Spectra(Frame):
 
@@ -354,6 +416,7 @@ class Spectra(Frame):
             entry.unit = unit
             label = Label(sett, textvariable=unit)
             label.grid(column=2, row=no)
+            WgtStateChanger.bars.append(entry)
         Label(sett, text='Fitting').grid(column=0, row=4)
         fit = StringVar()
         self.fitting = Combobox(sett, textvariable=fit, state='disabled', width=13)
@@ -361,6 +424,7 @@ class Spectra(Frame):
         self.fitting.var = fit
         self.fitting.grid(column=1, row=4, columnspan=2)
         self.fitting['values'] = ('lorentzian', 'gaussian')
+        WgtStateChanger.bars.append(self.fitting)
         self.settings_established = False
         
         #Calculation Mode
@@ -403,6 +467,9 @@ class Spectra(Frame):
         self.stack_box['values'] = ('Blues Reds Greens spring summer autumn '
                                     'winter copper ocean rainbow jet '
                                     'nipy_spectral gist_ncar'.split(' '))
+        WgtStateChanger.bars.extend([self.single_radio, self.single_box])
+        WgtStateChanger.both.extend([self.average_radio, self.average_box,
+                                    self.stack_radio, self.stack_box])
         
         #Live preview
         #Recalculate
@@ -418,6 +485,7 @@ class Spectra(Frame):
         self.recalc_b = Button(frame, text='Redraw', state='disabled',
                                command=self.recalculate_command)
         self.recalc_b.grid(column=1, row=0)
+        WgtStateChanger.bars.extend([self.live_prev, self.recalc_b])
         
         #Progress bar
         lab = Label(self, textvariable=parent.main_tab.progtext, anchor=W, foreground='gray')
@@ -435,35 +503,11 @@ class Spectra(Frame):
         self.canvas.show()
         self.canvas.get_tk_widget().grid(column=0, row=0, sticky=(N,S,W,E))
         self.ax = None
-        self.last_used_settings = None
+        self.last_used_settings = {}
         #self.axes = []
         
         #TO DO:
         #add save/save img buttons
-        
-    def enable_widgets(self):
-        tslr = self.parent.tslr
-        bar = None
-        bars = [tslr.bars[key] for key in tslr.bars if key != 'freq']
-        print(bars)
-        for bar in bars:
-            print(bar.type, bar.spectra_name)
-            #self.s_name_radio[bar.spectra_name].configure(state='normal')
-        if not bar: return
-        self.single_box.configure(state='readonly')
-        self.single_radio.configure(state='normal')
-        self.live_prev.configure(state='normal')
-        self.recalc_b.configure(state='normal')
-        if tslr.energies:
-            for widget in (self.average_box, self.stack_box):
-                widget.configure(state='readonly')
-            for widget in (self.average_radio, self.stack_radio):
-                widget.configure(state='normal')
-        self.s_name_radio[bar.spectra_name].invoke()
-        #self.s_name.set(bar.spectra_name)
-        if not self.settings_established:
-            self.establish_settings()
-        self.visualize_settings()
         
     def spectra_choosen(self, value):
         tslr = self.parent.tslr
@@ -477,25 +521,28 @@ class Spectra(Frame):
             self.single_radio.invoke()
             
     def visualize_settings(self):
-        spectra_type = 'electr' if self.s_name.get() in ('uv', 'ecd') else 'vibra'
+        spectra_name = self.s_name.get()
+        spectra_type = tesliper.Bars.spectra_type_ref[spectra_name]
+        tslr = self.parent.tslr
+        try:
+            settings = self.last_used_settings[spectra_name]
+        except KeyError:
+            settings = tslr.parameters[spectra_type]
         for name in 'start stop step hwhm'.split(' '):
             entry = getattr(self, name)
-            tslr = self.parent.tslr
-            entry.var.set(tslr.parameters[spectra_type][name])
+            entry.var.set(settings[name])
             entry.unit.set(tslr.units[spectra_type][name])
-        self.fitting.var.set(tslr.parameters[spectra_type]['fitting'].__name__)
-        
-    def establish_settings(self):
-        for name in 'start stop step hwhm'.split(' '):
-            entry = getattr(self, name)
-            entry.configure(state='normal')
-        self.fitting.configure(state='readonly')
-        self.settings_established = True
-
+        try:
+            self.fitting.var.set(settings['fitting'].__name__)
+        except AttributeError:
+            self.fitting.var.set(settings['fitting'])
+            
     def live_preview_callback(self, event=None, mode=False):
+        spectra_name = self.s_name.get()
         mode_con = self.mode.get() == mode if mode else True
-        core = any([not self.ax, mode_con,
-                   self.current_settings != self.last_used_settings])      
+        settings_con = spectra_name not in self.last_used_settings or \
+            self.current_settings != self.last_used_settings[spectra_name]
+        core = any([not self.ax, mode_con, settings_con])
         if all([core, self.live_prev.var.get(), self.mode.get()]):
             self.recalculate_command()
     
@@ -574,8 +621,8 @@ class Spectra(Frame):
         
     @GUIFeedback("Calculating...")
     def recalculate_command(self):
-        self.last_used_settings = self.current_settings.copy()
         spectra_name = self.s_name.get()
+        self.last_used_settings[spectra_name] = self.current_settings.copy()
         mode = self.mode.get()
         #get value of self.single, self.average or self.stack respectively
         option = getattr(self, mode).get()
@@ -752,8 +799,13 @@ class Conformers(Frame):
         self.conf_list = None
         self.make_new_conf_list()
 
-        Button(self, text='Select all', command=self.select_all).grid(column=0, row=1)
-        Button(self, text='Disselect all', command=lambda: [box.var.set(False) for box in self.conf_list.boxes]).grid(column=0, row=2)
+        b_select = Button(self, text='Select all', command=self.select_all)
+        b_select.grid(column=0, row=1)
+        b_disselect = Button(
+            self, text='Disselect all',
+            command=lambda: [box.var.set(False) for box in self.conf_list.boxes]
+            )
+        b_disselect.grid(column=0, row=2)
         #Button(self, text='Refresh', command=self.refresh).grid(column=3, row=2, sticky=(S,W))
         Label(self, text='Show:').grid(column=2, row=1, sticky='sw')
         self.show_var = StringVar()
@@ -772,16 +824,16 @@ class Conformers(Frame):
         Label(filter_frame, text='Upper limit').grid(column=0, row=1)
         self.lower_var = StringVar()
         self.upper_var = StringVar()
-        entry = Entry(filter_frame, textvariable=self.lower_var, validate='key',
-                      validatecommand=self.parent.validate_entry)
-        entry.grid(column=1, row=0)
-        entry.bind('<FocusOut>',
+        lentry = Entry(filter_frame, textvariable=self.lower_var, validate='key',
+                       validatecommand=self.parent.validate_entry)
+        lentry.grid(column=1, row=0)
+        lentry.bind('<FocusOut>',
             lambda e, var=self.lower_var: self.parent.entry_out_validation(var)
             )
-        entry = Entry(filter_frame, textvariable=self.upper_var, validate='key',
+        uentry = Entry(filter_frame, textvariable=self.upper_var, validate='key',
               validatecommand=self.parent.validate_entry)
-        entry.grid(column=1, row=1)
-        entry.bind('<FocusOut>',
+        uentry.grid(column=1, row=1)
+        uentry.bind('<FocusOut>',
             lambda e, var=self.upper_var: self.parent.entry_out_validation(var)
             )
         self.en_filter_var = StringVar()
@@ -792,10 +844,17 @@ class Conformers(Frame):
         self.filter_combo.grid(column=3, row=0)
         self.filter_combo.bind('<<ComboboxSelected>>', self.set_upper_and_lower)
 
-        Button(filter_frame, text='By energy type', command=self.filter_energy).grid(column=3, row=1)
-        Button(filter_frame, text='Non-matching\nstoichiometry', command=self.filter_stoich)\
-            .grid(column=4, row=0, rowspan=2)
-        Button(filter_frame, text='Imaginary\nfrequencies', command=self.filter_imag).grid(column=5, row=0, rowspan=2)
+        b_filter = Button(filter_frame, text='By energy type', command=self.filter_energy)
+        b_filter.grid(column=3, row=1)
+        b_stoich = Button(filter_frame, text='Non-matching\nstoichiometry', command=self.filter_stoich)
+        b_stoich.grid(column=4, row=0, rowspan=2)
+        b_imag = Button(filter_frame, text='Imaginary\nfrequencies', command=self.filter_imag)
+        b_imag.grid(column=5, row=0, rowspan=2)
+        WgtStateChanger.energies.extend(
+            [b_select, b_disselect, self.show_combo, lentry, uentry,
+            self.filter_combo, b_filter, b_stoich, b_imag]
+            )
+        
     
     def set_upper_and_lower(self, event=None):
         energy = self.filter_ref[self.en_filter_var.get()]
@@ -907,7 +966,7 @@ class Conformers(Frame):
 
                 
 class TslrNotebook(Notebook):
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.tslr = None
@@ -929,6 +988,7 @@ class TslrNotebook(Notebook):
         
         self.pack(fill=BOTH, expand=True)
         
+      
     def validate_entry(self, inserted, text_if_allowed):
         if any(i not in '0123456789.+-' for i in inserted):
             return False
@@ -952,5 +1012,6 @@ if __name__ == '__main__':
     root.title("Tesliper")
     n = TslrNotebook(root)
     tslr = n.tslr
+    n.main_tab.clear_session()
 
     root.mainloop()
