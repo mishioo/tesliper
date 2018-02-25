@@ -10,11 +10,29 @@ from tkinter import Tk
 from tkinter.filedialog import askdirectory, askopenfilename
 import matplotlib.pyplot as plt
 import descriptors as dscr
+import logging as lgg
 
 
 __author__ = "Michał Więcław"
 __version__ = "0.5.1"
 
+
+##################
+###   LOGGER   ###
+##################
+
+logger = lgg.getLogger(__name__)
+logger.setLevel(lgg.DEBUG)
+
+ch = lgg.StreamHandler()
+ch.setLevel(lgg.DEBUG)
+
+logger.addHandler(ch)
+
+
+############################
+###   MODULE FUNCTIONS   ###
+############################
 
 def gaussian(bar, freq, base, hwhm):
     """Gaussian fitting function for spectra calculation.
@@ -134,10 +152,17 @@ def from_dict(data):
         elif key in 'zpec tenc entc gibc scfc'.split(' '):
             pass
         else:
-            raise ValueError("Unknown key-word: {}".format(key))
+            err_msg = "Unknown key-word: {}".format(key)
+            #TO DO: supplement this log
+            logger.error(err_msg)
+            raise ValueError(err_msg)
     return output
 
         
+###################
+###   CLASSES   ###
+###################
+
 class Extractor(Mapping):
     """A tool for data extraction from gaussian output file.
     
@@ -483,6 +508,7 @@ class Soxhlet:
         dict
             Dictionary with extracted data.
         """
+        logger.warning('Will be extracting, bruh!')
         spectra_type = spectra_type if spectra_type else self.spectra_type 
         no = len(self.gaussian_files)
         keys = [t for t in request if t != 'energies']
@@ -1070,6 +1096,7 @@ class Tesliper:
     """
     
     def __init__(self, input_dir=None, output_dir=None):
+        logger.warning('Starting new Tesliper!')
         if input_dir or output_dir:
             self.change_dir(input_dir, output_dir)
         if input_dir:

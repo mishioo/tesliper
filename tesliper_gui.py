@@ -5,15 +5,29 @@ from tkinter import *
 from tkinter.ttk import *
 from tkinter import messagebox
 from tkinter.filedialog import askdirectory, askopenfilenames
+from tkinter.scrolledtext import ScrolledText
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 from matplotlib import cm
 from threading import Thread
 
+import logging as lgg
 import tesliper
 
 
-class ReadOnlyText(Text):
+class TextHandler(lgg.Handler):
+    
+    def __init__(self, widget, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.widget = widget
+        
+    def emit(self, record):
+        msg = self.format(record)
+        self.widget.insert('end', msg + '\n')
+        self.widget.yview('end')
+
+
+class ReadOnlyText(ScrolledText):
 
     def __init__(self, *args, **kwargs):
         kwargs.pop('state', None)
@@ -307,10 +321,12 @@ class Loader(Frame):
     def extract_energies(self):
         self.parent.tslr.extract('energies')
         self.parent.conf_tab.establish()
+        self.parent.logger.warning('Done that, nigga.')
             
     @GUIFeedback('Extracting...')  
     def execute_extract_bars(self, query):
         self.parent.tslr.extract(*query)
+        self.parent.logger.warning('Done that, nigga.')
         #self.parent.conf_tab.establish()
      
     @GUIFeedback('Calculating populations...')
@@ -987,6 +1003,12 @@ class TslrNotebook(Notebook):
         self.add(self.info_tab, text='Info')
         
         self.pack(fill=BOTH, expand=True)
+        self.main_tab.clear_session()
+        
+        self.logger = tesliper.logger
+        handler = TextHandler(self.main_tab.log)
+        self.logger.addHandler(handler)
+        self.logger.warning('Yo there!')
         
       
     def validate_entry(self, inserted, text_if_allowed):
@@ -1012,6 +1034,6 @@ if __name__ == '__main__':
     root.title("Tesliper")
     n = TslrNotebook(root)
     tslr = n.tslr
-    n.main_tab.clear_session()
+    
 
     root.mainloop()
