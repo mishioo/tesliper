@@ -18,16 +18,23 @@ __version__ = "0.5.1"
 
 
 ##################
+###   ERRORS   ###
+##################
+
+class PatternNotFound(Exception): pass
+
+
+##################
 ###   LOGGER   ###
 ##################
 
 logger = lgg.getLogger(__name__)
 logger.setLevel(lgg.DEBUG)
 
-ch = lgg.StreamHandler()
-ch.setLevel(lgg.DEBUG)
+mainhandler = lgg.StreamHandler()
+mainhandler.setLevel(lgg.DEBUG)
 
-logger.addHandler(ch)
+logger.addHandler(mainhandler)
 
 
 ############################
@@ -94,70 +101,6 @@ def lorentzian(bar, freq, base, hwhm):
         val[...] = s2
     return it.operands[1]
 
-    
-def from_dict(data):
-    """Creates dictionary of Data objects from dictionary containing
-    appropriate key-word as keys and lists of extracted data as values.
-    
-    Parameters
-    ----------
-    data: dict
-        Dictionary containing lists or numpy.ndarrays of data.
-        
-    Returns
-    -------
-    dict
-        Dictionary with Data objects created from input data.
-        
-    Raises
-    ------
-    ValueError
-        If any of input dictionary keys is not recognized.
-    
-    TO DO
-    -----
-    handling spectra
-    """
-    output = {}
-    filenames = data.pop('filenames')
-    stoich = data.pop('stoich')
-    if 'ex_en' in data:
-        ex_en = data.pop('ex_en')
-    for key, value in data.items():
-        if key in 'zpe ten ent gib scf'.split(' '):
-            corr = None if not '{}c'.format(key) in data else \
-                data['{}c'.format(key)]
-            output[key] = Energies(type = key, filenames = filenames,
-                                   stoich = stoich, values = value,
-                                   corrections = corr
-                                   )
-        elif key in 'freq dip rot iri raman1 roa1 e-m'.split(' '):
-            output[key] = Bars(type = key, filenames = filenames,
-                               stoich = stoich,
-                               frequencies = data['freq'],
-                               values = value
-                               )
-        elif key in 'vosc vrot losc lrot'.split(' '):
-            output[key] = Bars(type = key, filenames = filenames,
-                               stoich = stoich,
-                               frequencies = data['freq'],
-                               values = value,
-                               excitation_energies = ex_en
-                               )
-        elif key in 'uv ir ecd vcd roa raman'.split(' '):
-            output[key] = Spectra(type = key,
-                                  filenames = filenames, stoich = stoich,
-                                  base = base, values = value, hwhm = hwhm,
-                                  fitting = fitting)
-        elif key in 'zpec tenc entc gibc scfc'.split(' '):
-            pass
-        else:
-            err_msg = "Unknown key-word: {}".format(key)
-            #TO DO: supplement this log
-            logger.error(err_msg)
-            raise ValueError(err_msg)
-    return output
-
         
 ###################
 ###   CLASSES   ###
@@ -197,26 +140,26 @@ class Extractor(Mapping):
     """
     
     def __init__(self):
-        self.regexs = self.get_regexs()
-        self._storage = {'command': self.get_command,
-                         'stoich': self.get_stoich,
-                         'energies': self.get_energies,
-                         'vibra': self.get_vibra_dict(),
-                         'electr': self.get_electr_dict(),
-                         'popul': self.get_popul,
-                         'settings': self.get_settings
+        self.regexs = self._get_regexs()
+        self._storage = {'command': self._get_command,
+                         'stoich': self._get_stoich,
+                         'energies': self._get_energies,
+                         'popul': self._get_popul,
+                         'settings': self._get_settings
                         }
+        self._storage.update(self._get_vibra_dict())
+        self._storage.update(self._get_electr_dict())
 
     def __getitem__(self, key):
         return self._storage[key]
     
     def __iter__(self):
-        for item in self._storage: yield item
+        return iter(self._storage)
     
     def __len__(self):
         return len(self._storage)
     
-    def get_regexs(self):
+    def _get_regexs(self):
     
         def electr_dict(pat1, pat2):
             if not pat2:
@@ -227,13 +170,13 @@ class Extractor(Mapping):
                 return temp, re.compile(r'(-?\d+\.?\d*){}'.format(pat2))
 
         r = {}
-        d = {'freq': ('nm',''),
+        d = {'efreq': ('nm',''),
              'ex_en': ('eV', ''),
              'vosc': ('velocity dipole.*:\n', '\n'),
              'vrot': (r'R\(velocity\)', r'\s*\d+\.?\d*\n'),
              'losc': ('electric dipole.*:\n', '\n'),
              'lrot': (r'R\(length\)', '\n'),
-             'e-m': (r'E-M Angle', '\n')}
+             'eemang': (r'E-M Angle', '\n')}
         r['electr'] = {k:electr_dict(*v) for k,v in d.items()}
         r['command'] = re.compile(r'\#(.*?)\n\s-', flags=re.DOTALL)
         r['stoich'] = re.compile(r'Stoichiometry\s*(\w*)\n')
@@ -247,7 +190,7 @@ class Extractor(Mapping):
             r' Sum of electronic and thermal Free Energies=\s*(-?\d+\.?\d*)')
         r['ens'] = re.compile(ens_patt)
         r['scf'] = re.compile(r'SCF Done.*=\s+(-?\d+\.?\d*)')
-        keys = 'freq dip rot iri e-m raman1 roa1'.split(' ')
+        keys = 'vfreq dip rot iri vemang raman1 roa1'.split(' ')
         pats = 'Frequencies', 'Dip. str.', 'Rot. str.', 'IR Inten',\
                'E-M angle', 'Raman1\s*Fr=\s*\d', 'ROA1\s*Fr=\s*\d'
         r['vibra'] = {key: re.compile(r'{}\s*--\s+(.*)\n'.format(patt))
@@ -256,41 +199,52 @@ class Extractor(Mapping):
         r['settings'] = re.compile(r'(-?\d+.?d\*|lorentzian|gaussian)')
         return r
     
-    def get_command(self, text):
-        return self.regexs['command'].search(text).group(1)
-    
-    def get_stoich(self, text):
+    def _get_command(self, text):
+        try:
+            return self.regexs['command'].search(text).group(1)
+        except AttributeError:
+            raise PatternNotFound("Could not extract command.")
+            
+    def _get_stoich(self, text):
         return self.regexs['stoich'].search(text).group(1)
     
-    def get_energies(self, text):
+    def _get_energies(self, text):
         ens = self.regexs['ens'].search(text).groups()
         scf = self.regexs['scf'].findall(text)[-1]
         return (*ens, scf)
         
-    def get_vibra_dict(self):
+    def _get_vibra_dict(self):
         def wrapper(patt):
             def inner(text):
                 match = patt.findall(text)
-                return [s for g in match for s in g.split(' ') if s]
+                to_return = [s for g in match for s in g.split(' ') if s]
+                if not to_return: raise PatternNotFound
+                return to_return
             return inner
         return {key:wrapper(patt)
                 for key, patt in self.regexs['vibra'].items()}
         
-    def get_electr_dict(self):
+    def _get_electr_dict(self):
         def wrapper(pat1, pat2=None):
             def inner(text):
                 if not pat2:
-                    return pat1.findall(text)
+                    match = pat1.findall(text)
+                    if not match: raise PatternNotFound
+                    return match
                 else:
-                    temp = pat1.search(text).group(1)
+                    try:
+                        temp = pat1.search(text).group(1)
+                    except AttributeError:
+                        raise PatternNotFound
                     return pat2.findall(temp)
             return inner
         return {k:wrapper(*v) for k,v in self.regexs['electr'].items()}
         
-    def get_popul(self, text):
+    def _get_popul(self, text):
         return self.regexs['popul'].findall(text)
         
-    def get_settings(self, text):
+    def _get_settings(self, text):
+        #TO DO: make it discriminate by keyword, not position
         sett = self.regexs['settings'].findall(text.lower()).groups()
         sett = {k: v for k, v in zip(('hwhm start stop step fitting'\
                                       .split(' '), sett))}
@@ -347,8 +301,8 @@ class Soxhlet:
         self.files = os.listdir(path)
         self.wanted_files = wanted_files
         self.extractor = Extractor()
-        self.command = self.get_command()
-        self.spectra_type = self.get_spectra_type()
+        self.command = self._get_command()
+        self.spectra_type = self._get_spectra_type()
 
     @property
     def wanted_files(self):
@@ -451,7 +405,7 @@ class Soxhlet:
         else:
             return '.log' if logs else '.out'        
         
-    def get_command(self):
+    def _get_command(self):
         """Parses first gaussian output file associated with Soxhlet instance
         and extracts gaussian command used to initialized calculations.
         
@@ -464,10 +418,16 @@ class Soxhlet:
             return None
         with open(os.path.join(self.path, self.gaussian_files[0])) as f:
             cont = f.read()
-        command = self.extractor['command'](cont).lower()
+        try:
+            command = self.extractor['command'](cont).lower()
+        except PatternNotFound:
+            logger.critical("Gaussian command line could not be found in " \
+                            "file {}. Please check if file is not corrupted." \
+                            .format(self.gaussian_files[0]), exc_info=True)
+            raise
         return command
  
-    def get_spectra_type(self):
+    def _get_spectra_type(self):
         """Parses gaussian command to determine spectra type.
         
         Returns
@@ -487,57 +447,117 @@ class Soxhlet:
             return 'electr'
         else:
             return None
+
+    def parse_request(self, request):
+        """Converts request to template dictionary used to place data during 
+        extraction.
+        
+        Notes
+        -----
+        If any keyword passed will not be recognized, request will be reduced
+        to contain known keywords only.
             
-    def extract(self, request, spectra_type=None):
+        Parameters
+        ----------
+        request: iterable
+            List of keywords for extraction.
+            
+        Returns
+        -------
+        dict
+            Template dictionary used to place extracted data.
+            
+        Raises
+        ------
+        ValueError
+            If no recognized keywords was passed or request was empty.
+        """
+        request = map(str.lower, request)
+        #convert spectra names to corresponding bar names
+        request = [
+            Tesliper.default_spectra_bars[kword] \
+            if kword in Tesliper.default_spectra_bars
+            else kword for kword in request
+            ]
+        query = set(request)
+        emang = 'emang' in query
+        if emang: query.remove('emang')
+        unknown = [kword for kword in query if kword not in self.extractor]
+        if unknown:
+            unknown = set(unknown)
+            msg = 'Unknown keywords in request: {}. Request will be reduced '\
+                  'to known keywords.'.format(unknown)
+            logger.warning(msg)
+            query = query - unknown
+        got_vibra = any(
+            k in query for k in 'iri dip rot raman1 roa1 vemang'.split(' '))
+        got_electr = any(
+            k in query for k in 'vrot vosc lrot losc eemang'.split(' '))
+        if got_vibra:
+            query.add('vfreq')
+            if emang: query.add('vemang')
+        if got_electr:
+            query.add('efreq')
+            query.add('ex_en')
+            if emang: query.add('eemang')
+        if not query and not emang:
+            logger.warning('No known keywords in request. '
+                           'Extraction will not run.')
+            raise ValueError('No known keywords in request or empty request.')
+        elif not query and emang:
+            query.add('eemang' if self.spectra_type == 'electr' else 'vemang')
+            query.add('efreq' if self.spectra_type == 'electr' else 'vfreq')
+        query.add('stoich')
+        return query
+            
+    def extract(self, request):
         """From gaussian files associated with object extracts values related
-        to keywords provided in arguments. Assumes spectra_type associated
-        with object if not specified.
+        to keywords provided in arguments.
+        
+        Notes
+        -----
+        Uses Soxhlet.parse_request for determining keywords understandable
+        by Extractor class.
         
         Parameters
         ----------
         request : list
-            List of strings containing keywords for extracting.
-        spectra_type : str, optional
-            Type of spectra which is to extract; valid values are
-            'vibra', 'electr' or '' (if spectrum is not present
-            in gaussian output files); if omitted, spectra_type
-            associated with object is used.
+            List of strings - keywords for extracting.
                 
         Returns
         -------
         dict
             Dictionary with extracted data.
         """
-        logger.warning('Will be extracting, bruh!')
-        spectra_type = spectra_type if spectra_type else self.spectra_type 
+        #logger.warning('Will be extracting, bruh!')
+        query = self.parse_request(request)
+        if not query: return {} 
         no = len(self.gaussian_files)
-        keys = [t for t in request if t != 'energies']
-        energies_requested = 'energies' in request
-        if energies_requested:
-            energies_keywords = \
-                'zpec tenc entc gibc zpe ten ent gib scf'.split(' ')
-            keys[-1:-1] = energies_keywords
         extracted = defaultdict(lambda: [None] * no)
-        request = set(request)
-        request.add('stoich')
-        request.add('freq')
-        if spectra_type == 'electr':
-            request.add('ex_en')
         extracted['filenames'] = self.gaussian_files
+        energies_keys = 'zpec tenc entc gibc zpe ten ent gib scf'.split(' ')
+        things_omitted = []
         for num, file in enumerate(self.gaussian_files):
             with open(os.path.join(self.path, file)) as handle:
                 cont = handle.read()
-            for thing in request:
-                if thing == 'energies':
-                    energies = self.extractor[thing](cont)
-                    for k, e in zip(energies_keywords, energies):
-                        extracted[k][num] = e
-                elif thing == 'stoich':
-                    extracted[thing][num] = self.extractor[thing](cont)
-                elif spectra_type:
-                    extracted[thing][num] = \
-                        self.extractor[spectra_type][thing](cont)
-        return from_dict(extracted)
+            for thing in query:
+                if thing in things_omitted: continue
+                try:
+                    if thing == 'energies':
+                        energies = self.extractor[thing](cont)
+                        for k, e in zip(energies_keys, energies):
+                            extracted[k][num] = e
+                    else:
+                        
+                        extracted[thing][num] = self.extractor[thing](cont)
+                except PatternNotFound:
+                    logger.error("Could not extract: {}. This data won't be "\
+                    "available. Problem occurred while processing file '{}'."\
+                    " Please make sure file is not corrupted and contains " \
+                    "desired informations.".format(Bars.full_name_ref[thing], 
+                                                   file))
+                    things_omitted.append(thing)
+        return self.from_dict(**extracted)
         
     def load_bars(self, spectra_type=None):
         """Parses *.bar files associated with object and loads spectral data
@@ -565,13 +585,13 @@ class Soxhlet:
         no = len(self.bar_files)
         #Create empty dict with list of empty lists as default value.
         output = defaultdict(lambda: [[] for _ in range(no)])
-        keys = 'vfreq dip rot ve-m'.split(' ') if spectra_type == 'vibra' else \
-               'efreq vosc srot losc lrot energy ee-m'.split(' ')
+        keys = 'vfreq dip rot vemang'.split(' ') if spectra_type == 'vibra' else \
+               'efreq vosc srot losc lrot energy eemang'.split(' ')
         for num, bar in enumerate(self.bar_files):
             with open(os.path.join(self.path, bar), newline='') as handle:
                 header = handle.readline()
                 col_names = handle.readline()
-                if 'Transition' in col_names and 'ee-m' in keys:
+                if 'Transition' in col_names and 'eemang' in keys:
                     keys = keys[:-1]
                 reader = csv.reader(handle, delimiter='\t')
                 for row in reader:
@@ -580,7 +600,7 @@ class Soxhlet:
                     for k, v in zip(keys, row):
                         #output[value type][file position in sorted list]
                         output[k][num].append(float(v))
-        return from_dict(output)
+        return self.from_dict(output)
         
     def load_popul(self):
         """Parses BoltzmanDistribution.txt file associated with object and
@@ -606,7 +626,7 @@ class Soxhlet:
                         if '%' in v:
                             v = float(v[:-1])/100
                     output[k].append(v)
-        return from_dict(output)
+        return self.from_dict(output)
         
     def load_settings(self):
         """Parses Setup.txt file associated with object and returns dict with
@@ -650,14 +670,78 @@ class Soxhlet:
         """
         cmd = self.command.lower()
         prsr = {'opt': 'energies',
-                'freq=': 'freq',
-                'freq=vcd': 'dip rot iri e-m',
+                'freq=': 'vfreq',
+                'freq=vcd': 'dip rot iri vemang',
                 'freq=roa': 'iri raman1 roa1',
-                'td=': 'freq ex_en vosc vrot lrot losc e-m'
+                'td=': 'efreq ex_en vosc vrot lrot losc eemang'
                 }
         args = ' '.join(v for k, v in prsr if k in cmd).split(' ')
         return args
 
+    def from_dict(self, **data):
+        """Creates dictionary of Data objects from dictionary containing
+        appropriate key-word as keys and lists of extracted data as values.
+        
+        Parameters
+        ----------
+        data: dict
+            Dictionary containing lists or numpy.ndarrays of data.
+            
+        Returns
+        -------
+        dict
+            Dictionary with Data objects created from input data.
+            
+        Raises
+        ------
+        ValueError
+            If any of input dictionary keys is not recognized.
+        
+        TO DO
+        -----
+        handling spectra
+        """
+        output = {}
+        filenames = data.pop('filenames')
+        stoich = data.pop('stoich')
+        done = []
+        for key, value in data.items():
+            if key in 'zpec tenc entc gibc scfc ex_en vfeq efreq'.split(' '):
+                continue
+            if key in 'zpe ten ent gib scf'.split(' '):
+                corr = None if not '{}c'.format(key) in data else \
+                    data['{}c'.format(key)]
+                new = Energies(
+                    type = key, filenames = filenames, stoich = stoich,
+                    values = value, corrections = corr)
+            elif key in 'dip rot iri raman1 roa1 vemang'.split(' '):
+                new = Bars(
+                    type = key, filenames = filenames, stoich = stoich,
+                    frequencies = data['vfreq'], values = value)
+            elif key in 'vosc vrot losc lrot eemang'.split(' '):
+                new = Bars(
+                    type = key, filenames = filenames, stoich = stoich,
+                    frequencies = data['efreq'], values = value,
+                    excitation_energies = data['ex_en'])
+            elif key in 'uv ir ecd vcd roa raman'.split(' '):
+                output[key] = Spectra(
+                    type = key, filenames = filenames, stoich = stoich,
+                    base = base, values = value, hwhm = hwhm,
+                    fitting = fitting)
+            else:
+                err_msg = "Unknown keyword: {}".format(key)
+                #TO DO: supplement this log
+                logger.error(err_msg)
+                continue
+            output[key] = new
+            done.append(Bars.full_name_ref[key])
+        if done:
+            logger.info('Successfully extracted: {}.'.format(', '.join(done)))
+        else:
+            logger.warning('Nothing extracted.')
+        return output
+    
+    
 class Trimmer:
     """
     """
@@ -747,14 +831,22 @@ class Data:
     values = dscr.FloatTypeArray('values')
 
     full_name_ref = dict(
-        rot = 'vcd',
-        dip = 'ir',
-        roa1 = 'roa',
-        raman1 = 'raman',
-        vrot = 'ecd',
-        lrot = 'ecd',
-        vosc = 'uv',
-        losc = 'uv'
+        rot = 'Rot. Str.',
+        dip = 'Dip. Str.',
+        roa1 = 'ROA1',
+        raman1 = 'Raman1',
+        vrot = 'Rot. (vibrational)',
+        lrot = 'Rot. (lenght)',
+        vosc = 'Osc. (vibrational)',
+        losc = 'Osc. (length)',
+        iri = 'IR Inten.',
+        vemang = 'E-M Angle',
+        eemang = 'E-M Angle',
+        zpe = 'Zero-point Energy',
+        ten = 'Thermal Energy',
+        ent = 'Thermal Enthalpy',
+        gib = 'Thermal Free Energy',
+        scf = 'SCF'
         )
 
     def __init__(self, filenames, stoich=None, values=None):
@@ -983,7 +1075,7 @@ class Bars(Data):
         """
         base = np.arange(start, stop+step, step)
             #spectrum base, 1d numpy.array of wavelengths/wave numbers
-        if self.type in ('losc', 'vosc', 'lrot', 'vrot'):
+        if self.spectra_type == 'electr':
             width = hwhm / 1.23984e-4 #from eV to cm-1
             w_nums = 1e7 / base #from nm to cm-1
             freqs = 1e7 / self.frequencies #from nm to cm-1
@@ -1095,8 +1187,38 @@ class Tesliper:
     ? separate spectra types ?
     """
     
+    standard_parameters = {
+        'vibra': {'hwhm': 6,
+                  'start': 800,
+                  'stop': 2900,
+                  'step': 2,
+                  'fitting': lorentzian},
+        'electr': {'hwhm': 0.35,
+                   'start': 150,
+                   'stop': 800,
+                   'step': 1,
+                   'fitting': gaussian}
+        }
+    units = {
+        'vibra': {'hwhm': 'cm-1',
+                  'start': 'cm-1',
+                  'stop': 'cm-1',
+                  'step': 'cm-1'},
+        'electr': {'hwhm': 'eV',
+                   'start': 'nm',
+                   'stop': 'nm',
+                   'step': 'nm'}
+        }
+    default_spectra_bars = {
+        'ir': 'dip',
+        'vcd': 'rot',
+        'uv': 'vosc',
+        'ecd': 'vrot',
+        'raman': 'raman1',
+        'roa': 'roa1'
+        }
+
     def __init__(self, input_dir=None, output_dir=None):
-        logger.warning('Starting new Tesliper!')
         if input_dir or output_dir:
             self.change_dir(input_dir, output_dir)
         if input_dir:
@@ -1104,40 +1226,8 @@ class Tesliper:
         self.energies = DataHolder()
         self.bars = DataHolder()
         self.spectra = DataHolder()
-        
-        self.standard_parameters = {
-            'vibra': {'hwhm': 6,
-                      'start': 800,
-                      'stop': 2900,
-                      'step': 2,
-                      'fitting': lorentzian},
-            'electr': {'hwhm': 0.35,
-                       'start': 150,
-                       'stop': 800,
-                       'step': 1,
-                       'fitting': gaussian}
-            }
         self.set_standard_parameters()
-        self.units = {
-            'vibra': {'hwhm': 'cm-1',
-                      'start': 'cm-1',
-                      'stop': 'cm-1',
-                      'step': 'cm-1'},
-            'electr': {'hwhm': 'eV',
-                       'start': 'nm',
-                       'stop': 'nm',
-                       'step': 'nm'}
-            }
-            
-        self.default_spectra_bars = {
-            'ir': 'dip',
-            'vcd': 'rot',
-            'uv': 'vosc',
-            'ecd': 'vrot',
-            'raman': 'raman1',
-            'roa': 'roa1'
-            }
-
+        
     def set_standard_parameters(self):
         self.parameters = {
             'vibra': self.standard_parameters['vibra'].copy(),
@@ -1193,9 +1283,9 @@ class Tesliper:
             self.soxhlet = Soxhlet(self.input_dir)
         return self.soxhlet
         
-    def extract(self, *args, spectra_type=None, path=None):
+    def extract(self, *args, path=None):
         soxhlet = Soxhlet(path) if path else self.soxhlet
-        data = soxhlet.extract(args, spectra_type)
+        data = soxhlet.extract(args)
         self.update(data)
         return data
     
@@ -1225,7 +1315,7 @@ class Tesliper:
     def load_settings(self, path=None, spectra_type=None):
         soxhlet = Soxhlet(path) if path else self.soxhlet
         spectra_type = spectra_type if spectra_type else \
-            soxhlet.get_spectra_type()
+            soxhlet.spectra_type
         settings = soxhlet.load_settings()
         self.settings[spectra_type].update(settings)
         return self.settings
@@ -1250,17 +1340,21 @@ class Tesliper:
         
     def calculate_spectra(self, *args, start=None, stop=None,
                           step=None, hwhm=None, fitting=None):
-        bar_names = self.default_spectra_bars
-        query = args if args else self.bars.keys()
-        query = [bar_names[v] if v in bar_names else v for v in query]
-        query = set(query) #ensure no duplicates
-        unknown = query - set(self.bars.keys())
-        if unknown: raise ValueError("Don't have those bar types: {}"\
-                                     .format(unknown))
-        #TO DO: better method to distinguish bars with spectral information
-        #'cause bar.spectra_type sucks :(
-        bars = (v for k, v in self.bars.items()
-                if k in query and v.spectra_type is not None)
+        if not args:
+            bars = self.bars.spectral.values()
+        else:
+            #convert to spectra name if bar name passed
+            bar_names = self.default_spectra_bars
+            query = [bar_names[v] if v in bar_names else v for v in args]
+            query = set(query) #ensure no duplicates
+            bar_names, bars = zip(
+                (k, v) for k, v in self.bars.spectral.items() if k in query)
+        unknown = query - set(self.bars.spectal.keys())
+        if unknown:
+            info = "No other requests provided." if not bar_names else \
+                   "Will proceed using only those bars: {}".format(bar_names)
+            msg = "Don't have those bar types: {}. {}".format(unknown, info)
+            logger.warning(msg)
         sett_from_args = {
             k: v for k, v in zip(('start', 'stop', 'step', 'hwhm', 'fitting'),
                                  (start, stop, step, hwhm, fitting))

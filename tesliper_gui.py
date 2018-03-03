@@ -1,6 +1,8 @@
 import os
+import logging as lgg
 
 from functools import reduce, partial
+from itertools import zip_longest
 from tkinter import *
 from tkinter.ttk import *
 from tkinter import messagebox
@@ -11,7 +13,6 @@ from matplotlib.figure import Figure
 from matplotlib import cm
 from threading import Thread
 
-import logging as lgg
 import tesliper
 
 
@@ -23,7 +24,7 @@ class TextHandler(lgg.Handler):
         
     def emit(self, record):
         msg = self.format(record)
-        self.widget.insert('end', msg + '\n')
+        self.widget.insert('end', msg + '\n', record.levelname)
         self.widget.yview('end')
 
 
@@ -32,7 +33,12 @@ class ReadOnlyText(ScrolledText):
     def __init__(self, *args, **kwargs):
         kwargs.pop('state', None)
         super().__init__(*args, state='disabled', **kwargs)
-    
+        self.tag_config('DEBUG', foreground='gray')
+        self.tag_config('INFO', foreground='black')
+        self.tag_config('WARNING', foreground='dark orange', font="Courier 10 italic")
+        self.tag_config('ERROR', foreground='dark violet')
+        self.tag_config('CRITICAL', foreground='red3', font="Courier 10 bold")
+        
     def insert(self, *args, **kwargs):
         self.configure(state='normal')
         super().insert(*args, **kwargs)
@@ -261,8 +267,6 @@ class Loader(Frame):
         self.label_log.grid(column=2, row=2, columnspan=3, rowspan=10, sticky=(N,W,S,E))
         self.log = ReadOnlyText(self.label_log, width=50, height=6, wrap=WORD)
         self.log.pack(fill=BOTH, expand=YES)
-        self.log.insert(END, 'Welcome to Tesliper:\n'
-                        'Theoretical Spectroscopist Little Helper!\n')
         
         #Progress bar
         self.progtext = StringVar()
@@ -284,7 +288,17 @@ class Loader(Frame):
         if not new_dir: new_dir = askdirectory()
         if not new_dir: return
         self.clear_session()
-        self.parent.tslr = tesliper.Tesliper(new_dir)
+        try:
+            self.parent.tslr = tesliper.Tesliper(new_dir)
+        except:
+            self.parent.logger.critical(
+                "Sorry! An error occurred during new session instantiation. "\
+                + self.parent.error_msg
+                )        
+        else:
+            self.parent.logger.info(
+                "New session instantiated successfully!"
+                )
         self.work_dir.set(new_dir)
         self.out_dir.set(self.parent.tslr.output_dir)
         self.parent.conf_tab.make_new_conf_list()
@@ -299,7 +313,17 @@ class Loader(Frame):
         new_dir = os.path.split(files[0])[0]
         filenames = map(lambda p: os.path.split(p)[1], files)
         self.clear_session()
-        self.parent.tslr = tesliper.Tesliper(new_dir)
+        try:
+            self.parent.tslr = tesliper.Tesliper(new_dir)
+        except:
+            self.parent.logger.critical(
+                "Sorry! An error occurred during new session instantiation. "\
+                + self.parent.error_msg
+                )        
+        else:
+            self.parent.logger.info(
+                "New session instantiated successfully!"
+                )
         self.parent.tslr.soxhlet.wanted_files = filenames
         self.work_dir.set(new_dir)
         self.out_dir.set(self.parent.tslr.output_dir)
@@ -319,13 +343,14 @@ class Loader(Frame):
         
     @GUIFeedback('Extracting...')  
     def extract_energies(self):
-        self.parent.tslr.extract('energies')
+        self.parent.tslr.extract('energies', 'iri')
         self.parent.conf_tab.establish()
         self.parent.logger.warning('Done that, nigga.')
             
     @GUIFeedback('Extracting...')  
     def execute_extract_bars(self, query):
         self.parent.tslr.extract(*query)
+        #self.parent.conf_tab.show_imag()
         self.parent.logger.warning('Done that, nigga.')
         #self.parent.conf_tab.establish()
      
@@ -345,7 +370,7 @@ class Loader(Frame):
     
         bar_names = "IR Inten.,E-M Angle,Dip. Str.,Rot. Str.,Osc. (velo),"\
                     "R(velocity), Osc. (length),R(length),Raman1,ROA1".split(',')
-        bar_keys = "iri e-m dip rot vosc vrot losc lrot raman1 roa1".split(' ')
+        bar_keys = "iri emang dip rot vosc vrot losc lrot raman1 roa1".split(' ')
         
         def __init__(self, master, *args, **kwargs):
             super().__init__(master, *args, **kwargs)
@@ -585,6 +610,7 @@ class Spectra(Frame):
             
     def average_draw(self, spectra_name, option):
         #CURRENTLY ASUMES SAME SIZE OF DATA
+        #TO DO: fix upper
         tslr = self.parent.tslr
         en = tslr.energies[self.average_ref[option]]
         blade = self.parent.conf_tab.blade
@@ -938,27 +964,41 @@ class Conformers(Frame):
         self.update()
         
     def filter_imag(self):
-        freq = self.parent.tslr.bars.freq.full
-        for box, imag in zip(self.conf_list.boxes, freq.imag):
-            if imag.sum(0): box.var.set(False)
+        bar = 'iri' if 'iri' in self.parent.tslr.bars else 'ir'
+        imag = self.parent.tslr.bars[bar].full
+        for box, value in zip(self.conf_list.boxes, imag):
+            if value.sum(0): box.var.set(False)
         self.update()
         self.set_upper_and_lower()
     
     def show_combo_sel(self, event):
         self.set_upper_and_lower()
         self.update()
-            
+        
+    def show_imag(self):
+        bar = 'iri' if 'iri' in self.parent.tslr.bars else 'ir'
+        try:
+            bar = self.parent.tslr.bars[bar].full
+            imag = bar.imag
+            stoich = bar.stoich
+        except KeyError:
+            imag = []
+            stoich = []
+        for num, (imag_val, stoich_val) in enumerate(zip(imag, stoich)):
+            self.parent.conf_tab.conf_list.set(num, column='imag', value=imag_val.sum(0))
+            #self.parent.conf_tab.conf_list.set(num, column='stoich', value=stoich_val)
+
     def establish(self):
         self.make_new_conf_list()
-        freq = self.parent.tslr.bars.freq
-        for num, (fnm, stoich, imag) in enumerate(zip(freq.filenames, freq.stoich, freq.imag)):
+        en = self.parent.tslr.energies.scf.full
+        for num, (fnm, stoich) in enumerate(zip_longest(en.filenames, en.stoich)):
             self.parent.conf_tab.conf_list.insert('', 'end', text=fnm)
             self.parent.conf_tab.conf_list.set(num, column='stoich', value=stoich)
-            self.parent.conf_tab.conf_list.set(num, column='imag', value=imag.sum(0))
         self.show_combo.set('Energy')
         self.filter_combo.set('Thermal')
         self.set_upper_and_lower()
         self.update('values')
+        self.show_imag()
             
     def update(self, show=None):
         show = show if show else self.showing
@@ -1005,12 +1045,35 @@ class TslrNotebook(Notebook):
         self.pack(fill=BOTH, expand=True)
         self.main_tab.clear_session()
         
-        self.logger = tesliper.logger
-        handler = TextHandler(self.main_tab.log)
-        self.logger.addHandler(handler)
-        self.logger.warning('Yo there!')
+        self.logger = lgg.getLogger(__name__)
+        self.logger.setLevel(lgg.INFO)
+        text_handler = TextHandler(self.main_tab.log)
+        text_handler.setLevel(lgg.INFO)
+        self.logger.addHandler(text_handler)
         
-      
+        self.error_locarion = os.getcwd()
+        self.error_msg = (
+            "Please provide a problem description to Tesliper's " \
+            "developer along with tslr_err_log.txt file, witch can be " \
+            "found here: {}".format(self.error_locarion)
+            )
+        error_handler = lgg.FileHandler(
+            os.path.join(self.error_locarion, 'tslr_err_log.txt'), delay=True)
+        error_handler.setLevel(lgg.ERROR)
+        self.logger.addHandler(text_handler)
+        
+        tesliper.logger.addHandler(text_handler)
+        tesliper.logger.addHandler(error_handler)
+        
+        self.logger.info(
+            'Welcome to Tesliper:\n'
+            'Theoretical Spectroscopist Little Helper!\n'
+            )
+        self.logger.info("This is info.")
+        self.logger.warning("This is warning.")
+        self.logger.error("This is error.")
+        self.logger.critical("This is critical.")
+        
     def validate_entry(self, inserted, text_if_allowed):
         if any(i not in '0123456789.+-' for i in inserted):
             return False

@@ -66,9 +66,8 @@ class IntensityArray:
             # instance attribute accessed on class, return self
             return self
         else:
-            get_inten = self.intensity_ref[obj.spectra_name]
-            intensities = obj.values * get_inten(obj)
-            print(obj.values.min(), obj.values.max())
+            get_intensity_factor = self.intensity_ref[obj.spectra_name]
+            intensities = obj.values * get_intensity_factor(obj)
             return intensities
             if not obj.trimming:
                 return intensities
