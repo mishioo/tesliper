@@ -8,7 +8,7 @@ class BaseDescr:
 
     def __init__(self, name):
         self.name = name
-        self.inst_name = '_{}'.format(name)
+        self.inst_name = '_full_{}'.format(name)
     
     def __get__(self, obj, objtype):
         if obj is None:
@@ -54,7 +54,12 @@ class BladeDescr:
         return obj._blade
 
     def __set__(self, obj, value):
-        obj._blade = np.array(value, dtype=bool)
+        value = np.array(value, dtype=bool)
+        if value.size != obj.owner.true_size:
+            raise ValueError("Cannot set blade of different size than "\
+                "object's true size. Size for {} should be {}, not {}."\
+                .format(obj.owner.type, obj.owner.true_size, value.size))
+        obj._blade = value
         
 class IntensityArray:
 
