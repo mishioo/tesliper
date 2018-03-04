@@ -706,7 +706,7 @@ class Soxhlet:
         stoich = data.pop('stoich')
         done = []
         for key, value in data.items():
-            if key in 'zpec tenc entc gibc scfc ex_en vfeq efreq'.split(' '):
+            if key in 'zpec tenc entc gibc scfc ex_en vfreq efreq'.split(' '):
                 continue
             if key in 'zpe ten ent gib scf'.split(' '):
                 corr = None if not '{}c'.format(key) in data else \
@@ -763,12 +763,19 @@ class Trimmer:
         else:
             value = other
         other_blade = np.array(value, dtype=bool)
-        self.blade = np.logical_and(self.blade, other_blade)
+        try:
+            self.blade = np.logical_and(self.blade, other_blade)
+        except ValueError:
+            logger.exception("Cannot update {}'s trimmer with object of "\
+                "different size. Size should be {}, not {}.".format(
+                    self.owner.type, self.blade.size, other_blade.size))
         
     def match(self, other, preserve_blade=True):
-        curr_trimm = self.owner.trimming
-        if not preserve_blade:
-            self.owner.trimming = False
+        if not isinstance(other, Data): 
+            raise TypeError('Cannot match with {}. Can match only with '\
+                'objects of type Data.'.forma(type(other)))
+        previous_trimming = self.owner.trimming
+        self.owner.trimming = False
         if other.filenames.size > self.owner.filenames.size:
             raise ValueError("{} can't match bigger object: {}."\
                 .format(self.owner, other))
@@ -778,23 +785,27 @@ class Trimmer:
             func(blade)
             self.owner.trimming = True
         else:
-            self.owner.trimming = curr_trimm
-            raise ValueError("Can't match objects: {0} and {1}. {1} has "
-                             "entries absent in {0}.".format(self.owner,
-                                                             other)
-                            )
+            self.owner.trimming = previous_trimming
+            raise ValueError("Can't match object: {0} with {1}. {1} has "
+                "entries absent in {0}.".format(self.owner.type, other.type))
     
     def unify(self, other, preserve_blade=True):
-        #TO DO: repair this function
-        if not preserve_blade: self.owner.trimming = other.trimming = False
+        if not isinstance(other, Data): 
+            raise TypeError('Cannot match with {}. Can match only with '\
+                'objects of type Data.'.forma(type(other)))
+        previous_trimming = self.owner.trimming
+        other_trimming = other.trimming
+        self.owner.trimming = False
+        if not preserve_blade: other.trimming = False
         if not np.intersect1d(other.filenames, self.owner.filenames).size:
+            self.owner.trimming = previous_trimming
+            other.trimming = other_trimming
             raise ValueError("Can't unify objects without common entries.")
+        blade = np.isin(self.owner.filenames, other.filenames)
         func = self.update if preserve_blade else self.set
-        #wrong blade size if preserve_blade
-        blade = np.isin(other.filenames, self.owner.filenames)
         func(blade)
         self.owner.trimming = True
-        other.trimmer.match(self, preserve_blade)
+        other.trimmer.match(self.owner, preserve_blade)
         
     def reset(self):
         self.blade = np.ones(self.owner.true_size, dtype=bool)
@@ -851,7 +862,8 @@ class Data:
 
     def __init__(self, filenames, stoich=None, values=None):
         self.filenames = filenames
-        self.true_size = len(self._filenames) #self._filenames set by descriptor
+        self.true_size = self._full_filenames.size
+            #self._full_filenames set by descriptor
         self.stoich = stoich
         self.values = values
         self.trimming = False
@@ -875,7 +887,7 @@ class Data:
         else:
             counter = Counter(self.stoich)
             wanted = counter.most_common(1)[0][0]
-        blade = self._stoich == wanted
+        blade = self._full_stoich == wanted
         self.trimmer.update(blade)
         self.trimming = True
         return self
