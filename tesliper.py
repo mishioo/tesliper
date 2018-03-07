@@ -866,7 +866,7 @@ class Data:
             #self._full_filenames set by descriptor
         self.stoich = stoich
         self.values = values
-        self.trimming = False
+        self.trimming = True
         self.trimmer = Trimmer(self)
 
     @property
