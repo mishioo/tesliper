@@ -888,13 +888,38 @@ class Conformers(Frame):
 
         b_filter = Button(filter_frame, text='By energy type', command=self.filter_energy)
         b_filter.grid(column=3, row=1)
-        b_stoich = Button(filter_frame, text='Non-matching\nstoichiometry', command=self.filter_stoich)
-        b_stoich.grid(column=4, row=0, rowspan=2)
-        b_imag = Button(filter_frame, text='Imaginary\nfrequencies', command=self.filter_imag)
-        b_imag.grid(column=5, row=0, rowspan=2)
+        check_frame = Frame(filter_frame)
+        check_frame.grid(column=4, row=0, rowspan=2)
+        var_stoich = BooleanVar(); var_stoich.set(False)
+        self.check_stoich = Checkbutton(
+            check_frame, text='Discard non-matching stoichiometry',
+            variable=var_stoich, command=self.filter_stoich)
+        self.check_stoich.grid(column=4, row=0, sticky='w')
+        self.check_stoich.var = var_stoich
+        var_imag = BooleanVar(); var_imag.set(False)
+        self.check_imag = Checkbutton(
+            check_frame, text='Discard imaginary frequencies',
+            variable=var_imag, command=self.filter_imag)
+        self.check_imag.grid(column=4, row=1, sticky='w')
+        self.check_imag.var = var_imag
+        var_missing = BooleanVar(); var_missing.set(False)
+        self.check_missing = Checkbutton(
+            check_frame, text='Discard excessive conformers',
+            variable=var_missing, command=self.filter_imag)
+        self.check_missing.grid(column=4, row=2, sticky='w')
+        self.check_missing.var = var_missing
+        
+        #TO DO: change filter function to reflect change to checkbuttons
+        
+        # b_stoich = Button(filter_frame, text='Non-matching\nstoichiometry', command=self.filter_stoich)
+        # b_stoich.grid(column=4, row=0, rowspan=2)
+        # b_imag = Button(filter_frame, text='Imaginary\nfrequencies', command=self.filter_imag)
+        # b_imag.grid(column=5, row=0, rowspan=2)
         WgtStateChanger.energies.extend(
             [b_select, b_disselect, self.show_combo, lentry, uentry,
-            self.filter_combo, b_filter, b_stoich, b_imag]
+            self.filter_combo, self.check_stoich, self.check_imag,
+            self.check_missing]
+            #b_filter, b_stoich, b_imag]
             )
         
     
