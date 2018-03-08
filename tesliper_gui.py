@@ -215,7 +215,8 @@ class Loader(Frame):
         self.b_s_e.grid(column=0, row=0)
         self.b_s_c = Button(self.label_smart, text='Calculate', command=self.not_impl)
         self.b_s_c.grid(column=1, row=0)
-        self.b_s_s = Button(self.label_smart, text='Save', command=self.not_impl)
+        #temporarly
+        self.b_s_s = Button(self.label_smart, text='Save', command=self.save)
         self.b_s_s.grid(column=1, row=1)
         WgtStateChanger.tslr.append(self.b_s_e)
         WgtStateChanger.bars.append(self.b_s_c)
@@ -279,6 +280,11 @@ class Loader(Frame):
     def not_impl(self):
         messagebox.showinfo("Sorry!", "We are sorry, but this function is not implemented yet.")
     
+    @GUIFeedback('Saving...')
+    def save(self):
+        for spc in self.parent.tslr.spectra.values():
+            spc.export_txts(path=self.parent.tslr.output_dir)
+            
     @WgtStateChanger
     def clear_session(self):
         pass

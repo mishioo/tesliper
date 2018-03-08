@@ -725,7 +725,7 @@ class Soxhlet:
                     excitation_energies = data['ex_en'])
             elif key in 'uv ir ecd vcd roa raman'.split(' '):
                 output[key] = Spectra(
-                    type = key, filenames = filenames, stoich = stoich,
+                    name = key, filenames = filenames, stoich = stoich,
                     base = base, values = value, hwhm = hwhm,
                     fitting = fitting)
             else:
@@ -847,15 +847,15 @@ class Data:
     values = dscr.FloatTypeArray('values')
 
     full_name_ref = dict(
-        rot = 'Rot. Str.',
-        dip = 'Dip. Str.',
+        rot = 'Rot. Strength',
+        dip = 'Dip. Strength',
         roa1 = 'ROA1',
         raman1 = 'Raman1',
         vrot = 'Rot. (vibrational)',
         lrot = 'Rot. (lenght)',
         vosc = 'Osc. (vibrational)',
         losc = 'Osc. (length)',
-        iri = 'IR Inten.',
+        iri = 'IR Intensity',
         vemang = 'E-M Angle',
         eemang = 'E-M Angle',
         zpe = 'Zero-point Energy',
@@ -1109,12 +1109,23 @@ class Bars(Data):
         return output
         
         
-class Spectra(Data):
-    #TO DO: make Spectra not inherit Data to prevent unintended trimming
+class Spectra:
     
-    def __init__(self, type, filenames, base, values, hwhm, fitting):
-        self.type = type
-        super().__init__(filenames)
+    units = {
+        'vibra': {'hwhm': 'cm-1',
+                  'start': 'cm-1',
+                  'stop': 'cm-1',
+                  'step': 'cm-1'},
+        'electr': {'hwhm': 'eV',
+                   'start': 'nm',
+                   'stop': 'nm',
+                   'step': 'nm'}
+        }
+    
+    def __init__(self, name, filenames, base, values, hwhm, fitting):
+        self.name = name
+        self.type = Bars.spectra_type_ref[self.name]
+        self.filenames = filenames
         self.base = base
         self.values = values
         self.start = base[0]
@@ -1147,6 +1158,42 @@ class Spectra(Data):
         self.averaged = av
         av_spec = np.array([self.base, av])
         return av_spec
+    
+    @property
+    def text_header(self):
+        header = '{} spectrum, HWHM = {} {}, fitting = {}'
+        header = header.format(
+            self.name.upper(), self.hwhm, self.units[self.type]['hwhm'],
+            self.fitting.__name__)
+        return header
+    
+    @property
+    def averaged_header(self):
+        header = self.text_header + ', averaged by {}.'
+        header.format(Data.full_name_ref[self.energy_type])
+        return header
+    
+    @property
+    def exported_filenames(self):
+        make_new_names = lambda fnm: \
+            '{}.{}.txt'.format('.'.join(fnm.split('.')[:-1]), self.name)
+        names = map(make_new_names, self.filenames)
+        return names
+    
+    @property
+    def averaged_filename(self):
+        return 'avg_{}_{}'.format(self.name, self.energy_type)
+    
+    def export_txts(self, path=''):
+        for fname, spc in zip(self.exported_filenames, self.values):
+            with open(os.path.join(path, fname), 'w') as file:
+                file.write(self.text_header + '\n')
+                file.write(
+                    '\n'.join(
+                    '{:>4d}\t{: .2f}'.format(int(b), s) \
+                    for b, s in zip(self.base, spc))
+                )
+    
     
 class DataHolder(MutableMapping):
     """Convenience dict-like holder for data objects. It enables accessing its
@@ -1216,16 +1263,7 @@ class Tesliper:
                    'step': 1,
                    'fitting': gaussian}
         }
-    units = {
-        'vibra': {'hwhm': 'cm-1',
-                  'start': 'cm-1',
-                  'stop': 'cm-1',
-                  'step': 'cm-1'},
-        'electr': {'hwhm': 'eV',
-                   'start': 'nm',
-                   'stop': 'nm',
-                   'step': 'nm'}
-        }
+    units = Spectra.units
     default_spectra_bars = {
         'ir': 'dip',
         'vcd': 'rot',
