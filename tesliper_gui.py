@@ -345,13 +345,11 @@ class Loader(Frame):
     def extract_energies(self):
         self.parent.tslr.extract('energies', 'iri')
         self.parent.conf_tab.establish()
-        self.parent.logger.warning('Done that, nigga.')
             
     @GUIFeedback('Extracting...')  
     def execute_extract_bars(self, query):
         self.parent.tslr.extract(*query)
         #self.parent.conf_tab.show_imag()
-        self.parent.logger.warning('Done that, nigga.')
         #self.parent.conf_tab.establish()
      
     @GUIFeedback('Calculating populations...')
@@ -723,7 +721,7 @@ class CheckTree(Treeview):
         self.vsb.grid(column=2, row=0, rowspan=2, sticky=(N,S))
         
         self.tag_configure('discarded', foreground='gray')
-                
+
         #Columns
         for cid, text in zip('#0 stoich imag ten ent gib scf zpe'.split(' '),
                              'Filenames, Stoichiometry, Imag, Thermal, '\
@@ -882,30 +880,33 @@ class Conformers(Frame):
         filter_values = 'Thermal Enthalpy Gibbs SCF Zero-Point'.split(' ')
         filter_id = 'ten ent gib scf zpe'.split(' ')
         self.filter_ref = {k: v for k, v in zip(filter_values, filter_id)}
-        self.filter_combo = Combobox(filter_frame, textvariable=self.en_filter_var, values=filter_values, state='readonly')
+        self.filter_combo = Combobox(
+            filter_frame, textvariable=self.en_filter_var,
+            values=filter_values, state='readonly'
+            )
         self.filter_combo.grid(column=3, row=0)
         self.filter_combo.bind('<<ComboboxSelected>>', self.set_upper_and_lower)
 
-        b_filter = Button(filter_frame, text='By energy type', command=self.filter_energy)
+        b_filter = Button(filter_frame, text='Filter by energy type', command=self.filter_energy)
         b_filter.grid(column=3, row=1)
         check_frame = Frame(filter_frame)
         check_frame.grid(column=4, row=0, rowspan=2)
         var_stoich = BooleanVar(); var_stoich.set(False)
         self.check_stoich = Checkbutton(
             check_frame, text='Discard non-matching stoichiometry',
-            variable=var_stoich, command=self.filter_stoich)
+            variable=var_stoich, command=self.discard_stoich)
         self.check_stoich.grid(column=4, row=0, sticky='w')
         self.check_stoich.var = var_stoich
         var_imag = BooleanVar(); var_imag.set(False)
         self.check_imag = Checkbutton(
             check_frame, text='Discard imaginary frequencies',
-            variable=var_imag, command=self.filter_imag)
+            variable=var_imag, command=self.discard_imag)
         self.check_imag.grid(column=4, row=1, sticky='w')
         self.check_imag.var = var_imag
-        var_missing = BooleanVar(); var_missing.set(False)
+        var_missing = BooleanVar(); var_missing.set(True)
         self.check_missing = Checkbutton(
             check_frame, text='Discard excessive conformers',
-            variable=var_missing, command=self.filter_imag)
+            variable=var_missing, command=self.discard_missing)
         self.check_missing.grid(column=4, row=2, sticky='w')
         self.check_missing.var = var_missing
         
@@ -922,6 +923,17 @@ class Conformers(Frame):
             #b_filter, b_stoich, b_imag]
             )
         
+    def discard_imag(self):
+        if self.check_imag.var.get():
+            self.filter_imag()
+
+    def discard_stoich(self):
+        if self.check_stoich.var.get():
+            self.filter_stoich()
+        
+    def discard_missing(self):
+        if self.check_missing.var.get():
+            self.unify_data()
     
     def set_upper_and_lower(self, event=None):
         energy = self.filter_ref[self.en_filter_var.get()]
@@ -948,7 +960,9 @@ class Conformers(Frame):
         
     @property
     def energies(self):
-        return reduce(lambda obj, attr: getattr(obj, attr, None), ('tslr', 'energies'), self.parent)
+        return reduce(
+            lambda obj, attr: getattr(obj, attr, None),
+            ('tslr', 'energies'), self.parent)
 
     @property
     def showing(self):
@@ -986,14 +1000,12 @@ class Conformers(Frame):
             box.var.set(1 if kept else 0)
             #need to check kept value this way
             #because tkinter doesn't understand numpy.bool_ type
-        self.update()
         
     def filter_imag(self):
         bar = 'iri' if 'iri' in self.parent.tslr.bars else 'ir'
-        imag = self.parent.tslr.bars[bar].full
+        imag = self.parent.tslr.bars[bar].full.imag
         for box, value in zip(self.conf_list.boxes, imag):
             if value.sum(0): box.var.set(False)
-        self.update()
         self.set_upper_and_lower()
     
     def show_combo_sel(self, event):
@@ -1024,10 +1036,17 @@ class Conformers(Frame):
         self.set_upper_and_lower()
         self.update('values')
         self.show_imag()
-            
+        
     def update(self, show=None):
+        if self.check_imag.var.get(): self.filter_imag()
+        if self.check_stoich.var.get(): self.filter_stoich()
+        if self.check_missing.var.get(): self.unify_data()
+        if (self.blade == self.energies.scf.trimmer.blade).all():
+            for en in self.energies.values(): en.trimmer.set(self.blade)
+        self.table_view_update(show)
+
+    def table_view_update(self, show=None):
         show = show if show else self.showing
-        for en in self.energies.values(): en.trimmer.set(self.blade)
         e_keys = 'ten ent gib scf zpe'.split(' ')
         formats = dict(
             values = lambda v: '{:.4f}'.format(v),
@@ -1045,7 +1064,32 @@ class Conformers(Frame):
             for energy, value in zip(e_keys, values):
                 self.parent.conf_tab.conf_list.set(index, column=energy, value=value)
 
-                
+    def unify_data(self):
+        bars = self.parent.tslr.bars
+        ens = self.energies
+        dummy = tesliper.Data(filenames = ens.scf.full.filenames,
+                              stoich = ens.scf.full.stoich)
+        dummy.trimmer.set(self.blade)
+        for bar in bars.values():
+            try:
+                dummy.trimmer.unify(bar)
+            except Exeption:
+                self.parent.logger.warning(
+                    'A problem occured during data unification. '\
+                    'Make sure your file sets have any common filenames.')
+        fnames = [bar.filenames for bar in bars.values()]
+        if not all(x.shape == y.shape and (x == y).all() for x, y \
+                   in zip(fnames[:-1], fnames[1:])):
+            self.unify_data()
+        else:
+            if not (dummy.trimmer.blade == self.blade).all():
+                for en in ens.values():
+                    en.trimmer.match(dummy)
+                for box, value in zip(self.conf_list.boxes, dummy.trimmer.blade):
+                    box.var.set(value)
+                self.update()
+
+
 class TslrNotebook(Notebook):
 
     def __init__(self, parent):
