@@ -793,6 +793,11 @@ class Trimmer:
         if not isinstance(other, Data): 
             raise TypeError('Cannot match with {}. Can match only with '\
                 'objects of type Data.'.forma(type(other)))
+        if self.owner.filenames.shape == other.filenames.shape and \
+                (self.owner.filenames == other.filenames).all():
+            logger.debug('{} and {} already matching, no need to unify'\
+                        .format(self.owner, other))
+            return
         previous_trimming = self.owner.trimming
         other_trimming = other.trimming
         self.owner.trimming = False
@@ -1360,8 +1365,8 @@ class Tesliper:
             query = [bar_names[v] if v in bar_names else v for v in args]
             query = set(query) #ensure no duplicates
             bar_names, bars = zip(
-                (k, v) for k, v in self.bars.spectral.items() if k in query)
-        unknown = query - set(self.bars.spectal.keys())
+                *[(k, v) for k, v in self.bars.spectral.items() if k in query])
+        unknown = query - set(self.bars.spectral.keys())
         if unknown:
             info = "No other requests provided." if not bar_names else \
                    "Will proceed using only those bars: {}".format(bar_names)
