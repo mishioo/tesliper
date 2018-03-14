@@ -35,8 +35,8 @@ class ReadOnlyText(ScrolledText):
         super().__init__(*args, state='disabled', **kwargs)
         self.tag_config('DEBUG', foreground='gray')
         self.tag_config('INFO', foreground='black')
-        self.tag_config('WARNING', foreground='dark orange', font="Courier 10 italic")
-        self.tag_config('ERROR', foreground='dark violet')
+        self.tag_config('WARNING', foreground='dark violet', font="Courier 10 italic")
+        self.tag_config('ERROR', foreground='red3')
         self.tag_config('CRITICAL', foreground='red3', font="Courier 10 bold")
         
     def insert(self, *args, **kwargs):
@@ -211,7 +211,7 @@ class Loader(Frame):
         #Smart
         self.label_smart = Labelframe(buttons_frame, text='Smart')
         self.label_smart.grid(column=0, row=3, sticky=N)
-        self.b_s_e = Button(self.label_smart, text='Extract', command=self.not_impl)
+        self.b_s_e = Button(self.label_smart, text='Extract', command=self.smart_extract)
         self.b_s_e.grid(column=0, row=0)
         self.b_s_c = Button(self.label_smart, text='Calculate', command=self.not_impl)
         self.b_s_c.grid(column=1, row=0)
@@ -298,14 +298,12 @@ class Loader(Frame):
             self.parent.tslr = tesliper.Tesliper(new_dir)
         except:
             self.parent.logger.critical(
-                "Sorry! An error occurred during new session instantiation. "\
-                + self.parent.error_msg
-                )        
+                "Sorry! An error occurred during new session instantiation.",
+                exc_info=True)
         else:
             self.parent.logger.info(
-                "New session instantiated successfully!"
-                )
-        self.work_dir.set(new_dir)
+                "New session instantiated successfully!")
+        self.work_dir.set(self.parent.tslr.input_dir)
         self.out_dir.set(self.parent.tslr.output_dir)
         self.parent.conf_tab.make_new_conf_list()
         
@@ -323,9 +321,8 @@ class Loader(Frame):
             self.parent.tslr = tesliper.Tesliper(new_dir)
         except:
             self.parent.logger.critical(
-                "Sorry! An error occurred during new session instantiation. "\
-                + self.parent.error_msg
-                )        
+                "Sorry! An error occurred during new session instantiation.",
+                exc_info=True)        
         else:
             self.parent.logger.info(
                 "New session instantiated successfully!"
@@ -339,13 +336,13 @@ class Loader(Frame):
         new_dir = askdirectory()
         if not new_dir: return
         self.parent.tslr.change_dir(input_dir=new_dir)
-        self.work_dir.set(new_dir)
+        self.work_dir.set(self.parent.tslr.input_dir)
         
     def change_output_dir(self):
         new_dir = askdirectory()
         if not new_dir: return
         self.parent.tslr.change_dir(output_dir=new_dir)
-        self.out_dir.set(new_dir)
+        self.out_dir.set(self.parent.tslr.output_dir)
         
     @GUIFeedback('Extracting...')  
     def extract_energies(self):
@@ -355,9 +352,18 @@ class Loader(Frame):
     @GUIFeedback('Extracting...')  
     def execute_extract_bars(self, query):
         self.parent.tslr.extract(*query)
+        self.parent.conf_tab.unify_data()
         #self.parent.conf_tab.show_imag()
         #self.parent.conf_tab.establish()
-     
+        
+    @GUIFeedback('Extracting...')
+    def smart_extract(self):
+        self.parent.tslr.smart_extract()
+        if self.parent.tslr.energies and not self.parent.conf_tab.established:
+            self.parent.conf_tab.establish()
+        else:
+            self.parent.conf_tab.unify_data()
+
     @GUIFeedback('Calculating populations...')
     def calc_popul(self):
         self.parent.tslr.calculate_populations()
@@ -475,16 +481,16 @@ class Spectra(Frame):
         #Calculation Mode
         self.mode = StringVar()
         self.single_radio = Radiobutton(self, text='Single file:',
-                                        variable=self.mode, value='single',
-                                        state='disabled')
+            variable=self.mode, value='single', state='disabled',
+            command = self.live_preview_callback)
         self.single_radio.grid(column=0, row=2, sticky=W)
         self.average_radio = Radiobutton(self, text='Average by:',
-                                         variable=self.mode, value='average',
-                                         state='disabled')
+            variable=self.mode, value='average', state='disabled',
+            command = self.live_preview_callback)
         self.average_radio.grid(column=0, row=4, sticky=W)
         self.stack_radio = Radiobutton(self, text='Stack by overview',
-                                       variable=self.mode, value='stack',
-                                       state='disabled')
+            variable=self.mode, value='stack', state='disabled',
+            command = self.live_preview_callback)
         self.stack_radio.grid(column=0, row=6, sticky=W)
         
         self.single = StringVar()
@@ -559,7 +565,7 @@ class Spectra(Frame):
         bar_name = tslr.default_spectra_bars[value]
         bar = tslr.bars[bar_name]
         self.visualize_settings()
-        self.single_box['values'] = list(bar.filenames)
+        self.single_box['values'] = list(bar.full.filenames)
         if self.mode.get():
             self.live_preview_callback()
         else:
@@ -613,15 +619,11 @@ class Spectra(Frame):
             # ax.plot(spc.base)
             
     def average_draw(self, spectra_name, option):
-        #CURRENTLY ASUMES SAME SIZE OF DATA
-        #TO DO: fix upper
         tslr = self.parent.tslr
         en = tslr.energies[self.average_ref[option]]
-        blade = self.parent.conf_tab.blade
-        en.trimmer.set(blade)
         bar_name = tslr.default_spectra_bars[spectra_name]
-        bars = tslr.bars[bar_name]
-        bars.trimmer.set(blade)
+        bar = tslr.bars[bar_name]
+        bar.trimmer.match(en)
         tslr.calculate_spectra(spectra_name, **self.current_settings)
         spc = tslr.get_averaged_spectrum(spectra_name, en)
         self.show_spectra(*spc)
@@ -635,10 +637,10 @@ class Spectra(Frame):
     def stack_draw(self, spectra_name, option):
         #TO DO: color of line depending on population
         tslr = self.parent.tslr
-        blade = self.parent.conf_tab.blade
         bar_name = tslr.default_spectra_bars[spectra_name]
-        bars = tslr.bars[bar_name]
-        bars.trimmer.set(blade)
+        bar = tslr.bars[bar_name]
+        dummy = self.parent.conf_tab._dummy
+        bar.trimmer.match(dummy)
         tslr.calculate_spectra(spectra_name, **self.current_settings)
         spc = tslr.spectra[spectra_name]
         if self.ax: self.figure.delaxes(self.ax)
@@ -900,22 +902,23 @@ class Conformers(Frame):
         var_stoich = BooleanVar(); var_stoich.set(False)
         self.check_stoich = Checkbutton(
             check_frame, text='Discard non-matching stoichiometry',
-            variable=var_stoich, command=self.discard_stoich)
+            variable=var_stoich, command=self.update)
         self.check_stoich.grid(column=4, row=0, sticky='w')
         self.check_stoich.var = var_stoich
         var_imag = BooleanVar(); var_imag.set(False)
         self.check_imag = Checkbutton(
             check_frame, text='Discard imaginary frequencies',
-            variable=var_imag, command=self.discard_imag)
+            variable=var_imag, command=self.update)
         self.check_imag.grid(column=4, row=1, sticky='w')
         self.check_imag.var = var_imag
         var_missing = BooleanVar(); var_missing.set(True)
         self.check_missing = Checkbutton(
             check_frame, text='Discard excessive conformers',
-            variable=var_missing, command=self.discard_missing)
+            variable=var_missing, command=self.update)
         self.check_missing.grid(column=4, row=2, sticky='w')
         self.check_missing.var = var_missing
         
+        self.established = False
         #TO DO: change filter function to reflect change to checkbuttons
         
         # b_stoich = Button(filter_frame, text='Non-matching\nstoichiometry', command=self.filter_stoich)
@@ -929,18 +932,6 @@ class Conformers(Frame):
             #b_filter, b_stoich, b_imag]
             )
         
-    def discard_imag(self):
-        if self.check_imag.var.get():
-            self.filter_imag()
-
-    def discard_stoich(self):
-        if self.check_stoich.var.get():
-            self.filter_stoich()
-        
-    def discard_missing(self):
-        if self.check_missing.var.get():
-            self.unify_data()
-    
     def set_upper_and_lower(self, event=None):
         energy = self.filter_ref[self.en_filter_var.get()]
         arr = getattr(self.energies[energy], self.showing)
@@ -978,6 +969,16 @@ class Conformers(Frame):
     def blade(self):
         return [box.var.get() for box in self.conf_list.boxes]
         
+    @property
+    def _dummy(self):
+        tree = self.conf_list
+        ls = [(i, tree.item(i)['text']) for i in tree.get_children()]
+        self.parent.logger.debug(ls)
+        ls = sorted(ls)
+        dummy = tesliper.Data('dummy', filenames = [fnm for i, fnm in ls])
+        dummy.trimmer.set(self.blade)
+        return dummy
+
     def select_all(self):
         for box in self.conf_list.boxes:
             box.var.set(True)
@@ -1042,6 +1043,7 @@ class Conformers(Frame):
         self.set_upper_and_lower()
         self.update('values')
         self.show_imag()
+        self.established = True
         
     def update(self, show=None):
         if self.check_imag.var.get(): self.filter_imag()
@@ -1071,29 +1073,33 @@ class Conformers(Frame):
                 self.parent.conf_tab.conf_list.set(index, column=energy, value=value)
 
     def unify_data(self):
-        bars = self.parent.tslr.bars
-        ens = self.energies
-        dummy = tesliper.Data(filenames = ens.scf.full.filenames,
-                              stoich = ens.scf.full.stoich)
-        dummy.trimmer.set(self.blade)
-        for bar in bars.values():
-            try:
-                dummy.trimmer.unify(bar)
-            except Exeption:
-                self.parent.logger.warning(
-                    'A problem occured during data unification. '\
-                    'Make sure your file sets have any common filenames.')
-        fnames = [bar.filenames for bar in bars.values()]
-        if not all(x.shape == y.shape and (x == y).all() for x, y \
-                   in zip(fnames[:-1], fnames[1:])):
-            self.unify_data()
-        else:
-            if not (dummy.trimmer.blade == self.blade).all():
-                for en in ens.values():
-                    en.trimmer.match(dummy)
-                for box, value in zip(self.conf_list.boxes, dummy.trimmer.blade):
-                    box.var.set(value)
-                self.update()
+        stencil = None if not self.established else self._dummy
+        self.parent.tslr.unify_data(stencil = stencil)
+        if stencil is not None:
+            for box, value in zip(self.conf_list.boxes, self.energies.scf.trimmer.blade):
+                box.var.set(1 if value else 0)
+            #need to check value this way
+            #because tkinter doesn't understand numpy.bool_ type
+
+
+class MaxLevelFilter:
+
+    def __init__(self, max_level):
+        self.max_level = max_level
+
+    def filter(self, record):
+        return record.levelno <= self.max_level
+
+
+class ShortExcFormatter(lgg.Formatter):
+
+    def format(self, record):
+        record.exc_text = ''
+        return super().format(record)
+
+    def formatException(self, ei):
+        output = 'Error type: {}'.format(ei[1])
+        return output
 
 
 class TslrNotebook(Notebook):
@@ -1124,7 +1130,16 @@ class TslrNotebook(Notebook):
         self.logger.setLevel(lgg.INFO)
         text_handler = TextHandler(self.main_tab.log)
         text_handler.setLevel(lgg.INFO)
+        text_handler.addFilter(MaxLevelFilter(lgg.INFO))
         self.logger.addHandler(text_handler)
+        
+        
+        text_warning_handler = TextHandler(self.main_tab.log)
+        text_warning_handler.setLevel(lgg.WARNING)
+        text_warning_handler.addFilter(MaxLevelFilter(lgg.WARNING))
+        text_warning_handler.setFormatter(lgg.Formatter(
+            '%(levelname)s: %(message)s'))
+        self.logger.addHandler(text_warning_handler)
         
         self.error_locarion = os.getcwd()
         self.error_msg = (
@@ -1132,22 +1147,27 @@ class TslrNotebook(Notebook):
             "developer along with tslr_err_log.txt file, witch can be " \
             "found here: {}".format(self.error_locarion)
             )
+        text_error_handler = TextHandler(self.main_tab.log)
+        text_error_handler.setLevel(lgg.ERROR)
+        text_error_handler.setFormatter(ShortExcFormatter(
+            'ERROR! %(message)s \n' + self.error_msg))
+        self.logger.addHandler(text_error_handler)
+        
         error_handler = lgg.FileHandler(
             os.path.join(self.error_locarion, 'tslr_err_log.txt'), delay=True)
         error_handler.setLevel(lgg.ERROR)
+        error_handler.setFormatter(lgg.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s\n'))
         self.logger.addHandler(text_handler)
         
         tesliper.logger.addHandler(text_handler)
+        tesliper.logger.addHandler(text_warning_handler)
+        tesliper.logger.addHandler(text_error_handler)
         tesliper.logger.addHandler(error_handler)
         
         self.logger.info(
             'Welcome to Tesliper:\n'
-            'Theoretical Spectroscopist Little Helper!\n'
-            )
-        self.logger.info("This is info.")
-        self.logger.warning("This is warning.")
-        self.logger.error("This is error.")
-        self.logger.critical("This is critical.")
+            'Theoretical Spectroscopist Little Helper!')
         
     def validate_entry(self, inserted, text_if_allowed):
         if any(i not in '0123456789.+-' for i in inserted):

@@ -14,7 +14,7 @@ import logging as lgg
 
 
 __author__ = "Michał Więcław"
-__version__ = "0.5.1"
+__version__ = "0.5.2"
 
 
 ##################
@@ -551,8 +551,8 @@ class Soxhlet:
                         
                         extracted[thing][num] = self.extractor[thing](cont)
                 except PatternNotFound:
-                    logger.error("Could not extract: {}. This data won't be "\
-                    "available. Problem occurred while processing file '{}'."\
+                    logger.warning("Could not extract: {}. This data won't be"\
+                    " available. Problem occurred while processing file '{}'."\
                     " Please make sure file is not corrupted and contains " \
                     "desired informations.".format(Bars.full_name_ref[thing], 
                                                    file))
@@ -669,13 +669,14 @@ class Soxhlet:
             List of key-words needed for data extraction.
         """
         cmd = self.command.lower()
-        prsr = {'opt': 'energies',
-                'freq=': 'vfreq',
-                'freq=vcd': 'dip rot iri vemang',
-                'freq=roa': 'iri raman1 roa1',
+        prsr = {'opt': 'energies iri',
+                'freq=': 'vfreq iri',
+                'freq=vcd': 'dip rot vemang',
+                'freq=roa': 'raman1 roa1',
                 'td=': 'efreq ex_en vosc vrot lrot losc eemang'
                 }
-        args = ' '.join(v for k, v in prsr if k in cmd).split(' ')
+        args = set(
+            arg for k, v in prsr.items() for arg in v.split(' ') if k in cmd)
         return args
 
     def from_dict(self, **data):
@@ -770,7 +771,7 @@ class Trimmer:
                 "different size. Size should be {}, not {}.".format(
                     self.owner.type, self.blade.size, other_blade.size))
         
-    def match(self, other, preserve_blade=True):
+    def match(self, other):
         if not isinstance(other, Data): 
             raise TypeError('Cannot match with {}. Can match only with '\
                 'objects of type Data.'.forma(type(other)))
@@ -778,39 +779,43 @@ class Trimmer:
         self.owner.trimming = False
         if other.filenames.size > self.owner.filenames.size:
             raise ValueError("{} can't match bigger object: {}."\
-                .format(self.owner, other))
-        func = self.update if preserve_blade else self.set
+                .format(self.owner.type, other.type))
         blade = np.isin(self.owner.filenames, other.filenames)
+        #print(blade)
         if np.isin(other.filenames, self.owner.filenames).all():
-            func(blade)
+            self.set(blade)
             self.owner.trimming = True
         else:
             self.owner.trimming = previous_trimming
             raise ValueError("Can't match object: {0} with {1}. {1} has "
                 "entries absent in {0}.".format(self.owner.type, other.type))
     
-    def unify(self, other, preserve_blade=True):
+    def unify(self, other, preserve_blade=True, overriding=False):
         if not isinstance(other, Data): 
             raise TypeError('Cannot match with {}. Can match only with '\
                 'objects of type Data.'.forma(type(other)))
         if self.owner.filenames.shape == other.filenames.shape and \
                 (self.owner.filenames == other.filenames).all():
             logger.debug('{} and {} already matching, no need to unify'\
-                        .format(self.owner, other))
+                        .format(self.owner.type, other.type))
             return
+        else:
+            logger.debug('Will make an attempt to unify {} and {}'\
+                        .format(self.owner.type, other.type))
         previous_trimming = self.owner.trimming
         other_trimming = other.trimming
         self.owner.trimming = False
-        if not preserve_blade: other.trimming = False
+        if overriding or not preserve_blade: other.trimming = False
         if not np.intersect1d(other.filenames, self.owner.filenames).size:
             self.owner.trimming = previous_trimming
             other.trimming = other_trimming
             raise ValueError("Can't unify objects without common entries.")
         blade = np.isin(self.owner.filenames, other.filenames)
+        #print(blade)
         func = self.update if preserve_blade else self.set
         func(blade)
         self.owner.trimming = True
-        other.trimmer.match(self.owner, preserve_blade)
+        other.trimmer.match(self.owner)
         
     def reset(self):
         self.blade = np.ones(self.owner.true_size, dtype=bool)
@@ -862,15 +867,17 @@ class Data:
         ten = 'Thermal Energy',
         ent = 'Thermal Enthalpy',
         gib = 'Thermal Free Energy',
-        scf = 'SCF'
+        scf = 'SCF',
+        ex_en = 'Excitation energy'
         )
 
-    def __init__(self, filenames, stoich=None, values=None):
+    def __init__(self, type, filenames, stoich=None, values=None):
+        self.type = type
         self.filenames = filenames
         self.true_size = self._full_filenames.size
             #self._full_filenames set by descriptor
-        self.stoich = stoich
-        self.values = values
+        if stoich is not None: self.stoich = stoich
+        if values is not None: self.values = values
         self.trimming = True
         self.trimmer = Trimmer(self)
 
@@ -928,8 +935,7 @@ class Energies(Data):
     
     def __init__(self, type, filenames, stoich, values, corrections=None,
                  t=None):
-        self.type = type
-        super().__init__(filenames, stoich, values)
+        super().__init__(type, filenames, stoich, values)
         if corrections:
             self.corrections = corrections
         self.t = t if t else 298.15
@@ -1023,8 +1029,7 @@ class Bars(Data):
     
     def __init__(self, type, stoich, filenames, frequencies, values=None,
                  imag=None, t=None, laser=None, excitation_energies=None):
-        self.type = type
-        super().__init__(filenames, stoich, values)
+        super().__init__(type, filenames, stoich, values)
         self.frequencies = frequencies
         if self.values is None:
             self.values = self.frequencies
@@ -1320,12 +1325,15 @@ class Tesliper:
         if input_dir:
             self.input_dir = input_dir
             self.soxhlet = Soxhlet(input_dir)
+            logger.info('Current working directory is: {}'.format(input_dir))
         if output_dir:
             self.output_dir = output_dir
+            logger.info('Current output directory is: {}'.format(output_dir))
         elif input_dir and not hasattr(self, 'output_dir'):
             output_dir = os.path.join(input_dir, 'tesliper_output')
             os.makedirs(output_dir, exist_ok=True)
             self.output_dir = output_dir
+            logger.info('Current output directory is: {}'.format(output_dir))
         else:
             return
 
@@ -1344,8 +1352,14 @@ class Tesliper:
         self.update(data)
         return data
     
-    def smart_extract(self, deep_search=True, calculations=True,
-                      average=True, save=True, with_load=True):
+    def smart_extract(self, deep_search=True, with_load=True):
+        #TO DO: add deep search and loading
+        soxhlet = self.soxhlet
+        args = soxhlet.parse_command()
+        return self.extract(*args)
+        pass
+        
+    def smart_calculate(self, average=True):
         #TO DO: do it
         pass
                 
@@ -1474,3 +1488,32 @@ class Tesliper:
             pass
         if 'settings' in args:
             pass
+
+    def __unify_data(self, data, dummy, overriding):
+        for dat in data.values():
+            try:
+                dummy.trimmer.unify(dat, overriding = overriding)
+            except Exception:
+                logger.warning(
+                    'A problem occured during data unification. '\
+                    'Make sure your file sets have any common filenames.',
+                    exc_info=True)
+                raise
+        fnames = [dat.filenames for dat in data.values()]
+        #for fnm in fnames: print(fnm)
+        if not all(x.shape == y.shape and (x == y).all() for x, y \
+                   in zip(fnames[:-1], fnames[1:])):
+            #raise
+            self.__unify_data(data, dummy, overriding)
+
+    def unify_data(self, stencil=None):
+        data = dict((k, v) for k, v in 
+                    chain(self.bars.items(), self.energies.items()))
+        if not stencil:
+            dat = next(iter(data.values()))
+            dummy = Data(type='dummy', filenames = dat.full.filenames)
+        else:
+            dummy = Data(type='dummy', filenames = stencil.full.filenames)
+            dummy.trimmer.set(stencil.trimmer.blade)
+        self.__unify_data(data, dummy,
+            overriding = False if stencil is None else True)
