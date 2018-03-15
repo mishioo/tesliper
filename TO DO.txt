@@ -1,11 +1,19 @@
 CURRENT:
-correct intensity calculations
+check intensity calculations
 add saving functionality
-finish gui
-add filtering low populated conformers
+supplement info tab
+
+NEAR:
+move filtering functions to tesliper.py
 suplement docstrings
 add some code commentary
 create testing suite
 
 FUTURE:
-geometry analysis
+solve silent data overriding problem
+add spectra comparition feature
+manage e-m angle and energy corrections
+add vibrational and lenght electronic spectra comparition
+add easy access to conformer data
+add geometry analysis feature
+add molecule dispay window ?
