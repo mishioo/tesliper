@@ -13,8 +13,8 @@ import descriptors as dscr
 import logging as lgg
 
 
-__author__ = "Michał Więcław"
-__version__ = "0.5.2"
+__author__ = "Michał M. Więcław"
+__version__ = "0.5.3"
 
 
 ##################
@@ -1418,12 +1418,12 @@ class Tesliper:
             query = set(query) #ensure no duplicates
             bar_names, bars = zip(
                 *[(k, v) for k, v in self.bars.spectral.items() if k in query])
-        unknown = query - set(self.bars.spectral.keys())
-        if unknown:
-            info = "No other requests provided." if not bar_names else \
-                   "Will proceed using only those bars: {}".format(bar_names)
-            msg = "Don't have those bar types: {}. {}".format(unknown, info)
-            logger.warning(msg)
+            unknown = query - set(self.bars.spectral.keys())
+            if unknown:
+                info = "No other requests provided." if not bar_names else \
+                       "Will proceed using only those bars: {}".format(bar_names)
+                msg = "Don't have those bar types: {}. {}".format(unknown, info)
+                logger.warning(msg)
         sett_from_args = {
             k: v for k, v in zip(('start', 'stop', 'step', 'hwhm', 'fitting'),
                                  (start, stop, step, hwhm, fitting))

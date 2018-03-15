@@ -14,6 +14,7 @@ from matplotlib import cm
 from threading import Thread
 
 import tesliper
+from tesliper import __version__, __author__
 
 
 class TextHandler(lgg.Handler):
@@ -713,6 +714,7 @@ class Checkbox(Checkbutton):
             self.tree.item(self.index, tags=())
         else:
             self.tree.item(self.index, tags='discarded')
+        tesliper.logger.debug('box index: {}'.format(self.index))
         self.box_command()
         #self.tree.selection_set(str(self.index))
 
@@ -919,7 +921,6 @@ class Conformers(Frame):
         self.check_missing.var = var_missing
         
         self.established = False
-        #TO DO: change filter function to reflect change to checkbuttons
         
         # b_stoich = Button(filter_frame, text='Non-matching\nstoichiometry', command=self.filter_stoich)
         # b_stoich.grid(column=4, row=0, rowspan=2)
@@ -945,14 +946,33 @@ class Conformers(Frame):
     def filter_energy(self):
         lower = float(self.lower_var.get())
         upper = float(self.upper_var.get())
+        tesliper.logger.debug('lower limit: {}\nupper limit: {}'.format(lower, upper))
         energy = self.filter_ref[self.en_filter_var.get()]
         values = iter(getattr(self.energies[energy], self.showing))
+        tesliper.logger.debug('energy: {}\nshowing: {}'.format(energy, self.showing))
         factor = 100 if self.showing == 'populations' else 1
+        #must init new_blade with Falses for sake of already discarded
+        #new_blade = np.zeros_like(energy.trimmer.blade)
+        #iter_new = np.nditer(new_blade, op_flags=['readwrite'])
+        #for box, new in zip(self.conf_list.boxes, iter_new):
+        #    if box.var.get():
+                #must iterate through trimmed object to get correct values
+                #so should get next value only if conformer not suppressed
+        #        value = next(values)
+        #        new[...] = False if not lower <= value * factor <= upper else True
+        new_blade = []
         for box in self.conf_list.boxes:
             if box.var.get():
                 value = next(values)
-                if not lower <= value * factor <= upper:
-                    box.var.set(False)
+                new = False if not lower <= value * factor <= upper else True
+                tesliper.logger.debug('value: {}, setting {}'.format(value, new))
+            else:
+                new = False
+                tesliper.logger.debug('no value, setting {}'.format(new))
+            new_blade.append(new)
+            
+        for box, new in zip(self.conf_list.boxes, new_blade):
+            box.var.set(new)
         self.update()
         
     @property
