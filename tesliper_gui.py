@@ -1,6 +1,8 @@
 import os
+import traceback
 import logging as lgg
 
+from copy import copy
 from functools import reduce, partial
 from itertools import zip_longest, cycle
 from tkinter import *
@@ -1127,6 +1129,7 @@ class MaxLevelFilter:
 class ShortExcFormatter(lgg.Formatter):
 
     def format(self, record):
+        record = copy(record)
         record.exc_text = ''
         return super().format(record)
 
@@ -1142,6 +1145,7 @@ class TslrNotebook(Notebook):
         self.tslr = None
         self.thread = Thread()
         
+        parent.report_callback_exception = self.report_callback_exception
         self.validate_entry = (self.register(self.validate_entry), '%S', '%P')
 
         self.main_tab = Loader(self)
@@ -1173,24 +1177,25 @@ class TslrNotebook(Notebook):
             '%(levelname)s: %(message)s'))
         self.logger.addHandler(text_warning_handler)
         
-        self.error_locarion = os.getcwd()
+        self.error_location = os.getcwd()
         self.error_msg = (
             "Please provide a problem description to Tesliper's " \
             "developer along with tslr_err_log.txt file, witch can be " \
-            "found here: {}".format(self.error_locarion)
+            "found here: {}".format(self.error_location)
             )
         text_error_handler = TextHandler(self.main_tab.log)
         text_error_handler.setLevel(lgg.ERROR)
+        #ShortExcFormatter causes traceback suppression in error_handler!
         text_error_handler.setFormatter(ShortExcFormatter(
             'ERROR! %(message)s \n' + self.error_msg))
         self.logger.addHandler(text_error_handler)
         
         error_handler = lgg.FileHandler(
-            os.path.join(self.error_locarion, 'tslr_err_log.txt'), delay=True)
+            os.path.join(self.error_location, 'tslr_err_log.txt'), delay=True)
         error_handler.setLevel(lgg.ERROR)
         error_handler.setFormatter(lgg.Formatter(
             '%(asctime)s - %(name)s - %(levelname)s - %(message)s\n'))
-        self.logger.addHandler(text_handler)
+        self.logger.addHandler(error_handler)
         
         self.logger.addHandler(tesliper.mainhandler)
         tesliper.logger.addHandler(text_handler)
@@ -1203,21 +1208,28 @@ class TslrNotebook(Notebook):
             'Theoretical Spectroscopist Little Helper!')
         
     def validate_entry(self, inserted, text_if_allowed):
-        if any(i not in '0123456789.+-' for i in inserted):
+        if any(i not in '0123456789.,+-' for i in inserted):
             return False
         else:
             try:
                 if text_if_allowed == '.': return True
-                if text_if_allowed: float(text_if_allowed)
+                if text_if_allowed == ',': return True
+                if text_if_allowed: float(text_if_allowed.replace(',', '.'))
             except ValueError:
                 return False
         return True
         
     def entry_out_validation(self, var):
         value = var.get()
+        if ',' in value:
+            value = value.replace(',', '.')
         if value.endswith('.'):
-            var.set(value + '0')
-    
+            value = value + '0'
+        var.set(value)
+            
+    def report_callback_exception(self, exc, val, tb):
+        self.logger.critical('An unexpected error occurred.', exc_info=True)
+
         
 if __name__ == '__main__':
     
