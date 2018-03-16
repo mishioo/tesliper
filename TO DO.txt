@@ -13,7 +13,7 @@ FUTURE:
 solve silent data overriding problem
 add spectra comparition feature
 manage e-m angle and energy corrections
-add vibrational and lenght electronic spectra comparition
+add velo and lenght electronic spectra comparition
 add easy access to conformer data
 add geometry analysis feature
 add molecule dispay window ?
