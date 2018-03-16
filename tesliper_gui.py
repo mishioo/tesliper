@@ -2,7 +2,7 @@ import os
 import logging as lgg
 
 from functools import reduce, partial
-from itertools import zip_longest
+from itertools import zip_longest, cycle
 from tkinter import *
 from tkinter.ttk import *
 from tkinter import messagebox
@@ -329,7 +329,7 @@ class Loader(Frame):
                 "New session instantiated successfully!"
                 )
         self.parent.tslr.soxhlet.wanted_files = filenames
-        self.work_dir.set(new_dir)
+        self.work_dir.set(self.parent.tslr.input_dir)
         self.out_dir.set(self.parent.tslr.output_dir)
         self.parent.conf_tab.make_new_conf_list()
         
@@ -714,14 +714,15 @@ class Checkbox(Checkbutton):
             self.tree.item(self.index, tags=())
         else:
             self.tree.item(self.index, tags='discarded')
-        tesliper.logger.debug('box index: {}'.format(self.index))
+        self.tree.parent_tab.parent.logger.debug('box index: {}'.format(self.index))
         self.box_command()
         #self.tree.selection_set(str(self.index))
 
         
 class CheckTree(Treeview):
-    def __init__(self, master, box_command=None, **kwargs):
+    def __init__(self, master, parent_tab=None, **kwargs):
         self.frame = Frame(master)
+        self.parent_tab = parent_tab
         kwargs['columns'] = 'ten ent gib scf zpe imag stoich'.split(' ')
         super().__init__(self.frame, **kwargs)
         self.grid(column=0, row=0, rowspan=2, columnspan=2, sticky=(N,W,S,E))
@@ -757,7 +758,6 @@ class CheckTree(Treeview):
         self.but_sort.grid(column=0, row=0, sticky='nwes')
         
         #Boxes
-        self.box_command = box_command
         self.canvas = Canvas(self.frame, width=17, borderwidth=0, 
                              background="#ffffff", highlightthickness=0)
         self.canvas.configure(yscrollcommand=self.vsb.set)
@@ -823,7 +823,7 @@ class CheckTree(Treeview):
         self.canvas.yview_moveto(args[0])
         
     def insert(self, parent='', index=END, iid=None, **kw):
-        box = Checkbox(self.boxes_frame, self, box_command = self.box_command,
+        box = Checkbox(self.boxes_frame, self, box_command = self.parent_tab.refresh,
                        index=len(self.boxes))
         box.frame.grid(column=0, row=box.index)
         self.boxes.append(box)
@@ -901,13 +901,13 @@ class Conformers(Frame):
         b_filter.grid(column=3, row=1)
         check_frame = Frame(filter_frame)
         check_frame.grid(column=4, row=0, rowspan=2)
-        var_stoich = BooleanVar(); var_stoich.set(False)
+        var_stoich = BooleanVar(); var_stoich.set(True)
         self.check_stoich = Checkbutton(
             check_frame, text='Discard non-matching stoichiometry',
             variable=var_stoich, command=self.update)
         self.check_stoich.grid(column=4, row=0, sticky='w')
         self.check_stoich.var = var_stoich
-        var_imag = BooleanVar(); var_imag.set(False)
+        var_imag = BooleanVar(); var_imag.set(True)
         self.check_imag = Checkbutton(
             check_frame, text='Discard imaginary frequencies',
             variable=var_imag, command=self.update)
@@ -933,47 +933,23 @@ class Conformers(Frame):
             #b_filter, b_stoich, b_imag]
             )
         
-    def set_upper_and_lower(self, event=None):
-        energy = self.filter_ref[self.en_filter_var.get()]
-        arr = getattr(self.energies[energy], self.showing)
-        factor = 100 if self.showing == 'populations' else 1
-        lower, upper = arr.min(), arr.max()
-        n = 2 if self.showing == 'populations' else 4
-        lower, upper = map(lambda v: '{:.{}f}'.format(v * factor, n), (lower - 0.0001, upper + 0.0001))
-        self.lower_var.set(lower)
-        self.upper_var.set(upper)
-    
-    def filter_energy(self):
-        lower = float(self.lower_var.get())
-        upper = float(self.upper_var.get())
-        tesliper.logger.debug('lower limit: {}\nupper limit: {}'.format(lower, upper))
-        energy = self.filter_ref[self.en_filter_var.get()]
-        values = iter(getattr(self.energies[energy], self.showing))
-        tesliper.logger.debug('energy: {}\nshowing: {}'.format(energy, self.showing))
-        factor = 100 if self.showing == 'populations' else 1
-        #must init new_blade with Falses for sake of already discarded
-        #new_blade = np.zeros_like(energy.trimmer.blade)
-        #iter_new = np.nditer(new_blade, op_flags=['readwrite'])
-        #for box, new in zip(self.conf_list.boxes, iter_new):
-        #    if box.var.get():
-                #must iterate through trimmed object to get correct values
-                #so should get next value only if conformer not suppressed
-        #        value = next(values)
-        #        new[...] = False if not lower <= value * factor <= upper else True
-        new_blade = []
-        for box in self.conf_list.boxes:
-            if box.var.get():
-                value = next(values)
-                new = False if not lower <= value * factor <= upper else True
-                tesliper.logger.debug('value: {}, setting {}'.format(value, new))
-            else:
-                new = False
-                tesliper.logger.debug('no value, setting {}'.format(new))
-            new_blade.append(new)
-            
-        for box, new in zip(self.conf_list.boxes, new_blade):
-            box.var.set(new)
-        self.update()
+    def establish(self):
+        self.make_new_conf_list()
+        en = self.parent.tslr.energies.scf.full
+        for num, (fnm, stoich) in enumerate(zip_longest(en.filenames, en.stoich)):
+            self.parent.conf_tab.conf_list.insert('', 'end', text=fnm)
+            self.parent.conf_tab.conf_list.set(num, column='stoich', value=stoich)
+        self.show_combo.set('Energy')
+        self.filter_combo.set('Thermal')
+        self.update('values')
+        self.show_imag()
+        self.established = True
+        
+    def make_new_conf_list(self):
+        if self.conf_list:
+            self.conf_list.destroy()
+        self.conf_list = CheckTree(self.overview, parent_tab = self)
+        self.conf_list.frame.grid(column=0, row=0, sticky='nswe')
         
     @property
     def energies(self):
@@ -991,53 +967,108 @@ class Conformers(Frame):
         
     @property
     def _dummy(self):
+        self.parent.logger.debug('dummy requested')
         tree = self.conf_list
-        ls = [(i, tree.item(i)['text']) for i in tree.get_children()]
-        self.parent.logger.debug(ls)
+        ls = [tree.item(i)['text'] for i in tree.get_children()]
         ls = sorted(ls)
-        dummy = tesliper.Data('dummy', filenames = [fnm for i, fnm in ls])
+        dummy = tesliper.Data('dummy', filenames = ls)
         dummy.trimmer.set(self.blade)
         return dummy
 
     def select_all(self):
-        for box in self.conf_list.boxes:
-            box.var.set(True)
+        self.set_blade(cycle([True]))
+        self.set_energies_blade()
         self.update()
 
     def disselect_all(self):
-        for box in self.conf_list.boxes:
-            box.var.set(False)
+        self.set_blade(cycle([False]))
+        self.set_energies_blade()
         self.update()
 
     def refresh(self):
-        for en in self.energies.values():
-            en.trimmer.update(self.blade)
-        self.update()
+        self.parent.logger.debug('conf_tab.refresh called.')
+        self.set_energies_blade()
+        self.table_view_update()
     
-    def make_new_conf_list(self):
-        if self.conf_list:
-            self.conf_list.destroy()
-        self.conf_list = CheckTree(self.overview, box_command = self.refresh)
-        self.conf_list.frame.grid(column=0, row=0, sticky='nswe')
+    def set_energies_blade(self):
+        dummy = self._dummy
+        for en in self.energies.values():
+            en.trimmer.match(dummy)
+            
+    def set_blade(self, blade):
+        for box, value in zip(self.conf_list.boxes, blade):
+            box.var.set(1 if value else 0)
+            #need to check value this way
+            #because tkinter doesn't understand numpy.bool_ type
+        
+    def set_upper_and_lower(self, event=None):
+        energy = self.filter_ref[self.en_filter_var.get()]
+        arr = getattr(self.energies[energy], self.showing)
+        factor = 100 if self.showing == 'populations' else 1
+        lower, upper = arr.min(), arr.max()
+        n = 2 if self.showing == 'populations' else 4
+        lower, upper = map(lambda v: '{:.{}f}'.format(v * factor, n), (lower - 0.0001, upper + 0.0001))
+        self.lower_var.set(lower)
+        self.upper_var.set(upper)
+    
+    def filter_energy(self):
+        lower = float(self.lower_var.get())
+        upper = float(self.upper_var.get())
+        self.parent.logger.debug('lower limit: {}\nupper limit: {}'.format(lower, upper))
+        energy = self.filter_ref[self.en_filter_var.get()]
+        values = iter(getattr(self.energies[energy], self.showing))
+        self.parent.logger.debug('energy: {}\nshowing: {}'.format(energy, self.showing))
+        factor = 100 if self.showing == 'populations' else 1
+        #must init new_blade with Falses for sake of already discarded
+        #new_blade = np.zeros_like(energy.trimmer.blade)
+        #iter_new = np.nditer(new_blade, op_flags=['readwrite'])
+        #for box, new in zip(self.conf_list.boxes, iter_new):
+        #    if box.var.get():
+                #must iterate through trimmed object to get correct values
+                #so should get next value only if conformer not suppressed
+        #        value = next(values)
+        #        new[...] = False if not lower <= value * factor <= upper else True
+        new_blade = []
+        for box in self.conf_list.boxes:
+            if box.var.get():
+                value = next(values)
+                new = False if not lower <= value * factor <= upper else True
+                self.parent.logger.debug('value: {}, setting {}'.format(value, new))
+            else:
+                new = False
+                self.parent.logger.debug('no value, setting {}'.format(new))
+            new_blade.append(new)
+        for en in self.energies.values():
+            en.trimmer.set(new_blade)
+        self.set_blade(new_blade)
+        self.table_view_update()
         
     def filter_stoich(self):
         for en in self.energies.values():
             en.trimm_by_stoich()
         for box, kept in zip(self.conf_list.boxes, en.trimmer.blade):
-            box.var.set(1 if kept else 0)
+            if not kept: box.var.set(False)
             #need to check kept value this way
             #because tkinter doesn't understand numpy.bool_ type
         
     def filter_imag(self):
         bar = 'iri' if 'iri' in self.parent.tslr.bars else 'ir'
         imag = self.parent.tslr.bars[bar].full.imag
+        # self.set_blade([not value.sum(0) for value in imag])
         for box, value in zip(self.conf_list.boxes, imag):
             if value.sum(0): box.var.set(False)
-        self.set_upper_and_lower()
     
+    def unify_data(self):
+        stencil = None if not self.established else self._dummy
+        self.parent.tslr.unify_data(stencil = stencil)
+        if stencil is not None:
+            for box, value in zip(self.conf_list.boxes, self.energies.scf.trimmer.blade):
+                box.var.set(1 if value else 0)
+            #need to check value this way
+            #because tkinter doesn't understand numpy.bool_ type
+
     def show_combo_sel(self, event):
-        self.set_upper_and_lower()
-        self.update()
+        self.table_view_update()
         
     def show_imag(self):
         bar = 'iri' if 'iri' in self.parent.tslr.bars else 'ir'
@@ -1052,25 +1083,15 @@ class Conformers(Frame):
             self.parent.conf_tab.conf_list.set(num, column='imag', value=imag_val.sum(0))
             #self.parent.conf_tab.conf_list.set(num, column='stoich', value=stoich_val)
 
-    def establish(self):
-        self.make_new_conf_list()
-        en = self.parent.tslr.energies.scf.full
-        for num, (fnm, stoich) in enumerate(zip_longest(en.filenames, en.stoich)):
-            self.parent.conf_tab.conf_list.insert('', 'end', text=fnm)
-            self.parent.conf_tab.conf_list.set(num, column='stoich', value=stoich)
-        self.show_combo.set('Energy')
-        self.filter_combo.set('Thermal')
-        self.set_upper_and_lower()
-        self.update('values')
-        self.show_imag()
-        self.established = True
-        
     def update(self, show=None):
         if self.check_imag.var.get(): self.filter_imag()
         if self.check_stoich.var.get(): self.filter_stoich()
         if self.check_missing.var.get(): self.unify_data()
         if (self.blade == self.energies.scf.trimmer.blade).all():
-            for en in self.energies.values(): en.trimmer.set(self.blade)
+            self.parent.logger.debug(
+                'Energies blades not matchnig internal blade. '\
+                'Will call set_energies_blade.')
+            self.set_energies_blade()
         self.table_view_update(show)
 
     def table_view_update(self, show=None):
@@ -1086,20 +1107,12 @@ class Conformers(Frame):
             lambda obj, attr: getattr(obj, attr), (e, scope, show), self.energies
             )
         trimmed = zip(*[en_get_attr(e, scope, show) for e in e_keys])
-        what_to_show = self.blade if show != 'values' else (True for _ in self.blade)
+        what_to_show = self.blade if show != 'values' else (True for __ in self.blade)
         for index, kept in enumerate(what_to_show):
             values = ['--' for _ in range(5)] if not kept else map(formats[show], next(trimmed))
             for energy, value in zip(e_keys, values):
                 self.parent.conf_tab.conf_list.set(index, column=energy, value=value)
-
-    def unify_data(self):
-        stencil = None if not self.established else self._dummy
-        self.parent.tslr.unify_data(stencil = stencil)
-        if stencil is not None:
-            for box, value in zip(self.conf_list.boxes, self.energies.scf.trimmer.blade):
-                box.var.set(1 if value else 0)
-            #need to check value this way
-            #because tkinter doesn't understand numpy.bool_ type
+        self.set_upper_and_lower()
 
 
 class MaxLevelFilter:
@@ -1147,12 +1160,11 @@ class TslrNotebook(Notebook):
         self.main_tab.clear_session()
         
         self.logger = lgg.getLogger(__name__)
-        self.logger.setLevel(lgg.INFO)
+        self.logger.setLevel(lgg.DEBUG)
         text_handler = TextHandler(self.main_tab.log)
         text_handler.setLevel(lgg.INFO)
         text_handler.addFilter(MaxLevelFilter(lgg.INFO))
         self.logger.addHandler(text_handler)
-        
         
         text_warning_handler = TextHandler(self.main_tab.log)
         text_warning_handler.setLevel(lgg.WARNING)
@@ -1180,6 +1192,7 @@ class TslrNotebook(Notebook):
             '%(asctime)s - %(name)s - %(levelname)s - %(message)s\n'))
         self.logger.addHandler(text_handler)
         
+        self.logger.addHandler(tesliper.mainhandler)
         tesliper.logger.addHandler(text_handler)
         tesliper.logger.addHandler(text_warning_handler)
         tesliper.logger.addHandler(text_error_handler)

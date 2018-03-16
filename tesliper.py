@@ -33,6 +33,8 @@ logger.setLevel(lgg.DEBUG)
 
 mainhandler = lgg.StreamHandler()
 mainhandler.setLevel(lgg.DEBUG)
+mainhandler.setFormatter(lgg.Formatter(
+            '%(levelname)s:%(name)s:%(funcName)s - %(message)s'))
 
 logger.addHandler(mainhandler)
 
@@ -945,6 +947,7 @@ class Energies(Data):
         try:
             return (self.values - self.values.min()) * 627.5095
         except ValueError:
+            #if no values, return empty array.
             return np.array([])
         
     @property
@@ -1288,6 +1291,11 @@ class Tesliper:
         self.spectra = DataHolder()
         self.set_standard_parameters()
         
+    @property
+    def extracted(self):
+        return dict((k, v) for k, v in
+                    chain(self.bars.items(), self.energies.items()))
+
     def set_standard_parameters(self):
         self.parameters = {
             'vibra': self.standard_parameters['vibra'].copy(),
@@ -1315,7 +1323,6 @@ class Tesliper:
             lambda s: os.path.normpath(s) if s else None,
             (input_dir, output_dir)
             )
-        print(input_dir)
         for dir in input_dir, output_dir:
             if dir and not os.path.isdir(dir):
                 raise FileNotFoundError(
@@ -1490,7 +1497,7 @@ class Tesliper:
             pass
 
     def __unify_data(self, data, dummy, overriding):
-        for dat in data.values():
+        for dat in data:
             try:
                 dummy.trimmer.unify(dat, overriding = overriding)
             except Exception:
@@ -1499,7 +1506,7 @@ class Tesliper:
                     'Make sure your file sets have any common filenames.',
                     exc_info=True)
                 raise
-        fnames = [dat.filenames for dat in data.values()]
+        fnames = [dat.filenames for dat in data]
         #for fnm in fnames: print(fnm)
         if not all(x.shape == y.shape and (x == y).all() for x, y \
                    in zip(fnames[:-1], fnames[1:])):
@@ -1507,10 +1514,9 @@ class Tesliper:
             self.__unify_data(data, dummy, overriding)
 
     def unify_data(self, stencil=None):
-        data = dict((k, v) for k, v in 
-                    chain(self.bars.items(), self.energies.items()))
+        data = self.extracted.values()
         if not stencil:
-            dat = next(iter(data.values()))
+            dat = next(iter(data))
             dummy = Data(type='dummy', filenames = dat.full.filenames)
         else:
             dummy = Data(type='dummy', filenames = stencil.full.filenames)
