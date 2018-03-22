@@ -169,6 +169,25 @@ class GUIFeedback:
         return wrapper
         
         
+class Popup(Toplevel):
+
+    def __init__(self, master, *args, **kwargs):
+        super().__init__(master, *args, **kwargs)
+        self.master = master
+        self.grab_set()
+        try:
+            width, height = kwargs['width'], kwargs['height']
+            self.set_geometry(width, height)
+        except KeyError:
+            pass
+
+    def set_geometry(self, width, height):
+        x = self.master.winfo_pointerx()
+        y = self.master.winfo_pointery()
+        geometry = '{}x{}{:+n}{:+n}'.format(width, height, x, y)
+        self.geometry(geometry)
+
+
 class Loader(Frame):
     
     def __init__(self, parent):
@@ -224,10 +243,21 @@ class Loader(Frame):
         WgtStateChanger.tslr.append(self.b_s_e)
         WgtStateChanger.bars.append(self.b_s_c)
         WgtStateChanger.either.append(self.b_s_s)
+        
+        #Export
+        self.label_export = LabelFrame(buttons_frame, text='Export')
+        self.label_export.grid(column=0, row=4, sticky=N)
+        self.b_p_t = Button(self.label_export, text='Text', command=self.not_impl)
+        self.b_p_t.grid(column=0, row=0)
+        self.b_p_e = Button(self.label_export, text='Excel', command=self.not_impl)
+        self.b_p_e.grid(column=1, row=0)
+        self.b_p_c = Button(self.label_export, text='CSV', command=self.not_impl)
+        self.b_p_c.grid(column=1, row=1)
+        WgtStateChanger.either.extend([self.b_p_t, self.b_p_e, self.b_p_c])
 
         #Load
         self.label_load = Labelframe(buttons_frame, text='Load')
-        self.label_load.grid(column=0, row=4, sticky=N)
+        self.label_load.grid(column=0, row=5, sticky=N)
         self.b_l_p = Button(self.label_load, text='Populations')
         self.b_l_p.grid(column=0, row=0)
         self.b_l_b = Button(self.label_load, text='Bars')
@@ -375,11 +405,11 @@ class Loader(Frame):
     def calc_spectra(self):
         self.parent.tslr.calculate_spectra()
         
-    @GUIFeedback('Calculating averages...')
+    @GUIFeedback('Averaging Spectra...')
     def calc_average(self):
         pass
         
-    class BarsPopup(Toplevel):
+    class BarsPopup(Popup):
     
         bar_names = "IR Inten.,E-M Angle,Dip. Str.,Rot. Str.,Osc. (velo),"\
                     "R(velocity), Osc. (length),R(length),Raman1,ROA1".split(',')
@@ -387,8 +417,6 @@ class Loader(Frame):
         
         def __init__(self, master, *args, **kwargs):
             super().__init__(master, *args, **kwargs)
-            self.master = master
-            self.grab_set()
             self.title("Bars extraction")
             Grid.rowconfigure(self, 6, weight=1)
             Grid.columnconfigure(self, 2, weight=1)
@@ -406,7 +434,6 @@ class Loader(Frame):
             b_cancel.grid(column=0, row=0, sticky=(S,E))
             b_ok = Button(buttons_frame, text="OK", command=self.ok_command)
             b_ok.grid(column=1, row=0, sticky=(S,E), padx=5)
-            self.geometry('220x190')
             
         def ok_command(self):
             vals = [v.get() for v in self.vars]
@@ -422,7 +449,7 @@ class Loader(Frame):
             self.destroy()
         
     def get_wanted_bars(self):
-        popup = self.BarsPopup(self)
+        popup = self.BarsPopup(self, width='220', height='190')
         
 
 class Spectra(Frame):

@@ -2,14 +2,20 @@ CURRENT:
 check intensity calculations
 add saving functionality
 supplement info tab
+add graph labels
+correct positioning of checkboxes
 
 NEAR:
+add drag&drop support
+export spectra as image
+export to excel/csv
 move filtering functions to tesliper.py
 suplement docstrings
 add some code commentary
 create testing suite
 
 FUTURE:
+add tooltips
 solve silent data overriding problem
 add spectra comparition feature
 manage e-m angle and energy corrections

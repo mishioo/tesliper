@@ -280,6 +280,8 @@ class Soxhlet:
     ? After Unifying Extractor class, do same with this class. ?
     """
     
+    instances = {}
+    
     def __init__(self, path, wanted_files=None):
         """Initialization of Soxhlet object.
         
@@ -305,6 +307,8 @@ class Soxhlet:
         self.extractor = Extractor()
         self.command = self._get_command()
         self.spectra_type = self._get_spectra_type()
+        self._id = len(self.instances)
+        self.instances[self._id] = self
 
     @property
     def wanted_files(self):
@@ -736,6 +740,7 @@ class Soxhlet:
                 #TO DO: supplement this log
                 logger.error(err_msg)
                 continue
+            new._soxhlet_id = self._id
             output[key] = new
             done.append(Bars.full_name_ref[key])
         if done:
@@ -858,9 +863,9 @@ class Data:
         dip = 'Dip. Strength',
         roa1 = 'ROA1',
         raman1 = 'Raman1',
-        vrot = 'Rot. (vibrational)',
+        vrot = 'Rot. (velo)',
         lrot = 'Rot. (lenght)',
-        vosc = 'Osc. (vibrational)',
+        vosc = 'Osc. (velo)',
         losc = 'Osc. (length)',
         iri = 'IR Intensity',
         vemang = 'E-M Angle',
@@ -894,6 +899,10 @@ class Data:
         temp = copy(self)
         temp.trimming = False
         return temp
+        
+    @property
+    def full_name(self):
+        return self.full_name_ref[self.type]
 
     def trimm_by_stoich(self, stoich=None):
         if stoich:
@@ -946,14 +955,19 @@ class Energies(Data):
     def deltas(self):
         try:
             return (self.values - self.values.min()) * 627.5095
+                #convert hartree to kcal/mol by multiplying by 627.5095
         except ValueError:
             #if no values, return empty array.
             return np.array([])
+            
+    @property
+    def min_factor(self):
+        return np.exp(self.deltas / (self.t * self.Boltzmann))
         
     @property
     def populations(self):
-        x = np.exp(-self.deltas / (self.t * self.Boltzmann))
-        return x/x.sum()    
+        x = self.min_factor
+        return x/x.sum()
         
     def calculate_populations(self, t=None):
         """Calculates populations and energy excesses for all tree types of
@@ -1116,7 +1130,24 @@ class Bars(Data):
                           spectra, hwhm, fitting)
         return output
         
+    @property
+    def exported_filenames(self):
+        make_new_names = lambda fnm: \
+            '{}.{}.bar'.format('.'.join(fnm.split('.')[:-1]), self.name)
+        names = map(make_new_names, self.filenames)
+        return names
         
+    def export_txts(self, path):
+        for fname, spc in zip(self.exported_filenames, self.values):
+            with open(os.path.join(path, fname), 'w') as file:
+                file.write(self.text_header + '\n')
+                file.write(
+                    '\n'.join(
+                    '{:>4d}\t{: .2f}'.format(int(b), s) \
+                    for b, s in zip(self.base, spc))
+                )
+
+
 class Spectra:
     
     units = {
@@ -1471,30 +1502,180 @@ class Tesliper:
         pass
         #populations, bars (with e-m), spectra, averaged, settings
         if 'popul' in args:
-            for en in self.energies.values():
-                if not hasattr(en, 'populations'): continue
-                path = os.path.join(output_dir,
-                                    'Distribution.{}.txt'.format(en.type))
-                f = open(path, 'w', newline='')
-                writer = csv.writer(f, delimiter='\t')
-                writer.writerow(['Gaussian output file', 'Population', 'DE',
-                                 'Energy', 'Imag', 'Stoichiometry'])
-                writer.writerows([[f, p, d, e, i, s] for f, p, d, e, i, s in \
-                    zip(en.filenames, en.populations, en.deltas, en.values,
-                        self.bars.freq.imag.sum(0), en.stoich)])
-                f.close()
+            self._export_ens_txt_collectively(output_dir)
+            # for en in self.energies.values():
+                # path = os.path.join(output_dir,
+                                    # 'Distribution.{}.txt'.format(en.type))
+                # f = open(path, 'w', newline='')
+                # writer = csv.writer(f, delimiter='\t')
+                # writer.writerow(['Gaussian output file', 'Population', 'DE',
+                                 # 'Energy', 'Imag', 'Stoichiometry'])
+                # writer.writerows([[f, p, d, e, i, s] for f, p, d, e, i, s in \
+                    # zip(en.filenames, en.populations, en.deltas, en.values,
+                        # self.bars.iri.imag.sum(0), en.stoich)])
+                # f.close()
+        if 'ens' in args:
+            self._export_ens_txt_separately(output_dir)
         if 'bars' in args:
-            order = 'freq rot dip raman roa vrot vosc lrot losc energy '\
-                    'e-m'.split(' ')
-            fnms = set([fnm for bar in self.bars for fnm in bar.filenames])
-            fnms = sorted(list(fnms))
-            if 'freq' in self.bars:
-                pass
+            self._export_bars_txts(path=output_dir)
+        if 'spectra' in args:
+            for spc in self.spectra.values():
+                spc.export_txts(path=output_dir)
+            logger.info("Individual conformers' spectra text export done.")
                     
         if 'averaged' in args:
             pass
         if 'settings' in args:
             pass
+    
+    __header = dict(
+        rot = 'Rot. Str. ',
+        dip = 'Dip. Str. ',
+        roa1 = 'ROA1      ',
+        raman1 = 'Raman1    ',
+        vrot = 'Rot.(velo)',
+        lrot = 'Rot. (len)',
+        vosc = 'Osc.(velo)',
+        losc = 'Osc. (len)',
+        iri = 'IR Int.   ',
+        vemang = 'E-M Angle ',
+        eemang = 'E-M Angle ',
+        zpe = 'Zero-point',
+        ten = 'Thermal',
+        ent = 'Enthalpy',
+        gib = 'Gibbs',
+        scf = 'SCF',
+        ex_en = 'Excit. Energy',
+        freq = 'Frequency ',
+        wave = 'Wavelenght'
+        )
+    
+    __formatters = dict(
+        rot = '{:> 10.4f}',
+        dip = '{:> 10.4f}',
+        roa1 = '{:> 10.4f}',
+        raman1 = '{:> 10.4f}',
+        vrot = '{:> 10.4f}',
+        lrot = '{:> 10.4f}',
+        vosc = '{:> 10.4f}',
+        losc = '{:> 10.4f}',
+        iri = '{:> 10.4f}',
+        vemang = '{:> 10.4f}',
+        eemang = '{:> 10.4f}',
+        zpe = '{:> 13.4f}',
+        ten = '{:> 13.4f}',
+        ent = '{:> 13.4f}',
+        gib = '{:> 13.4f}',
+        scf = '{:> 13.4f}',
+        ex_en = '{:> 13.4f}',
+        freq = '{:> 10.2f}',
+        wave = '{:> 10.2f}'
+        )
+    
+    def _export_ens_txt_separately(self, path):
+        h = ' | '.join(['Population / %', 'Min. B. Factor',
+                       'DE / (kcal/mol)', 'Energy / Hartree', 'Imag'])
+        for key, en in self.energies.items():
+            max_fnm = max(np.vectorize(len)(en.filenames).max(), 20)
+            max_stoich = max(np.vectorize(len)(en.stoich).max(), 13)
+            file_path = os.path.join(path, '!distribution.{}.txt'.format(key))
+            header = '{:<{w}} | '.format('Gaussian output file', w=max_fnm) + h
+            header = header + ' | {:<{w}}'.format('Stoichiometry', w=max_stoich)
+            with open(file_path, 'w') as file:
+                file.write(header + '\n')
+                file.write('-' * len(header) + '\n')
+                for row in zip(en.filenames, en.populations * 100,
+                               en.min_factor, en.deltas, en.values,
+                               self.bars.iri.imag.sum(0), en.stoich):
+                    row = ['{:^{w}{f}}'.format(v, w=w, f=f) \
+                        for v, w, f in zip(row, 
+                            (max_fnm, 14, 14, 15, 16, 4, max_stoich),
+                            ('', '.4f', '.4f', '.4f', 'f', 'd', ''))]
+                    file.write(' | '.join(row) + '\n')
+        
+    def _export_ens_txt_collectively(self, path):
+        self.unify_data(data_type='e')
+        ens = [self.energies[en] for en in 'zpe ten ent gib scf'.split(' ')]
+        filenames = ens[0].filenames
+        longest = max(np.vectorize(len)(filenames).max(), 20)
+        types = [en.type for en in ens]
+        values = np.array([en.values for en in ens]).T
+        #deltas = np.array([en.deltas for en in ens])
+        popul = np.array([en.populations * 100 for en in ens]).T
+        header = '{:<{lgst}} | {:^50} | {:^70}'.format('Gaussian output file',
+            'Population / %', 'Energy / Hartree', lgst=longest)
+        names = [self.__header[en] for en in 'zpe ten ent gib scf'.split(' ')]
+        with open(os.path.join(path, '!distribution.txt'), 'w') as file:
+            file.write(header + '\n')
+            names_line = ' ' * longest + ' | ' + \
+                '  '.join(['{:<{w}}'.format(n, w=max(8, len(n))) \
+                           for n in names]) + ' | ' + \
+                '  '.join(['{:<{w}}'.format(n, w=14 if n=='SCF' else 12) \
+                           for n in names]) + '\n'
+            file.write(names_line)
+            file.write('-' * len(header) + '\n')
+            for fnm, vals, pops in zip(filenames, values, popul):
+                p_line = '  '.join(
+                    ['{:>{w}.4f}'.format(p, w=max(8, len(n))) \
+                     for p, n in zip(pops, names)])
+                v_line = '  '.join(
+                    ['{:> {w}.{prec}f}'.format(v, w=14 if n=='SCF' else 12,
+                                               prec=8 if n=='SCF' else 6) \
+                     for v, n in zip(vals, names)])
+                line = fnm + ' | ' + p_line + ' | ' + v_line + '\n'
+                file.write(line)
+
+    def __format_header(self, bar_names):
+        pass
+        
+    def __format_line(self, bar_names, values):
+        pass
+            
+    def _export_bars_txts(self, path):
+        separated = defaultdict(list)
+        for bar in self.bars.values(): separated[bar._soxhlet_id].append(bar)
+        order = 'dip rot raman1 roa1 vemang vrot vosc lrot losc eemang'\
+                .split(' ')
+        sox_ref = {'=vcd': 'vibra',
+                   '=roa': 'raman',
+                   'td=': 'electr'}
+        for sox_id, bars in separated.items():
+            com = Soxhlet.instances[sox_id].command
+            _type = [val for key, val in sox_ref.items() if key in com][0]
+            bars_sorted = \
+                [bar for name in order for bar in bars if bar.type == name]
+            freq_type = 'wave' if _type == 'electr' else 'freq'
+            values_sorted = [iter(bar.values) for bar in bars_sorted]
+            frequencies = iter(bars[0].full.frequencies)
+            logger.debug('Will make an attempt to export data to txt from '
+                         'soxhlet {}.'.format(sox_id))
+            if not bars_sorted:
+                logger.debug('This soxhlet instance have not provided any '
+                             'exportable data. Continuing to next soxhlet.')
+                continue
+            logger.debug('This soxhlet instance provided following data '
+                         'types: {}.'.format(', '.join([bar.type for bar \
+                                                        in bars_sorted])))
+            for fname in Soxhlet.instances[sox_id].gaussian_files:
+                values, types = zip(
+                    *[(next(val), bar.type) for val, bar
+                      in zip(values_sorted, bars_sorted)
+                      if fname in bar.filenames])
+                freqs = [next(frequencies)]
+                if values:
+                    values = freqs + list(values)
+                    types = [freq_type] + list(types)
+                    filename = '{}.{}.bar'.format('.'.join(fname.split('.')[:-1]), _type)
+                    self.__export_file_txt(path, filename, types, np.array(values).T)
+        logger.info('Bars export to text files done.')
+                    
+    def __export_file_txt(self, path, filename, types, values_list):
+        with open(os.path.join(path, filename), 'w') as file:
+            file.write('\t'.join([self.__header[type] for type in types]))
+            file.write('\n')
+            for values in values_list:
+                line = '\t'.join(self.__formatters[tp].format(v) for v, tp in zip(values, types))
+                file.write(line + '\n')
 
     def __unify_data(self, data, dummy, overriding):
         for dat in data:
@@ -1513,8 +1694,17 @@ class Tesliper:
             #raise
             self.__unify_data(data, dummy, overriding)
 
-    def unify_data(self, stencil=None):
-        data = self.extracted.values()
+    def unify_data(self, stencil=None, data_type='all'):
+        data_type = data_type.lower()
+        if not data_type or data_type == 'all':
+            data = self.extracted.values()
+        elif data_type in ('e', 'energy', 'energies'):
+            data = self.energies.values()
+        elif data_type in ('b', 'bar', 'bars'):
+            data = self.bars.valies()
+        else:
+            raise ValueError('Unrecognised value of data_type parameter: '
+                             '{}.'.format(data_type))
         if not stencil:
             dat = next(iter(data))
             dummy = Data(type='dummy', filenames = dat.full.filenames)
@@ -1523,3 +1713,4 @@ class Tesliper:
             dummy.trimmer.set(stencil.trimmer.blade)
         self.__unify_data(data, dummy,
             overriding = False if stencil is None else True)
+
