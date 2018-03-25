@@ -17,7 +17,7 @@ from threading import Thread
 
 import tesliper
 from tesliper import __version__, __author__
-
+_DEVELOPEMENT = True
 
 class TextHandler(lgg.Handler):
     
@@ -1191,18 +1191,16 @@ class TslrNotebook(Notebook):
         self.main_tab.clear_session()
         
         self.logger = lgg.getLogger(__name__)
-        self.logger.setLevel(lgg.DEBUG)
+        self.loggers = [self.logger] + tesliper.loggers
         text_handler = TextHandler(self.main_tab.log)
         text_handler.setLevel(lgg.INFO)
         text_handler.addFilter(MaxLevelFilter(lgg.INFO))
-        self.logger.addHandler(text_handler)
         
         text_warning_handler = TextHandler(self.main_tab.log)
         text_warning_handler.setLevel(lgg.WARNING)
         text_warning_handler.addFilter(MaxLevelFilter(lgg.WARNING))
         text_warning_handler.setFormatter(lgg.Formatter(
             '%(levelname)s: %(message)s'))
-        self.logger.addHandler(text_warning_handler)
         
         self.error_location = os.getcwd()
         self.error_msg = (
@@ -1212,23 +1210,27 @@ class TslrNotebook(Notebook):
             )
         text_error_handler = TextHandler(self.main_tab.log)
         text_error_handler.setLevel(lgg.ERROR)
-        #ShortExcFormatter causes traceback suppression in error_handler!
         text_error_handler.setFormatter(ShortExcFormatter(
             'ERROR! %(message)s \n' + self.error_msg))
-        self.logger.addHandler(text_error_handler)
         
         error_handler = lgg.FileHandler(
             os.path.join(self.error_location, 'tslr_err_log.txt'), delay=True)
         error_handler.setLevel(lgg.ERROR)
         error_handler.setFormatter(lgg.Formatter(
             '%(asctime)s - %(name)s - %(levelname)s - %(message)s\n'))
-        self.logger.addHandler(error_handler)
-        
-        self.logger.addHandler(tesliper.mainhandler)
-        tesliper.logger.addHandler(text_handler)
-        tesliper.logger.addHandler(text_warning_handler)
-        tesliper.logger.addHandler(text_error_handler)
-        tesliper.logger.addHandler(error_handler)
+
+        self.handlers = [
+            text_handler,
+            text_warning_handler,
+            text_error_handler,
+            error_handler]
+        for lgr in self.loggers:
+            lgr.setLevel(lgg.DEBUG)
+            for hdlr in self.handlers:
+                lgr.addHandler(hdlr)
+        if _DEVELOPEMENT:
+            #for purposes of debugging
+            self.logger.addHandler(tesliper.mainhandler)
         
         self.logger.info(
             'Welcome to Tesliper:\n'
