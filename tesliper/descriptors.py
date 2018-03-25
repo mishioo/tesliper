@@ -1,7 +1,15 @@
+###################
+###   IMPORTS   ###
+###################
+
 import numpy as np
 from math import pi, sqrt
 
         
+###################
+###   CLASSES   ###
+###################
+
 class BaseDescr:
     '''Base class for numpy.ndarray-holding descriptors.
     '''      
