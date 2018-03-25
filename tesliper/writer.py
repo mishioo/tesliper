@@ -2,9 +2,11 @@
 ###   IMPORTS   ###
 ###################
 
+import csv
 import numpy as np
 import logging as lgg
 import os
+import openpyxl as oxl
 
 
 ##################
@@ -14,8 +16,7 @@ import os
 logger = lgg.getLogger(__name__)
 logger.setLevel(lgg.DEBUG)
 
-
-
+    
 ###################
 ###   CLASSES   ###
 ###################
@@ -97,6 +98,8 @@ class Writer:
         freq = '{:> 10.2f}',
         wave = '{:> 10.2f}'
         )
+        
+    energies_order = 'zpe ten ent gib scf'.split(' ')
     
     def _export_ens_txt_separately(self, path):
         h = ' | '.join(['Population / %', 'Min. B. Factor',
@@ -123,7 +126,7 @@ class Writer:
         self.ts.unify_data(data_type='e')
             #or rather check if unified?
             #or maybe contextmanager with unified: ... ?
-        ens = [self.ts.energies[en] for en in 'zpe ten ent gib scf'.split(' ')]
+        ens = [self.ts.energies[en] for en in self.energies_order]
             #get them sorted
         filenames = ens[0].filenames
         longest = max(np.vectorize(len)(filenames).max(), 20)
@@ -133,7 +136,7 @@ class Writer:
         popul = np.array([en.populations * 100 for en in ens]).T
         header = '{:<{lgst}} | {:^50} | {:^70}'.format('Gaussian output file',
             'Population / %', 'Energy / Hartree', lgst=longest)
-        names = [self.__header[en] for en in 'zpe ten ent gib scf'.split(' ')]
+        names = [self.__header[en] for en in self.energies_order]
         with open(os.path.join(path, '!distribution.txt'), 'w') as file:
             file.write(header + '\n')
             names_line = ' ' * longest + ' | ' + \
@@ -207,3 +210,23 @@ class Writer:
             for values in values_list:
                 line = '\t'.join(self.__formatters[tp].format(v) for v, tp in zip(values, types))
                 file.write(line + '\n')
+
+    def export_energies_xlsx(self):
+        wb = oxl.Workbook()
+        ws = wb.active
+        ws.title = 'Collective overview'
+        ws['A1'] = 'Output Gaussian file'
+        ws['B1'] = 'Populations / %'
+        ws['G1'] = 'Energies / hartree'
+        names = [self.__header[en] for en in self.energies_order]
+        ws.append([''] + names + names)
+        ws.merge_cells('A1:A2')
+        ws.merge_cells('B1:F1')
+        ws.merge_cells('G1:K1')
+        with self.ts.unified_data(data_type='e') as data:
+            filenames = data['scf'].filenames
+            values = [data[en].values for en in self.energies_order]
+            populs = [data[en].populations for en in self.energies_order]
+            for row in zip(filenames, *populs, *values):
+                ws.append(row)
+        wb.save(os.path.join(self.ts.output_dir, '!distribution.xlsx'))

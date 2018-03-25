@@ -9,13 +9,14 @@ import logging as lgg
 import numpy as np
 
 from collections.abc import MutableMapping
+from contextlib import contextmanager
 from copy import copy
 from itertools import chain, cycle
 
-import datawork
-from datawork import gaussian, lorentzian
-import extraction
-import writer
+from tesliper import datawork
+from tesliper.datawork import gaussian, lorentzian
+from tesliper import extraction
+from tesliper import writer
 
 ############################
 ###   GLOBAL VARIABLES   ###
@@ -123,6 +124,7 @@ class Tesliper:
         self.bars = DataHolder()
         self.spectra = DataHolder()
         self.set_standard_parameters()
+        self.writer = writer.Writer(self)
         
     @property
     def extracted(self):
@@ -316,17 +318,21 @@ class Tesliper:
             #raise
             self.__unify_data(data, dummy, overriding)
 
-    def unify_data(self, stencil=None, data_type='all'):
+    def __get_data(self, data_type):
         data_type = data_type.lower()
         if not data_type or data_type == 'all':
-            data = self.extracted.values()
+            data = self.extracted
         elif data_type in ('e', 'energy', 'energies'):
-            data = self.energies.values()
+            data = self.energies
         elif data_type in ('b', 'bar', 'bars'):
-            data = self.bars.valies()
+            data = self.bars
         else:
             raise ValueError('Unrecognised value of data_type parameter: '
                              '{}.'.format(data_type))
+        return data
+                             
+    def unify_data(self, stencil=None, data_type='all'):
+        data = self.__get_data(data_type).values()
         if not stencil:
             dat = next(iter(data))
             dummy = datawork.Data(type='dummy',
@@ -338,3 +344,14 @@ class Tesliper:
         self.__unify_data(data, dummy,
             overriding = False if stencil is None else True)
 
+    @contextmanager
+    def unified_data(self, stencil=None, data_type='all'):
+        data = self.__get_data(data_type)
+        previous = [(key, value.trimmer.blade)
+                    for key, value in data.items()]
+        try:
+            self.unify_data(stencil, data_type)
+            yield data
+        finally:
+            for name, blade in previous:
+                data[name].trimmer.set(blade)

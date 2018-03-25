@@ -14,10 +14,10 @@ from matplotlib.figure import Figure
 from matplotlib import cm
 from threading import Thread
 
-import gui_components as guicom
+import tesliper.gui_components as guicom
 
-import tesliper
-from tesliper import __version__, __author__
+import tesliper.tesliper as tesliper
+from tesliper.tesliper import __version__, __author__
 _DEVELOPEMENT = True
 
 class Loader(ttk.Frame):
@@ -879,16 +879,3 @@ class TslrNotebook(ttk.Notebook):
         self.logger.critical('An unexpected error occurred.', exc_info=True)
 
         
-if __name__ == '__main__':
-    
-    root = tk.Tk()
-    root.title("Tesliper")
-    n = TslrNotebook(root)
-    tslr = n.tslr
-    n.logger.info(
-        'Welcome to Tesliper:\n'
-        'Theoretical Spectroscopist Little Helper!')
-        
-    
-
-    root.mainloop()

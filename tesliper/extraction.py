@@ -7,8 +7,8 @@ import logging as lgg
 import numpy as np
 
 from collections import defaultdict
-from datawork import Bars, Energies, Spectra, default_spectra_bars
 from collections.abc import Mapping
+from tesliper.datawork import Bars, Energies, Spectra, default_spectra_bars
 
 
 ##################
