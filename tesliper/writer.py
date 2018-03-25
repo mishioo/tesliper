@@ -25,11 +25,11 @@ class Writer:
 
     def __init__(self, tesliper):
         self.ts = tesliper
+        self.path = None
         
-    def save_output(self, *args, output_dir):
+    def save_output(self, *args, format=None, output_dir=None):
         #populations, bars (with e-m), spectra, averaged, settings
-        if 'popul' in args:
-            self._export_ens_txt_collectively(output_dir)
+        # if 'popul' in args:
             # for en in self.energies.values():
                 # path = os.path.join(output_dir,
                                     # 'Distribution.{}.txt'.format(en.type))
@@ -41,13 +41,19 @@ class Writer:
                     # zip(en.filenames, en.populations, en.deltas, en.values,
                         # self.bars.iri.imag.sum(0), en.stoich)])
                 # f.close()
+        output_dir = output_dir if output_dir else self.ts.output_dir
+        self.path = output_dir
         if 'ens' in args:
-            self._export_ens_txt_separately(output_dir)
+            if 'txt' in format:
+                self.export_ens_txt_separately()
+                self.export_ens_txt_collectively()
+            if 'xml' in format:
+                self.export_energies_xlsx()
         if 'bars' in args:
-            self._export_bars_txts(path=output_dir)
+            self._export_bars_txts()
         if 'spectra' in args:
             for spc in self.spectra.values():
-                spc.export_txts(path=output_dir)
+                spc.export_txts()
             self.ts.logger.info("Individual conformers' spectra text export done.")
                     
         if 'averaged' in args:
@@ -101,13 +107,13 @@ class Writer:
         
     energies_order = 'zpe ten ent gib scf'.split(' ')
     
-    def _export_ens_txt_separately(self, path):
+    def export_ens_txt_separately(self):
         h = ' | '.join(['Population / %', 'Min. B. Factor',
                        'DE / (kcal/mol)', 'Energy / Hartree', 'Imag'])
         for key, en in self.ts.energies.items():
             max_fnm = max(np.vectorize(len)(en.filenames).max(), 20)
             max_stoich = max(np.vectorize(len)(en.stoich).max(), 13)
-            file_path = os.path.join(path, '!distribution.{}.txt'.format(key))
+            file_path = os.path.join(self.path, '!distribution.{}.txt'.format(key))
             header = '{:<{w}} | '.format('Gaussian output file', w=max_fnm) + h
             header = header + ' | {:<{w}}'.format('Stoichiometry', w=max_stoich)
             with open(file_path, 'w') as file:
@@ -115,29 +121,28 @@ class Writer:
                 file.write('-' * len(header) + '\n')
                 for row in zip(en.filenames, en.populations * 100,
                                en.min_factor, en.deltas, en.values,
-                               self.bars.iri.imag.sum(0), en.stoich):
+                               self.ts.bars.iri.imag.sum(0), en.stoich):
                     row = ['{:^{w}{f}}'.format(v, w=w, f=f) \
                         for v, w, f in zip(row, 
                             (max_fnm, 14, 14, 15, 16, 4, max_stoich),
                             ('', '.4f', '.4f', '.4f', 'f', 'd', ''))]
                     file.write(' | '.join(row) + '\n')
         
-    def _export_ens_txt_collectively(self, path):
-        self.ts.unify_data(data_type='e')
-            #or rather check if unified?
-            #or maybe contextmanager with unified: ... ?
-        ens = [self.ts.energies[en] for en in self.energies_order]
-            #get them sorted
-        filenames = ens[0].filenames
-        longest = max(np.vectorize(len)(filenames).max(), 20)
-        types = [en.type for en in ens]
-        values = np.array([en.values for en in ens]).T
-        #deltas = np.array([en.deltas for en in ens])
-        popul = np.array([en.populations * 100 for en in ens]).T
-        header = '{:<{lgst}} | {:^50} | {:^70}'.format('Gaussian output file',
-            'Population / %', 'Energy / Hartree', lgst=longest)
-        names = [self.__header[en] for en in self.energies_order]
-        with open(os.path.join(path, '!distribution.txt'), 'w') as file:
+    def export_ens_txt_collectively(self):
+        with self.ts.unified_data(data_type='e') as data:
+            ens = [data[en] for en in self.energies_order]
+                #get them sorted
+            filenames = ens[0].filenames
+            longest = max(np.vectorize(len)(filenames).max(), 20)
+            types = [en.type for en in ens]
+            values = np.array([en.values for en in ens]).T
+            #deltas = np.array([en.deltas for en in ens])
+            popul = np.array([en.populations * 100 for en in ens]).T
+            header = '{:<{lgst}} | {:^50} | {:^70}'.format(
+                'Gaussian output file', 'Population / %', 'Energy / Hartree',
+                lgst=longest)
+            names = [self.__header[en] for en in self.energies_order]
+        with open(os.path.join(self.path, '!distribution.txt'), 'w') as file:
             file.write(header + '\n')
             names_line = ' ' * longest + ' | ' + \
                 '  '.join(['{:<{w}}'.format(n, w=max(8, len(n))) \
@@ -157,13 +162,7 @@ class Writer:
                 line = fnm + ' | ' + p_line + ' | ' + v_line + '\n'
                 file.write(line)
 
-    def __format_header(self, bar_names):
-        pass
-        
-    def __format_line(self, bar_names, values):
-        pass
-            
-    def _export_bars_txts(self, path):
+    def _export_bars_txts(self):
         separated = defaultdict(list)
         for bar in self.ts.bars.values():
             separated[bar._soxhlet_id].append(bar)
@@ -200,11 +199,11 @@ class Writer:
                     values = freqs + list(values)
                     types = [freq_type] + list(types)
                     filename = '{}.{}.bar'.format('.'.join(fname.split('.')[:-1]), _type)
-                    self.__export_file_txt(path, filename, types, np.array(values).T)
+                    self.__export_file_txt(filename, types, np.array(values).T)
         self.ts.logger.info('Bars export to text files done.')
                     
-    def __export_file_txt(self, path, filename, types, values_list):
-        with open(os.path.join(path, filename), 'w') as file:
+    def __export_file_txt(self, filename, types, values_list):
+        with open(os.path.join(self.path, filename), 'w') as file:
             file.write('\t'.join([self.__header[type] for type in types]))
             file.write('\n')
             for values in values_list:
@@ -215,18 +214,32 @@ class Writer:
         wb = oxl.Workbook()
         ws = wb.active
         ws.title = 'Collective overview'
-        ws['A1'] = 'Output Gaussian file'
+        ws['A1'] = 'Gaussian output file'
         ws['B1'] = 'Populations / %'
         ws['G1'] = 'Energies / hartree'
-        names = [self.__header[en] for en in self.energies_order]
+        names = [self.__header[name] for name in self.energies_order]
         ws.append([''] + names + names)
         ws.merge_cells('A1:A2')
         ws.merge_cells('B1:F1')
         ws.merge_cells('G1:K1')
+        ws.freeze_panes = 'A3'
         with self.ts.unified_data(data_type='e') as data:
             filenames = data['scf'].filenames
-            values = [data[en].values for en in self.energies_order]
-            populs = [data[en].populations for en in self.energies_order]
+            values = [data[name].values for name in self.energies_order]
+            populs = [data[name].populations for name in self.energies_order]
             for row in zip(filenames, *populs, *values):
                 ws.append(row)
-        wb.save(os.path.join(self.ts.output_dir, '!distribution.xlsx'))
+        iri = self.ts.bars.iri
+        for name in self.energies_order:
+            ws = wb.create_sheet(title=self.__header[name])
+            en = self.ts.energies[name]
+            iri.trimmer.match(en)
+            ws.freeze_panes = 'A2'
+            header = ['Gaussian output file', 'Population / %',
+                      'Min. B. Factor', 'DE / (kcal/mol)', 'Energy / Hartree',
+                      'Imag', 'Stoichiometry']
+            ws.append(header)
+            for row in zip(en.filenames, en.populations, en.min_factor,
+                           en.deltas, en.values, iri.imag.sum(0), en.stoich):
+                ws.append(row)
+        wb.save(os.path.join(self.path, '!distribution.xlsx'))
