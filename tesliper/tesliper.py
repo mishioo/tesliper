@@ -13,6 +13,7 @@ from copy import copy
 from itertools import chain, cycle
 
 import datawork
+from datawork import gaussian, lorentzian
 import extraction
 import writer
 
