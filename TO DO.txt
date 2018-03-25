@@ -13,6 +13,7 @@ move filtering functions to tesliper.py
 suplement docstrings
 add some code commentary
 create testing suite
+spectra colour by population
 
 FUTURE:
 add tooltips

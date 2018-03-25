@@ -314,7 +314,8 @@ class Energies(Data):
             
     @property
     def min_factor(self):
-        return np.exp(self.deltas / (self.t * self.Boltzmann))
+        # F(state_n)/F(state_min)
+        return np.exp(-self.deltas / (self.t * self.Boltzmann))
         
     @property
     def populations(self):
