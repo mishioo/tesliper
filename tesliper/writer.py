@@ -26,8 +26,26 @@ class Writer:
     def __init__(self, tesliper):
         self.ts = tesliper
         self.path = None
-        
-    def save_output(self, *args, format=None, output_dir=None):
+    
+    @property
+    def distribution_center(self):
+        return dict(
+            energies = {'txt': lambda: self.ens_txt_collectively() and \
+                                       self.ens_txt_separately(),
+                        'csv': self.energies_csv,
+                        'xmlx': self.energies_xlsx},
+            bars = {'txt': self.bars_txt,
+                    'csv': self.bars_csv,
+                    'xmlx': self.bars_xlsx},
+            spectra = {'txt': self.spectra_txt,
+                       'csv': self.spectra_csv,
+                       'xmlx': self.spectra_xlsx},
+            averaged = {'txt': self.averaged_txt,
+                        'csv': self.averaged_csv,
+                        'xmlx': self.averaged_xlsx}
+            )
+    
+    def save_output(self, output, format=None, output_dir=None):
         #populations, bars (with e-m), spectra, averaged, settings
         # if 'popul' in args:
             # for en in self.energies.values():
@@ -41,25 +59,41 @@ class Writer:
                     # zip(en.filenames, en.populations, en.deltas, en.values,
                         # self.bars.iri.imag.sum(0), en.stoich)])
                 # f.close()
+                
         output_dir = output_dir if output_dir else self.ts.output_dir
         self.path = output_dir
-        if 'ens' in args:
-            if 'txt' in format:
-                self.export_ens_txt_separately()
-                self.export_ens_txt_collectively()
-            if 'xml' in format:
-                self.export_energies_xlsx()
-        if 'bars' in args:
-            self._export_bars_txts()
-        if 'spectra' in args:
-            for spc in self.spectra.values():
-                spc.export_txts()
-            self.ts.logger.info("Individual conformers' spectra text export done.")
+        format = ['txt'] if not format else [format] \
+            if not isinstance(format, (list, tuple)) else format
+        output = output if isinstance(output, (list, tuple)) else [output]
+        functions = []
+        for thing in output:
+            for fmt in format:
+                try:
+                    functions.append(self.distribution_center[thing][fmt])
+                except KeyError:
+                    logger.error('Can not export {} as {}. No such '
+                        'thing or unsupported format.'.format(thing, fmt))
+        for func in functions: func()
+        
+        # if 'ens' in args:
+            # if 'txt' in format:
+                # self.ens_txt_separately()
+                # self.ens_txt_collectively()
+            # if 'xmlx' in format:
+                # self.energies_xlsx()
+            # if 'csv' in format:
+                # self.energies_csv()
+        # if 'bars' in args:
+            # self.bars_txts()
+        # if 'spectra' in args:
+            # for spc in self.spectra.values():
+                # spc.export_txts()
+            # logger.info("Individual conformers' spectra text export done.")
                     
-        if 'averaged' in args:
-            pass
-        if 'settings' in args:
-            pass
+        # if 'averaged' in args:
+            # pass
+        # if 'settings' in args:
+            # pass
     
     __header = dict(
         rot = 'Rot. Str. ',
@@ -107,7 +141,7 @@ class Writer:
         
     energies_order = 'zpe ten ent gib scf'.split(' ')
     
-    def export_ens_txt_separately(self):
+    def ens_txt_separately(self):
         h = ' | '.join(['Population / %', 'Min. B. Factor',
                        'DE / (kcal/mol)', 'Energy / Hartree', 'Imag'])
         for key, en in self.ts.energies.items():
@@ -128,7 +162,7 @@ class Writer:
                             ('', '.4f', '.4f', '.4f', 'f', 'd', ''))]
                     file.write(' | '.join(row) + '\n')
         
-    def export_ens_txt_collectively(self):
+    def ens_txt_collectively(self):
         with self.ts.unified_data(data_type='e') as data:
             ens = [data[en] for en in self.energies_order]
                 #get them sorted
@@ -162,55 +196,7 @@ class Writer:
                 line = fnm + ' | ' + p_line + ' | ' + v_line + '\n'
                 file.write(line)
 
-    def _export_bars_txts(self):
-        separated = defaultdict(list)
-        for bar in self.ts.bars.values():
-            separated[bar._soxhlet_id].append(bar)
-        order = 'dip rot raman1 roa1 vemang vrot vosc lrot losc eemang'\
-                .split(' ')
-        sox_ref = {'=vcd': 'vibra',
-                   '=roa': 'raman',
-                   'td=': 'electr'}
-        for sox_id, bars in separated.items():
-            com = self.ts.soxhlet.instances[sox_id].command
-            _type = [val for key, val in sox_ref.items() if key in com][0]
-            bars_sorted = \
-                [bar for name in order for bar in bars if bar.type == name]
-            freq_type = 'wave' if _type == 'electr' else 'freq'
-            values_sorted = [iter(bar.values) for bar in bars_sorted]
-            frequencies = iter(bars[0].full.frequencies)
-            self.ts.logger.debug('Will make an attempt to export data to txt '
-                                 'from soxhlet {}.'.format(sox_id))
-            if not bars_sorted:
-                self.ts.logger.debug('This soxhlet instance have not provided '
-                                     'any exportable data. Continuing to next '
-                                     'soxhlet.')
-                continue
-            self.tslogger.debug('This soxhlet instance provided following data'
-                         ' types: {}.'.format(', '.join([bar.type for bar \
-                                                         in bars_sorted])))
-            for fname in self.ts.soxhlet.instances[sox_id].gaussian_files:
-                values, types = zip(
-                    *[(next(val), bar.type) for val, bar
-                      in zip(values_sorted, bars_sorted)
-                      if fname in bar.filenames])
-                freqs = [next(frequencies)]
-                if values:
-                    values = freqs + list(values)
-                    types = [freq_type] + list(types)
-                    filename = '{}.{}.bar'.format('.'.join(fname.split('.')[:-1]), _type)
-                    self.__export_file_txt(filename, types, np.array(values).T)
-        self.ts.logger.info('Bars export to text files done.')
-                    
-    def __export_file_txt(self, filename, types, values_list):
-        with open(os.path.join(self.path, filename), 'w') as file:
-            file.write('\t'.join([self.__header[type] for type in types]))
-            file.write('\n')
-            for values in values_list:
-                line = '\t'.join(self.__formatters[tp].format(v) for v, tp in zip(values, types))
-                file.write(line + '\n')
-
-    def export_energies_xlsx(self):
+    def energies_xlsx(self):
         wb = oxl.Workbook()
         ws = wb.active
         ws.title = 'Collective overview'
@@ -243,3 +229,73 @@ class Writer:
                            en.deltas, en.values, iri.imag.sum(0), en.stoich):
                 ws.append(row)
         wb.save(os.path.join(self.path, '!distribution.xlsx'))
+        
+    def energies_csv(self):
+        header = 'population min_factor delta energy'.split(' ')
+        header = ['Gaussian output file'] + header
+        for name, en in self.ts.energies.items():
+            file_path = os.path.join(self.path,
+                '!distribution.{}.csv'.format(name))
+            with open(file_path, 'w', newline='') as file:
+                csvwriter = csv.writer(file)
+                csvwriter.writerow(header)
+                for row in zip(en.filenames, en.populations, en.min_factor,
+                               en.deltas, en.values):
+                    csvwriter.writerow(row)
+        
+    def bars_txt(self):
+        separated = defaultdict(list)
+        for bar in self.ts.bars.values():
+            separated[bar._soxhlet_id].append(bar)
+        order = 'dip rot raman1 roa1 vemang vrot vosc lrot losc eemang'\
+                .split(' ')
+        sox_ref = {'=vcd': 'vibra',
+                   '=roa': 'raman',
+                   'td=': 'electr'}
+        for sox_id, bars in separated.items():
+            com = self.ts.soxhlet.instances[sox_id].command
+            _type = [val for key, val in sox_ref.items() if key in com][0]
+            bars_sorted = \
+                [bar for name in order for bar in bars if bar.type == name]
+            freq_type = 'wave' if _type == 'electr' else 'freq'
+            values_sorted = [iter(bar.values) for bar in bars_sorted]
+            frequencies = iter(bars[0].full.frequencies)
+            logger.debug('Will make an attempt to export data to txt '
+                                 'from soxhlet {}.'.format(sox_id))
+            if not bars_sorted:
+                logger.debug('This soxhlet instance have not provided '
+                                     'any exportable data. Continuing to next '
+                                     'soxhlet.')
+                continue
+            self.tslogger.debug('This soxhlet instance provided following data'
+                         ' types: {}.'.format(', '.join([bar.type for bar \
+                                                         in bars_sorted])))
+            for fname in self.ts.soxhlet.instances[sox_id].gaussian_files:
+                values, types = zip(
+                    *[(next(val), bar.type) for val, bar
+                      in zip(values_sorted, bars_sorted)
+                      if fname in bar.filenames])
+                freqs = [next(frequencies)]
+                if values:
+                    values = freqs + list(values)
+                    types = [freq_type] + list(types)
+                    filename = '{}.{}.bar'.format('.'.join(fname.split('.')[:-1]), _type)
+                    self.__export_file_txt(filename, types, np.array(values).T)
+        logger.info('Bars export to text files done.')
+                    
+    def __export_file_txt(self, filename, types, values_list):
+        with open(os.path.join(self.path, filename), 'w') as file:
+            file.write('\t'.join([self.__header[type] for type in types]))
+            file.write('\n')
+            for values in values_list:
+                line = '\t'.join(self.__formatters[tp].format(v) for v, tp in zip(values, types))
+                file.write(line + '\n')
+
+    def bars_csv(self): pass
+    def bars_xlsx(self): pass
+    def spectra_txt(self): pass
+    def spectra_csv(self): pass
+    def spectra_xlsx(self): pass
+    def averaged_txt(self): pass
+    def averaged_csv(self): pass
+    def averaged_xlsx(self): pass
