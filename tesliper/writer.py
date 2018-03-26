@@ -7,7 +7,7 @@ import numpy as np
 import logging as lgg
 import os
 import openpyxl as oxl
-
+from collections import defaultdict
 
 ##################
 ###   LOGGER   ###
@@ -243,7 +243,7 @@ class Writer:
                                en.deltas, en.values):
                     csvwriter.writerow(row)
         
-    def bars_txt(self):
+    def bars_export(self):
         separated = defaultdict(list)
         for bar in self.ts.bars.values():
             separated[bar._soxhlet_id].append(bar)
@@ -263,11 +263,10 @@ class Writer:
             logger.debug('Will make an attempt to export data to txt '
                                  'from soxhlet {}.'.format(sox_id))
             if not bars_sorted:
-                logger.debug('This soxhlet instance have not provided '
-                                     'any exportable data. Continuing to next '
-                                     'soxhlet.')
+                logger.debug('This soxhlet instance have not provided any '
+                             'exportable data. Continuing to next soxhlet.')
                 continue
-            self.tslogger.debug('This soxhlet instance provided following data'
+            logger.debug('This soxhlet instance provided following data'
                          ' types: {}.'.format(', '.join([bar.type for bar \
                                                          in bars_sorted])))
             for fname in self.ts.soxhlet.instances[sox_id].gaussian_files:
@@ -279,21 +278,75 @@ class Writer:
                 if values:
                     values = freqs + list(values)
                     types = [freq_type] + list(types)
-                    filename = '{}.{}.bar'.format('.'.join(fname.split('.')[:-1]), _type)
-                    self.__export_file_txt(filename, types, np.array(values).T)
+                    yield ('.'.join(fname.split('.')[:-1]), _type, types,
+                           np.array(values).T)
         logger.info('Bars export to text files done.')
                     
-    def __export_file_txt(self, filename, types, values_list):
-        with open(os.path.join(self.path, filename), 'w') as file:
-            file.write('\t'.join([self.__header[type] for type in types]))
-            file.write('\n')
-            for values in values_list:
-                line = '\t'.join(self.__formatters[tp].format(v) for v, tp in zip(values, types))
-                file.write(line + '\n')
+    def bars_txt(self):
+        for fname, _type, types, values_list in self.bars_export():
+            filename = '{}.{}.bar.txt'.format(fname, _type)
+            with open(os.path.join(self.path, filename), 'w') as file:
+                file.write('\t'.join([self.__header[type] for type in types]))
+                file.write('\n')
+                for values in values_list:
+                    line = '\t'.join(self.__formatters[tp].format(v) \
+                        for v, tp in zip(values, types))
+                    file.write(line + '\n')
 
-    def bars_csv(self): pass
-    def bars_xlsx(self): pass
-    def spectra_txt(self): pass
+    def bars_csv(self):
+        for fname, _type, types, values_list in self.bars_export():
+            file_path = (os.path.join(self.path, 
+                '{}.{}.bar.csv'.format(fname, _type)))
+            with open(file_path, 'w', newline='') as file:
+                csvwriter = csv.writer(file)
+                csvwriter.writerow([self.__header[name] for name in types])
+                for values in values_list:
+                    csvwriter.writerow(values)
+                
+    def bars_xlsx(self):
+        wbs = defaultdict(oxl.Workbook)
+        for fname, _type, types, values_list in self.bars_export():
+            wb = wbs[fname]
+            ws = wb.create_sheet()
+            ws.title = _type
+            ws.freeze_panes = 'A2'
+            ws.append([self.__header[name] for name in types])
+            for values in values_list:
+                ws.append([*values])
+        for fname, wb in wbs.items():
+            del wb['Sheet']
+            wb.save(os.path.join(self.path, fname + '.bar.xlsx'))
+        
+    @property
+    def exported_filenames(self):
+        make_new_names = lambda fnm: \
+            '{}.{}.txt'.format('.'.join(fnm.split('.')[:-1]), self.name)
+        names = map(make_new_names, self.filenames)
+        return names
+    
+    @property
+    def averaged_filename(self):
+        return 'avg_{}_{}'.format(self.name, self.energy_type)
+    
+    def spectra_export(self):
+        for spectra in self.tslr.spectra.values():
+            for fnm, values in zip(spectra.filenames, spectra.values):
+                filename = '.'.join(fnm.split('.')[:-1])
+                yield (filename, spectra.name, spectra, values, spectra.base,
+                       spectra.text_header)
+                
+    def spectra_txt(self):
+        for fnm, name, spc, values, base, title in self.spectra_export():
+            file_path = os.path.join(self.path, '{}.{}.txt'.format(fnm, name))
+            with open(file_path, 'w') as file:
+                file.write(title + '\n')
+                file.write(
+                    '\n'.join(
+                    '{:>4d}\t{: .2f}'.format(int(b), s) \
+                    for b, s in zip(base, values))
+                    )
+
+            
     def spectra_csv(self): pass
     def spectra_xlsx(self): pass
     def averaged_txt(self): pass

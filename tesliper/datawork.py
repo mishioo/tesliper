@@ -482,23 +482,6 @@ class Bars(Data):
         output = Spectra(self.spectra_name, self.filenames, base,
                           spectra, hwhm, fitting)
         return output
-        
-    @property
-    def exported_filenames(self):
-        make_new_names = lambda fnm: \
-            '{}.{}.bar'.format('.'.join(fnm.split('.')[:-1]), self.name)
-        names = map(make_new_names, self.filenames)
-        return names
-        
-    def export_txts(self, path):
-        for fname, spc in zip(self.exported_filenames, self.values):
-            with open(os.path.join(path, fname), 'w') as file:
-                file.write(self.text_header + '\n')
-                file.write(
-                    '\n'.join(
-                    '{:>4d}\t{: .2f}'.format(int(b), s) \
-                    for b, s in zip(self.base, spc))
-                )
 
 
 class Spectra:
@@ -525,6 +508,7 @@ class Spectra:
         self.step = abs(base[0] - base[1])
         self.hwhm = hwhm
         self.fitting = fitting
+        self.averaged = {}
         
     def average(self, energies):
         """A method for averaging spectra by population of conformers.
@@ -542,13 +526,17 @@ class Spectra:
             2d numpy array where arr[0] is list of wavelengths/wave numbers
             and arr[1] is list of corresponding averaged intensity values.
         """
-        self.populations = populations = energies.populations
-        self.energy_type = energies.type
+        populations = energies.populations
+        energy_type = energies.type
         #populations must be of same shape as spectra
         #so we expand populations with np.newaxis
         av = (self.values * populations[:, np.newaxis]).sum(0)
-        self.averaged = av
         av_spec = np.array([self.base, av])
+        self.averaged[energy_type] = dict(
+            populations = populations,
+            spectra = av_spec,
+            values = av,
+            base = self.base)
         return av_spec
     
     @property
@@ -564,25 +552,4 @@ class Spectra:
         header = self.text_header + ', averaged by {}.'
         header.format(Data.full_name_ref[self.energy_type])
         return header
-    
-    @property
-    def exported_filenames(self):
-        make_new_names = lambda fnm: \
-            '{}.{}.txt'.format('.'.join(fnm.split('.')[:-1]), self.name)
-        names = map(make_new_names, self.filenames)
-        return names
-    
-    @property
-    def averaged_filename(self):
-        return 'avg_{}_{}'.format(self.name, self.energy_type)
-    
-    def export_txts(self, path=''):
-        for fname, spc in zip(self.exported_filenames, self.values):
-            with open(os.path.join(path, fname), 'w') as file:
-                file.write(self.text_header + '\n')
-                file.write(
-                    '\n'.join(
-                    '{:>4d}\t{: .2f}'.format(int(b), s) \
-                    for b, s in zip(self.base, spc))
-                )
-    
+
