@@ -64,6 +64,7 @@ class WgtStateChanger:
     bars = []
     either = []
     both = []
+    spectra = []
     
     def __init__(self, function):
         self.function = function
@@ -92,12 +93,14 @@ class WgtStateChanger:
     def changers(self):
         bars = None if not self.tslr_inst else self.tslr_inst.bars.spectral
         energies = None if not self.tslr_inst else self.tslr_inst.energies
+        spectra = None if not self.tslr_inst else self.tslr_inst.spectra
         return dict(
             tslr = self.enable if self.tslr_inst else self.disable,
             energies = self.enable if energies else self.disable,
             bars = self.enable if bars else self.disable,
             either = self.enable if (bars or energies) else self.disable,
-            both = self.enable if (bars and energies) else self.disable
+            both = self.enable if (bars and energies) else self.disable,
+            spectra = self.enable if spectra else self.disable
             )
         
     def enable(self, widget):
@@ -203,8 +206,10 @@ class BarsPopup(Popup):
             column=0, row=0, columnspan=2, sticky='w', padx=5, pady=5)
         positions = [(c,r) for r in range(1,6) for c in range(2)]
         self.vars = [tk.BooleanVar() for _ in self.bar_keys]
-        for v, k, n, (c, r) in zip(self.vars, self.bar_keys, self.bar_names, positions):
-            ttk.Checkbutton(self, text=n, variable=v).grid(column=c, row=r, sticky='w', pady=2, padx=5)
+        for v, k, n, (c, r) in zip(self.vars, self.bar_keys, self.bar_names,
+                                   positions):
+            b = ttk.Checkbutton(self, text=n, variable=v)
+            b.grid(column=c, row=r, sticky='w', pady=2, padx=5)
         buttons_frame = ttk.Frame(self)
         buttons_frame.grid(column=0, row=6, columnspan=3, sticky='se', pady=5)
         tk.Grid.rowconfigure(buttons_frame, 0, weight=1)
@@ -221,11 +226,66 @@ class BarsPopup(Popup):
             self.destroy()
             self.master.execute_extract_bars(query)
         else:
-            messagebox.showinfo("Nothing choosen!", "You must chose which bars you want to extract.")
+            messagebox.showinfo("Nothing choosen!",
+                "You must chose which bars you want to extract.")
             self.focus_set()
             
     def cancel_command(self):
         self.destroy()
+        
+        
+class ExportPopup(Popup):
+
+    def __init__(self, master, *args, **kwargs):
+        super().__init__(master, *args, **kwargs)
+        self.title("Export...")
+        self.labels = 'Energies Bars Spectra Averaged'.split(' ')
+        self.vars = [tk.BooleanVar() for _ in self.labels]
+        checks = [ttk.Checkbutton(self, text=l, variable=v)
+                  for l, v in zip(self.labels, self.vars)]
+        for n, check in enumerate(checks):
+            check.grid(column=0, row=n, pady=2, padx=5, sticky='nw')
+        checks[0].configure(state = 'normal' if
+            self.master.parent.tslr.energies else 'disabled')
+        checks[1].configure(state = 'normal' if
+            self.master.parent.tslr.bars else 'disabled')
+        checks[2].configure(state = 'normal' if
+            self.master.parent.tslr.spectra else 'disabled')
+        checks[3].configure(state = 'normal' if
+            self.master.parent.tslr.spectra else 'disabled')
+        self.vars[0].set(True if self.master.parent.tslr.energies else False)
+        self.vars[1].set(True if self.master.parent.tslr.bars else False)
+        self.vars[2].set(True if self.master.parent.tslr.spectra else False)
+        self.vars[3].set(True if self.master.parent.tslr.spectra else False)
+        buttons_frame = ttk.Frame(self)
+        buttons_frame.grid(column=0, row=4, pady=2, sticky='se')
+        b_cancel = ttk.Button(buttons_frame, text="Cancel", command=self.cancel_command)
+        b_cancel.grid(column=0, row=0, sticky='se')
+        b_ok = ttk.Button(buttons_frame, text="OK", command=self.ok_command)
+        b_ok.grid(column=1, row=0, padx=5, sticky='se')
+        tk.Grid.rowconfigure(self, 4, weight=1)
+        tk.Grid.columnconfigure(self, 0, weight=1)
+        self.query = []
+        
+    def ok_command(self):
+        vals = [v.get() for v in self.vars]
+        if any(vals):
+            self.destroy()
+        else:
+            messagebox.showinfo("Nothing choosen!",
+                "You must chose what you want to extract.")
+            self.focus_set()
+            
+    def cancel_command(self):
+        self.vars = []
+        self.destroy()
+        
+    def get_query(self):
+        self.wait_window()
+        self.query = [thing.lower() for thing, wanted
+                      in zip(self.labels, self.vars) if wanted]
+        return self.query
+        
         
 class BoxVar(tk.BooleanVar):
     

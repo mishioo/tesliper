@@ -79,25 +79,25 @@ class Loader(ttk.Frame):
         #Export
         self.label_export = ttk.LabelFrame(buttons_frame, text='Export')
         self.label_export.grid(column=0, row=4, sticky='n')
-        self.b_p_t = ttk.Button(self.label_export, text='Text', command=self.not_impl)
+        self.b_p_t = ttk.Button(self.label_export, text='Text', command=self.save_text)
         self.b_p_t.grid(column=0, row=0)
-        self.b_p_e = ttk.Button(self.label_export, text='Excel', command=self.not_impl)
+        self.b_p_e = ttk.Button(self.label_export, text='Excel', command=self.save_excel)
         self.b_p_e.grid(column=1, row=0)
-        self.b_p_c = ttk.Button(self.label_export, text='CSV', command=self.not_impl)
+        self.b_p_c = ttk.Button(self.label_export, text='CSV', command=self.save_csv)
         self.b_p_c.grid(column=1, row=1)
         guicom.WgtStateChanger.either.extend([self.b_p_t, self.b_p_e, self.b_p_c])
 
         #Load
         self.label_load = ttk.LabelFrame(buttons_frame, text='Load')
-        self.label_load.grid(column=0, row=5, sticky='n')
+        # self.label_load.grid(column=0, row=5, sticky='n')
         self.b_l_p = ttk.Button(self.label_load, text='Populations')
-        self.b_l_p.grid(column=0, row=0)
+        # self.b_l_p.grid(column=0, row=0)
         self.b_l_b = ttk.Button(self.label_load, text='Bars')
-        self.b_l_b.grid(column=1, row=0)
+        # self.b_l_b.grid(column=1, row=0)
         self.b_l_s = ttk.Button(self.label_load, text='Spectra')
-        self.b_l_s.grid(column=0, row=1)
+        # self.b_l_s.grid(column=0, row=1)
         self.b_l_t = ttk.Button(self.label_load, text='Settings')
-        self.b_l_t.grid(column=1, row=1)
+        # self.b_l_t.grid(column=1, row=1)
         guicom.WgtStateChanger.tslr.extend([self.b_l_p, self.b_l_b, self.b_l_s, self.b_l_t])
         
         #Dir frame
@@ -145,10 +145,33 @@ class Loader(ttk.Frame):
     def not_impl(self):
         messagebox.showinfo("Sorry!", "We are sorry, but this function is not implemented yet.")
     
+    def get_save_output(self):
+        popup = guicom.ExportPopup(self, width='220', height='130')
+        query = popup.get_query()
+        return query
+        
+    @guicom.Feedback('Saving...')
+    def execute_save_command(self, output, format):
+        self.parent.tslr.writer.save_output(output, format)
+        
     @guicom.Feedback('Saving...')
     def save(self):
-        for spc in self.parent.tslr.spectra.values():
-            spc.export_txts(path=self.parent.tslr.output_dir)
+        pass
+            
+    def save_text(self):
+        output = self.get_save_output()
+        if not output: return
+        self.execute_save_command(output, format='txt')
+            
+    def save_excel(self):
+        output = self.get_save_output()
+        if not output: return
+        self.execute_save_command(output, format='xlsx')
+            
+    def save_csv(self):
+        output = self.get_save_output()
+        if not output: return
+        self.execute_save_command(output, format='csv')
             
     @guicom.WgtStateChanger
     def clear_session(self):
@@ -237,9 +260,11 @@ class Loader(ttk.Frame):
     def calc_spectra(self):
         self.parent.tslr.calculate_spectra()
         
-    @guicom.Feedback('Averaging Spectra...')
+    @guicom.Feedback('Averaging spectra...')
     def calc_average(self):
-        pass
+        tslr = self.parent.tslr
+        for spc in tslr.spectra.values():
+            averaged = [spc.average(en) for en in tslr.energies.values()]
         
     def get_wanted_bars(self):
         popup = guicom.BarsPopup(self, width='250', height='190')
