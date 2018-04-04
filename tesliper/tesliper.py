@@ -280,27 +280,10 @@ class Tesliper:
             output[bar.spectra_name] = spc
         return output
         
-    def get_averaged_spectrum(self, spectr, energies):
-        output = self.spectra[spectr].average(energies)
+    def get_averaged_spectrum(self, spectr, energy):
+        output = self.spectra[spectr].average(self.energies[energy])
         return output
         
-    def __save_vibra(self, fnms):
-        bars = (bar for bar in self.bars.items() if bar.type in \
-                'ir vcd raman1 roa1'.split(' '))
-        order = 'freq rot dip raman1 roa1 e-m'.split(' ')
-        bars = [b for b in order if b in bars] #ensure wanted order
-        header = [bar.full_name for bar in bars]
-        values = [bar.value for bar in bars]
-        for fnm, bars in zip(fnms, np.array(values).T):
-            #transpose array of bar values to iterate over files
-            path = os.path.join(output_dir,
-                                '{}.v.bar'.format(fnm.split('.')[0]))
-            f = open(path, 'r', newline='')
-            writer = csv.writer(f, delimiter='\t')
-            writer.writerow(header)
-            writerows(bars)
-            f.close()
-            
     def __unify_data(self, data, dummy, overriding):
         for dat in data:
             try:
@@ -355,3 +338,16 @@ class Tesliper:
         finally:
             for name, blade in previous:
                 data[name].trimmer.set(blade)
+                
+    def export_energies(self, format='txt'):
+        self.writer.save_output(self.output_dir, 'energies', format)
+        
+    def export_bars(self, format='txt'):
+        self.writer.save_output(self.output_dir, 'bars', format)
+                
+    def export_spectra(self, format='txt'):
+        self.writer.save_output(self.output_dir, 'spectra', format)
+                
+    def export_averaged(self, format='txt'):
+        self.writer.save_output(self.output_dir, 'averaged', format)
+        

@@ -6,6 +6,7 @@ import logging as lgg
 import math
 import numpy as np
 from collections import Counter
+from contextlib import contextmanager
 from copy import copy
 import tesliper.descriptors as dscr
 
@@ -266,6 +267,13 @@ class Data:
         self.trimmer.update(blade)
         self.trimming = True
         return self
+        
+    @contextmanager    
+    def temporarily_trimmed(self):
+        curr_trimm = self.trimming
+        self.trimming = True
+        yield self
+        self.trimming = curr_trimm
     
                     
 class Energies(Data):
@@ -484,7 +492,7 @@ class Bars(Data):
         return output
 
 
-class Spectra:
+class Spectra(Data):
     
     units = {
         'vibra': {'hwhm': 'cm-1',
@@ -498,17 +506,17 @@ class Spectra:
         }
     
     def __init__(self, name, filenames, base, values, hwhm, fitting):
+        super().__init__(Bars.spectra_type_ref[name],
+                         filenames, values=values)
+        self.trimming = False
         self.name = name
-        self.type = Bars.spectra_type_ref[self.name]
-        self.filenames = filenames
         self.base = base
-        self.values = values
         self.start = base[0]
         self.stop = base[-1]
         self.step = abs(base[0] - base[1])
         self.hwhm = hwhm
         self.fitting = fitting
-        self.averaged = {}
+        self._averaged = {}
         
     def average(self, energies):
         """A method for averaging spectra by population of conformers.
@@ -528,15 +536,34 @@ class Spectra:
         """
         populations = energies.populations
         energy_type = energies.type
-        #populations must be of same shape as spectra
-        #so we expand populations with np.newaxis
-        av = (self.values * populations[:, np.newaxis]).sum(0)
-        av_spec = np.array([self.base, av])
-        self.averaged[energy_type] = dict(
-            populations = populations,
-            spectra = av_spec,
-            values = av,
-            base = self.base)
+        try:
+            old_popul = self._averaged[energy_type]['populations']
+            if populations.shape == old_popul.shape:
+                if (populations == old_popul).all():
+                    logger.debug('Populations same as previously used. ' \
+                                 'Returning cashed spectrum.') 
+                    return self._averaged[energy_type]['spectrum']
+                else:
+                    logger.debug('Spectrum previously averaged with ' \
+                                 'different populations.') 
+            else:
+                logger.debug('Spectrum previously averaged with ' \
+                             'different populations.') 
+        except KeyError:
+            logger.debug('No previously averaged spectrum found.')
+        with self.temporarily_trimmed():
+            self.trimmer.match(energies)
+            #populations must be of same shape as spectra
+            #so we expand populations with np.newaxis
+            av = (self.values * populations[:, np.newaxis]).sum(0)
+            av_spec = np.array([self.base, av])
+            self._averaged[energy_type] = dict(
+                populations = populations,
+                spectrum = av_spec,
+                values = av,
+                base = self.base)
+        logger.info('{} spectrum averaged by {}.'.format(self.name,
+                                                         energy_type))
         return av_spec
     
     @property
