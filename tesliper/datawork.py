@@ -262,7 +262,10 @@ class Data:
             wanted = stoich
         else:
             counter = Counter(self.stoich)
-            wanted = counter.most_common(1)[0][0]
+            try:
+                wanted = counter.most_common(1)[0][0]
+            except IndexError:
+                wanted = ''
         blade = self._full_stoich == wanted
         self.trimmer.update(blade)
         self.trimming = True
