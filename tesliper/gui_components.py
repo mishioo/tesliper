@@ -66,20 +66,15 @@ class WgtStateChanger:
     both = []
     spectra = []
     
-    def __init__(self, function):
-        self.function = function
+    def __init__(self, function=None):
+        if function is not None:
+            self.function = function
+        else:
+            self.function = lambda *args, **kwargs: None
     
     def __call__(self, other, *args, **kwargs):
         outcome = self.function(other, *args, **kwargs)
-        try:
-            self.gui = other.parent
-        except AttributeError:
-            self.gui = other.gui
-        self.tslr_inst = self.gui.tslr
-        for dependency, changer in self.changers.items():
-            for widget in getattr(self, dependency):
-                changer(widget)
-        self.change_spectra_radio()
+        self.set_states(other)
         return outcome
         
     def __get__(self, obj, objtype):
@@ -121,7 +116,18 @@ class WgtStateChanger:
             state = 'disabled' if not self.tslr_inst or not \
                     option in spectra_avaiable else 'normal'
             widget.configure(state=state)
-            
+    
+    def set_states(self, other):
+        try:
+            self.gui = other.parent
+        except AttributeError:
+            self.gui = other.gui
+        self.tslr_inst = self.gui.tslr
+        for dependency, changer in self.changers.items():
+            for widget in getattr(self, dependency):
+                changer(widget)
+        self.change_spectra_radio()
+
 
 class FeedbackThread(Thread):
     def __init__(self, gui, progbar_msg, target, args, kwargs):
@@ -360,7 +366,8 @@ class CheckTree(ttk.Treeview):
             borderwidth=5,
             highlightthickness=1,
             relief='flat')
-        self.but_sort = ttk.Button(but_frame, style='sorting.TButton', command=self._sort_button)
+        self.but_sort = ttk.Button(but_frame, style='sorting.TButton',
+            command=self._sort_button)
         self.but_sort.grid(column=0, row=0, sticky='nwes')
         
         #Boxes

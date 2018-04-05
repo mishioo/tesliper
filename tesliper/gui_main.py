@@ -143,7 +143,8 @@ class Loader(ttk.Frame):
         self.progbar.grid(column=0, row=11, columnspan=2, sticky='swe')
         
     def not_impl(self):
-        messagebox.showinfo("Sorry!", "We are sorry, but this function is not implemented yet.")
+        messagebox.showinfo("Sorry!",
+            "We are sorry, but this function is not implemented yet.")
     
     def get_save_output(self):
         popup = guicom.ExportPopup(self, width='220', height='130')
@@ -175,13 +176,29 @@ class Loader(ttk.Frame):
             
     @guicom.WgtStateChanger
     def clear_session(self):
-        pass
+        if self.parent.tslr:
+            pop = messagebox.askokcancel(
+                message='Are you sure you want to start new session? Any unsaved '
+                        'changes will be lost!',
+                title='New session', icon='warning', default='cancel')
+            if pop:
+                if self.parent.tslr:
+                    self.parent.tslr = None
+                if self.parent.conf_tab.conf_list:
+                    self.parent.conf_tab.conf_list.destroy()
+                    self.parent.conf_tab.conf_list = None
+                    self.parent.conf_tab.established = False
+            else:
+                return False
+        self.parent.logger.info('\nStarting new session...')
+        return True
 
     @guicom.WgtStateChanger        
-    def from_dir(self, new_dir=None):
-        if not new_dir: new_dir = askdirectory()
+    def from_dir(self):
+        proceed = self.clear_session()
+        if not proceed: return
+        new_dir = askdirectory()
         if not new_dir: return
-        self.clear_session()
         try:
             self.parent.tslr = tesliper.Tesliper(new_dir)
         except:
@@ -549,8 +566,7 @@ class Conformers(ttk.Frame):
         b_select.grid(column=0, row=1)
         b_disselect = ttk.Button(
             self, text='Disselect all',
-            command=lambda: [box.var.set(False) for box in self.conf_list.boxes]
-            )
+            command=self.disselect_all)
         b_disselect.grid(column=0, row=2)
         #ttk.Button(self, text='Refresh', command=self.refresh).grid(column=3, row=2, sticky='swe')
         ttk.Label(self, text='Show:').grid(column=2, row=1, sticky='sw')
@@ -628,24 +644,25 @@ class Conformers(ttk.Frame):
             self.check_missing]
             #b_filter, b_stoich, b_imag]
             )
+
+    def make_new_conf_list(self):
+        self.conf_list = guicom.CheckTree(self.overview, parent_tab = self)
+        self.conf_list.frame.grid(column=0, row=0, sticky='nswe')
         
     def establish(self):
         self.make_new_conf_list()
         en = self.parent.tslr.energies.scf.full
         for num, (fnm, stoich) in enumerate(zip_longest(en.filenames, en.stoich)):
-            self.parent.conf_tab.conf_list.insert('', 'end', text=fnm)
-            self.parent.conf_tab.conf_list.set(num, column='stoich', value=stoich)
+            self.conf_list.insert('', 'end', text=fnm)
+            self.conf_list.set(num, column='stoich', value=stoich)
+        # frame = ttk.Frame(self.conf_list.frame, height=15, width=17)
+        # frame.grid(column=0, row=2, sticky='sw')
+        # frame.grid_propagate(False)
         self.show_combo.set('Energy')
         self.filter_combo.set('Thermal')
         self.update('values')
         self.show_imag()
         self.established = True
-        
-    def make_new_conf_list(self):
-        if self.conf_list:
-            self.conf_list.destroy()
-        self.conf_list = guicom.CheckTree(self.overview, parent_tab = self)
-        self.conf_list.frame.grid(column=0, row=0, sticky='nswe')
         
     @property
     def energies(self):
@@ -701,11 +718,17 @@ class Conformers(ttk.Frame):
         energy = self.filter_ref[self.en_filter_var.get()]
         arr = getattr(self.energies[energy], self.showing)
         factor = 100 if self.showing == 'populations' else 1
-        lower, upper = arr.min(), arr.max()
-        n = 2 if self.showing == 'populations' else 4
-        lower, upper = map(lambda v: '{:.{}f}'.format(v * factor, n), (lower - 0.0001, upper + 0.0001))
-        self.lower_var.set(lower)
-        self.upper_var.set(upper)
+        try:
+            lower, upper = arr.min(), arr.max()
+        except ValueError:
+            lower, upper = 0, 0
+        else:
+            n = 2 if self.showing == 'populations' else 4
+            lower, upper = map(lambda v: '{:.{}f}'.format(v * factor, n),
+                               (lower - 0.0001, upper + 0.0001))
+        finally:
+            self.lower_var.set(lower)
+            self.upper_var.set(upper)
     
     def filter_energy(self):
         lower = float(self.lower_var.get())
@@ -836,7 +859,7 @@ class TslrNotebook(ttk.Notebook):
         self.add(self.info_tab, text='Info')
         
         self.pack(fill=tk.BOTH, expand=True)
-        self.main_tab.clear_session()
+        guicom.WgtStateChanger().set_states(self.main_tab)
         
         self.logger = lgg.getLogger(__name__)
         self.loggers = [self.logger] + tesliper.loggers
@@ -879,6 +902,7 @@ class TslrNotebook(ttk.Notebook):
         if _DEVELOPEMENT:
             #for purposes of debugging
             self.logger.addHandler(tesliper.mainhandler)
+          
         
     def validate_entry(self, inserted, text_if_allowed):
         if any(i not in '0123456789.,+-' for i in inserted):
