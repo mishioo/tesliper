@@ -1,6 +1,5 @@
 CURRENT:
 check intensity calculations
-add saving functionality
 supplement info tab
 add graph labels
 correct positioning of checkboxes

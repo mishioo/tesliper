@@ -12,6 +12,15 @@ from copy import copy
 from functools import partial
 
 
+##################
+###   LOGGER   ###
+##################
+
+logger = lgg.getLogger(__name__)
+logger.setLevel(lgg.DEBUG)
+logger.debug("Workin', baby!")
+
+
 ###################
 ###   CLASSES   ###
 ###################
@@ -65,6 +74,7 @@ class WgtStateChanger:
     either = []
     both = []
     spectra = []
+    all = []
     
     def __init__(self, function=None):
         if function is not None:
@@ -95,7 +105,8 @@ class WgtStateChanger:
             bars = self.enable if bars else self.disable,
             either = self.enable if (bars or energies) else self.disable,
             both = self.enable if (bars and energies) else self.disable,
-            spectra = self.enable if spectra else self.disable
+            spectra = self.enable if spectra else self.disable,
+            all = self.enable if (energies and spectra) else self.disable
             )
         
     def enable(self, widget):
@@ -152,7 +163,7 @@ class FeedbackThread(Thread):
         self.gui.spectra_tab.progbar.stop()
         self.gui.main_tab.progtext.set('Idle.')
         if self.exc:
-            self.gui.logger.critical('Something unexpected happend.',
+            logger.critical('Something unexpected happend.',
                                      exc_info = self.exc)
             return
             #raise self.exc
@@ -262,7 +273,7 @@ class ExportPopup(Popup):
         self.vars[0].set(True if self.master.parent.tslr.energies else False)
         self.vars[1].set(True if self.master.parent.tslr.bars else False)
         self.vars[2].set(True if self.master.parent.tslr.spectra else False)
-        self.vars[3].set(True if self.master.parent.tslr.spectra else False)
+        self.vars[3].set(True if self.master.parent.tslr.all else False)
         buttons_frame = ttk.Frame(self)
         buttons_frame.grid(column=0, row=4, pady=2, sticky='se')
         b_cancel = ttk.Button(buttons_frame, text="Cancel", command=self.cancel_command)
@@ -326,7 +337,7 @@ class Checkbox(ttk.Checkbutton):
             self.tree.item(self.index, tags=())
         else:
             self.tree.item(self.index, tags='discarded')
-        self.tree.parent_tab.parent.logger.debug('box index: {}'.format(self.index))
+        logger.debug('box index: {}'.format(self.index))
         self.box_command()
         #self.tree.selection_set(str(self.index))
 
@@ -433,7 +444,9 @@ class CheckTree(ttk.Treeview):
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
         
     def yscroll(self, *args):
+        logger.debug(args)
         self.canvas.yview_moveto(args[0])
+        logger.debug(self.canvas.yview())
         
     def insert(self, parent='', index=tk.END, iid=None, **kw):
         box = Checkbox(self.boxes_frame, self, box_command = self.parent_tab.refresh,
@@ -444,6 +457,8 @@ class CheckTree(ttk.Treeview):
         
     def on_bar(self, *args):
         self.yview(*args)
+        # logger.debug(args)
+        # logger.debug(self.canvas.yview())
 
 
 class MaxLevelFilter:
