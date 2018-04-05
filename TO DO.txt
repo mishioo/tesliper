@@ -3,9 +3,11 @@ check intensity calculations
 supplement info tab
 add graph labels
 correct positioning of checkboxes
+impement smart calculation and smart export
 
 NEAR:
 add drag&drop support
+export from spectra tab
 export spectra as image
 export to excel/csv
 move filtering functions to tesliper.py

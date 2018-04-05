@@ -494,12 +494,13 @@ class Spectra(ttk.Frame):
             
     def average_draw(self, spectra_name, option):
         tslr = self.parent.tslr
-        en = tslr.energies[self.average_ref[option]]
+        en_name = self.average_ref[option]
+        en = tslr.energies[en_name]
         bar_name = tesliper.datawork.default_spectra_bars[spectra_name]
         bar = tslr.bars[bar_name]
         bar.trimmer.match(en)
         tslr.calculate_spectra(spectra_name, **self.current_settings)
-        spc = tslr.get_averaged_spectrum(spectra_name, en)
+        spc = tslr.get_averaged_spectrum(spectra_name, en_name)
         self.show_spectra(*spc)
 
     def single_draw(self, spectra_name, option):
