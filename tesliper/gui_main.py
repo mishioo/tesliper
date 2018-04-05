@@ -1,3 +1,7 @@
+###################
+###   IMPORTS   ###
+###################
+
 import os
 import traceback
 import logging as lgg
@@ -18,7 +22,12 @@ import tesliper.gui_components as guicom
 
 import tesliper.tesliper as tesliper
 from tesliper.tesliper import __version__, __author__
-_DEVELOPEMENT = True
+_DEVELOPEMENT = False
+
+
+###################
+###   CLASSES   ###
+###################
 
 class Loader(ttk.Frame):
     
@@ -60,7 +69,7 @@ class Loader(ttk.Frame):
         self.b_c_a = ttk.Button(self.label_calc, text='Average', command=self.calc_average)
         self.b_c_a.grid(column=1, row=0)
         guicom.WgtStateChanger.bars.append(self.b_c_s)
-        guicom.WgtStateChanger.both.append(self.b_c_a)
+        guicom.WgtStateChanger.all.append(self.b_c_a)
 
         #Smart
         self.label_smart = ttk.LabelFrame(buttons_frame, text='Smart')
@@ -70,7 +79,7 @@ class Loader(ttk.Frame):
         self.b_s_c = ttk.Button(self.label_smart, text='Calculate', command=self.not_impl)
         self.b_s_c.grid(column=1, row=0)
         #temporarly
-        self.b_s_s = ttk.Button(self.label_smart, text='Save', command=self.save)
+        self.b_s_s = ttk.Button(self.label_smart, text='Save', command=self.not_impl)
         self.b_s_s.grid(column=1, row=1)
         guicom.WgtStateChanger.tslr.append(self.b_s_e)
         guicom.WgtStateChanger.bars.append(self.b_s_c)
@@ -88,17 +97,17 @@ class Loader(ttk.Frame):
         guicom.WgtStateChanger.either.extend([self.b_p_t, self.b_p_e, self.b_p_c])
 
         #Load
-        self.label_load = ttk.LabelFrame(buttons_frame, text='Load')
+        # self.label_load = ttk.LabelFrame(buttons_frame, text='Load')
         # self.label_load.grid(column=0, row=5, sticky='n')
-        self.b_l_p = ttk.Button(self.label_load, text='Populations')
+        # self.b_l_p = ttk.Button(self.label_load, text='Populations')
         # self.b_l_p.grid(column=0, row=0)
-        self.b_l_b = ttk.Button(self.label_load, text='Bars')
+        # self.b_l_b = ttk.Button(self.label_load, text='Bars')
         # self.b_l_b.grid(column=1, row=0)
-        self.b_l_s = ttk.Button(self.label_load, text='Spectra')
+        # self.b_l_s = ttk.Button(self.label_load, text='Spectra')
         # self.b_l_s.grid(column=0, row=1)
-        self.b_l_t = ttk.Button(self.label_load, text='Settings')
+        # self.b_l_t = ttk.Button(self.label_load, text='Settings')
         # self.b_l_t.grid(column=1, row=1)
-        guicom.WgtStateChanger.tslr.extend([self.b_l_p, self.b_l_b, self.b_l_s, self.b_l_t])
+        # guicom.WgtStateChanger.tslr.extend([self.b_l_p, self.b_l_b, self.b_l_s, self.b_l_t])
         
         #Dir frame
         dir_frame = ttk.Frame(self)
@@ -855,14 +864,14 @@ class TslrNotebook(ttk.Notebook):
         self.conf_tab = Conformers(self)
         self.add(self.conf_tab, text='Conformers')
         
-        self.info_tab = ttk.Frame(self)
-        self.add(self.info_tab, text='Info')
+        # self.info_tab = ttk.Frame(self)
+        # self.add(self.info_tab, text='Info')
         
         self.pack(fill=tk.BOTH, expand=True)
         guicom.WgtStateChanger().set_states(self.main_tab)
         
         self.logger = lgg.getLogger(__name__)
-        self.loggers = [self.logger] + tesliper.loggers
+        self.loggers = [self.logger, guicom.logger] + tesliper.loggers
         text_handler = guicom.TextHandler(self.main_tab.log)
         text_handler.setLevel(lgg.INFO)
         text_handler.addFilter(guicom.MaxLevelFilter(lgg.INFO))
@@ -902,6 +911,7 @@ class TslrNotebook(ttk.Notebook):
         if _DEVELOPEMENT:
             #for purposes of debugging
             self.logger.addHandler(tesliper.mainhandler)
+            guicom.logger.addHandler(tesliper.mainhandler)
           
         
     def validate_entry(self, inserted, text_if_allowed):

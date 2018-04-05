@@ -23,7 +23,7 @@ from tesliper import writer
 ############################
 
 __author__ = "Michał M. Więcław"
-__version__ = "0.5.3"
+__version__ = "0.9.0"
     
     
 ##################
