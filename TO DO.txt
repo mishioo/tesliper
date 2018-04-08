@@ -1,20 +1,19 @@
 CURRENT:
 check intensity calculations
-supplement info tab
 add graph labels
-correct positioning of checkboxes
+correct displaying of checkboxes
 impement smart calculation and smart export
 
-NEAR:
+SOON:
 add drag&drop support
 export from spectra tab
 export spectra as image
-export to excel/csv
 move filtering functions to tesliper.py
 suplement docstrings
 add some code commentary
 create testing suite
 spectra colour by population
+supplement info tab
 
 FUTURE:
 add tooltips

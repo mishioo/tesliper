@@ -6,3 +6,5 @@ __*/
 quickcheck*
 tslr_err_log.txt
 ENV/
+build/
+*.spec
