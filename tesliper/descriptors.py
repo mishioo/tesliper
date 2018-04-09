@@ -46,8 +46,11 @@ class IntTypeArray(BaseDescr):
 class FloatTypeArray(BaseDescr):
         
     def __set__(self, obj, value):
-        setattr(obj, self.inst_name, np.array(value, dtype=float))
-        
+        try:
+            setattr(obj, self.inst_name, np.array(value, dtype=float))
+        except ValueError:
+            print(value)
+            
         
 class BladeDescr:
 

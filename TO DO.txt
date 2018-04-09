@@ -1,4 +1,8 @@
 CURRENT:
+correct Exporting error
+change energies precision to .6
+correct wanted_files handling in extractions.py
+handle uncompatible Gaussian versions
 check intensity calculations
 add graph labels
 correct displaying of checkboxes

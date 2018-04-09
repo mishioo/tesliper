@@ -115,11 +115,11 @@ class Tesliper:
         }
     units = datawork.Spectra.units
 
-    def __init__(self, input_dir=None, output_dir=None):
+    def __init__(self, input_dir=None, output_dir=None, wanted_files=None):
+        #TO DO: make wanted_files setter to reflect changes after instantiation
+        self.wanted_files = wanted_files
         if input_dir or output_dir:
             self.change_dir(input_dir, output_dir)
-        if input_dir:
-            self.soxhlet = extraction.Soxhlet(self.input_dir)
         self.energies = DataHolder()
         self.bars = DataHolder()
         self.spectra = DataHolder()
@@ -166,7 +166,7 @@ class Tesliper:
                     )
         if input_dir:
             self.input_dir = input_dir
-            self.soxhlet = extraction.Soxhlet(input_dir)
+            self.soxhlet = extraction.Soxhlet(input_dir, self.wanted_files)
             logger.info('Current working directory is: {}'.format(input_dir))
         if output_dir:
             self.output_dir = output_dir
