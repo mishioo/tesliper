@@ -1,0 +1,12 @@
+v. 0.6.2
+- solved some problems with corrupted files extraction
+- fixed RuntimeError on overlaping actions
+- fixed export popup error
+- errors description moved to tslr_err_log.txt
+- fixed ValueError on empty settings in gui_main.current_settings
+
+v. 0.6.1
+First beta relase
+
+v. 0.6.0 =>
+Early developement stages

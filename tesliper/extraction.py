@@ -130,11 +130,17 @@ class Extractor(Mapping):
             raise PatternNotFound("Could not extract command.")
             
     def _get_stoich(self, text):
-        return self.regexs['stoich'].search(text).group(1)
+        try:
+            return self.regexs['stoich'].search(text).group(1)
+        except AttributeError:
+            raise PatternNotFound("Could not extract stoichiometry.")
     
     def _get_energies(self, text):
-        ens = self.regexs['ens'].search(text).groups()
-        scf = self.regexs['scf'].findall(text)[-1]
+        try:
+            ens = self.regexs['ens'].search(text).groups()
+            scf = self.regexs['scf'].findall(text)[-1]
+        except (IndexError, AttributeError):
+            raise PatternNotFound("Could not extract energies.")
         return (*ens, scf)
         
     def _get_vibra_dict(self):
@@ -227,10 +233,11 @@ class Soxhlet:
         self.files = os.listdir(path)
         self.wanted_files = wanted_files
         self.extractor = Extractor()
-        self.command = self._get_command()
+        self.command = self._get_command(self.gaussian_files[0])
         self.spectra_type = self._get_spectra_type()
         self._id = len(self.instances)
         self.instances[self._id] = self
+        self.check_integrity()
 
     @property
     def wanted_files(self):
@@ -293,7 +300,8 @@ class Soxhlet:
         wanted_files = self.wanted_files if self.wanted_files else ''
         filtered = [
             f for f in files if f.endswith(ext) and f.startswith(wanted_files)
-            ]
+            ] #TO DO: correct this! startswith is wrong
+            # maby just '.'.join(file, ext)
         return filtered
          
     def log_or_out(self, files=None):
@@ -322,6 +330,10 @@ class Soxhlet:
             If both *.log and *.out files are present in list of filenames.
         ValueError
             If neither *.log nor *.out files are present in list of filenames.
+            
+        TO DO
+        -----
+        correct this to take in consideration wanted_files
         """
         files = files if files else self.files
         logs, outs = (any(f.endswith(ext) for f in files) \
@@ -333,7 +345,7 @@ class Soxhlet:
         else:
             return '.log' if logs else '.out'        
         
-    def _get_command(self):
+    def _get_command(self, file):
         """Parses first gaussian output file associated with Soxhlet instance
         and extracts gaussian command used to initialized calculations.
         
@@ -344,14 +356,14 @@ class Soxhlet:
         """
         if not self.gaussian_files:
             return None
-        with open(os.path.join(self.path, self.gaussian_files[0])) as f:
+        with open(os.path.join(self.path, file)) as f:
             cont = f.read()
         try:
             command = self.extractor['command'](cont).lower()
         except PatternNotFound:
             logger.critical("Gaussian command line could not be found in " \
                             "file {}. Please check if file is not corrupted." \
-                            .format(self.gaussian_files[0]), exc_info=True)
+                            .format(file), exc_info=True)
             raise
         return command
  
@@ -375,6 +387,21 @@ class Soxhlet:
             return 'electr'
         else:
             return None
+            
+    def check_integrity(self):
+        no = len(self.gaussian_files)
+        commands = [None] * no
+        for num, file in enumerate(self.gaussian_files):
+            with open(os.path.join(self.path, file)) as f:
+                cont = f.read()
+                commands[num] = self._get_command(file)
+        cmds = np.array(commands, dtype=str)
+        all_ok = (cmds == cmds[0]).all()
+        if not all_ok:
+            logger.debug(commands)
+            logger.warning('Files from different Gaussian calculation runs '
+                'mixed in directory. Please make sure to select only files '
+                'from one calculation run.')
 
     def parse_request(self, request):
         """Converts request to template dictionary used to place data during 
@@ -485,6 +512,14 @@ class Soxhlet:
                     "desired informations.".format(Bars.full_name_ref[thing], 
                                                    file))
                     things_omitted.append(thing)
+        # logger.debug([k for k in extracted])
+        # logger.debug(things_omitted)
+        #remove partialy extracted data to avoid errors
+        for thing in things_omitted:
+            if thing in extracted.keys():
+                del extracted[thing]
+            elif thing == 'energies':
+                for k in energies_keys: del extracted[k]
         return self.from_dict(**extracted)
         
     def load_bars(self, spectra_type=None):
@@ -634,7 +669,9 @@ class Soxhlet:
         filenames = data.pop('filenames')
         stoich = data.pop('stoich')
         done = []
+        #data_items = key, value for key, value in data.items() if
         for key, value in data.items():
+            # if not value:
             if key in 'zpec tenc entc gibc scfc ex_en vfreq efreq'.split(' '):
                 continue
             if key in 'zpe ten ent gib scf'.split(' '):

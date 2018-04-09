@@ -179,7 +179,10 @@ class Feedback:
         def wrapper(other, *args, **kwargs):
             #other becomes self from decorated method
             if other.parent.thread.is_alive():
-                raise RuntimeError
+                msg = "Can't start {}, while {} is still running.".format(
+                    function, other.parent.thread.target)
+                logger.debug(msg)
+                return #log and do nothing
             else:
                 other.parent.thread = FeedbackThread(
                     other.parent, self.progbar_msg, function,
@@ -273,7 +276,7 @@ class ExportPopup(Popup):
         self.vars[0].set(True if self.master.parent.tslr.energies else False)
         self.vars[1].set(True if self.master.parent.tslr.bars else False)
         self.vars[2].set(True if self.master.parent.tslr.spectra else False)
-        self.vars[3].set(True if self.master.parent.tslr.all else False)
+        self.vars[3].set(True if self.master.parent.tslr.spectra else False)
         buttons_frame = ttk.Frame(self)
         buttons_frame.grid(column=0, row=4, pady=2, sticky='se')
         b_cancel = ttk.Button(buttons_frame, text="Cancel", command=self.cancel_command)
@@ -478,6 +481,6 @@ class ShortExcFormatter(lgg.Formatter):
         return super().format(record)
 
     def formatException(self, ei):
-        output = 'Error type: {}'.format(ei[1])
+        output = ''
         return output
 

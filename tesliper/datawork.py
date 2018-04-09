@@ -228,7 +228,10 @@ class Data:
         ent = 'Thermal Enthalpy',
         gib = 'Thermal Free Energy',
         scf = 'SCF',
-        ex_en = 'Excitation energy'
+        ex_en = 'Excitation energy',
+        vfreq = 'Frequency',
+        efreq = 'Wavelength',
+        energies = 'Energies'
         )
 
     def __init__(self, type, filenames, stoich=None, values=None):

@@ -22,7 +22,7 @@ import tesliper.gui_components as guicom
 
 import tesliper.tesliper as tesliper
 from tesliper.tesliper import __version__, __author__
-_DEVELOPEMENT = False
+_DEVELOPEMENT = True
 
 
 ###################
@@ -232,7 +232,8 @@ class Loader(ttk.Frame):
         filenames = map(lambda p: os.path.split(p)[1], files)
         self.clear_session()
         try:
-            self.parent.tslr = tesliper.Tesliper(new_dir)
+            self.parent.tslr = tesliper.Tesliper(new_dir,
+                wanted_files = filenames)
         except:
             self.parent.logger.critical(
                 "Sorry! An error occurred during new session instantiation.",
@@ -241,7 +242,6 @@ class Loader(ttk.Frame):
             self.parent.logger.info(
                 "New session instantiated successfully!"
                 )
-        self.parent.tslr.soxhlet.wanted_files = filenames
         self.work_dir.set(self.parent.tslr.input_dir)
         self.out_dir.set(self.parent.tslr.output_dir)
         self.parent.conf_tab.make_new_conf_list()
@@ -260,22 +260,28 @@ class Loader(ttk.Frame):
         
     @guicom.Feedback('Extracting...')  
     def extract_energies(self):
-        self.parent.tslr.extract('energies', 'iri')
-        self.parent.conf_tab.establish()
+        if not self.parent.conf_tab.established:
+            self.parent.tslr.extract('energies', 'iri')
+            if self.parent.tslr.energies:
+                    self.parent.conf_tab.establish()
+        else:
+            self.parent.logger.warning('Energies already extracted.')
             
     @guicom.Feedback('Extracting...')  
     def execute_extract_bars(self, query):
         self.parent.tslr.extract(*query)
-        self.parent.conf_tab.unify_data()
+        if self.parent.tslr.bars:
+            self.parent.conf_tab.unify_data()
         #self.parent.conf_tab.show_imag()
         #self.parent.conf_tab.establish()
         
     @guicom.Feedback('Extracting...')
     def smart_extract(self):
         self.parent.tslr.smart_extract()
-        if self.parent.tslr.energies and not self.parent.conf_tab.established:
-            self.parent.conf_tab.establish()
-        else:
+        if not self.parent.conf_tab.established:
+            if self.parent.tslr.energies: 
+                self.parent.conf_tab.establish()
+        elif self.parent.tslr.bars:
             self.parent.conf_tab.unify_data()
 
     @guicom.Feedback('Calculating populations...')
@@ -535,16 +541,22 @@ class Spectra(ttk.Frame):
 
     @property
     def current_settings(self):
-        settings = {key: float(getattr(self, key).get())
+        try:
+            settings = {key: float(getattr(self, key).get())
                 for key in ('start stop step hwhm'.split(' '))
                 }
-        fit = self.fitting.get()
-        settings['fitting'] = getattr(tesliper, fit)
+            fit = self.fitting.get()
+            settings['fitting'] = getattr(tesliper, fit)
+        except ValueError:
+            return {}
         return settings
         
     @guicom.Feedback("Calculating...")
     def recalculate_command(self):
         spectra_name = self.s_name.get()
+        if not spectra_name:
+            self.parent.logger.debug('spectra_name not specified.')
+            return
         self.last_used_settings[spectra_name] = self.current_settings.copy()
         mode = self.mode.get()
         #get value of self.single, self.average or self.stack respectively
@@ -781,11 +793,18 @@ class Conformers(ttk.Frame):
             #because tkinter doesn't understand numpy.bool_ type
         
     def filter_imag(self):
-        bar = 'iri' if 'iri' in self.parent.tslr.bars else 'ir'
-        imag = self.parent.tslr.bars[bar].full.imag
-        # self.set_blade([not value.sum(0) for value in imag])
-        for box, value in zip(self.conf_list.boxes, imag):
-            if value.sum(0): box.var.set(False)
+        try:
+            imag = self.parent.tslr.bars.iri.full.imag
+        except AttributeError:
+            self.parent.logger.warning("Can't show optimised conformers "
+                "imaginary frequencies count: no appropiate data found. "
+                "Please keep 'Discard imaginary frequencies' option unchecked."
+                )
+            self.check_imag.var.set(False)
+        else:
+            # self.set_blade([not value.sum(0) for value in imag])
+            for box, value in zip(self.conf_list.boxes, imag):
+                if value.sum(0): box.var.set(False)
     
     def unify_data(self):
         stencil = None if not self.established else self._dummy
