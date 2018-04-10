@@ -1,9 +1,13 @@
 v. 0.6.2
 - solved some problems with corrupted files extraction
+- added warning when files from mixed gaussian runs found
 - fixed RuntimeError on overlaping actions
 - fixed export popup error
 - errors description moved to tslr_err_log.txt
 - fixed ValueError on empty settings in gui_main.current_settings
+- corrected session instantiation from files (unwanted files problem)
+- changed energies precision to .6
+- added Min. Boltzmann factor in GUI
 
 v. 0.6.1
 First beta relase

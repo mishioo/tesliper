@@ -495,6 +495,9 @@ class Bars(Data):
             spr[...] = fitting(bar, freq, w_nums, width)
         output = Spectra(self.spectra_name, self.filenames, base,
                           spectra, hwhm, fitting)
+        if output: logger.info(
+            "{} spectra calculated with HWHM = {} and {} fitting.".format(
+                self.spectra_name, hwhm, fitting.__name__))
         return output
 
 

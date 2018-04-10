@@ -22,7 +22,7 @@ import tesliper.gui_components as guicom
 
 import tesliper.tesliper as tesliper
 from tesliper.tesliper import __version__, __author__
-_DEVELOPEMENT = True
+_DEVELOPEMENT = False
 
 
 ###################
@@ -229,7 +229,7 @@ class Loader(ttk.Frame):
             )
         if not files: return
         new_dir = os.path.split(files[0])[0]
-        filenames = map(lambda p: os.path.split(p)[1], files)
+        filenames = list(map(lambda p: os.path.split(p)[1], files))
         self.clear_session()
         try:
             self.parent.tslr = tesliper.Tesliper(new_dir,
@@ -593,8 +593,9 @@ class Conformers(ttk.Frame):
         #ttk.Button(self, text='Refresh', command=self.refresh).grid(column=3, row=2, sticky='swe')
         ttk.Label(self, text='Show:').grid(column=2, row=1, sticky='sw')
         self.show_var = tk.StringVar()
-        show_values = ('Energy', 'Delta', 'Population')
-        show_id = ('values', 'deltas', 'populations')
+        show_values = ('Energy /Hartree', 'Delta /(kcal/mol)', 
+                       'Min. Boltzmann factor','Population/%')
+        show_id = ('values', 'deltas', 'min_factor', 'populations')
         self.show_ref = {k: v for k, v in zip(show_values, show_id)}
         self.show_combo = ttk.Combobox(self, textvariable=self.show_var,
                                    values=show_values, state='readonly')
@@ -680,7 +681,7 @@ class Conformers(ttk.Frame):
         # frame = ttk.Frame(self.conf_list.frame, height=15, width=17)
         # frame.grid(column=0, row=2, sticky='sw')
         # frame.grid_propagate(False)
-        self.show_combo.set('Energy')
+        self.show_combo.set('Energy /Hartree')
         self.filter_combo.set('Thermal')
         self.update('values')
         self.show_imag()
@@ -745,9 +746,15 @@ class Conformers(ttk.Frame):
         except ValueError:
             lower, upper = 0, 0
         else:
-            n = 2 if self.showing == 'populations' else 4
+            if self.showing == 'populations':
+                n = 2 
+            elif self.showing == 'values':
+                n = 6
+            else:
+                n = 4
             lower, upper = map(lambda v: '{:.{}f}'.format(v * factor, n),
-                               (lower - 0.0001, upper + 0.0001))
+                               (lower - 1e-6 if lower != 0 else 0,
+                                upper + 1e-6 if upper != 0 else 0))
         finally:
             self.lower_var.set(lower)
             self.upper_var.set(upper)
@@ -848,8 +855,9 @@ class Conformers(ttk.Frame):
         self.parent.logger.debug('Going to update by showing {}.'.format(show))
         e_keys = 'ten ent gib scf zpe'.split(' ')
         formats = dict(
-            values = lambda v: '{:.4f}'.format(v),
+            values = lambda v: '{:.6f}'.format(v),
             deltas = lambda v: '{:.4f}'.format(v),
+            min_factor = lambda v: '{:.4f}'.format(v),
             populations = lambda v: '{:.4f}'.format(v * 100)
             )
         scope = 'full' if show == 'values' else 'trimmed'
@@ -939,8 +947,7 @@ class TslrNotebook(ttk.Notebook):
             return False
         else:
             try:
-                if text_if_allowed == '.': return True
-                if text_if_allowed == ',': return True
+                if text_if_allowed in '.,+-': return True
                 if text_if_allowed: float(text_if_allowed.replace(',', '.'))
             except ValueError:
                 return False
@@ -950,7 +957,7 @@ class TslrNotebook(ttk.Notebook):
         value = var.get()
         if ',' in value:
             value = value.replace(',', '.')
-        if value.endswith('.'):
+        if value.endswith('.', '+', '-'):
             value = value + '0'
         var.set(value)
             
