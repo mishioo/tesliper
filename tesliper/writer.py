@@ -156,8 +156,9 @@ class Writer:
                 for row in zip(en.filenames, en.populations * 100,
                                en.min_factor, en.deltas, en.values,
                                self.ts.bars.iri.imag.sum(0), en.stoich):
-                    row = ['{:^{w}{f}}'.format(v, w=w, f=f) \
-                        for v, w, f in zip(row, 
+                    row = ['{:{a}{w}{f}}'.format(v, a=a, w=w, f=f) \
+                        for v, a, w, f in zip(row, 
+                            ('<', '^', '^', '^', '^', '^', '^')
                             (max_fnm, 14, 14, 15, 16, 4, max_stoich),
                             ('', '.4f', '.4f', '.4f', 'f', 'd', ''))]
                     file.write(' | '.join(row) + '\n')
@@ -194,7 +195,8 @@ class Writer:
                     ['{:> {w}.{prec}f}'.format(v, w=14 if n=='SCF' else 12,
                                                prec=8 if n=='SCF' else 6) \
                      for v, n in zip(vals, names)])
-                line = fnm + ' | ' + p_line + ' | ' + v_line + '\n'
+                line = '{:<{w}}'.format(fnm, w=longest) + ' | ' + p_line + \
+                    ' | ' + v_line + '\n'
                 file.write(line)
         logger.info('Energies collective export to text file done.')
 

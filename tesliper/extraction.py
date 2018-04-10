@@ -218,7 +218,7 @@ class Soxhlet:
         path : str
             String representing absolute path to directory containing files, which
             will be the subject of data extraction.
-        files : list, optional
+        wanted_files : list, optional
             List of files, that should be loaded for further extraction. If
             omitted, all files present in directory will be taken.
             
@@ -239,20 +239,20 @@ class Soxhlet:
         self.instances[self._id] = self
         self.check_integrity()
 
-    @property
-    def wanted_files(self):
-        return self._wanted_files
+    # @property
+    # def wanted_files(self):
+        # return self._wanted_files
         
-    @wanted_files.setter
-    def wanted_files(self, files):
-        if files:
-            wanted_files = tuple(map(
-                lambda f: '.'.join(f.split('.')[:-1]) if '.' in f else f, files
-                ))
-        else:
-            wanted_files = tuple()
-        self._wanted_files = wanted_files
-        return wanted_files
+    # @wanted_files.setter
+    # def wanted_files(self, files):
+        # if files:
+            # wanted_files = tuple(map(
+                # lambda f: '.'.join(f.split('.')[:-1]) if '.' in f else f, files
+                # ))
+        # else:
+            # wanted_files = tuple()
+        # self._wanted_files = wanted_files
+        # return wanted_files
         
     @property
     def gaussian_files(self):
@@ -279,7 +279,7 @@ class Soxhlet:
         return bar
         
     def filter_files(self, ext):
-        """Filters files from file names list.
+        """Filters files from filenames list.
         
         Function filters file names in list associated with Soxhlet object
         instance. It returns list of file names ending with provided ext
@@ -289,18 +289,20 @@ class Soxhlet:
         Parameters
         ----------
         ext : str
-            List of strings containing keywords for extraction.
+            Strings representing file extension.
                 
         Returns
         -------
         list
             List of filtered filenames as strings.
         """
-        files = self.files
-        wanted_files = self.wanted_files if self.wanted_files else ''
-        filtered = [
-            f for f in files if f.endswith(ext) and f.startswith(wanted_files)
-            ] #TO DO: correct this! startswith is wrong
+        files = self.wanted_files if self.wanted_files else self.files
+        filtered = [f for f in files if f.endswith(ext)]
+        # logger.debug(files)
+        # wanted_files = self.wanted_files if self.wanted_files else ''
+        # filtered = [
+            # f for f in files if f.endswith(ext) and f.startswith(wanted_files)
+            # ] #TO DO: correct this! startswith is wrong
             # maby just '.'.join(file, ext)
         return filtered
          
@@ -326,22 +328,22 @@ class Soxhlet:
             
         Raises
         ------
-        TypeError
-            If both *.log and *.out files are present in list of filenames.
         ValueError
+            If both *.log and *.out files are present in list of filenames.
+        TypeError
             If neither *.log nor *.out files are present in list of filenames.
             
         TO DO
         -----
         correct this to take in consideration wanted_files
         """
-        files = files if files else self.files
+        files = self.wanted_files if self.wanted_files else self.files
         logs, outs = (any(f.endswith(ext) for f in files) \
                       for ext in ('.log', '.out'))
         if outs and logs:
-            raise TypeError(".log and .out files mixed in directory.")
+            raise ValueError(".log and .out files mixed in directory.")
         elif not outs and not logs:
-            raise ValueError("Didn't found any .log or .out files.")
+            raise TypeError("Didn't found any .log or .out files.")
         else:
             return '.log' if logs else '.out'        
         
@@ -400,8 +402,9 @@ class Soxhlet:
         if not all_ok:
             logger.debug(commands)
             logger.warning('Files from different Gaussian calculation runs '
-                'mixed in directory. Please make sure to select only files '
-                'from one calculation run.')
+                'mixed in directory (based on Gaussian commands comparition).'
+                ' Please make sure to select only files from one calculation '
+                'run.')
 
     def parse_request(self, request):
         """Converts request to template dictionary used to place data during 
