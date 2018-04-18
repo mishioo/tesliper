@@ -1,3 +1,9 @@
+v. 0.6.3
+- fixed export error when not choosen, but all data were exported
+- fixed export error when export occured after closing popup window
+- fixed export error when enetgies were not exported to spearate txt files
+- entry validation improved
+
 v. 0.6.2
 - solved some problems with corrupted files extraction
 - added warning when files from mixed gaussian runs found

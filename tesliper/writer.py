@@ -30,8 +30,7 @@ class Writer:
     @property
     def distribution_center(self):
         return dict(
-            energies = {'txt': lambda: self.ens_txt_collectively() and \
-                                       self.ens_txt_separately(),
+            energies = {'txt': self.energies_txt,
                         'csv': self.energies_csv,
                         'xlsx': self.energies_xlsx},
             bars = {'txt': self.bars_txt,
@@ -141,6 +140,10 @@ class Writer:
         
     energies_order = 'zpe ten ent gib scf'.split(' ')
     
+    def energies_txt(self):
+        self.ens_txt_collectively()
+        self.ens_txt_separately()
+    
     def ens_txt_separately(self):
         h = ' | '.join(['Population / %', 'Min. B. Factor',
                        'DE / (kcal/mol)', 'Energy / Hartree', 'Imag'])
@@ -158,7 +161,7 @@ class Writer:
                                self.ts.bars.iri.imag.sum(0), en.stoich):
                     row = ['{:{a}{w}{f}}'.format(v, a=a, w=w, f=f) \
                         for v, a, w, f in zip(row, 
-                            ('<', '^', '^', '^', '^', '^', '^')
+                            ('<', '^', '^', '^', '^', '^', '^'),
                             (max_fnm, 14, 14, 15, 16, 4, max_stoich),
                             ('', '.4f', '.4f', '.4f', 'f', 'd', ''))]
                     file.write(' | '.join(row) + '\n')

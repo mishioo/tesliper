@@ -946,8 +946,10 @@ class TslrNotebook(ttk.Notebook):
         if any(i not in '0123456789.,+-' for i in inserted):
             return False
         else:
+            if text_if_allowed in '.,+-': return True
+            if text_if_allowed in map(''.join, zip('+-+-', '..,,')):
+                return True
             try:
-                if text_if_allowed in '.,+-': return True
                 if text_if_allowed: float(text_if_allowed.replace(',', '.'))
             except ValueError:
                 return False
@@ -957,8 +959,12 @@ class TslrNotebook(ttk.Notebook):
         value = var.get()
         if ',' in value:
             value = value.replace(',', '.')
-        if value.endswith('.', '+', '-'):
+        if value.endswith(('.', '+', '-')):
             value = value + '0'
+        if value.startswith('+'):
+            value = value[1:]
+        if value.startswith(('.', '-.')):
+            value = value.replace('.', '0.')
         var.set(value)
             
     def report_callback_exception(self, exc, val, tb):
