@@ -277,6 +277,7 @@ class ExportPopup(Popup):
         self.vars[1].set(True if self.master.parent.tslr.bars else False)
         self.vars[2].set(True if self.master.parent.tslr.spectra else False)
         self.vars[3].set(True if self.master.parent.tslr.spectra else False)
+        self.protocol("WM_DELETE_WINDOW", self.cancel_command)
         buttons_frame = ttk.Frame(self)
         buttons_frame.grid(column=0, row=4, pady=2, sticky='se')
         b_cancel = ttk.Button(buttons_frame, text="Cancel", command=self.cancel_command)
@@ -289,6 +290,7 @@ class ExportPopup(Popup):
         
     def ok_command(self):
         vals = [v.get() for v in self.vars]
+        logger.debug(vals)
         if any(vals):
             self.destroy()
         else:
@@ -302,8 +304,9 @@ class ExportPopup(Popup):
         
     def get_query(self):
         self.wait_window()
-        self.query = [thing.lower() for thing, wanted
-                      in zip(self.labels, self.vars) if wanted]
+        self.query = [thing.lower() for thing, var
+                      in zip(self.labels, self.vars) if var.get()]
+        logger.debug(self.query)
         return self.query
         
         
