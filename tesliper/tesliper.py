@@ -234,11 +234,7 @@ class Tesliper:
     def calculate_single_spectrum(self, spectra_name, conformer, start=None,
                                   stop=None, step=None, hwhm=None,
                                   fitting=None):
-        bar = self.bars[datawork.default_spectra_bars[spectra_name]].full
-        blade = [False if fname != conformer else True
-                 for fname in bar.filenames]
-        bar.trimmer.set(blade)
-        bar.trimming = True
+        bar = self.bars[datawork.default_spectra_bars[spectra_name]][conformer]
         sett_from_args = {
             k: v for k, v in zip(('start', 'stop', 'step', 'hwhm', 'fitting'),
                                  (start, stop, step, hwhm, fitting))
