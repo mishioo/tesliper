@@ -1,11 +1,18 @@
 CURRENT:
-handle uncompatible Gaussian versions
 check intensity calculations
 add graph labels
+add graph baseline reversal
+add bars values on single spectra graph
 correct displaying of checkboxes
 impement smart calculation and smart export
+bind <<enter>> to entry widgets
+add errors prompt/focus on log
+add gui feedback on session instantiation
+prevent spectra recalculating if settings not changed
 
 SOON:
+handle uncompatible Gaussian versions
+add jaguar support
 add drag&drop support
 export from spectra tab
 export spectra as image
@@ -19,9 +26,11 @@ supplement info tab
 FUTURE:
 add tooltips
 solve silent data overriding problem
+
 add spectra comparition feature
 manage e-m angle and energy corrections
 add velo and lenght electronic spectra comparition
+add anharmonic spectra support
 add easy access to conformer data
 add geometry analysis feature
 add molecule dispay window ?

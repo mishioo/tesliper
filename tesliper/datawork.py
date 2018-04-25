@@ -243,16 +243,34 @@ class Data:
         if values is not None: self.values = values
         self.trimming = True
         self.trimmer = Trimmer(self)
+        
+    def __getitem__(self, key):
+        #TO DO: figure out how to get rid of nested arrays
+        #when single conformer is used
+        single = self.full
+        blade = single.filenames == key
+        index, = np.where(blade)
+        if index.size > 1:
+            raise ValueError('No such conformer name found: {}.'.format(key))
+        elif index.size < 1:
+            raise ValueError('More than one such name: {}.'.format(key))
+        else:
+            single.trimmer.set(blade)
+            single.trimming = True
+            return single
 
     @property
     def trimmed(self):
         temp = copy(self)
+        temp.trimmer = Trimmer(self)
+        temp.trimmer.set(self.trimmer.blade)
         temp.trimming = True
         return temp
         
     @property
     def full(self):
         temp = copy(self)
+        temp.trimmer = Trimmer(self)
         temp.trimming = False
         return temp
         
@@ -275,10 +293,15 @@ class Data:
         return self
         
     @contextmanager    
-    def temporarily_trimmed(self):
+    def temporarily_trimmed(self, blade=None):
         curr_trimm = self.trimming
         self.trimming = True
+        if blade is not None:
+            old_blade = self.trimmer.blade
+            self.trimmer.set(blade)
         yield self
+        if blade is not None:
+            self.trimmer.set(old_blade)
         self.trimming = curr_trimm
     
                     
@@ -426,7 +449,7 @@ class Bars(Data):
             self.laser = laser if laser is not None else 532 #in nm
         if self.spectra_name in ('uv', 'ecd'): #valid only for uv & ecd
             self.excitation_energies = excitation_energies
-            
+                        
     @property
     def spectra_name(self):
         if self.type in self.spectra_name_ref:

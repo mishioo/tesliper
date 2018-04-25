@@ -15,6 +15,7 @@ from tkinter import messagebox
 from tkinter.filedialog import askdirectory, askopenfilenames
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
+from matplotlib import artist
 from matplotlib import cm
 from threading import Thread
 
@@ -478,7 +479,9 @@ class Spectra(ttk.Frame):
             self.recalculate_command()
     
     def new_plot(self):
-        if self.ax: self.figure.delaxes(self.ax)
+        if self.ax:
+            for ax in self.figure.axes:
+                self.figure.delaxes(ax)
         self.ax = self.figure.add_subplot(111)
         
     def show_spectra(self, x, y, colour=None, width=0.5, stack=False):
@@ -507,13 +510,26 @@ class Spectra(ttk.Frame):
         bar.trimmer.match(en)
         tslr.calculate_spectra(spectra_name, **self.current_settings)
         spc = tslr.get_averaged_spectrum(spectra_name, en_name)
-        self.show_spectra(*spc)
+        self.ax.plot(*spc, lw=0.8)
+        self.canvas.show()
 
     def single_draw(self, spectra_name, option):
+        # TO DO:
+        # align y axes
         tslr = self.parent.tslr
         spc = tslr.calculate_single_spectrum(spectra_name=spectra_name,
             conformer=option, **self.current_settings)
-        self.show_spectra(spc.base, spc.values[0])
+        self.ax.plot(spc.base, spc.values[0], lw=0.8)
+        ax_bars = self.ax.twinx()
+        bar_name = tesliper.datawork.default_spectra_bars[spectra_name]
+        single = tslr.bars[bar_name][option]
+        marker, stem, base = ax_bars.stem(single.frequencies[0],
+                                          single.values[0])
+        artist.setp(base, visible=False)
+        artist.setp(marker, visible=False)
+        artist.setp(stem, linewidth=0.5, color='gray')
+        ax_bars.set_xlim(spc.base.min(), spc.base.max())
+        self.canvas.show()
         
     def stack_draw(self, spectra_name, option):
         #TO DO: color of line depending on population
@@ -524,9 +540,11 @@ class Spectra(ttk.Frame):
         bar.trimmer.match(dummy)
         tslr.calculate_spectra(spectra_name, **self.current_settings)
         spc = tslr.spectra[spectra_name]
-        if self.ax: self.figure.delaxes(self.ax)
-        self.ax = self.figure.add_subplot(111)
-        self.show_spectra(spc.base, spc.values, colour=option, stack=True)
+        col = cm.get_cmap(option)
+        no = len(spc.values)
+        for num, y_ in enumerate(spc.values):
+            self.ax.plot(spc.base, y_, lw=width, color=col(num/no))
+        self.canvas.show()
         
     def change_colour(self, event=None):
         if not self.ax: return
@@ -562,6 +580,7 @@ class Spectra(ttk.Frame):
         #get value of self.single, self.average or self.stack respectively
         option = getattr(self, mode).get()
         if option.startswith('Choose '): return
+        self.new_plot()
         #call self.single_draw, self.average_draw or self.stack_draw respectively
         spectra_drawer = getattr(self, '{}_draw'.format(mode))
         spectra_drawer(spectra_name, option)
