@@ -2,12 +2,12 @@ CURRENT:
 check intensity calculations
 add graph labels
 add graph baseline reversal
-add bars values on single spectra graph
+~~add bars values on single spectra graph~~
 correct displaying of checkboxes
 impement smart calculation and smart export
 bind <<enter>> to entry widgets
 add errors prompt/focus on log
-add gui feedback on session instantiation
+~~add gui feedback on session instantiation~~
 prevent spectra recalculating if settings not changed
 
 SOON:
