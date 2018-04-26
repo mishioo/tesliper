@@ -209,21 +209,12 @@ class Loader(ttk.Frame):
         if not proceed: return
         new_dir = askdirectory()
         if not new_dir: return
-        try:
-            self.parent.tslr = tesliper.Tesliper(new_dir)
-        except:
-            self.parent.logger.critical(
-                "Sorry! An error occurred during new session instantiation.",
-                exc_info=True)
-        else:
-            self.parent.logger.info(
-                "New session instantiated successfully!")
-        self.work_dir.set(self.parent.tslr.input_dir)
-        self.out_dir.set(self.parent.tslr.output_dir)
-        self.parent.conf_tab.make_new_conf_list()
+        self.instantiate_tslr(new_dir)
         
     @guicom.WgtStateChanger
     def from_files(self):
+        proceed = self.clear_session()
+        if not proceed: return
         files = askopenfilenames(
             filetypes = [("log files","*.log"), ("out files","*.out")],
             defaultextension='.log'
@@ -231,7 +222,10 @@ class Loader(ttk.Frame):
         if not files: return
         new_dir = os.path.split(files[0])[0]
         filenames = list(map(lambda p: os.path.split(p)[1], files))
-        self.clear_session()
+        self.instantiate_tslr(new_dir, filenames)
+        
+    @guicom.Feedback('Starting new session...')
+    def instantiate_tslr(self, new_dir, filenames = None):
         try:
             self.parent.tslr = tesliper.Tesliper(new_dir,
                 wanted_files = filenames)
@@ -246,7 +240,8 @@ class Loader(ttk.Frame):
         self.work_dir.set(self.parent.tslr.input_dir)
         self.out_dir.set(self.parent.tslr.output_dir)
         self.parent.conf_tab.make_new_conf_list()
-        
+    
+    
     def change_work_dir(self):
         new_dir = askdirectory()
         if not new_dir: return
@@ -525,10 +520,21 @@ class Spectra(ttk.Frame):
         single = tslr.bars[bar_name][option]
         marker, stem, base = ax_bars.stem(single.frequencies[0],
                                           single.values[0])
-        artist.setp(base, visible=False)
         artist.setp(marker, visible=False)
-        artist.setp(stem, linewidth=0.5, color='gray')
+        artist.setp(base, linewidth=0.5, color='lightgray')
+        artist.setp(stem, linewidth=0.8, color='gray')
         ax_bars.set_xlim(spc.base.min(), spc.base.max())
+        #align y axes
+        axes = (self.ax, ax_bars)
+        extrema = [ax.get_ylim() for ax in axes]
+        tops = [ex[1] / (ex[1] - ex[0]) for ex in extrema]
+        if tops[0] > tops[1]:
+            axes, extrema, tops = [list(reversed(l)) for l in (axes, extrema, tops)]
+        tot_span = tops[1] + 1 - tops[0]
+        b_new_t = extrema[0][0] + tot_span * (extrema[0][1] - extrema[0][0])
+        t_new_b = extrema[1][1] - tot_span * (extrema[1][1] - extrema[1][0])
+        axes[0].set_ylim(extrema[0][0], b_new_t)
+        axes[1].set_ylim(t_new_b, extrema[1][1])
         self.canvas.show()
         
     def stack_draw(self, spectra_name, option):
