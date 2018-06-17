@@ -198,6 +198,9 @@ class Loader(ttk.Frame):
                     self.parent.conf_tab.conf_list.destroy()
                     self.parent.conf_tab.conf_list = None
                     self.parent.conf_tab.established = False
+                if self.parent.spectra_tab.ax:
+                    self.parent.spectra_tab.figure.delaxes(
+                        self.parent.spectra_tab.ax)
             else:
                 return False
         self.parent.logger.info('\nStarting new session...')
@@ -474,9 +477,7 @@ class Spectra(ttk.Frame):
             self.recalculate_command()
     
     def new_plot(self):
-        if self.ax:
-            for ax in self.figure.axes:
-                self.figure.delaxes(ax)
+        if self.ax: self.figure.delaxes(self.ax)
         self.ax = self.figure.add_subplot(111)
         
     def show_spectra(self, x, y, colour=None, width=0.5, stack=False):
@@ -512,29 +513,7 @@ class Spectra(ttk.Frame):
         tslr = self.parent.tslr
         spc = tslr.calculate_single_spectrum(spectra_name=spectra_name,
             conformer=option, **self.current_settings)
-        self.ax.plot(spc.base, spc.values[0], lw=0.8)
-        ax_bars = self.ax.twinx()
-        bar_name = tesliper.datawork.default_spectra_bars[spectra_name]
-        single = tslr.bars[bar_name][option]
-        marker, stem, base = ax_bars.stem(single.frequencies[0],
-                                          single.values[0])
-        artist.setp(marker, visible=False)
-        artist.setp(base, linewidth=0.5, color='lightgray')
-        artist.setp(stem, linewidth=0.8, color='gray')
-        ax_bars.set_xlim(spc.base.min(), spc.base.max())
-        #align y axes
-        #this solution comes from https://stackoverflow.com/a/41259922
-        axes = (self.ax, ax_bars)
-        extrema = [ax.get_ylim() for ax in axes]
-        tops = [ex[1] / (ex[1] - ex[0]) for ex in extrema]
-        if tops[0] > tops[1]:
-            axes, extrema, tops = [list(reversed(l)) for l in (axes, extrema, tops)]
-        tot_span = tops[1] + 1 - tops[0]
-        b_new_t = extrema[0][0] + tot_span * (extrema[0][1] - extrema[0][0])
-        t_new_b = extrema[1][1] - tot_span * (extrema[1][1] - extrema[1][0])
-        axes[0].set_ylim(extrema[0][0], b_new_t)
-        axes[1].set_ylim(t_new_b, extrema[1][1])
-        self.canvas.show()
+        self.show_spectra(spc.base, spc.values[0])
         
     def stack_draw(self, spectra_name, option):
         #TO DO: color of line depending on population
@@ -545,11 +524,9 @@ class Spectra(ttk.Frame):
         bar.trimmer.match(dummy)
         tslr.calculate_spectra(spectra_name, **self.current_settings)
         spc = tslr.spectra[spectra_name]
-        col = cm.get_cmap(option)
-        no = len(spc.values)
-        for num, y_ in enumerate(spc.values):
-            self.ax.plot(spc.base, y_, lw=width, color=col(num/no))
-        self.canvas.show()
+        if self.ax: self.figure.delaxes(self.ax)
+        self.ax = self.figure.add_subplot(111)
+        self.show_spectra(spc.base, spc.values, colour=option, stack=True)
         
     def change_colour(self, event=None):
         if not self.ax: return
@@ -589,7 +566,6 @@ class Spectra(ttk.Frame):
         #call self.single_draw, self.average_draw or self.stack_draw respectively
         spectra_drawer = getattr(self, '{}_draw'.format(mode))
         spectra_drawer(spectra_name, option)
-
         
         
 class Conformers(ttk.Frame):

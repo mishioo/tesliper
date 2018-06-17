@@ -1,5 +1,8 @@
 v. 0.6.4
 - calculated spectra precision in txt files changed to e-4
+- spectra lines width changed
+- data trimming features corrected
+- spectra plot ereasing on session clearing impelemented
 
 v. 0.6.3
 - fixed export error when not choosen, but all data were exported
