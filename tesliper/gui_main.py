@@ -201,6 +201,8 @@ class Loader(ttk.Frame):
                 if self.parent.spectra_tab.ax:
                     self.parent.spectra_tab.figure.delaxes(
                         self.parent.spectra_tab.ax)
+                    self.parent.spectra_tab.ax = None
+                    self.parent.spectra_tab.canvas.show()
             else:
                 return False
         self.parent.logger.info('\nStarting new session...')
@@ -429,6 +431,8 @@ class Spectra(ttk.Frame):
         tk.Grid.columnconfigure(spectra_view, 0, weight=1)
         tk.Grid.rowconfigure(spectra_view, 0, weight=1)
         self.figure = Figure()
+        #ensure proper plot resizing
+        self.bind('<Configure>', lambda event: self.figure.tight_layout())
         self.canvas = FigureCanvasTkAgg(self.figure, master=spectra_view)
         self.canvas.show()
         self.canvas.get_tk_widget().grid(column=0, row=0, sticky='nwse')
@@ -489,6 +493,10 @@ class Spectra(ttk.Frame):
                 self.ax.plot(x, y_, lw=width, color=col(num/no))
         else:
             self.ax.plot(x, y, lw=width)
+        spectra_name = self.s_name.get()
+        if spectra_name in ('uv', 'ecd'):
+            self.ax.invert_xaxis()
+        self.figure.tight_layout()
         self.canvas.show()
         # map(self.figure.delaxes, self.axes)
         # self.axes = []
@@ -506,7 +514,7 @@ class Spectra(ttk.Frame):
         bar.trimmer.match(en)
         tslr.calculate_spectra(spectra_name, **self.current_settings)
         spc = tslr.get_averaged_spectrum(spectra_name, en_name)
-        self.ax.plot(*spc, lw=0.8)
+        self.show_spectra(*spc)
         self.canvas.show()
 
     def single_draw(self, spectra_name, option):
