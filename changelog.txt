@@ -1,3 +1,6 @@
+v. 0.6.4
+- calculated spectra precision in txt files changed to e-4
+
 v. 0.6.3
 - fixed export error when not choosen, but all data were exported
 - fixed export error when export occured after closing popup window

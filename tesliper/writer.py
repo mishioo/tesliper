@@ -356,7 +356,7 @@ class Writer:
                 file.write(title + '\n')
                 file.write(
                     '\n'.join(
-                    '{:>4d}\t{: .2f}'.format(int(b), s) \
+                    '{:>4d}\t{: .4f}'.format(int(b), s) \
                     for b, s in zip(base, values))
                     )
         logger.info('Spectra export to text files done.')
@@ -405,7 +405,7 @@ class Writer:
                         )
                     file.write(
                         '\n'.join(
-                        '{:>4d}\t{: .2f}'.format(int(b), s) \
+                        '{:>4d}\t{: .4f}'.format(int(b), s) \
                         for b, s in zip(*av))
                         )
         logger.info('Averaged export to text files done.')
