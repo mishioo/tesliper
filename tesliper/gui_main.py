@@ -509,8 +509,6 @@ class Spectra(ttk.Frame):
         self.canvas.show()
 
     def single_draw(self, spectra_name, option):
-        # TO DO:
-        # align y axes
         tslr = self.parent.tslr
         spc = tslr.calculate_single_spectrum(spectra_name=spectra_name,
             conformer=option, **self.current_settings)
@@ -525,6 +523,7 @@ class Spectra(ttk.Frame):
         artist.setp(stem, linewidth=0.8, color='gray')
         ax_bars.set_xlim(spc.base.min(), spc.base.max())
         #align y axes
+        #this solution comes from https://stackoverflow.com/a/41259922
         axes = (self.ax, ax_bars)
         extrema = [ax.get_ylim() for ax in axes]
         tops = [ex[1] / (ex[1] - ex[0]) for ex in extrema]

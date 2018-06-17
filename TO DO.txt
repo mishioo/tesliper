@@ -1,4 +1,6 @@
 CURRENT:
+energies extraction from spectra outputs
+correct text saving precision
 check intensity calculations
 add graph labels
 add graph baseline reversal
@@ -10,7 +12,21 @@ add errors prompt/focus on log
 ~~add gui feedback on session instantiation~~
 prevent spectra recalculating if settings not changed
 
+DESIGN:
+move conformers information table to front page
+start new session -> clear session
+one-click extract data from destination
+separate manual extraction window (popup)
+separate visual for what is available
+conformers tab has visual info for each entry
+move conformers information table to front page
+number of selected items in conformers tab
+export directory must be choosen on each export 
+remove work/output dir information
+show conformers with no energies in conformers tab
+
 SOON:
+switch to installable version
 handle uncompatible Gaussian versions
 add jaguar support
 add drag&drop support
@@ -22,15 +38,15 @@ add some code commentary
 create testing suite
 spectra colour by population
 supplement info tab
+add icon
+solve silent data overriding problem
 
 FUTURE:
 add tooltips
-solve silent data overriding problem
-
 add spectra comparition feature
 manage e-m angle and energy corrections
 add velo and lenght electronic spectra comparition
 add anharmonic spectra support
-add easy access to conformer data
+add easy access to conformer data ? unnececery ?
 add geometry analysis feature
 add molecule dispay window ?
