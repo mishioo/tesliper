@@ -25,38 +25,60 @@ _DEVELOPEMENT = False
 ###################
 
 
-class TesliperApp(ttk.Notebook):
+class TesliperApp(tk.Tk):
 
-    def __init__(self, parent):
-        super().__init__(parent)
+    def __init__(self):
+        super().__init__()
+        self.title("Tesliper")
         self.tslr = None
         self.thread = Thread()
 
-        parent.report_callback_exception = self.report_callback_exception
+        self.report_callback_exception = self.report_callback_exception
         self.validate_entry = (self.register(self.validate_entry), '%S', '%P')
 
+        # Notebook
+        tk.Grid.columnconfigure(self, 0, weight=1)
+        tk.Grid.rowconfigure(self, 0, weight=1)
+        self.notebook = ttk.Notebook(self)
         self.main_tab = Loader(self)
-        self.add(self.main_tab, text='Main')
-
+        self.notebook.add(self.main_tab, text='Main')
         self.spectra_tab = Spectra(self)
-        self.add(self.spectra_tab, text='Spectra')
-
+        self.notebook.add(self.spectra_tab, text='Spectra')
         self.conf_tab = Conformers(self)
-        self.add(self.conf_tab, text='Conformers')
-
+        self.notebook.add(self.conf_tab, text='Conformers')
         # self.info_tab = ttk.Frame(self)
         # self.add(self.info_tab, text='Info')
-        
-        self.pack(fill=tk.BOTH, expand=True)
+        self.notebook.grid(column=0, row=0, sticky='nswe')
         guicom.WgtStateChanger().set_states(self.main_tab)
+
+        # Log & Bar frame
+        bottom_frame = tk.Frame(self)
+        bottom_frame.grid(column=0, row=1, sticky='nswe')
+        tk.Grid.columnconfigure(bottom_frame, 1, weight=1)
+        tk.Grid.rowconfigure(bottom_frame, 0, weight=1)
+
+        # Log window
+        self.label_log = ttk.LabelFrame(bottom_frame, text='Log')
+        self.label_log.grid(column=1, row=0, columnspan=4, rowspan=2, sticky='swe')
+        self.log = guicom.ReadOnlyText(self.label_log, width=50, height=4, wrap=tk.WORD)
+        self.log.pack(fill=tk.BOTH, expand=tk.YES)
+
+        # Progress bar
+        self.progtext = tk.StringVar()
+        self.progtext.set('Idle.')
+        self.proglabel = ttk.Label(bottom_frame, textvariable=self.progtext, anchor='w', foreground='gray')
+        self.proglabel.grid(column=0, row=0, sticky='sw')
+        self.progbar = ttk.Progressbar(bottom_frame, length=170, orient=tk.HORIZONTAL, mode='indeterminate')
+        self.progbar.grid(column=0, row=1, sticky='swe')
+
         
         self.logger = lgg.getLogger(__name__)
         self.loggers = [self.logger, guicom.logger] + tesliper.loggers
-        text_handler = guicom.TextHandler(self.main_tab.log)
+        text_handler = guicom.TextHandler(self.log)
         text_handler.setLevel(lgg.INFO)
         text_handler.addFilter(guicom.MaxLevelFilter(lgg.INFO))
         
-        text_warning_handler = guicom.TextHandler(self.main_tab.log)
+        text_warning_handler = guicom.TextHandler(self.log)
         text_warning_handler.setLevel(lgg.WARNING)
         text_warning_handler.addFilter(guicom.MaxLevelFilter(lgg.WARNING))
         text_warning_handler.setFormatter(lgg.Formatter(
@@ -64,11 +86,11 @@ class TesliperApp(ttk.Notebook):
         
         self.error_location = os.getcwd()
         self.error_msg = (
-            "Please provide a problem description to Tesliper's " \
-            "developer along with tslr_err_log.txt file, witch can be " \
+            "Please provide a problem description to Tesliper's "
+            "developer along with tslr_err_log.txt file, witch can be "
             "found here: {}".format(self.error_location)
             )
-        text_error_handler = guicom.TextHandler(self.main_tab.log)
+        text_error_handler = guicom.TextHandler(self.log)
         text_error_handler.setLevel(lgg.ERROR)
         text_error_handler.setFormatter(guicom.ShortExcFormatter(
             'ERROR! %(message)s \n' + self.error_msg))
@@ -92,6 +114,11 @@ class TesliperApp(ttk.Notebook):
             #for purposes of debugging
             self.logger.addHandler(tesliper.mainhandler)
             guicom.logger.addHandler(tesliper.mainhandler)
+
+        self.logger.info(
+            'Welcome to Tesliper:\n'
+            'Theoretical Spectroscopist Little Helper!'
+        )
           
         
     def validate_entry(self, inserted, text_if_allowed):

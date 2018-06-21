@@ -4,6 +4,7 @@
 
 import os
 import logging as lgg
+from collections import namedtuple, defaultdict
 import tkinter as tk
 import tkinter.ttk as ttk
 
@@ -11,7 +12,6 @@ from tkinter import messagebox
 from tkinter.filedialog import askdirectory, askopenfilenames
 
 from . import components as guicom
-
 from .. import tesliper
 
 _DEVELOPEMENT = False
@@ -32,61 +32,121 @@ class Loader(ttk.Frame):
         super().__init__(parent)
         self.parent = parent
         self.grid(column=0, row=0, sticky='nwse')
-        tk.Grid.columnconfigure(self, 3, weight=1)
-        tk.Grid.rowconfigure(self, 10, weight=1)
-        buttons_frame = ttk.Frame(self)
-        buttons_frame.grid(column=0, row=0, columnspan=2, rowspan=10, sticky='nwe')
+        tk.Grid.columnconfigure(self, 2, weight=1)
+        tk.Grid.rowconfigure(self, 2, weight=1)
+
+        # Session control
+        buttons_frame = ttk.LabelFrame(self, text="Session control", width=90)
+        buttons_frame.grid(column=0, row=0, columnspan=2, sticky='nwe')
+        tk.Grid.columnconfigure(buttons_frame, (0,1), weight=1)
+        self.b_auto_extract = ttk.Button(
+            buttons_frame, text='Auto extract\nfrom...', command=self.smart_extract
+        )
+        self.b_auto_extract.grid(column=0, row=0, sticky='nwe')
+        self.b_man_extract = ttk.Button(
+            buttons_frame, text='Controlled\nextraction...', command=self.not_impl
+        )
+        self.b_man_extract.grid(column=1, row=0, sticky='nwe')
+
+        self.b_clear_session = ttk.Button(
+            buttons_frame, text='Clear session', command=self.not_impl
+        )
+        self.b_clear_session.grid(column=1, row=3, sticky='nwe')
+        guicom.WgtStateChanger.either.append(self.b_clear_session)
+
+        self.b_calc = ttk.Button(
+            buttons_frame, text='Auto calculate', command=self.not_impl
+        )
+        self.b_calc.grid(column=0, row=1, sticky='nwe')
+        guicom.WgtStateChanger.bars.append(self.b_calc)
+
+        self.b_text_export = ttk.Button(
+            buttons_frame, text='Export as .txt', command=self.save_text
+        )
+        self.b_text_export.grid(column=1, row=1, sticky='nwe')
+        self.b_excel_export = ttk.Button(
+            buttons_frame, text='Export as .xls', command=self.save_excel
+        )
+        self.b_excel_export.grid(column=0, row=2, sticky='nwe')
+        self.b_csv_export = ttk.Button(
+            buttons_frame, text='Export as .csv', command=self.save_csv
+        )
+        self.b_csv_export.grid(column=1, row=2, sticky='nwe')
+        guicom.WgtStateChanger.either.extend(
+            [self.b_text_export, self.b_excel_export, self.b_csv_export]
+        )
+
+        # Overview control
+        self.overview_control_frame = ttk.Labelframe(
+            self, text="Overview control", width=90
+        )
+        self.overview_control_frame.grid(
+            column=0, row=1, columnspan=2, sticky='nswe'
+        )
+        tk.Grid.columnconfigure(self.overview_control_frame, 4, weight=1)
+        overview_vars = namedtuple('overview', ['checked', 'all', 'button'])
+        self.overview_control = dict()
+        for i, name in enumerate('Files Energy IR VCD UV ECD RAM ROA'.split(' ')):
+            tk.Label(self.overview_control_frame, text=name, anchor='w'
+                     ).grid(column=0, row=i)
+            var_checked = tk.IntVar(value=0)
+            tk.Label(self.overview_control_frame, textvariable=var_checked
+                     ).grid(column=1, row=i)
+            tk.Label(self.overview_control_frame, text='/').grid(column=2, row=i)
+            var_all = tk.IntVar(value=0)
+            tk.Label(self.overview_control_frame, textvariable=var_all
+                     ).grid(column=3, row=i)
+            butt = ttk.Button(self.overview_control_frame, text='un/check')
+            butt.grid(column=4, row=i, sticky='ne')
+            self.overview_control[name.lower()] = overview_vars(
+                var_checked, var_all, butt
+            )
+
+        # Conformers Overview
+        self.label_overview = ttk.LabelFrame(self, text='Conformers Overview')
+        self.label_overview.grid(column=2, row=0, columnspan=3, rowspan=3, sticky='nwse')
+        self.overview = guicom.ConformersOverview(self.label_overview, self)
+        self.overview.frame.grid(column=0, row=0, sticky='nswe')
+        # unify naes with ovweview in conformers tab
+        tk.Grid.rowconfigure(self.label_overview, 0, weight=1)
+        tk.Grid.columnconfigure(self.label_overview, 0, weight=1)
+
         # New session
-        self.label_new = ttk.LabelFrame(buttons_frame, text='New session')
-        self.label_new.grid(column=0, row=0, sticky='n')
-        ttk.Button(self.label_new, text='Location', command=self.from_dir).grid(column=0, row=0)
-        ttk.Button(self.label_new, text='From files', command=self.from_files).grid(column=1, row=0)
+        # self.label_new = ttk.LabelFrame(buttons_frame, text='New session')
+        # self.label_new.grid(column=0, row=0, sticky='n')
+        # ttk.Button(self.label_new, text='Location', command=self.from_dir).grid(column=0, row=0)
+        # ttk.Button(self.label_new, text='From files', command=self.from_files).grid(column=1, row=0)
 
         # Extract
-        self.label_extr = ttk.LabelFrame(buttons_frame, text='Extract')
-        self.label_extr.grid(column=0, row=1, sticky='n')
-        self.b_e_e = ttk.Button(self.label_extr, text='Energies', command=self.extract_energies)
-        self.b_e_e.grid(column=0, row=0)
-        self.b_e_b = ttk.Button(self.label_extr, text='Bars', command=self.get_wanted_bars)
-        self.b_e_b.grid(column=1, row=0)
-        guicom.WgtStateChanger.tslr.extend([self.b_e_e, self.b_e_b])
+        # self.label_extr = ttk.LabelFrame(buttons_frame, text='Extract')
+        # self.label_extr.grid(column=0, row=1, sticky='n')
 
         # Calculate
-        self.label_calc = ttk.LabelFrame(buttons_frame, text='Calculate')
-        self.label_calc.grid(column=0, row=2, sticky='n')
+        # self.label_calc = ttk.LabelFrame(buttons_frame, text='Calculate')
+        # self.label_calc.grid(column=0, row=2, sticky='n')
         # self.b_c_p = ttk.Button(self.label_calc, text='Populations', command=self.calc_popul)
         # self.b_c_p.grid(column=0, row=0)
-        self.b_c_s = ttk.Button(self.label_calc, text='Spectra', command=self.calc_spectra)
-        self.b_c_s.grid(column=0, row=0)
-        self.b_c_a = ttk.Button(self.label_calc, text='Average', command=self.calc_average)
-        self.b_c_a.grid(column=1, row=0)
-        guicom.WgtStateChanger.bars.append(self.b_c_s)
-        guicom.WgtStateChanger.all.append(self.b_c_a)
+        # self.b_c_s = ttk.Button(self.label_calc, text='Spectra', command=self.calc_spectra)
+        # self.b_c_s.grid(column=0, row=0)
+        # self.b_c_a = ttk.Button(self.label_calc, text='Average', command=self.calc_average)
+        # self.b_c_a.grid(column=1, row=0)
+        # guicom.WgtStateChanger.bars.append(self.b_c_s)
+        # guicom.WgtStateChanger.all.append(self.b_c_a)
 
         # Smart
-        self.label_smart = ttk.LabelFrame(buttons_frame, text='Smart')
-        self.label_smart.grid(column=0, row=3, sticky='n')
-        self.b_s_e = ttk.Button(self.label_smart, text='Extract', command=self.smart_extract)
-        self.b_s_e.grid(column=0, row=0)
-        self.b_s_c = ttk.Button(self.label_smart, text='Calculate', command=self.not_impl)
-        self.b_s_c.grid(column=1, row=0)
+        # self.label_smart = ttk.LabelFrame(buttons_frame, text='Smart')
+        # self.label_smart.grid(column=0, row=3, sticky='n')
+        # self.b_s_e = ttk.Button(self.label_smart, text='Extract', command=self.smart_extract)
+        # self.b_s_e.grid(column=0, row=0)
         # temporarly
-        self.b_s_s = ttk.Button(self.label_smart, text='Save', command=self.not_impl)
-        self.b_s_s.grid(column=1, row=1)
-        guicom.WgtStateChanger.tslr.append(self.b_s_e)
-        guicom.WgtStateChanger.bars.append(self.b_s_c)
-        guicom.WgtStateChanger.either.append(self.b_s_s)
+        # self.b_s_s = ttk.Button(self.label_smart, text='Save', command=self.not_impl)
+        # self.b_s_s.grid(column=1, row=1)
+        # guicom.WgtStateChanger.tslr.append(self.b_s_e)
+        # guicom.WgtStateChanger.either.append(self.b_s_s)
 
         # Export
-        self.label_export = ttk.LabelFrame(buttons_frame, text='Export')
-        self.label_export.grid(column=0, row=4, sticky='n')
-        self.b_p_t = ttk.Button(self.label_export, text='Text', command=self.save_text)
-        self.b_p_t.grid(column=0, row=0)
-        self.b_p_e = ttk.Button(self.label_export, text='Excel', command=self.save_excel)
-        self.b_p_e.grid(column=1, row=0)
-        self.b_p_c = ttk.Button(self.label_export, text='CSV', command=self.save_csv)
-        self.b_p_c.grid(column=1, row=1)
-        guicom.WgtStateChanger.either.extend([self.b_p_t, self.b_p_e, self.b_p_c])
+        # self.label_export = ttk.LabelFrame(buttons_frame, text='Export')
+        # self.label_export.grid(column=0, row=4, sticky='n')
 
         # Load
         # self.label_load = ttk.LabelFrame(buttons_frame, text='Load')
@@ -129,28 +189,6 @@ class Loader(ttk.Frame):
         # self.b_o_d.grid(column=2, row=1, sticky='e')
         # guicom.WgtStateChanger.tslr.extend([self.b_o_d, self.b_w_d])
 
-        # Log window
-        self.label_log = ttk.LabelFrame(self, text='Log')
-        self.label_log.grid(column=2, row=0, columnspan=3, rowspan=2, sticky='nwe')
-        self.log = guicom.ReadOnlyText(self.label_log, width=50, height=6, wrap=tk.WORD)
-        self.log.pack(fill=tk.BOTH, expand=tk.YES)
-
-        # Conformers Overview
-        self.label_overview = ttk.LabelFrame(self, text='Conformers Overview')
-        self.label_overview.grid(column=2, row=2, columnspan=3, rowspan=10, sticky='nwse')
-        self.overview = guicom.ConformersOverview(self.label_overview, self)
-        self.overview.frame.grid(column=0, row=0, sticky='nswe')
-        # unify naes with ovweview in conformers tab
-        tk.Grid.rowconfigure(self.label_overview, 0, weight=1)
-        tk.Grid.columnconfigure(self.label_overview, 0, weight=1)
-
-        # Progress bar
-        self.progtext = tk.StringVar()
-        self.progtext.set('Idle.')
-        self.proglabel = ttk.Label(self, textvariable=self.progtext, anchor='w', foreground='gray')
-        self.proglabel.grid(column=0, row=10, columnspan=2, sticky='sw')
-        self.progbar = ttk.Progressbar(self, orient=tk.HORIZONTAL, mode='indeterminate')
-        self.progbar.grid(column=0, row=11, columnspan=2, sticky='swe')
 
     def not_impl(self):
         messagebox.showinfo("Sorry!",

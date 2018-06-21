@@ -140,10 +140,10 @@ class Spectra(ttk.Frame):
         guicom.WgtStateChanger.bars.extend([self.live_prev, self.recalc_b])
 
         # Progress bar
-        lab = ttk.Label(self, textvariable=parent.main_tab.progtext, anchor='w', foreground='gray')
-        lab.grid(column=0, row=9, sticky='sw')
-        self.progbar = ttk.Progressbar(self, orient=tk.HORIZONTAL, mode='indeterminate')
-        self.progbar.grid(column=0, row=10, sticky='swe')
+        # lab = ttk.Label(self, textvariable=parent.main_tab.progtext, anchor='w', foreground='gray')
+        # lab.grid(column=0, row=9, sticky='sw')
+        # self.progbar = ttk.Progressbar(self, orient=tk.HORIZONTAL, mode='indeterminate')
+        # self.progbar.grid(column=0, row=10, sticky='swe')
 
         # Spectrum
         spectra_view = ttk.LabelFrame(self, text='Spectra view')
