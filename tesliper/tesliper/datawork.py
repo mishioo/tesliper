@@ -8,7 +8,7 @@ import numpy as np
 from collections import Counter
 from contextlib import contextmanager
 from copy import copy
-import tesliper.descriptors as dscr
+from . import descriptors as dscr
 
 
 ##################

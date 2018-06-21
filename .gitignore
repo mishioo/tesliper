@@ -8,3 +8,5 @@ tslr_err_log.txt
 ENV/
 build/
 *.spec
+.idea/
+tesliper_output/

@@ -8,8 +8,11 @@ import tkinter.ttk as ttk
 from tkinter import messagebox
 from tkinter.scrolledtext import ScrolledText
 from threading import Thread
+from collections import OrderedDict
 from copy import copy
 from functools import partial
+
+import tesliper
 
 
 ##################
@@ -308,6 +311,11 @@ class ExportPopup(Popup):
                       in zip(self.labels, self.vars) if var.get()]
         logger.debug(self.query)
         return self.query
+
+
+######################
+###   CHECK_TREE   ###
+######################
         
         
 class BoxVar(tk.BooleanVar):
@@ -318,6 +326,7 @@ class BoxVar(tk.BooleanVar):
         super().set(True)
         
     def set(self, value):
+        # set is not called by tkinter when checkbutton is clicked
         super().set(value)
         if value:
             self.box.tree.item(self.box.index, tags=())
@@ -326,11 +335,10 @@ class BoxVar(tk.BooleanVar):
 
         
 class Checkbox(ttk.Checkbutton):
-    def __init__(self, master, tree, index, box_command, *args, **kwargs):
+    def __init__(self, master, tree, index, *args, **kwargs):
         self.frame = ttk.Frame(master, width=17, height=20)
         self.tree = tree
         self.index = index
-        self.box_command = box_command
         self.var = BoxVar(self)
         kwargs['variable'] = self.var
         super().__init__(self.frame, *args, command=self.clicked, **kwargs)
@@ -339,38 +347,26 @@ class Checkbox(ttk.Checkbutton):
         self.grid(column=0, row=0)
         
     def clicked(self):
-        if self.var.get():
-            self.tree.item(self.index, tags=())
-        else:
-            self.tree.item(self.index, tags='discarded')
+        self.tree.click_all(index=self.index, value=self.var.get())
         logger.debug('box index: {}'.format(self.index))
-        self.box_command()
         #self.tree.selection_set(str(self.index))
-
         
+
 class CheckTree(ttk.Treeview):
-    def __init__(self, master, parent_tab=None, **kwargs):
+    trees = dict()
+
+    def __init__(self, master, name, parent_tab=None, **kwargs):
+        CheckTree.trees[name] = self
         self.frame = ttk.Frame(master)
         self.parent_tab = parent_tab
-        kwargs['columns'] = 'ten ent gib scf zpe imag stoich'.split(' ')
         super().__init__(self.frame, **kwargs)
         self.grid(column=0, row=0, rowspan=2, columnspan=2, sticky='nwse')
         tk.Grid.columnconfigure(self.frame, 1, weight=1)
         tk.Grid.rowconfigure(self.frame, 1, weight=1)
         self.vsb = ttk.Scrollbar(self.frame, orient='vertical', command=self.on_bar)
-        self.vsb.grid(column=2, row=0, rowspan=2, sticky='ns')
+        self.vsb.grid(column=2, row=0, rowspan=2, sticky='nse')
         
         self.tag_configure('discarded', foreground='gray')
-
-        #Columns
-        for cid, text in zip('#0 stoich imag ten ent gib scf zpe'.split(' '),
-                             'Filenames, Stoichiometry, Imag, Thermal, '\
-                             'Enthalpy, Gibbs, SCF, Zero-Point'.split(', ')):
-            if not cid in ('#0', 'stoich', 'imag'): self.column(cid, width=20, anchor='e')
-            self.heading(cid, text=text)
-        self.column('#0', width=100)
-        self.column('stoich', width=100)
-        self.column('imag', width=40, anchor='center', stretch=False)
 
         #Sort button
         but_frame = ttk.Frame(self.frame, height=24, width=17)
@@ -398,11 +394,22 @@ class CheckTree(ttk.Treeview):
         
         self.boxes_frame.bind("<Configure>", self.onFrameConfigure)
         self.configure(yscrollcommand=self.yscroll)
-        self.boxes = []
+        self.boxes = OrderedDict()
 
+    @property
+    def blade(self):
+        return [box.var.get() for box in self.boxes.values()]
+
+    @property
+    def dummy(self):
+        ls = [self.item(i)['text'] for i in self.get_children()]
+        ls = sorted(ls)
+        dummy = tesliper.datawork.Data('dummy', filenames = ls)
+        dummy.trimmer.set(self.blade)
+        return dummy
     
     def _sort_button(self, reverse=True):
-        ls = [(b.var.get(), b.index) for b in self.boxes]
+        ls = [(b.var.get(), b.index) for b in self.boxes.values()]
         ls.sort(reverse=reverse)
         for i, (val, k) in enumerate(ls):
             box = self.boxes[k]
@@ -433,18 +440,7 @@ class CheckTree(ttk.Treeview):
     def heading(self, col, *args, command=None, **kwargs):
         command = command if command is not None else lambda: self._sort(col)
         return super().heading(col, *args, command=command, **kwargs)
-        
-    @classmethod
-    def test_populate(cls, master, num=30):
-        import string, random
-        new = cls(master, columns=('b'))
-        new.heading('b', text='afasdgf')
-        new.heading('#0', text='asdgasdfg')
-        gen = (''.join(random.choices(string.ascii_lowercase, k=7)) for x in range(num))
-        for x, bla in enumerate(gen):
-            new.insert(text=bla + ' ' + str(x), values=[x])
-        return(new)
-        
+
     def onFrameConfigure(self, event):
         '''Reset the scroll region to encompass the inner frame'''
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
@@ -454,17 +450,77 @@ class CheckTree(ttk.Treeview):
         self.canvas.yview_moveto(args[0])
         logger.debug(self.canvas.yview())
         
-    def insert(self, parent='', index=tk.END, iid=None, **kw):
-        box = Checkbox(self.boxes_frame, self, box_command = self.parent_tab.refresh,
-                       index=len(self.boxes))
+    def _insert(self, parent='', index=tk.END, iid=None, **kw):
+        box = Checkbox(self.boxes_frame, self, index=len(self.boxes))
         box.frame.grid(column=0, row=box.index)
-        self.boxes.append(box)
+        self.boxes[box.index] = box
         return super().insert(parent, index, iid=str(box.index), **kw)
+
+    def insert(self, parent='', index=tk.END, iid=None, *kw):
+        for tree in CheckTree.trees.values():
+            tree._insert(parent=parent, index=index, iid=iid, **kw)
         
     def on_bar(self, *args):
         self.yview(*args)
         # logger.debug(args)
         # logger.debug(self.canvas.yview())
+
+    def click_all(self, index, value):
+        # this solution is somewhat redundant
+        # (evaluets set(value) on clicked tree box as well)
+        # for now will work only on same size trees
+        for tree in CheckTree.trees.values():
+            tree.boxes[index].var.set(value)
+            tree.refresh()
+
+    def refresh(self):
+        pass
+
+
+class EnergiesView(CheckTree):
+    def __init__(self, master, parent_tab=None, **kwargs):
+        kwargs['columns'] = 'ten ent gib scf zpe imag stoich'.split(' ')
+        super().__init__(master, 'energies', parent_tab=parent_tab, **kwargs)
+        
+        # Columns
+        for cid, text in zip('#0 stoich imag ten ent gib scf zpe'.split(' '),
+                             'Filenames, Stoichiometry, Imag, Thermal, '
+                             'Enthalpy, Gibbs, SCF, Zero-Point'.split(', ')):
+            if not cid in ('#0', 'stoich', 'imag'):
+                    self.column(cid, width=20, anchor='e')
+            self.heading(cid, text=text)
+        self.column('#0', width=100)
+        self.column('stoich', width=100)
+        self.column('imag', width=40, anchor='center', stretch=False)
+
+    def refresh(self):
+        # TO DO: implement this based on table_view_update from main.Conformers
+        pass
+
+
+class ConformersOverview(CheckTree):
+    def __init__(self, master, parent_tab=None, **kwargs):
+        kwargs['columns'] = 'en ir vcd uv ecd ram roa'.split(' ')
+        super().__init__(master, 'main', parent_tab=parent_tab, **kwargs)
+
+        # Columns
+        self.column('#0', width=300, stretch=False)
+        self.heading('#0', text='Filenames')
+        for cid, text in zip('en ir vcd uv ecd ram roa'.split(' '),
+                             'EN IR VCD UV ECD RAM ROA'.split(' ')):
+            self.column(cid, width=35, anchor='center', stretch=False)
+            self.heading(cid, text=text)
+
+    @classmethod
+    def test_populate(cls, master, num=30):
+        import string, random
+        new = cls(master, columns=('b'))
+        new.heading('b', text='afasdgf')
+        new.heading('#0', text='asdgasdfg')
+        gen = (''.join(random.choices(string.ascii_lowercase, k=7)) for x in range(num))
+        for x, bla in enumerate(gen):
+            new.insert(text=bla + ' ' + str(x), values=[x])
+        return (new)
 
 
 class MaxLevelFilter:

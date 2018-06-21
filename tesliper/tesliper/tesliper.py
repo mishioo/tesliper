@@ -13,10 +13,10 @@ from contextlib import contextmanager
 from copy import copy
 from itertools import chain, cycle
 
-from tesliper import datawork
-from tesliper.datawork import gaussian, lorentzian
-from tesliper import extraction
-from tesliper import writer
+from . import datawork
+from .datawork import gaussian, lorentzian
+from . import extraction
+from . import writer
 
 ############################
 ###   GLOBAL VARIABLES   ###
