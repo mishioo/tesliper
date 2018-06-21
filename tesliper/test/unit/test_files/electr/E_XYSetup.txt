@@ -1,5 +1,0 @@
-Half widht of band in half height: 0.35 eV
-Start range: 150 nm
-Stop range: 650 nm
-Step: 1 nm
-Representation: velo / lenght
