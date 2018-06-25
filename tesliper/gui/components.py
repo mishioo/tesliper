@@ -194,7 +194,11 @@ class Feedback:
             other.parent.thread.start()
         return wrapper
         
-        
+
+##################
+###   POPUPS   ###
+##################
+
 class Popup(tk.Toplevel):
 
     def __init__(self, master, *args, **kwargs):
@@ -214,49 +218,6 @@ class Popup(tk.Toplevel):
         self.geometry(geometry)
 
 
-class BarsPopup(Popup):
-
-    bar_names = "IR Inten.,E-M Angle,Dip. Str.,Rot. Str.,Osc. Str. (velo),"\
-                "Rot. Str. (velo),Osc. Str. (length),Rot. Str. (length),Raman1,ROA1".split(',')
-    bar_keys = "iri emang dip rot vosc vrot losc lrot raman1 roa1".split(' ')
-    
-    def __init__(self, master, *args, **kwargs):
-        super().__init__(master, *args, **kwargs)
-        self.title("Bars extraction")
-        tk.Grid.rowconfigure(self, 6, weight=1)
-        tk.Grid.columnconfigure(self, 2, weight=1)
-        ttk.Label(self, text="Chose bars you wish to extract:").grid(
-            column=0, row=0, columnspan=2, sticky='w', padx=5, pady=5)
-        positions = [(c,r) for r in range(1,6) for c in range(2)]
-        self.vars = [tk.BooleanVar() for _ in self.bar_keys]
-        for v, k, n, (c, r) in zip(self.vars, self.bar_keys, self.bar_names,
-                                   positions):
-            b = ttk.Checkbutton(self, text=n, variable=v)
-            b.grid(column=c, row=r, sticky='w', pady=2, padx=5)
-        buttons_frame = ttk.Frame(self)
-        buttons_frame.grid(column=0, row=6, columnspan=3, sticky='se', pady=5)
-        tk.Grid.rowconfigure(buttons_frame, 0, weight=1)
-        tk.Grid.columnconfigure(buttons_frame, 0, weight=1)
-        b_cancel = ttk.Button(buttons_frame, text="Cancel", command=self.cancel_command)
-        b_cancel.grid(column=0, row=0, sticky='se')
-        b_ok = ttk.Button(buttons_frame, text="OK", command=self.ok_command)
-        b_ok.grid(column=1, row=0, sticky='se', padx=5)
-        
-    def ok_command(self):
-        vals = [v.get() for v in self.vars]
-        query = [b for b, v in zip(self.bar_keys, vals) if v]
-        if query:
-            self.destroy()
-            self.master.execute_extract_bars(query)
-        else:
-            messagebox.showinfo("Nothing choosen!",
-                "You must chose which bars you want to extract.")
-            self.focus_set()
-            
-    def cancel_command(self):
-        self.destroy()
-        
-        
 class ExportPopup(Popup):
 
     def __init__(self, master, *args, **kwargs):
@@ -313,10 +274,149 @@ class ExportPopup(Popup):
         return self.query
 
 
+class BarsPopup(Popup):
+    bar_names = "IR Inten.,E-M Angle,Dip. Str.,Rot. Str.,Osc. Str. (velo)," \
+                "Rot. Str. (velo),Osc. Str. (length),Rot. Str. (length),Raman1,ROA1".split(',')
+    bar_keys = "iri emang dip rot vosc vrot losc lrot raman1 roa1".split(' ')
+
+    def __init__(self, master, *args, **kwargs):
+        super().__init__(master, *args, **kwargs)
+        self.title("Bars extraction")
+        tk.Grid.rowconfigure(self, 6, weight=1)
+        tk.Grid.columnconfigure(self, 2, weight=1)
+        ttk.Label(self, text="Chose bars you wish to extract:").grid(
+            column=0, row=0, columnspan=2, sticky='w', padx=5, pady=5)
+        positions = [(c, r) for r in range(1, 6) for c in range(2)]
+        self.vars = [tk.BooleanVar() for _ in self.bar_keys]
+        for v, k, n, (c, r) in zip(self.vars, self.bar_keys, self.bar_names,
+                                   positions):
+            b = ttk.Checkbutton(self, text=n, variable=v)
+            b.grid(column=c, row=r, sticky='w', pady=2, padx=5)
+        buttons_frame = ttk.Frame(self)
+        buttons_frame.grid(column=0, row=6, columnspan=3, sticky='se', pady=5)
+        tk.Grid.rowconfigure(buttons_frame, 0, weight=1)
+        tk.Grid.columnconfigure(buttons_frame, 0, weight=1)
+        b_cancel = ttk.Button(buttons_frame, text="Cancel", command=self.cancel_command)
+        b_cancel.grid(column=0, row=0, sticky='se')
+        b_ok = ttk.Button(buttons_frame, text="OK", command=self.ok_command)
+        b_ok.grid(column=1, row=0, sticky='se', padx=5)
+
+    def ok_command(self):
+        vals = [v.get() for v in self.vars]
+        query = [b for b, v in zip(self.bar_keys, vals) if v]
+        if query:
+            self.destroy()
+            self.master.execute_extract_bars(query)
+        else:
+            messagebox.showinfo("Nothing choosen!",
+                                "You must chose which bars you want to extract.")
+            self.focus_set()
+
+    def cancel_command(self):
+        self.destroy()
+
+
+class ExtractPopup(Popup):
+
+    names = "Energies,IR Inten.,E-M Angle,Dip. Str.,Rot. Str.,"\
+            "Raman1,ROA1,Osc. Str. (velo),Rot. Str. (velo),"\
+            "Osc. Str. (length),Rot. Str. (length)".split(',')
+    keys = "energies iri emang dip rot raman1 roa1 vosc vrot losc lrot".split(' ')
+
+    def __init__(self, master, *args, **kwargs):
+        super().__init__(master, *args, **kwargs)
+        self.title("Extract data...")
+        tk.Grid.columnconfigure(self, 0, weight=1)
+        tk.Grid.rowconfigure(self, 4, weight=1)
+        upper_frame = ttk.Frame(self)
+        upper_frame.grid(column=0, row=0, sticky='we')
+        tk.Grid.columnconfigure(upper_frame, 0, weight=1)
+        tk.Grid.rowconfigure(upper_frame, 0, weight=1)
+        path_frame = ttk.Frame(upper_frame)
+        path_frame.grid(column=0, row=0, sticky='we')
+        tk.Grid.columnconfigure(path_frame, 1, weight=1)
+        tk.Grid.rowconfigure(path_frame, 0, weight=1)
+        ttk.Label(path_frame, text="Path ").grid(column=0, row=0, sticky='w')
+        self.path = tk.StringVar()
+        self.path.set("Not specified.")
+        self.entry = ttk.Entry(path_frame, textvariable=self.path, state='readonly')
+        self.entry.grid(column=1, row=0, sticky='we')
+        self.amount = tk.StringVar()
+        self.amount.set("No files have been selected yet.")
+        ttk.Label(upper_frame, textvariable=self.amount).grid(
+            column=0, row=1, sticky='w'
+        )
+        select_buttons_frame = ttk.Frame(upper_frame)
+        select_buttons_frame.grid(column=1, row=0, rowspan=2, sticky='e')
+        tk.Grid.columnconfigure(select_buttons_frame, 0, weight=1)
+        self.select_directory = ttk.Button(
+            select_buttons_frame, text="Select directory",
+            command=self.select_directory_command
+        )
+        self.select_directory.grid(column=0, row=0, sticky='we',
+                                   pady=2, padx=5)
+        self.select_files = ttk.Button(
+            select_buttons_frame, text="Select files",
+            command=self.select_files_command
+        )
+        self.select_files.grid(column=0, row=1, sticky='we', padx=5)
+        self.smart = tk.BooleanVar()
+        ttk.Checkbutton(
+            upper_frame, text="Execute smart data extraction?",
+            variable=self.smart, command=self.execute_smart_button_command
+        ).grid(column=0, row=2, sticky='w', pady=2, padx=5)
+        self.smart.set(True)
+
+        self.buttons_frame = ttk.Frame(self)
+        self.buttons_frame.grid(column=0, row=1, sticky='we')
+        self.buttons = []
+        self.vars = [tk.BooleanVar() for __ in self.keys]
+        positions = [(0, r) for r in range(3)] + \
+                    [(c, r) for c in range(1, 5) for r in range(1, 3)]
+        for n, v, (c, r) in zip(self.names, self.vars, positions):
+            b = ttk.Checkbutton(self.buttons_frame, text=n, variable=v,
+                                state='disabled')
+            b.grid(column=c, row=r, sticky='w', pady=1, padx=5)
+            self.buttons.append(b)
+        self.bottom_buttons_frame = ttk.Frame(self)
+        self.bottom_buttons_frame.grid(
+            column=0, row=4, sticky='se', pady=5, padx=5
+        )
+        self.button_extract = ttk.Button(
+            self.bottom_buttons_frame, text="Extract data",
+            command=self.extract_command
+        )
+        self.button_extract.grid(column=1, row=0, sticky='se')
+        self.cancel_button = ttk.Button(
+            self.bottom_buttons_frame, text="Cancel",
+            command=self.cancel_command
+        )
+        self.cancel_button.grid(column=0, row=0, sticky='se', padx=5)
+        self.protocol("WM_DELETE_WINDOW", self.cancel_command)
+
+
+    def select_directory_command(self):
+        pass
+
+    def select_files_command(self):
+        pass
+
+    def extract_command(self):
+        pass
+
+    def cancel_command(self):
+        self.vars = []
+        self.destroy()
+
+    def execute_smart_button_command(self):
+        state = 'normal' if not self.smart.get() else 'disabled'
+        for b in self.buttons:
+            b.configure(state=state)
+
+
 ######################
 ###   CHECK_TREE   ###
 ######################
-        
         
 class BoxVar(tk.BooleanVar):
     
