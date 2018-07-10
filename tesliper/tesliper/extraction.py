@@ -212,7 +212,7 @@ class Soxhlet:
     
     instances = {}
     
-    def __init__(self, path, wanted_files=None):
+    def __init__(self, path, wanted_files=None, check_integrity=True):
         """Initialization of Soxhlet object.
         
         Parameters
@@ -239,7 +239,7 @@ class Soxhlet:
         self.spectra_type = self._get_spectra_type()
         self._id = len(self.instances)
         self.instances[self._id] = self
-        self.check_integrity()
+        if check_integrity: self.check_integrity()
 
     # @property
     # def wanted_files(self):
@@ -308,7 +308,7 @@ class Soxhlet:
             # maby just '.'.join(file, ext)
         return filtered
          
-    def log_or_out(self, files=None):
+    def log_or_out(self):
         """Checks list of file extentions in list of file names.
         
         Function checks for .log and .out files in passed list of file names.
@@ -391,18 +391,18 @@ class Soxhlet:
             return 'electr'
         else:
             return None
-            
-    def check_integrity(self):
-        no = len(self.gaussian_files)
-        commands = [None] * no
+
+    def all_commands_same(self):
+        commands = np.empty_like(self.gaussian_files, dtype=str)
         for num, file in enumerate(self.gaussian_files):
             with open(os.path.join(self.path, file)) as f:
                 cont = f.read()
                 commands[num] = self._get_command(file)
-        cmds = np.array(commands, dtype=str)
-        all_ok = (cmds == cmds[0]).all()
-        if not all_ok:
-            logger.debug(commands)
+        all_ok = (commands == commands[0]).all()
+        return all_ok
+            
+    def check_integrity(self):
+        if not self.all_commands_same():
             logger.warning('Files from different Gaussian calculation runs '
                 'mixed in directory (based on Gaussian commands comparition).'
                 ' Please make sure to select only files from one calculation '

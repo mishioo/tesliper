@@ -2,10 +2,12 @@
 ###   IMPORTS   ###
 ###################
 
+import os
 import logging as lgg
 import tkinter as tk
 import tkinter.ttk as ttk
 from tkinter import messagebox
+from tkinter.filedialog import askdirectory, askopenfilenames
 from tkinter.scrolledtext import ScrolledText
 from threading import Thread
 from collections import OrderedDict
@@ -13,7 +15,6 @@ from copy import copy
 from functools import partial
 
 import tesliper
-
 
 ##################
 ###   LOGGER   ###
@@ -29,11 +30,11 @@ logger.debug("Workin', baby!")
 ###################
 
 class TextHandler(lgg.Handler):
-    
+
     def __init__(self, widget, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.widget = widget
-        
+
     def emit(self, record):
         msg = self.format(record)
         self.widget.insert('end', msg + '\n', record.levelname)
@@ -50,20 +51,19 @@ class ReadOnlyText(ScrolledText):
         self.tag_config('WARNING', foreground='dark violet', font="Courier 10 italic")
         self.tag_config('ERROR', foreground='red3')
         self.tag_config('CRITICAL', foreground='red3', font="Courier 10 bold")
-        
+
     def insert(self, *args, **kwargs):
         self.configure(state='normal')
         super().insert(*args, **kwargs)
         self.configure(state='disabled')
-        
+
     def delete(self, *args, **kwargs):
         self.configure(state='normal')
         super().delete(*args, **kwargs)
         self.configure(state='disabled')
 
-        
-class WgtStateChanger:
 
+class WgtStateChanger:
     """
     TO DO
     -----
@@ -78,49 +78,49 @@ class WgtStateChanger:
     both = []
     spectra = []
     all = []
-    
+
     def __init__(self, function=None):
         if function is not None:
             self.function = function
         else:
             self.function = lambda *args, **kwargs: None
-    
+
     def __call__(self, other, *args, **kwargs):
         outcome = self.function(other, *args, **kwargs)
         self.set_states(other)
         return outcome
-        
+
     def __get__(self, obj, objtype):
         if obj is None:
             # instance attribute accessed on class, return self
             return self
         else:
             return partial(self.__call__, obj)
-        
+
     @property
     def changers(self):
         bars = None if not self.tslr_inst else self.tslr_inst.bars.spectral
         energies = None if not self.tslr_inst else self.tslr_inst.energies
         spectra = None if not self.tslr_inst else self.tslr_inst.spectra
         return dict(
-            tslr = self.enable if self.tslr_inst else self.disable,
-            energies = self.enable if energies else self.disable,
-            bars = self.enable if bars else self.disable,
-            either = self.enable if (bars or energies) else self.disable,
-            both = self.enable if (bars and energies) else self.disable,
-            spectra = self.enable if spectra else self.disable,
-            all = self.enable if (energies and spectra) else self.disable
-            )
-        
+            tslr=self.enable if self.tslr_inst else self.disable,
+            energies=self.enable if energies else self.disable,
+            bars=self.enable if bars else self.disable,
+            either=self.enable if (bars or energies) else self.disable,
+            both=self.enable if (bars and energies) else self.disable,
+            spectra=self.enable if spectra else self.disable,
+            all=self.enable if (energies and spectra) else self.disable
+        )
+
     def enable(self, widget):
         if isinstance(widget, ttk.Combobox):
             widget.configure(state='readonly')
         else:
             widget.configure(state='normal')
-            
+
     def disable(self, widget):
         widget.configure(state='disabled')
-        
+
     def change_spectra_radio(self):
         if self.tslr_inst:
             bars = self.tslr_inst.bars.spectral.values()
@@ -128,9 +128,9 @@ class WgtStateChanger:
         radio = self.gui.spectra_tab.s_name_radio
         for option, widget in radio.items():
             state = 'disabled' if not self.tslr_inst or not \
-                    option in spectra_avaiable else 'normal'
+                option in spectra_avaiable else 'normal'
             widget.configure(state=state)
-    
+
     def set_states(self, other):
         try:
             self.gui = other.parent
@@ -155,45 +155,46 @@ class FeedbackThread(Thread):
     @WgtStateChanger
     def run(self):
         self.exc = None
-        self.gui.main_tab.progtext.set(self.progbar_msg)
-        self.gui.main_tab.progbar.start()
-        self.gui.spectra_tab.progbar.start()
+        self.gui.progtext.set(self.progbar_msg)
+        self.gui.progbar.configure(mode='indeterminate')
+        self.gui.progbar.start()
         try:
             return_value = self.target(*self.args, **self.kwargs)
         except BaseException as exc:
             self.exc = exc
-        self.gui.main_tab.progbar.stop()
-        self.gui.spectra_tab.progbar.stop()
-        self.gui.main_tab.progtext.set('Idle.')
+        self.gui.progbar.stop()
+        self.gui.progbar.configure(mode='determinate')
+        self.gui.progtext.set('Idle.')
         if self.exc:
             logger.critical('Something unexpected happend.',
-                                     exc_info = self.exc)
+                            exc_info=self.exc)
             return
-            #raise self.exc
+            # raise self.exc
         return return_value
 
-        
+
 class Feedback:
-            
+
     def __init__(self, progbar_msg):
         self.progbar_msg = progbar_msg
-        
+
     def __call__(self, function):
         def wrapper(other, *args, **kwargs):
-            #other becomes self from decorated method
+            # other becomes self from decorated method
             if other.parent.thread.is_alive():
                 msg = "Can't start {}, while {} is still running.".format(
                     function, other.parent.thread.target)
                 logger.debug(msg)
-                return #log and do nothing
+                return  # log and do nothing
             else:
                 other.parent.thread = FeedbackThread(
                     other.parent, self.progbar_msg, function,
-                    [other]+list(args), kwargs
-                    )
+                    [other] + list(args), kwargs
+                )
             other.parent.thread.start()
+
         return wrapper
-        
+
 
 ##################
 ###   POPUPS   ###
@@ -229,14 +230,14 @@ class ExportPopup(Popup):
                   for l, v in zip(self.labels, self.vars)]
         for n, check in enumerate(checks):
             check.grid(column=0, row=n, pady=2, padx=5, sticky='nw')
-        checks[0].configure(state = 'normal' if
-            self.master.parent.tslr.energies else 'disabled')
-        checks[1].configure(state = 'normal' if
-            self.master.parent.tslr.bars else 'disabled')
-        checks[2].configure(state = 'normal' if
-            self.master.parent.tslr.spectra else 'disabled')
-        checks[3].configure(state = 'normal' if
-            self.master.parent.tslr.spectra else 'disabled')
+        checks[0].configure(state='normal' if
+        self.master.parent.tslr.energies else 'disabled')
+        checks[1].configure(state='normal' if
+        self.master.parent.tslr.bars else 'disabled')
+        checks[2].configure(state='normal' if
+        self.master.parent.tslr.spectra else 'disabled')
+        checks[3].configure(state='normal' if
+        self.master.parent.tslr.spectra else 'disabled')
         self.vars[0].set(True if self.master.parent.tslr.energies else False)
         self.vars[1].set(True if self.master.parent.tslr.bars else False)
         self.vars[2].set(True if self.master.parent.tslr.spectra else False)
@@ -251,7 +252,7 @@ class ExportPopup(Popup):
         tk.Grid.rowconfigure(self, 4, weight=1)
         tk.Grid.columnconfigure(self, 0, weight=1)
         self.query = []
-        
+
     def ok_command(self):
         vals = [v.get() for v in self.vars]
         logger.debug(vals)
@@ -259,13 +260,13 @@ class ExportPopup(Popup):
             self.destroy()
         else:
             messagebox.showinfo("Nothing choosen!",
-                "You must chose what you want to extract.")
+                                "You must chose what you want to extract.")
             self.focus_set()
-            
+
     def cancel_command(self):
         self.vars = []
         self.destroy()
-        
+
     def get_query(self):
         self.wait_window()
         self.query = [thing.lower() for thing, var
@@ -317,13 +318,15 @@ class BarsPopup(Popup):
 
 
 class ExtractPopup(Popup):
-
-    names = "Energies,IR Inten.,E-M Angle,Dip. Str.,Rot. Str.,"\
-            "Raman1,ROA1,Osc. Str. (velo),Rot. Str. (velo),"\
+    names = "Energies,IR Inten.,E-M Angle,Dip. Str.,Rot. Str.," \
+            "Raman1,ROA1,Osc. Str. (velo),Rot. Str. (velo)," \
             "Osc. Str. (length),Rot. Str. (length)".split(',')
     keys = "energies iri emang dip rot raman1 roa1 vosc vrot losc lrot".split(' ')
 
     def __init__(self, master, *args, **kwargs):
+        self.soxhlet = None
+        self.query = []
+
         super().__init__(master, *args, **kwargs)
         self.title("Extract data...")
         tk.Grid.columnconfigure(self, 0, weight=1)
@@ -368,7 +371,7 @@ class ExtractPopup(Popup):
         self.smart.set(True)
 
         self.buttons_frame = ttk.Frame(self)
-        self.buttons_frame.grid(column=0, row=1, sticky='we')
+        # self.buttons_frame.grid(column=0, row=1, sticky='we')
         self.buttons = []
         self.vars = [tk.BooleanVar() for __ in self.keys]
         positions = [(0, r) for r in range(3)] + \
@@ -384,7 +387,7 @@ class ExtractPopup(Popup):
         )
         self.button_extract = ttk.Button(
             self.bottom_buttons_frame, text="Extract data",
-            command=self.extract_command
+            command=self.extract_command, state='disabled'
         )
         self.button_extract.grid(column=1, row=0, sticky='se')
         self.cancel_button = ttk.Button(
@@ -394,37 +397,90 @@ class ExtractPopup(Popup):
         self.cancel_button.grid(column=0, row=0, sticky='se', padx=5)
         self.protocol("WM_DELETE_WINDOW", self.cancel_command)
 
+    def create_soxhlet(self, path, wanted_files=None):
+        soxhlet = tesliper.Soxhlet(path, wanted_files, check_integrity=False)
+        try:
+            ext = soxhlet.log_or_out()
+        except ValueError:
+            messagebox.showerror(
+                "Mixed output files!",
+                ".log and .out files mixed in choosen directory!")
+            self.button_extract.configure(state='disabled')
+            self.path = "Not selected"
+            self.amount = "No files have been selected yet."
+            self.soxhlet = None
+            self.focus_set()
+            return
+        except TypeError:
+            messagebox.showerror(
+                "No output files found.",
+                "Didn't found any .log or .out files in choosen directory.")
+            self.button_extract.configure(state='disabled')
+            self.path = "Not selected"
+            self.amount = "No files have been selected yet."
+            self.soxhlet = None
+            self.focus_set()
+            return
+        self.path.set(path)
+        self.soxhlet = soxhlet
+        amount = \
+            f"All {len(soxhlet.gaussian_files)} output files in directory" \
+                if not wanted_files else \
+                f"{len(soxhlet.gaussian_files)} *{ext} files"
+        self.amount.set(f"{amount} have been selected.")
+        self.button_extract.configure(state='normal')
+        return soxhlet
 
     def select_directory_command(self):
-        pass
+        path = askdirectory()
+        if path:
+            self.create_soxhlet(path)
 
     def select_files_command(self):
-        pass
+        files = askopenfilenames(
+            filetypes=[("any output", "*.log *.out"), ("log files", "*.log"),
+                       ("out files", "*.out"), ("all files", "*.*")])
+        if files:
+            path = os.path.split(files[0])[0]
+            filenames = list(map(lambda p: os.path.split(p)[1], files))
+            self.create_soxhlet(path, filenames)
 
     def extract_command(self):
-        pass
+        if self.smart.get():
+            self.query = 'smart'
+        else:
+            self.query = [
+                thing for thing, var in zip(self.keys, self.vars) if var.get()
+            ]
+        logger.debug(self.query)
+        self.destroy()
 
     def cancel_command(self):
-        self.vars = []
+        self.query = []
+        self.soxhlet = None
         self.destroy()
 
     def execute_smart_button_command(self):
         state = 'normal' if not self.smart.get() else 'disabled'
         for b in self.buttons:
             b.configure(state=state)
+        if not self.smart.get():
+            self.buttons_frame.grid(column=0, row=1, sticky='we')
+        else:
+            self.buttons_frame.grid_forget()
 
 
 ######################
 ###   CHECK_TREE   ###
 ######################
-        
+
 class BoxVar(tk.BooleanVar):
-    
+
     def __init__(self, box, *args, **kwargs):
         self.box = box
         super().__init__(*args, **kwargs)
         super().set(True)
-        
+
     def set(self, value):
         # set is not called by tkinter when checkbutton is clicked
         super().set(value)
@@ -433,7 +489,7 @@ class BoxVar(tk.BooleanVar):
         else:
             self.box.tree.item(self.box.index, tags='discarded')
 
-        
+
 class Checkbox(ttk.Checkbutton):
     def __init__(self, master, tree, index, *args, **kwargs):
         self.frame = ttk.Frame(master, width=17, height=20)
@@ -445,12 +501,12 @@ class Checkbox(ttk.Checkbutton):
         self.frame.pack_propagate(False)
         self.frame.grid_propagate(False)
         self.grid(column=0, row=0)
-        
+
     def clicked(self):
         self.tree.click_all(index=self.index, value=self.var.get())
         logger.debug('box index: {}'.format(self.index))
-        #self.tree.selection_set(str(self.index))
-        
+        # self.tree.selection_set(str(self.index))
+
 
 class CheckTree(ttk.Treeview):
     trees = dict()
@@ -465,10 +521,10 @@ class CheckTree(ttk.Treeview):
         tk.Grid.rowconfigure(self.frame, 1, weight=1)
         self.vsb = ttk.Scrollbar(self.frame, orient='vertical', command=self.on_bar)
         self.vsb.grid(column=2, row=0, rowspan=2, sticky='nse')
-        
+
         self.tag_configure('discarded', foreground='gray')
 
-        #Sort button
+        # Sort button
         but_frame = ttk.Frame(self.frame, height=24, width=17)
         but_frame.grid(column=0, row=0)
         but_frame.grid_propagate(False)
@@ -476,22 +532,22 @@ class CheckTree(ttk.Treeview):
         tk.Grid.rowconfigure(but_frame, 0, weight=1)
         style = ttk.Style()
         style.configure('sorting.TButton',
-            borderwidth=5,
-            highlightthickness=1,
-            relief='flat')
+                        borderwidth=5,
+                        highlightthickness=1,
+                        relief='flat')
         self.but_sort = ttk.Button(but_frame, style='sorting.TButton',
-            command=self._sort_button)
+                                   command=self._sort_button)
         self.but_sort.grid(column=0, row=0, sticky='nwes')
-        
-        #Boxes
-        self.canvas = tk.Canvas(self.frame, width=17, borderwidth=0, 
-                             background="#ffffff", highlightthickness=0)
+
+        # Boxes
+        self.canvas = tk.Canvas(self.frame, width=17, borderwidth=0,
+                                background="#ffffff", highlightthickness=0)
         self.canvas.configure(yscrollcommand=self.vsb.set)
         self.canvas.grid(column=0, row=1, sticky='ns')
         self.boxes_frame = ttk.Frame(self.canvas)
-        self.canvas.create_window((0,0), window=self.boxes_frame, anchor="nw", 
+        self.canvas.create_window((0, 0), window=self.boxes_frame, anchor="nw",
                                   tags="boxes_frame")
-        
+
         self.boxes_frame.bind("<Configure>", self.onFrameConfigure)
         self.configure(yscrollcommand=self.yscroll)
         self.boxes = OrderedDict()
@@ -504,10 +560,10 @@ class CheckTree(ttk.Treeview):
     def dummy(self):
         ls = [self.item(i)['text'] for i in self.get_children()]
         ls = sorted(ls)
-        dummy = tesliper.datawork.Data('dummy', filenames = ls)
+        dummy = tesliper.datawork.Data('dummy', filenames=ls)
         dummy.trimmer.set(self.blade)
         return dummy
-    
+
     def _sort_button(self, reverse=True):
         ls = [(b.var.get(), b.index) for b in self.boxes.values()]
         ls.sort(reverse=reverse)
@@ -518,7 +574,7 @@ class CheckTree(ttk.Treeview):
             box.frame.grid_propagate(False)
             box.frame.grid(column=0, row=i, sticky='n', pady=0)
         self.but_sort.configure(command=lambda: self._sort_button(not reverse))
-        
+
     def _sort(self, col, reverse=True):
         try:
             ls = [(self.set(k, col), k) for k in self.get_children('')]
@@ -536,7 +592,7 @@ class CheckTree(ttk.Treeview):
             box.frame.grid_propagate(False)
             box.frame.grid(column=0, row=i, sticky='n', pady=0)
         self.heading(col, command=lambda: self._sort(col, not reverse))
-        
+
     def heading(self, col, *args, command=None, **kwargs):
         command = command if command is not None else lambda: self._sort(col)
         return super().heading(col, *args, command=command, **kwargs)
@@ -544,12 +600,12 @@ class CheckTree(ttk.Treeview):
     def onFrameConfigure(self, event):
         '''Reset the scroll region to encompass the inner frame'''
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
-        
+
     def yscroll(self, *args):
         logger.debug(args)
         self.canvas.yview_moveto(args[0])
         logger.debug(self.canvas.yview())
-        
+
     def _insert(self, parent='', index=tk.END, iid=None, **kw):
         box = Checkbox(self.boxes_frame, self, index=len(self.boxes))
         box.frame.grid(column=0, row=box.index)
@@ -559,7 +615,7 @@ class CheckTree(ttk.Treeview):
     def insert(self, parent='', index=tk.END, iid=None, *kw):
         for tree in CheckTree.trees.values():
             tree._insert(parent=parent, index=index, iid=iid, **kw)
-        
+
     def on_bar(self, *args):
         self.yview(*args)
         # logger.debug(args)
@@ -581,13 +637,13 @@ class EnergiesView(CheckTree):
     def __init__(self, master, parent_tab=None, **kwargs):
         kwargs['columns'] = 'ten ent gib scf zpe imag stoich'.split(' ')
         super().__init__(master, 'energies', parent_tab=parent_tab, **kwargs)
-        
+
         # Columns
         for cid, text in zip('#0 stoich imag ten ent gib scf zpe'.split(' '),
                              'Filenames, Stoichiometry, Imag, Thermal, '
                              'Enthalpy, Gibbs, SCF, Zero-Point'.split(', ')):
             if not cid in ('#0', 'stoich', 'imag'):
-                    self.column(cid, width=20, anchor='e')
+                self.column(cid, width=20, anchor='e')
             self.heading(cid, text=text)
         self.column('#0', width=100)
         self.column('stoich', width=100)
@@ -642,4 +698,3 @@ class ShortExcFormatter(lgg.Formatter):
     def formatException(self, ei):
         output = ''
         return output
-
