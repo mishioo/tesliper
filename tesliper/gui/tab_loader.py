@@ -40,11 +40,11 @@ class Loader(ttk.Frame):
         buttons_frame.grid(column=0, row=0, columnspan=2, sticky='nwe')
         tk.Grid.columnconfigure(buttons_frame, (0,1), weight=1)
         self.b_auto_extract = ttk.Button(
-            buttons_frame, text='Auto extract\nfrom...', command=self.smart_extract
+            buttons_frame, text='Auto extract\nfrom...', command=self.from_dir
         )
         self.b_auto_extract.grid(column=0, row=0, sticky='nwe')
         self.b_man_extract = ttk.Button(
-            buttons_frame, text='Controlled\nextraction...', command=self.not_impl
+            buttons_frame, text='Controlled\nextraction...', command=self.man_extract
         )
         self.b_man_extract.grid(column=1, row=0, sticky='nwe')
 
@@ -246,29 +246,37 @@ class Loader(ttk.Frame):
         self.parent.logger.info('\nStarting new session...')
         return True
 
-    @guicom.WgtStateChanger
     def from_dir(self):
-        proceed = self.clear_session()
-        if not proceed: return
-        new_dir = askdirectory()
-        if not new_dir: return
-        self.instantiate_tslr(new_dir)
+        # proceed = self.clear_session()
+        # if not proceed: return
+        work_dir = askdirectory()
+        if not work_dir: return
+        if not self.parent.tslr: self.instantiate_tslr(work_dir)
+        self.extract('smart')
 
     @guicom.WgtStateChanger
-    def from_files(self):
-        proceed = self.clear_session()
-        if not proceed: return
-        files = askopenfilenames(
-            filetypes=[("log files", "*.log"), ("out files", "*.out")],
-            defaultextension='.log'
-        )
-        if not files: return
-        new_dir = os.path.split(files[0])[0]
-        filenames = list(map(lambda p: os.path.split(p)[1], files))
-        self.instantiate_tslr(new_dir, filenames)
+    def man_extract(self):
+        # proceed = self.clear_session()
+        # if not proceed: return
+        # files = askopenfilenames(
+        #     filetypes=[("log files", "*.log"), ("out files", "*.out"),
+        #                ("all files", "*.*")],
+        #     defaultextension='.log'
+        # )
+        # if not files: return
+        # new_dir = os.path.split(files[0])[0]
+        # filenames = list(map(lambda p: os.path.split(p)[1], files))
+        # self.instantiate_tslr(new_dir, filenames)
+        popup = guicom.ExtractPopup(self)
+        popup.wait_window()
+        query, sox = popup.query, popup.soxhlet
+        if not query: return
+        if not self.parent.tslr: self.instantiate_tslr()
+        self.parent.tslr.soxhlet = sox
+        self.extract(query)
 
     @guicom.Feedback('Starting new session...')
-    def instantiate_tslr(self, new_dir, filenames=None):
+    def instantiate_tslr(self, new_dir='', filenames=None):
         try:
             self.parent.tslr = tesliper.Tesliper(new_dir,
                                                  wanted_files=filenames)
@@ -280,42 +288,47 @@ class Loader(ttk.Frame):
             self.parent.logger.info(
                 "New session instantiated successfully!"
             )
-        self.work_dir.set(self.parent.tslr.input_dir)
-        self.out_dir.set(self.parent.tslr.output_dir)
+        # self.work_dir.set(self.parent.tslr.input_dir)
+        # self.out_dir.set(self.parent.tslr.output_dir)
         self.parent.conf_tab.make_new_conf_list()
 
-    def change_work_dir(self):
-        new_dir = askdirectory()
-        if not new_dir: return
-        self.parent.tslr.change_dir(input_dir=new_dir)
-        self.work_dir.set(self.parent.tslr.input_dir)
+    # def change_work_dir(self):
+    #     new_dir = askdirectory()
+    #     if not new_dir: return
+    #     self.parent.tslr.change_dir(input_dir=new_dir)
+    #     self.work_dir.set(self.parent.tslr.input_dir)
+    #
+    # def change_output_dir(self):
+    #     new_dir = askdirectory()
+    #     if not new_dir: return
+    #     self.parent.tslr.change_dir(output_dir=new_dir)
+    #     self.out_dir.set(self.parent.tslr.output_dir)
 
-    def change_output_dir(self):
-        new_dir = askdirectory()
-        if not new_dir: return
-        self.parent.tslr.change_dir(output_dir=new_dir)
-        self.out_dir.set(self.parent.tslr.output_dir)
-
-    @guicom.Feedback('Extracting...')
-    def extract_energies(self):
-        if not self.parent.conf_tab.established:
-            self.parent.tslr.extract('energies', 'iri')
-            if self.parent.tslr.energies:
-                self.parent.conf_tab.establish()
-        else:
-            self.parent.logger.warning('Energies already extracted.')
-
-    @guicom.Feedback('Extracting...')
-    def execute_extract_bars(self, query):
-        self.parent.tslr.extract(*query)
-        if self.parent.tslr.bars:
-            self.parent.conf_tab.unify_data()
+    # @guicom.Feedback('Extracting...')
+    # def extract_energies(self):
+    #     if not self.parent.conf_tab.established:
+    #         self.parent.tslr.extract('energies', 'iri')
+    #         if self.parent.tslr.energies:
+    #             self.parent.conf_tab.establish()
+    #     else:
+    #         self.parent.logger.warning('Energies already extracted.')
+    #
+    # @guicom.Feedback('Extracting...')
+    # def execute_extract_bars(self, query):
+    #     self.parent.tslr.extract(*query)
+    #     if self.parent.tslr.bars:
+    #         self.parent.conf_tab.unify_data()
         # self.parent.conf_tab.show_imag()
         # self.parent.conf_tab.establish()
 
     @guicom.Feedback('Extracting...')
-    def smart_extract(self):
-        self.parent.tslr.smart_extract()
+    def extract(self, query=None):
+        if query == 'smart':
+            self.parent.tslr.smart_extract()
+        elif query:
+            self.parent.tslr.extract(*query)
+        else:
+            return
         if not self.parent.conf_tab.established:
             if self.parent.tslr.energies:
                 self.parent.conf_tab.establish()

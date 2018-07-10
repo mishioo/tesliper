@@ -17,7 +17,7 @@ from .tab_energies import Conformers
 
 from ..tesliper import tesliper
 # from ..tesliper import __version__, __author__
-_DEVELOPEMENT = False
+_DEVELOPEMENT = True
 
 
 ###################
@@ -60,7 +60,7 @@ class TesliperApp(tk.Tk):
         # Log window
         self.label_log = ttk.LabelFrame(bottom_frame, text='Log')
         self.label_log.grid(column=1, row=0, columnspan=4, rowspan=2, sticky='swe')
-        self.log = guicom.ReadOnlyText(self.label_log, width=50, height=4, wrap=tk.WORD)
+        self.log = guicom.ReadOnlyText(self.label_log, width=50, height=5, wrap=tk.WORD)
         self.log.pack(fill=tk.BOTH, expand=tk.YES)
 
         # Progress bar
@@ -68,7 +68,7 @@ class TesliperApp(tk.Tk):
         self.progtext.set('Idle.')
         self.proglabel = ttk.Label(bottom_frame, textvariable=self.progtext, anchor='w', foreground='gray')
         self.proglabel.grid(column=0, row=0, sticky='sw')
-        self.progbar = ttk.Progressbar(bottom_frame, length=170, orient=tk.HORIZONTAL, mode='indeterminate')
+        self.progbar = ttk.Progressbar(bottom_frame, length=170, orient=tk.HORIZONTAL, mode='determinate')
         self.progbar.grid(column=0, row=1, sticky='swe')
 
         
