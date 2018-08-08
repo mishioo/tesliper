@@ -438,7 +438,7 @@ class Bars(Data):
                  imag=None, t=None, laser=None, excitation_energies=None):
         super().__init__(type, filenames, stoich, values)
         self.frequencies = frequencies
-        if self.values is None:
+        if values is None:
             self.values = self.frequencies
         if imag:
             self.imag = imag
@@ -470,9 +470,10 @@ class Bars(Data):
             List of number of imaginary values in each file.
         """
         output = {}
-        imag = self.imag.sum(0)
+        imag = self.imag.sum(1)
         indices = np.nonzero(imag)
         pairs = np.array([self.filenames, imag]).T
+        # print(imag, indices, pairs)
         return {k: v for k, v in pairs[indices]}
         
     def calculate_spectra(self, start, stop, step, hwhm, fitting):
