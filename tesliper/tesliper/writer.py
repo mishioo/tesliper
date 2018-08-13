@@ -253,6 +253,7 @@ class Writer:
         logger.info('Energies export to csv files done.')
         
     def bars_export(self):
+        # TO DO: refactor to not use soxhlet.instances
         separated = defaultdict(list)
         for bar in self.ts.bars.values():
             separated[bar._soxhlet_id].append(bar)
@@ -278,7 +279,7 @@ class Writer:
             logger.debug('This soxhlet instance provided following data'
                          ' types: {}.'.format(', '.join([bar.type for bar \
                                                          in bars_sorted])))
-            for fname in self.ts.soxhlet.instances[sox_id].gaussian_files:
+            for fname in self.ts.soxhlet.instances[sox_id].output_files:
                 values, types = zip(
                     *[(next(val), bar.type) for val, bar
                       in zip(values_sorted, bars_sorted)
