@@ -23,7 +23,7 @@ class TestSoxhlet(unittest.TestCase):
         self.assertEqual('vibra', self.vsox.spectra_type)
         
     def test_gaussian_files_empty(self):
-        self.assertEqual(None, self.nsox.gaussian_files)
+        self.assertEqual(None, self.nsox.output_files)
         
         
 if __name__ == '__main__':

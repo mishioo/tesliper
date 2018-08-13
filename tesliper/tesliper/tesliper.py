@@ -224,6 +224,7 @@ class Tesliper:
         return data
     
     def load_settings(self, path=None, spectra_type=None):
+        # TO DO: remove soxhlet.spectra_type dependence
         soxhlet = extraction.Soxhlet(path) if path else self.soxhlet
         spectra_type = spectra_type if spectra_type else \
             soxhlet.spectra_type

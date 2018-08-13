@@ -424,9 +424,9 @@ class ExtractPopup(Popup):
         self.path.set(path)
         self.soxhlet = soxhlet
         amount = \
-            f"All {len(soxhlet.gaussian_files)} output files in directory" \
+            f"All {len(soxhlet.output_files)} output files in directory" \
                 if not wanted_files else \
-                f"{len(soxhlet.gaussian_files)} *{ext} files"
+                f"{len(soxhlet.output_files)} *{ext} files"
         self.amount.set(f"{amount} have been selected.")
         self.button_extract.configure(state='normal')
         return soxhlet
