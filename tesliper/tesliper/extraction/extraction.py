@@ -10,7 +10,17 @@ import numpy as np
 
 from collections import defaultdict
 from collections.abc import Mapping
-from .datawork import Bars, Energies, Spectra, default_spectra_bars
+from tesliper.tesliper.datawork import (
+    Bars, Energies, Spectra, default_spectra_bars
+)
+
+
+#################
+###   TO DO   ###
+#################
+
+# rewrite Soxhlet to use gausian_parser instead of Extractor
+# remove extractor
 
 
 ##################
