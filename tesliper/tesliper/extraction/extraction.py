@@ -9,18 +9,13 @@ import numpy as np
 
 from collections import defaultdict
 from collections.abc import Mapping
-from tesliper.tesliper.datawork import (
-    Bars, Energies, Spectra
-)
 from . import gaussian_parser
 
 #################
 ###   TO DO   ###
 #################
 
-# rewrite Soxhlet to use gausian_parser instead of Extractor
-# remove extractor
-
+# correct load_bars, load_popul, load_spectrs, load_settings, from_dict methods
 
 ##################
 ###   LOGGER   ###
@@ -301,69 +296,3 @@ class Soxhlet:
     def load_spectra(self):
         # TO DO: do it
         pass
-
-    def from_dict(self, **data):
-        """Creates dictionary of Data objects from dictionary containing
-        appropriate key-word as keys and lists of extracted data as values.
-        
-        Parameters
-        ----------
-        data: dict
-            Dictionary containing lists or numpy.ndarrays of data.
-            
-        Returns
-        -------
-        dict
-            Dictionary with Data objects created from input data.
-            
-        Raises
-        ------
-        ValueError
-            If any of input dictionary keys is not recognized.
-        
-        TO DO
-        -----
-        handling spectra
-        """
-        output = {}
-        filenames = data.pop('filenames')
-        stoich = data.pop('stoich')
-        done = []
-        # data_items = key, value for key, value in data.items() if
-        for key, value in data.items():
-            # if not value:
-            if key in 'zpec tenc entc gibc scfc ex_en vfreq efreq'.split(' '):
-                continue
-            if key in 'zpe ten ent gib scf'.split(' '):
-                corr = None if not '{}c'.format(key) in data else \
-                    data['{}c'.format(key)]
-                new = Energies(
-                    type=key, filenames=filenames, stoich=stoich,
-                    values=value, corrections=corr)
-            elif key in 'dip rot iri raman1 roa1 vemang'.split(' '):
-                new = Bars(
-                    type=key, filenames=filenames, stoich=stoich,
-                    frequencies=data['vfreq'], values=value)
-            elif key in 'vosc vrot losc lrot eemang'.split(' '):
-                new = Bars(
-                    type=key, filenames=filenames, stoich=stoich,
-                    frequencies=data['efreq'], values=value,
-                    excitation_energies=data['ex_en'])
-            elif key in 'uv ir ecd vcd roa raman'.split(' '):
-                output[key] = Spectra(
-                    name=key, filenames=filenames, stoich=stoich,
-                    base=base, values=value, hwhm=hwhm,
-                    fitting=fitting)
-            else:
-                err_msg = "Unknown keyword: {}".format(key)
-                # TO DO: supplement this log
-                logger.error(err_msg)
-                continue
-            new._soxhlet_id = self._id
-            output[key] = new
-            done.append(Bars.full_name_ref[key])
-        if done:
-            logger.info('Successfully extracted: {}.'.format(', '.join(done)))
-        else:
-            logger.warning('Nothing extracted.')
-        return output

@@ -9,6 +9,7 @@ import logging as lgg
 import numpy as np
 
 from collections.abc import MutableMapping
+from collections import OrderedDict
 from contextlib import contextmanager
 from copy import copy
 from itertools import chain, cycle
@@ -91,6 +92,35 @@ class DataHolder(MutableMapping):
                 'dip rot vosc vrot losc lrot raman1 roa1'.split(' ')}
 
             
+class Molecules(OrderedDict):
+    """Ordered mapping of dictionaries.
+
+    Notes
+    -----
+    Inherits from collections.OrderedDict.
+
+    TO DO
+    -----
+    Add type checks in update and setting methods."""
+
+    def update(self, other=None, **kwargs):
+        """Works like dict.update, but if key is already present, it updates
+        dictionary associated with given key rather than changing its value.
+
+        TO DO
+        -----
+        Add type checks."""
+        molecules = dict()
+        if other is not None:
+            molecules.update(other)
+        molecules.update(**kwargs)
+        for key, value in molecules.items():
+            if key in self:
+                self[key].update(value)
+            else:
+                self[key] = value
+
+
 class Tesliper:
     """
     TO DO
@@ -116,7 +146,8 @@ class Tesliper:
     units = datawork.Spectra.units
 
     def __init__(self, input_dir=None, output_dir=None, wanted_files=None):
-        #TO DO: make wanted_files setter to reflect changes after instantiation
+        # TO DO: make wanted_files setter to reflect changes after instantiation
+        self.molecules = Molecules()
         self.wanted_files = wanted_files
         if input_dir or output_dir:
             self.change_dir(input_dir, output_dir)
@@ -125,6 +156,12 @@ class Tesliper:
         self.spectra = DataHolder()
         self.set_standard_parameters()
         self.writer = writer.Writer(self)
+
+    @property
+    def arrayed(self, key):
+        "Lists requested data and returns as numpy.ndarray."
+        arr = np.array([mol[key] for mol in self.molecules if key in mol])
+        return arr
         
     @property
     def extracted(self):
