@@ -1,5 +1,6 @@
 import re
 import logging as lgg
+import numpy as np
 
 
 ##################
@@ -163,16 +164,15 @@ def _vibr_parse(text):
         Dictionary of data extracted from input string."""
 
     data = {}
-    freq = text
-    ens = energies.search(freq)
+    ens = energies.search(text)
     if ens:
-        data.update(ens.groupdict())
+        data.update({k: float(v) for k, v in ens.groupdict().items()})
     for key, patt in vibr_regs.items():
-        m = patt.findall(freq)
+        m = patt.findall(text)
         if m:
-            data[key] = [float(i) for t in m for i in t]
-    if not data:
-        logger.warning('No expected freq data found.')
+            data[key] = np.array([i for t in m for i in t], dtype=float)
+    # if not data:
+    #     logger.warning('No expected freq data found.')
         return {}
     return data
 
@@ -198,19 +198,16 @@ def _electr_parse(text):
         if found:
             nums = numbers_reg.findall(found.group())
             vals1, vals2 = zip(*nums)
-            data[key1] = [float(v) for v in vals1]
-            if key2:    # second key is '' when key == 'lrot_'
+            data[key1] = np.array(vals1, dtype=float)
+            if key2:    # key2 is '' when key == 'lrot_'
                         # in such case vals2 will be list of empty strings
-                data[key2] = [float(v) for v in vals2]
+                data[key2] = np.array(vals2, dtype=float)
         excited = excited_grouped.findall(text)
         if excited:
-            # maybe (for ns, es, fs, ts in zip...) would be better?
-            for n, e, f, t in excited_grouped.findall(text):
-                data.setdefault('ex_en', []).append(float(e))
-                data.setdefault('efreq', []).append(float(f))
-                data.setdefault('transitions', []).append(
-                    transitions_reg.findall(t)
-                )
+            n, e, f, t = zip(*excited)
+            data['ex_en'] = np.array(e, dtype=float)
+            data['efreq'] = np.array(f, dtype=float)
+            data['transition'] = [transitions_reg.findall(x) for x in t]
     return data
 
 
@@ -251,7 +248,7 @@ def parse(text):
     extr['command'] = cmd.group(1)
     extr.update(_vibr_parse(text))
     extr.update(_electr_parse(text))
-    extr['scf'] = scf.findall(text)[-1]
+    extr['scf'] = float(scf.findall(text)[-1])
     trmntn = termination.search(text)
     extr['normal_termination'] = True if trmntn else False
     cpu_time = cpu_time_reg.findall(text)
@@ -269,10 +266,18 @@ def main():
     #         data.setdefault('ex_en', []).append(float(e))
     #         data.setdefault('efreq', []).append(float(f))
     #         data.setdefault('transition', []).append(
-    #             excit_regs['transition'].findall(t)
+    #             transitions_reg.findall(t)
     #         )
     #     return data
     #
+    # def zipped_groups(text):
+    #     data = {}
+    #     n, e, f, t = zip(*excited_grouped.findall(text))
+    #     data['ex_en'] = [float(x) for x in e]
+    #     data['efreq'] = [float(x) for x in f]
+    #     data['transition'] = [transitions_reg.findall(x) for x in t]
+    #     return data
+
     # def no_groups(text):
     #     data = {}
     #     for match in excited_states.findall(text):
@@ -286,20 +291,22 @@ def main():
     #             else:
     #                 data.setdefault(k, []).append(float(v.search(match).group(1)))
     #     return data
-    #
-    # with open(r'D:\Code\python-projects\Tesliper\logi\Tolbutamid\gjf\LOGI\ECD do
-    #   5kcal\ecd gjf\LOGI\Tolbutamid_c1.log', 'r') as f:
+
+    # with open(r'D:\Code\python-projects\Tesliper\logi\Tolbutamid\gjf\LOGI\ECD do '
+    #           r'5kcal\ecd gjf\LOGI\Tolbutamid_c1.log', 'r') as f:
     #     cont = f.read()
     # w = with_groups(cont)
+    # z = zipped_groups(cont)
     # n = no_groups(cont)
-    # print(w==n)
-    #
+    # print(w==z)
+
     # for k in w.keys():
     #     print(k, w[k] == n[k])
-    #
+
     # from timeit import timeit
-    # print(timeit('with_groups(cont)', globals=globals(), number=1000))  # 0.8390080543772318
-    # print(timeit('no_groups(cont)', globals=globals(), number=1000))    # 1.6335766830799694
+    # print(timeit('with_groups(cont)', globals=locals(), number=1000))    # 0.8390080543772318
+    # print(timeit('zipped_groups(cont)', globals=locals(), number=1000))  # 0.7781612425541962
+    # print(timeit('no_groups(cont)', globals=locals(), number=1000))      # 1.6335766830799694
 
     pass
     # with open(r'D:\Code\python-projects\Tesliper\logi\opt only\c-t1_B6311.log', 'r') as f:
