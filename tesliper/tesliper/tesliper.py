@@ -352,11 +352,11 @@ class Tesliper:
         data = self.__get_data(data_type).values()
         if not stencil:
             dat = next(iter(data))
-            dummy = datawork.Data(type='dummy',
-                                  filenames = dat.full.filenames)
+            dummy = datawork.DataArray(type='dummy',
+                                       filenames = dat.full.filenames)
         else:
-            dummy = datawork.Data(type='dummy',
-                                  filenames = stencil.full.filenames)
+            dummy = datawork.DataArray(type='dummy',
+                                       filenames = stencil.full.filenames)
             dummy.trimmer.set(stencil.trimmer.blade)
         self.__unify_data(data, dummy,
             overriding = False if stencil is None else True)

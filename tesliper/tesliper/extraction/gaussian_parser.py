@@ -229,7 +229,7 @@ def parse(text):
         ramact, depp, depu, alpha2, beta2, alphag, gamma2, delta2, raman1,
         roa1, cid1, raman2, roa2, cid2,  raman3, roa3, cid3, rc180,
         efreq, ex_en, eemang, vdip, ldip, vrot, lrot, vosc, losc, transitions,
-        scf, zpe, ten, ent, gibc, zpec, tenc, entc, gibc, command,
+        scf, zpe, ten, ent, gib, zpec, tenc, entc, gibc, command,
         normal_termination, cpu_time, optimization_completed.
 
     Raises
