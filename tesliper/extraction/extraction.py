@@ -5,10 +5,8 @@
 import csv
 import os
 import logging as lgg
-import numpy as np
 
 from collections import defaultdict
-from collections.abc import Mapping
 from . import gaussian_parser
 
 #################

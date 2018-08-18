@@ -3,7 +3,8 @@
 ###################
 
 import logging as lgg
-import math
+from collections import OrderedDict
+
 import numpy as np
 
 ##################
@@ -26,375 +27,10 @@ default_spectra_bars = {
     'roa': 'roa1'
 }
 
-############################
-###   MODULE FUNCTIONS   ###
-############################
-
-Boltzmann = 0.0019872041  # kcal/(mol*K)
-
-
-def delta(energies):
-    """Calculates energy difference between each conformer and lowest energy
-    conformer. Converts energy to kcal/mol.
-
-    Parameters
-    ----------
-    energies : numpy.ndarray
-        List of conformers energies in Hartree units.
-
-    Returns
-    -------
-    numpy.ndarray
-        List of energy differences from lowest energy in kcal/mol."""
-    try:
-        return (energies - energies.min()) * 627.5095
-        # convert hartree to kcal/mol by multiplying by 627.5095
-    except ValueError:
-        # if no values, return empty array.
-        return np.array([])
-
-
-def min_factor(energies, t=298.15):
-    """Calculates list of conformers' Boltzmann factors respective to lowest
-    energy conformer in system of given temperature.
-
-    Notes
-    -----
-    Boltzmann factor of two states is defined as:
-    F(state_1)/F(state_2) = exp((E_1 - E_2)/kt)
-    where E_1 and E_2 are energies of states 1 and 2,
-    k is Boltzmann constant, k = 0.0019872041 kcal/(mol*K),
-    and t is temperature of the system.
-
-    Parameters
-    ----------
-    energies : numpy.ndarray
-        List of conformers energies in Hartree units.
-    t : float, optional
-        Temperature of the system in K, defaults to 298,15 K.
-
-    Returns
-    -------
-    numpy.ndarary
-        List of conformers' Boltzmann factors respective to lowest
-        energy conformer."""
-    arr = delta(energies)
-    return np.exp(arr / (t * Boltzmann))
-
-
-def population(energies, t=298.15):
-    """Calculates Boltzmann distribution of conformers of given energies.
-
-    Parameters
-    ----------
-    energies : numpy.ndarray
-        List of conformers energies in Hartree units.
-    t : float, optional
-        Temperature of the system in K, defaults to 298,15 K.
-
-    Returns
-    -------
-    numpy.ndarary
-        List of conformers populations calculated as Boltzmann distribution."""
-    arr = min_factor(energies, t)
-    return arr / arr.sum()
-
-
-def count_imaginary(frequencies):
-    imag = frequencies < 0
-    return imag.sum(1)
-
-
-def find_imaginary(frequencies):
-    """Finds all molecules with imaginary frequency values.
-
-    Parameters
-    ----------
-    frequencies : numpy.ndarray
-        List of conformers' frequencies.
-
-    Returns
-    -------
-    numpy.ndarray
-        List of number of imaginary values in each file."""
-    imag = (frequencies < 0).sum(1)
-    return np.nonzero(imag)
-
-
-def gaussian(bar, freq, base, hwhm):
-    """Gaussian fitting function for spectra calculation.
-
-    Parameters
-    ----------
-    bar: numpy.ndarray
-        Appropriate values extracted from gaussian output files.
-    freq: numpy.ndarray
-        Frequencies extracted from gaussian output files.
-    base: numpy.ndarray
-        List of wavelength/wave number points on spectrum range.
-    hwhm: int or float
-        Number representing half width of maximum peak hight.
-
-    Returns
-    -------
-    numpy.ndarray
-        List of calculated intensity values.
-    """
-    sigm = hwhm / math.sqrt(2 * math.log(2))
-    it = np.nditer(
-        [base, None], flags=['buffered'],
-        op_flags=[['readonly'], ['writeonly', 'allocate', 'no_broadcast']],
-        op_dtypes=[np.float64, np.float64]
-    )
-    for lam, peaks in it:
-        e = bar * np.exp(-0.5 * ((lam - freq) / sigm) ** 2)
-        peaks[...] = e.sum() / (sigm * (2 * math.pi) ** 0.5)
-    return it.operands[1]
-
-
-def lorentzian(bar, freq, base, hwhm):
-    """Lorentzian fitting function for spectra calculation.
-
-    Parameters
-    ----------
-    bar: numpy.ndarray
-        Appropriate values extracted from gaussian output files.
-    freq: numpy.ndarray
-        Frequencies extracted from gaussian output files.
-    base: numpy.ndarray
-        List of wavelength/wave number points on spectrum range.
-    hwhm: int or float
-        Number representing half width of maximum peak hight.
-
-    Returns
-    -------
-    numpy.ndarray
-        List of calculated intensity values.
-    """
-    it = np.nditer(
-        [base, None], flags=['buffered'],
-        op_flags=[['readonly'], ['writeonly', 'allocate', 'no_broadcast']],
-        op_dtypes=[np.float64, np.float64]
-    )
-    for lam, val in it:
-        s = bar / ((freq - lam) ** 2 + hwhm ** 2)
-        s2 = hwhm / math.pi * s.sum()
-        val[...] = s2
-    return it.operands[1]
-
-
-def intensities(bars, frequencies, genre, t=289.15, laser=532):
-    pass
-
-
-def calculate_spectra(frequencies, intensities, start, stop, step, hwhm, fitting):
-    """Calculates spectrum for each individual conformer.
-
-    Parameters
-    ----------
-    frequencies : numpy.ndarray
-        List of conformers' frequencies. Should be of shape
-        (number _of_conformers, number_of_frequencies).
-    intensities : numpy.ndarray
-        List of calculated signal intensities for each conformer. Should be
-        of same shape as frequencies.
-    start : int or float
-        Number representing begining of spectral range in cm^(-1).
-    stop : int or float
-        Number representing end of spectral range in cm^(-1).
-    step : int or float
-        Number representing step of spectral range in cm^(-1).
-    hwhm : int or float
-        Number representing half width of maximum peak height in cm^(-1).
-    fitting : function
-        Function, which takes bars, freqs, base, hwhm as parameters and
-        returns numpy.array of calculated, non-corrected spectrum points.
-
-    Returns
-    -------
-    numpy.ndarray
-        Array of intensity values for each conformer.
-    """
-    base = np.arange(start, stop + step, step)
-    # spectrum base, 1d numpy.array of wavelengths/wave numbers
-    # electronic : bool, optional
-    #     Name of spectrum, which is going to be calculated. Valid names
-    #     are: vcd, ir, raman, roa, ecd, uv.
-    # if electronic:
-    #     width = hwhm / 1.23984e-4  # from eV to cm-1
-    #     w_nums = 1e7 / base  # from nm to cm-1
-    #     freqs = 1e7 / self.frequencies  # from nm to cm-1
-    # else:
-    #     width = hwhm
-    #     w_nums = base
-    #     freqs = self.frequencies
-    spectra = np.zeros([len(frequencies), base.shape[0]])  # template
-    for bar, freq, spr in zip(intensities, frequencies, spectra):
-        spr[...] = fitting(bar, freq, base, hwhm)
-    return spectra  # , base ?
-
-
-def average(spectra, populations):
-    """Calculates weighted average of spectra, where populations are used as
-    weights.
-
-    Parameters
-    ----------
-    spectra : numpy.ndarray
-        List of conformers' spectra, should be of shape (N, M), where N is
-        number of conformers and M is number of spectral points.
-    populations : numpy.ndarray
-        List of conformers' populations, should be of shape (N,) where N is
-        number of conformers. Should add up to 1.
-
-    Returns
-    -------
-    numpy.ndarray
-        Averaged spectrum.
-
-    Raises
-    ------
-    ValueError
-        If parameters of non-matching shape were passed.
-
-    TO DO
-    -----
-    Add checking if populations add up to 1"""
-    # populations must be of same shape as spectra
-    # so we expand populations with np.newaxis
-    popul = populations[:, np.newaxis]
-    if not spectra.shape == popul.shape:
-        raise ValueError(
-            f"Cannot broadcast populations of shape {populations.shape} with"
-            f"spectra of shape {spectra.shape}."
-        )
-    return (spectra * popul).sum(0)
-
 
 ###################
 ###   CLASSES   ###
 ###################
-
-class Trimmer:
-    """
-    """
-
-    blade = dscr.BladeDescr()
-
-    def __init__(self, owner):
-        self.owner = owner
-        self.blade = np.ones(self.owner.true_size, dtype=bool)
-
-    def set(self, value):
-        self.blade = value
-
-    def update(self, other):
-        if isinstance(other, DataArray):
-            value = other.trimmer.blade
-        elif isinstance(other, Trimmer):
-            value = other.blade
-        else:
-            value = other
-        other_blade = np.array(value, dtype=bool)
-        try:
-            self.blade = np.logical_and(self.blade, other_blade)
-        except ValueError:
-            logger.exception("Cannot update {}'s trimmer with object of "
-                             "different size. Size should be {}, not {}.".format(
-                self.owner.genre, self.blade.size, other_blade.size))
-
-    def match(self, other):
-        if not isinstance(other, DataArray):
-            raise TypeError('Cannot match with {}. Can match only with '
-                            'objects of type Data.'.format(type(other)))
-        previous_trimming = self.owner.trimming
-        self.owner.trimming = False
-        if other.filenames.size > self.owner.filenames.size:
-            raise ValueError("{} can't match bigger object: {}."
-                             .format(self.owner.genre, other.genre))
-        blade = np.isin(self.owner.filenames, other.filenames)
-        # print(blade)
-        if np.isin(other.filenames, self.owner.filenames).all():
-            self.set(blade)
-            self.owner.trimming = True
-        else:
-            self.owner.trimming = previous_trimming
-            raise ValueError("Can't match object: {0} with {1}. {1} has "
-                             "entries absent in {0}.".format(self.owner.genre, other.genre))
-
-    def unify(self, other, preserve_blade=True, overriding=False):
-        if not isinstance(other, DataArray):
-            raise TypeError('Cannot match with {}. Can match only with '
-                            'objects of type Data.'.format(type(other)))
-        if self.owner.filenames.shape == other.filenames.shape and \
-                (self.owner.filenames == other.filenames).all():
-            logger.debug('{} and {} already matching, no need to unify'
-                         .format(self.owner.genre, other.genre))
-            return
-        else:
-            logger.debug('Will make an attempt to unify {} and {}'
-                         .format(self.owner.genre, other.genre))
-        previous_trimming = self.owner.trimming
-        other_trimming = other.trimming
-        self.owner.trimming = False
-        if overriding or not preserve_blade:
-            other.trimming = False
-        if not np.intersect1d(other.filenames, self.owner.filenames).size:
-            self.owner.trimming = previous_trimming
-            other.trimming = other_trimming
-            raise ValueError("Can't unify objects without common entries.")
-        blade = np.isin(self.owner.filenames, other.filenames)
-        # print(blade)
-        func = self.update if preserve_blade else self.set
-        func(blade)
-        self.owner.trimming = True
-        other.trimmer.match(self.owner)
-
-    def reset(self):
-        self.blade = np.ones(self.owner.true_size, dtype=bool)
-
-    # from DataArray class
-
-    # @property
-    # def trimmed(self):
-    #     temp = copy(self)
-    #     temp.trimmer = Trimmer(self)
-    #     temp.trimmer.set(self.trimmer.blade)
-    #     temp.trimming = True
-    #     return temp
-    #
-    # @property
-    # def full(self):
-    #     temp = copy(self)
-    #     temp.trimmer = Trimmer(self)
-    #     temp.trimming = False
-    #     return temp
-
-    # def trimm_by_stoich(self, stoich=None):
-    #     if stoich:
-    #         wanted = stoich
-    #     else:
-    #         counter = Counter(self.stoich)
-    #         try:
-    #             wanted = counter.most_common(1)[0][0]
-    #         except IndexError:
-    #             wanted = ''
-    #     blade = self._full_stoich == wanted
-    #     self.trimmer.update(blade)
-    #     self.trimming = True
-    #     return self
-    #
-    # @contextmanager
-    # def temporarily_trimmed(self, blade=None):
-    #     curr_trimm = self.trimming
-    #     self.trimming = True
-    #     if blade is not None:
-    #         old_blade = self.trimmer.blade
-    #         self.trimmer.set(blade)
-    #     yield self
-    #     if blade is not None:
-    #         self.trimmer.set(old_blade)
-    #     self.trimming = curr_trimm
 
 
 class DataArray:
@@ -491,7 +127,6 @@ class DataArray:
 
 
 class Info(DataArray):
-
     associated_genres = ['command cpu_time', 'transitions']
 
     def __init__(self, genre, filenames, values, dtype=str):
@@ -499,7 +134,6 @@ class Info(DataArray):
 
 
 class Booleans(DataArray):
-
     associated_genres = ['normal_termination', 'optimization_completed']
 
     def __init__(self, genre, filenames, values, dtype=bool):
@@ -588,7 +222,6 @@ class Energies(DataArray):
 
 
 class Bars(DataArray):
-
     associated_genres = 'freq iri dip rot raman ramact raman1 roa1 raman2 ' \
                         'roa2 raman3 roa3 efreq ex_en eemang vdip ldip vrot ' \
                         'lrot vosc losc'.split(' ')
@@ -639,14 +272,15 @@ class Bars(DataArray):
             e = 1 - np.exp(-14387.751601679205 * obj.frequencies / obj.t)
             out = f * (obj.laser - obj.frequencies) ** 4 / (obj.frequencies * e)
             return out
+
         reference = dict(
-            raman = raman,
-            roa = raman,
-            ir = lambda obj: obj.frequencies / 91.48,
-            vcd = lambda obj: obj.frequencies / 2.296e5,
-            uv = lambda obj: obj.frequencies * 2.87e4,
-            ecd = lambda obj: obj.frequencies / 22.96
-            )
+            raman=raman,
+            roa=raman,
+            ir=lambda obj: obj.frequencies / 91.48,
+            vcd=lambda obj: obj.frequencies / 2.296e5,
+            uv=lambda obj: obj.frequencies * 2.87e4,
+            ecd=lambda obj: obj.frequencies / 22.96
+        )
         return reference[self.spectra_name]
 
     @property
@@ -658,7 +292,7 @@ class Bars(DataArray):
         -------
         numpy.ndarray
             Signal intensities for each conformer."""
-        intensities = self.values * get_intensity_factor(self)
+        intensities = self.values * self.get_intensity_factor(self)
         return intensities
 
     @property
@@ -680,7 +314,7 @@ class Bars(DataArray):
         numpy.ndarray
             List of number of imaginary values in each file.
         """
-        imag = self.imag.sum(1)
+        imag = self.imaginary.sum(1)
         indices = np.nonzero(imag)
         pairs = np.array([self.filenames, imag]).T
         # print(imag, indices, pairs)
@@ -726,9 +360,12 @@ class Bars(DataArray):
             spr[...] = fitting(bar, freq, w_nums, width)
         output = Spectra(self.spectra_name, self.filenames, abscissa,
                          spectra, hwhm, fitting)
-        if output: logger.info(
-            "{} spectra calculated with HWHM = {} and {} fitting.".format(
-                self.spectra_name, hwhm, fitting.__name__))
+        if output:
+            logger.info(
+                "{} spectra calculated with HWHM = {} and {} fitting.".format(
+                    self.spectra_name, hwhm, fitting.__name__
+                )
+            )
         return output
 
 
@@ -815,3 +452,143 @@ class Spectra(DataArray):
     #     header = self.text_header + ', averaged by {}.'
     #     header.format(DataArray.full_name_ref[self.energy_type])
     #     return header
+
+
+class Molecules(OrderedDict):
+    """Ordered mapping of dictionaries.
+
+    Notes
+    -----
+    Inherits from collections.OrderedDict.
+
+    TO DO
+    -----
+    Add type checks in update and setting methods."""
+
+    def __init__(self, *args, **kwargs):
+        self.kept = []
+        self.filenames = []
+        super().__init__(*args, **kwargs)
+
+    def __setitem__(self, key, value, **kwargs):
+        super().__setitem__(key, value, **kwargs)
+        self.kept.append(True)
+        self.filenames.append(key)
+
+    def __delitem__(self, key, **kwargs):
+        super().__delitem__(key, **kwargs)
+        index = self.filenames.index(key)
+        del self.filenames[index]
+        del self.kept[index]
+
+    def update(self, other=None, **kwargs):
+        """Works like dict.update, but if key is already present, it updates
+        dictionary associated with given key rather than changing its value.
+
+        TO DO
+        -----
+        Add type checks."""
+        molecules = dict()
+        if other is not None:
+            molecules.update(other)
+        molecules.update(**kwargs)
+        for key, value in molecules.items():
+            if key in self:
+                self[key].update(value)
+            else:
+                self[key] = value
+
+    def arrayed(self, genre, full=False):
+        """Lists requested data and returns as appropriate DataArray instance.
+
+        Parameters
+        ----------
+        genre : str
+            String representing data genre. Must be one of known genres.
+        full : bool, optional
+            Boolean indicating if full set of data should be taken, ignoring
+            any trimming conducted earlier. Defaults to False.
+
+        Returns
+        -------
+        DataArray
+            Arrayed data of desired genre as appropriate DataArray object.
+
+        TO DO
+        -----
+        Add some type checking and error handling."""
+        conarr = self.kept if not full else (True for __ in self.kept)
+        filenames, mols, values = zip([
+            (fname, mol, mol[genre]) for (fname, mol), con
+            in zip(self.items(), conarr) if con and genre in mol
+        ])
+        freqs = [mol['frequencies'] for mol in mols if 'frequencies' in mol]
+        arr = DataArray.make(genre, filenames, values, frequencies=freqs)
+        return arr
+
+    def trim_incomplete(self):
+        pass
+
+    def trim_imaginary_frequencies(self):
+        pass
+
+    def trim_non_matching_stoichiometry(self):
+        pass
+
+    def trim_not_optimized(self):
+        pass
+
+    def trim_non_normal_termination(self):
+        pass
+
+    def trim_to_range(self, genre, minimum=None, maximum=None):
+        pass
+
+    def select_all(self):
+        pass
+
+    # def trimm_by_stoich(self, stoich=None):
+    #     if stoich:
+    #             wanted = stoich
+    #         else:
+    #             counter = Counter(self.stoich)
+    #             try:
+    #                 wanted = counter.most_common(1)[0][0]
+    #             except IndexError:
+    #                 wanted = ''
+    #         blade = self._full_stoich == wanted
+    #         self.trimmer.update(blade)
+    #         self.trimming = True
+    #         return self
+    #
+    # @contextmanager
+    # def temporarily_trimmed(self, blade=None):
+    #     curr_trimm = self.trimming
+    #     self.trimming = True
+    #     if blade is not None:
+    #         old_blade = self.trimmer.blade
+    #         self.trimmer.set(blade)
+    #     yield self
+    #     if blade is not None:
+    #         self.trimmer.set(old_blade)
+    #     self.trimming = curr_trimm
+
+    """# performance test for making arrays
+    >>> from timeit import timeit
+    >>> import random
+    >>> dt = {n: chr(n) for n in range(100)}
+    >>> ls = list(range(100))
+    >>> kpt = random.choices(ls, k=80)
+    >>> skpt = set(kpt)
+    >>> timeit('[(k, v) for k, v in dt.items()]', globals=globals())
+    5.26354954301791
+    >>> timeit('[(n, dt[n]) for n in ls]', globals=globals())
+    6.790710222989297
+    >>> timeit('[(k,v) for k,v in dt.items() if k in skpt]', globals=globals())
+    7.0161151549953615
+    >>> timeit('[(n, dt[n]) for n in kpt]', globals=globals())
+    5.522729124628256
+    >>> timeit('[(n,dt[n]) for n,con in zip(ls,ls) if con]', globals=globals())
+    9.363086626095992
+    >>> timeit('[(k,v) for (k,v),con in zip(dt.items(),ls)]',globals=globals())
+    7.463483778659565"""

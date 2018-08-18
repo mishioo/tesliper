@@ -15,7 +15,6 @@ from copy import copy
 from itertools import chain, cycle
 
 from . import datawork
-from .datawork import gaussian, lorentzian
 from . import extraction
 from . import writer
 
@@ -91,35 +90,6 @@ class DataHolder(MutableMapping):
         return {k: v for k, v in self.items() if k in \
                 'dip rot vosc vrot losc lrot raman1 roa1'.split(' ')}
 
-            
-class Molecules(OrderedDict):
-    """Ordered mapping of dictionaries.
-
-    Notes
-    -----
-    Inherits from collections.OrderedDict.
-
-    TO DO
-    -----
-    Add type checks in update and setting methods."""
-
-    def update(self, other=None, **kwargs):
-        """Works like dict.update, but if key is already present, it updates
-        dictionary associated with given key rather than changing its value.
-
-        TO DO
-        -----
-        Add type checks."""
-        molecules = dict()
-        if other is not None:
-            molecules.update(other)
-        molecules.update(**kwargs)
-        for key, value in molecules.items():
-            if key in self:
-                self[key].update(value)
-            else:
-                self[key] = value
-
 
 class Tesliper:
     """
@@ -157,12 +127,6 @@ class Tesliper:
         self.set_standard_parameters()
         self.writer = writer.Writer(self)
 
-    @property
-    def arrayed(self, key):
-        "Lists requested data and returns as numpy.ndarray."
-        arr = np.array([mol[key] for mol in self.molecules if key in mol])
-        return arr
-        
     @property
     def extracted(self):
         return dict((k, v) for k, v in
