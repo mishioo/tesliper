@@ -127,7 +127,7 @@ class DataArray:
 
 
 class Info(DataArray):
-    associated_genres = ['command cpu_time', 'transitions']
+    associated_genres = ['command', 'cpu_time', 'transitions']
 
     def __init__(self, genre, filenames, values, dtype=str):
         super().__init__(genre, filenames, values, dtype=dtype)
@@ -157,8 +157,8 @@ class Energies(DataArray):
     Boltzmann = 0.0019872041  # kcal/(mol*K)
     associated_genres = 'scf zpe ten ent gib'.split(' ')
 
-    def __init__(self, genre, filenames, values, t=298.15):
-        super().__init__(genre, filenames, values)
+    def __init__(self, genre, filenames, values, t=298.15, **kwargs):
+        super().__init__(genre, filenames, values, **kwargs)
         self.t = t  # temperature in K
 
     @property
@@ -248,12 +248,26 @@ class Bars(DataArray):
     )
 
     def __init__(self, genre, filenames, values, frequencies,
-                 t=298.15, laser=532):
-        super().__init__(genre, filenames, values)
+                 t=298.15, laser=532, **kwargs):
+        super().__init__(genre, filenames, values, **kwargs)
         self.frequencies = frequencies
         self.t = t  # temperature in K
         self.laser = laser  # in nm
         # rename to raman_laser?
+
+    @property
+    def frequencies(self):
+        return self.__frequencies
+
+    @frequencies.setter
+    def frequencies(self, frequencies):
+        if not len(frequencies) == len(self.filenames):
+            raise ValueError(
+                f"Values and filenames must be the same length. Arrays of"
+                f"length {len(frequencies)} and {len(self.filenames)} "
+                f"were given."
+            )
+        self.__frequencies = np.array(frequencies, dtype=float)
 
     @property
     def spectra_name(self):
@@ -311,14 +325,12 @@ class Bars(DataArray):
         
         Returns
         -------
-        numpy.ndarray
-            List of number of imaginary values in each file.
+        dict
+            Dictionary of {filename: number-of-imaginary-frequencies} for each
+            conformer with at least one imaginary frequency.
         """
-        imag = self.imaginary.sum(1)
-        indices = np.nonzero(imag)
-        pairs = np.array([self.filenames, imag]).T
-        # print(imag, indices, pairs)
-        return {k: v for k, v in pairs[indices]}
+        imag = self.imaginary
+        return {k: v for k, v in zip(self.filenames, imag) if v}
 
     def calculate_spectra(self, start, stop, step, hwhm, fitting):
         """Calculates spectrum of desired type for each individual conformer.
@@ -381,9 +393,10 @@ class Spectra(DataArray):
                    'step': 'nm'}
     }
 
-    def __init__(self, name, filenames, abscissa, values, hwhm, fitting):
+    def __init__(self, name, filenames, abscissa, values, hwhm, fitting,
+                 **kwargs):
         super().__init__(Bars.spectra_type_ref[name],
-                         filenames, values=values)
+                         filenames, values=values, **kwargs)
         self.name = name
         self.abscissa = abscissa
         self.start = abscissa[0]
@@ -471,6 +484,10 @@ class Molecules(OrderedDict):
         super().__init__(*args, **kwargs)
 
     def __setitem__(self, key, value, **kwargs):
+        # TO DO: enable other, convertible to dict, structures
+        if not isinstance(value, dict):
+            raise TypeError(f'Value should be dict-like object, '
+                            f'not {type(value)}')
         super().__setitem__(key, value, **kwargs)
         self.kept.append(True)
         self.filenames.append(key)
@@ -545,7 +562,7 @@ class Molecules(OrderedDict):
         pass
 
     def select_all(self):
-        pass
+        self.kept = [True for __ in self.kept]
 
     # def trimm_by_stoich(self, stoich=None):
     #     if stoich:
