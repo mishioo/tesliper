@@ -16,7 +16,7 @@ logger.setLevel(lgg.DEBUG)
 ##################
 
 number_group = r'\s*(-?\d+\.?\d*)'
-number = r'\s*-?\d+\.?\d*'
+number = number_group.replace('(', '').replace(')', '')
 
 command = re.compile(r'#(?:.*\n)+?(?=\s-)')
 termination = re.compile(r'Normal termination.*\n\Z')
