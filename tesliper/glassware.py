@@ -3,7 +3,7 @@
 ###################
 
 import logging as lgg
-from collections import OrderedDict
+from collections import OrderedDict, Counter
 
 import numpy as np
 
@@ -533,33 +533,55 @@ class Molecules(OrderedDict):
 
         TO DO
         -----
-        Add some type checking and error handling."""
+        Add some type checking and error handling.
+        Handle case when not all have freqs."""
         conarr = self.kept if not full else (True for __ in self.kept)
-        filenames, mols, values = zip([
+        filenames, mols, values = zip(*[
             (fname, mol, mol[genre]) for (fname, mol), con
             in zip(self.items(), conarr) if con and genre in mol
         ])
-        freqs = [mol['frequencies'] for mol in mols if 'frequencies' in mol]
+        freqs = [mol['freq'] for mol in mols if 'freq' in mol]
         arr = DataArray.make(genre, filenames, values, frequencies=freqs)
         return arr
 
     def trim_incomplete(self):
-        pass
-
+        longest = max(len(m) for m in self.values())
+        for index, mol in enumerate(self.values()):
+            if len(mol) < longest:
+                self.kept[index] = False
+        
     def trim_imaginary_frequencies(self):
-        pass
+        arr = self.arrayed('freq', full=True)
+        imaginary = arr.imaginary
+        for index, imag in enumerate(imaginary):
+            if imag > 0:
+                self.kept[index] = False
 
     def trim_non_matching_stoichiometry(self):
-        pass
+        counter = Counter((mol['stoichiometry'] for mol in self.values()))
+        stoich = counter.most_common()[0][0]
+        for index, mol in enumerate(self.values()):
+            if not mol['stoichiometry'] == stoich:
+                self.kept[index] = False
 
     def trim_not_optimized(self):
-        pass
+        for index, mol in enumerate(self.values()):
+            if 'opt' in mol['command'] and not mol['optimized']:
+                self.kept[index] = False
 
     def trim_non_normal_termination(self):
-        pass
+        for index, mol in enumerate(self.values()):
+            if not mol['normal_termination']:
+                self.kept[index] = False
 
     def trim_to_range(self, genre, minimum=None, maximum=None):
-        pass
+        arr = self.arrayed(genre, full=True)
+        blade = (True for __ in arr.values)
+        if minimum is not None:
+            blade = (k and b for k, b in zip(arr.values >= minimum, blade))
+        if maximum is not None:
+            blade = (k and b for k, b in zip(arr.values <= maximum, blade))
+        self.kept = [k and b for k, b in zip(self.kept, blade)]
 
     def select_all(self):
         self.kept = [True for __ in self.kept]

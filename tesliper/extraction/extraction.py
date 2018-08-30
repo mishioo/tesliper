@@ -31,7 +31,7 @@ class Soxhlet:
     """A tool for data extraction from files in specific directory. Typical
     use:
     
-    >>> s = Soxhlet('absolute\path_to\working\dir')
+    >>> s = Soxhlet('absolute\path_to\working\directory')
     >>> data = s.extract()
     
     Attributes
@@ -54,8 +54,8 @@ class Soxhlet:
         Parameters
         ----------
         path : str
-            String representing absolute path to directory containing files, which
-            will be the subject of data extraction.
+            String representing absolute path to directory containing files,
+            which will be the subject of data extraction.
         wanted_files : list, optional
             List of files, that should be loaded for further extraction. If
             omitted, all files present in directory will be taken.
