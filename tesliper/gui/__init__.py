@@ -1,4 +1,4 @@
-from tesliper.gui.main import TesliperApp
+from .main import TesliperApp
 
 def build():
 

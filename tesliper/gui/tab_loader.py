@@ -4,12 +4,12 @@
 
 import os
 import logging as lgg
-from collections import namedtuple, defaultdict
+from collections import namedtuple
 import tkinter as tk
 import tkinter.ttk as ttk
 
 from tkinter import messagebox
-from tkinter.filedialog import askdirectory, askopenfilenames
+from tkinter.filedialog import askdirectory
 
 from . import components as guicom
 from .. import tesliper
@@ -44,7 +44,8 @@ class Loader(ttk.Frame):
         )
         self.b_auto_extract.grid(column=0, row=0, sticky='nwe')
         self.b_man_extract = ttk.Button(
-            buttons_frame, text='Controlled\nextraction...', command=self.man_extract
+            buttons_frame, text='Controlled\nextraction...',
+            command=self.man_extract
         )
         self.b_man_extract.grid(column=1, row=0, sticky='nwe')
 
