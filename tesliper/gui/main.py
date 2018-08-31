@@ -3,7 +3,6 @@
 ###################
 
 import os
-import traceback
 import logging as lgg
 import tkinter as tk
 import tkinter.ttk as ttk
@@ -15,7 +14,7 @@ from .tab_loader import Loader
 from .tab_spectra import Spectra
 from .tab_energies import Conformers
 
-from ..tesliper import tesliper
+from .. import tesliper
 # from ..tesliper import __version__, __author__
 _DEVELOPEMENT = True
 
@@ -57,21 +56,29 @@ class TesliperApp(tk.Tk):
         tk.Grid.columnconfigure(bottom_frame, 1, weight=1)
         tk.Grid.rowconfigure(bottom_frame, 0, weight=1)
 
-        # Log window
-        self.label_log = ttk.LabelFrame(bottom_frame, text='Log')
-        self.label_log.grid(column=1, row=0, columnspan=4, rowspan=2, sticky='swe')
-        self.log = guicom.ReadOnlyText(self.label_log, width=50, height=5, wrap=tk.WORD)
-        self.log.pack(fill=tk.BOTH, expand=tk.YES)
-
         # Progress bar
+        self.progbar = ttk.Progressbar(
+            bottom_frame, length=170, orient=tk.HORIZONTAL, mode='determinate'
+        )
+        self.progbar.grid(column=0, row=0, sticky='sw')
         self.progtext = tk.StringVar()
         self.progtext.set('Idle.')
-        self.proglabel = ttk.Label(bottom_frame, textvariable=self.progtext, anchor='w', foreground='gray')
-        self.proglabel.grid(column=0, row=0, sticky='sw')
-        self.progbar = ttk.Progressbar(bottom_frame, length=170, orient=tk.HORIZONTAL, mode='determinate')
-        self.progbar.grid(column=0, row=1, sticky='swe')
+        self.proglabel = ttk.Label(
+            bottom_frame, textvariable=self.progtext, anchor='w',
+            foreground='gray'
+        )
+        self.proglabel.grid(column=1, row=0, sticky='swe')
 
-        
+        # Log window
+        # displayed in separate, optional window
+        self.log = guicom.ReadOnlyText(
+            self, width=50, height=34, wrap=tk.WORD
+        )
+        ttk.Button(
+            bottom_frame, text='Display log', command=self.log.show
+        ).grid(column=2, row=0, sticky='se')
+
+        # Logger & handlers
         self.logger = lgg.getLogger(__name__)
         self.loggers = [self.logger, guicom.logger] + tesliper.loggers
         text_handler = guicom.TextHandler(self.log)
@@ -120,16 +127,17 @@ class TesliperApp(tk.Tk):
             'Theoretical Spectroscopist Little Helper!'
         )
           
-        
     def validate_entry(self, inserted, text_if_allowed):
         if any(i not in '0123456789.,+-' for i in inserted):
             return False
         else:
-            if text_if_allowed in '.,+-': return True
+            if text_if_allowed in '.,+-':
+                return True
             if text_if_allowed in map(''.join, zip('+-+-', '..,,')):
                 return True
             try:
-                if text_if_allowed: float(text_if_allowed.replace(',', '.'))
+                if text_if_allowed:
+                    float(text_if_allowed.replace(',', '.'))
             except ValueError:
                 return False
         return True
@@ -148,5 +156,3 @@ class TesliperApp(tk.Tk):
             
     def report_callback_exception(self, exc, val, tb):
         self.logger.critical('An unexpected error occurred.', exc_info=True)
-
-        

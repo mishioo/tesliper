@@ -2,17 +2,9 @@
 ###   IMPORTS   ###
 ###################
 
-import csv
-import math
-import os, re
+import os
 import logging as lgg
 import numpy as np
-
-from collections.abc import MutableMapping
-from collections import OrderedDict
-from contextlib import contextmanager
-from copy import copy
-from itertools import chain, cycle
 
 from . import glassware as gw
 from . import datawork as dw
@@ -70,7 +62,7 @@ class Tesliper:
                    'step': 1,
                    'fitting': dw.gaussian}
         }
-    units = dw.Spectra.units
+    units = gw.Spectra.units
 
     def __init__(self, input_dir=None, output_dir=None, wanted_files=None):
         """
@@ -83,7 +75,7 @@ class Tesliper:
         wanted_files : list, optional
             List filenames representing wanted files.
         """
-        self.molecules = Molecules()
+        self.molecules = gw.Molecules()
         self.wanted_files = wanted_files
         self.soxhlet = None
         self.input_dir = input_dir
@@ -95,17 +87,19 @@ class Tesliper:
     @property
     def energies(self):
         keys = 'zpe ent ten gib scf'.split(' ')
-        return {k: self.molecules.arrayed(key) for k in keys}
+        return {k: self.molecules.arrayed(k) for k in keys}
 
     @property
     def spectral(self):
+        # TO DO: expand with other spectral data
         keys = 'dip rot vosc vrot losc lrot raman1 roa1'.split(' ')
-        return {k: self.molecules.arrayed(key) for k in keys}
+        return {k: self.molecules.arrayed(k) for k in keys}
 
     @property
     def bars(self):
+        # TO DO: put proper keys here
         keys = 'zpe ent ten gib scf'.split(' ')
-        return {k: self.molecules.arrayed(key) for k in keys}
+        return {k: self.molecules.arrayed(k) for k in keys}
         
     @property
     def wanted_files(self):
@@ -127,9 +121,8 @@ class Tesliper:
     def update(self, *args, **kwargs):
         self.molecules.update(*args, **kwargs)
         # raise TypeError("Tesliper instance can not be updated with "
-                        # "type {}".format(type(value)))
-                        
-                        
+        #                 "type {}".format(type(value)))
+
     @property
     def input_dir(self):
         return self.__input_dir
@@ -142,8 +135,8 @@ class Tesliper:
                 raise FileNotFoundError(
                     "Invalid path or directory not found: {}".format(path)
                 )
-            self.soxhlet = ex.Soxhlet(input_dir, self.wanted_files)
-            logger.info('Current working directory is: {}'.format(input_dir))
+            self.soxhlet = ex.Soxhlet(path, self.wanted_files)
+            logger.info('Current working directory is: {}'.format(path))
         self.__input_dir = path
         
     @property
@@ -155,8 +148,8 @@ class Tesliper:
         if path is not None:
             path = os.path.normpath(path)
             os.makedirs(path, exist_ok=True)
-            logger.info('Current output directory is: {}'.format(input_dir))
-        self.__input_dir = path
+            logger.info('Current output directory is: {}'.format(path))
+        self.__output_dir = path
 
     def extract(self, path=None):
         soxhlet = ex.Soxhlet(path, self.wanted_files) if path else self.soxhlet
@@ -172,7 +165,7 @@ class Tesliper:
         pass
         
     def smart_calculate(self, average=True):
-        #TO DO: do it
+        # TO DO: do it
         pass
                 
     def load_bars(self, path=None, spectra_type=None):
@@ -185,7 +178,7 @@ class Tesliper:
         soxhlet = ex.Soxhlet(path) if path else self.soxhlet
         data = soxhlet.load_popul()
         self.update(data)
-        return self.data
+        return data
         
     def load_spectra(self, path=None):
         soxhlet = ex.Soxhlet(path) if path else self.soxhlet
@@ -221,13 +214,13 @@ class Tesliper:
         if not args:
             bars = self.spectral.values()
         else:
-            #convert to spectra name if bar name passed
+            # convert to spectra name if bar name passed
             bar_names = gw.default_spectra_bars
             query = [bar_names[v] if v in bar_names else v for v in args]
-            query = set(query) #ensure no duplicates
+            query = set(query)  # ensure no duplicates
             bar_names, bars = zip(
-                *[(k, v) for k, v in self.bars.spectral.items() if k in query])
-            unknown = query - set(self.bars.spectral.keys())
+                *[(k, v) for k, v in self.spectral.items() if k in query])
+            unknown = query - set(self.spectral.keys())
             if unknown:
                 info = "No other requests provided." if not bar_names else \
                        "Will proceed using only those bars: {}".format(bar_names)

@@ -11,8 +11,6 @@ from itertools import zip_longest, cycle
 
 from . import components as guicom
 
-import tesliper.tesliper as tesliper
-
 _DEVELOPEMENT = False
 
 
@@ -89,21 +87,21 @@ class Conformers(ttk.Frame):
         b_filter.grid(column=3, row=1)
         check_frame = ttk.Frame(filter_frame)
         check_frame.grid(column=4, row=0, rowspan=2)
-        var_stoich = tk.BooleanVar();
+        var_stoich = tk.BooleanVar()
         var_stoich.set(True)
         self.check_stoich = ttk.Checkbutton(
             check_frame, text='Discard non-matching stoichiometry',
             variable=var_stoich, command=self.update)
         self.check_stoich.grid(column=4, row=0, sticky='w')
         self.check_stoich.var = var_stoich
-        var_imag = tk.BooleanVar();
+        var_imag = tk.BooleanVar()
         var_imag.set(True)
         self.check_imag = ttk.Checkbutton(
             check_frame, text='Discard imaginary frequencies',
             variable=var_imag, command=self.update)
         self.check_imag.grid(column=4, row=1, sticky='w')
         self.check_imag.var = var_imag
-        var_missing = tk.BooleanVar();
+        var_missing = tk.BooleanVar()
         var_missing.set(True)
         self.check_missing = ttk.Checkbutton(
             check_frame, text='Discard excessive conformers',

@@ -165,7 +165,7 @@ class Spectra(ttk.Frame):
 
     def spectra_choosen(self, value):
         tslr = self.parent.tslr
-        bar_name = tesliper.datawork.default_spectra_bars[value]
+        bar_name = tesliper.dw.default_spectra_bars[value]
         bar = tslr.bars[bar_name]
         self.visualize_settings()
         self.single_box['values'] = list(bar.full.filenames)
@@ -176,7 +176,7 @@ class Spectra(ttk.Frame):
 
     def visualize_settings(self):
         spectra_name = self.s_name.get()
-        spectra_type = tesliper.datawork.Bars.spectra_type_ref[spectra_name]
+        spectra_type = tesliper.dw.Bars.spectra_type_ref[spectra_name]
         tslr = self.parent.tslr
         try:
             settings = self.last_used_settings[spectra_name]
@@ -229,7 +229,7 @@ class Spectra(ttk.Frame):
         tslr = self.parent.tslr
         en_name = self.average_ref[option]
         en = tslr.energies[en_name]
-        bar_name = tesliper.datawork.default_spectra_bars[spectra_name]
+        bar_name = tesliper.dw.default_spectra_bars[spectra_name]
         bar = tslr.bars[bar_name]
         bar.trimmer.match(en)
         tslr.calculate_spectra(spectra_name, **self.current_settings)
@@ -246,7 +246,7 @@ class Spectra(ttk.Frame):
     def stack_draw(self, spectra_name, option):
         # TO DO: color of line depending on population
         tslr = self.parent.tslr
-        bar_name = tesliper.datawork.default_spectra_bars[spectra_name]
+        bar_name = tesliper.dw.default_spectra_bars[spectra_name]
         bar = tslr.bars[bar_name]
         dummy = self.parent.conf_tab._dummy
         bar.trimmer.match(dummy)

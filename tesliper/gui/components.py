@@ -43,9 +43,14 @@ class TextHandler(lgg.Handler):
 
 class ReadOnlyText(ScrolledText):
 
-    def __init__(self, *args, **kwargs):
-        kwargs.pop('state', None)
-        super().__init__(*args, state='disabled', **kwargs)
+    def __init__(self, master, **kwargs):
+        self.window = tk.Toplevel(master)
+        self.hide()
+        self.window.title('Tesliper Log')
+        self.window.protocol('WM_DELETE_WINDOW', self.hide)
+        kwargs['state'] = 'disabled'
+        super().__init__(self.window, **kwargs)
+        self.pack(fill=tk.BOTH, expand=tk.YES)
         self.tag_config('DEBUG', foreground='gray')
         self.tag_config('INFO', foreground='black')
         self.tag_config('WARNING', foreground='dark violet', font="Courier 10 italic")
@@ -61,6 +66,12 @@ class ReadOnlyText(ScrolledText):
         self.configure(state='normal')
         super().delete(*args, **kwargs)
         self.configure(state='disabled')
+
+    def show(self):
+        self.window.deiconify()
+
+    def hide(self):
+        self.window.withdraw()
 
 
 class WgtStateChanger:
@@ -127,8 +138,8 @@ class WgtStateChanger:
             spectra_avaiable = [bar.spectra_name for bar in bars]
         radio = self.gui.spectra_tab.s_name_radio
         for option, widget in radio.items():
-            state = 'disabled' if not self.tslr_inst or not \
-                option in spectra_avaiable else 'normal'
+            state = 'disabled' if not self.tslr_inst or \
+                option not in spectra_avaiable else 'normal'
             widget.configure(state=state)
 
     def set_states(self, other):
@@ -231,13 +242,13 @@ class ExportPopup(Popup):
         for n, check in enumerate(checks):
             check.grid(column=0, row=n, pady=2, padx=5, sticky='nw')
         checks[0].configure(state='normal' if
-        self.master.parent.tslr.energies else 'disabled')
+            self.master.parent.tslr.energies else 'disabled')
         checks[1].configure(state='normal' if
-        self.master.parent.tslr.bars else 'disabled')
+            self.master.parent.tslr.bars else 'disabled')
         checks[2].configure(state='normal' if
-        self.master.parent.tslr.spectra else 'disabled')
+            self.master.parent.tslr.spectra else 'disabled')
         checks[3].configure(state='normal' if
-        self.master.parent.tslr.spectra else 'disabled')
+            self.master.parent.tslr.spectra else 'disabled')
         self.vars[0].set(True if self.master.parent.tslr.energies else False)
         self.vars[1].set(True if self.master.parent.tslr.bars else False)
         self.vars[2].set(True if self.master.parent.tslr.spectra else False)
@@ -398,7 +409,7 @@ class ExtractPopup(Popup):
         self.protocol("WM_DELETE_WINDOW", self.cancel_command)
 
     def create_soxhlet(self, path, wanted_files=None):
-        soxhlet = tesliper.Soxhlet(path, wanted_files, check_integrity=False)
+        soxhlet = tesliper.Soxhlet(path, wanted_files)
         try:
             ext = soxhlet.log_or_out()
         except ValueError:
@@ -406,8 +417,8 @@ class ExtractPopup(Popup):
                 "Mixed output files!",
                 ".log and .out files mixed in choosen directory!")
             self.button_extract.configure(state='disabled')
-            self.path = "Not selected"
-            self.amount = "No files have been selected yet."
+            self.path.set("Not selected")
+            self.amount.set("No files have been selected yet.")
             self.soxhlet = None
             self.focus_set()
             return
@@ -416,8 +427,8 @@ class ExtractPopup(Popup):
                 "No output files found.",
                 "Didn't found any .log or .out files in choosen directory.")
             self.button_extract.configure(state='disabled')
-            self.path = "Not selected"
-            self.amount = "No files have been selected yet."
+            self.path.set("Not selected")
+            self.amount.set("No files have been selected yet.")
             self.soxhlet = None
             self.focus_set()
             return
@@ -425,8 +436,8 @@ class ExtractPopup(Popup):
         self.soxhlet = soxhlet
         amount = \
             f"All {len(soxhlet.output_files)} output files in directory" \
-                if not wanted_files else \
-                f"{len(soxhlet.output_files)} *{ext} files"
+            if not wanted_files else \
+            f"{len(soxhlet.output_files)} *{ext} files"
         self.amount.set(f"{amount} have been selected.")
         self.button_extract.configure(state='normal')
         return soxhlet
@@ -560,7 +571,7 @@ class CheckTree(ttk.Treeview):
     def dummy(self):
         ls = [self.item(i)['text'] for i in self.get_children()]
         ls = sorted(ls)
-        dummy = tesliper.datawork.Data('dummy', filenames=ls)
+        dummy = tesliper.dw.Data('dummy', filenames=ls)
         dummy.trimmer.set(self.blade)
         return dummy
 
