@@ -33,7 +33,6 @@ class Conformers(ttk.Frame):
         tk.Grid.rowconfigure(self.overview, 0, weight=1)
         tk.Grid.columnconfigure(self.overview, 0, weight=1)
         self.conf_list = None
-        self.make_new_conf_list()
 
         b_select = ttk.Button(self, text='Select all', command=self.select_all)
         b_select.grid(column=0, row=1)
@@ -122,16 +121,13 @@ class Conformers(ttk.Frame):
             # b_filter, b_stoich, b_imag]
         )
 
-    def make_new_conf_list(self):
-        self.conf_list = guicom.EnergiesView(self.overview, parent_tab=self)
-        self.conf_list.frame.grid(column=0, row=0, sticky='nswe')
-
     def establish(self):
-        self.make_new_conf_list()
-        en = self.parent.tslr.energies.scf.full
-        for num, (fnm, stoich) in enumerate(zip_longest(en.filenames, en.stoich)):
+        en = self.parent.tslr.molecules.arrayed('scf', full=True)
+        stoich = self.parent.tslr.molecules.arrayed('stoich', full=True)
+        print(type(stoich))
+        for num, (fnm, st) in enumerate(zip_longest(en.filenames, stoich.values)):
             self.conf_list.insert('', 'end', text=fnm)
-            self.conf_list.set(num, column='stoich', value=stoich)
+            self.conf_list.set(num, column='stoich', value=st)
         # frame = ttk.Frame(self.conf_list.frame, height=15, width=17)
         # frame.grid(column=0, row=2, sticky='sw')
         # frame.grid_propagate(False)
@@ -243,10 +239,11 @@ class Conformers(ttk.Frame):
         try:
             imag = self.parent.tslr.bars.iri.full.imag
         except AttributeError:
-            self.parent.logger.warning("Can't show optimised conformers "
-                                       "imaginary frequencies count: no appropiate data found. "
-                                       "Please keep 'Discard imaginary frequencies' option unchecked."
-                                       )
+            self.parent.logger.warning(
+                "Can't show optimised conformers "
+                "imaginary frequencies count: no appropiate data found. "
+                "Please keep 'Discard imaginary frequencies' option unchecked."
+            )
             self.check_imag.var.set(False)
         else:
             # self.set_blade([not value.sum(0) for value in imag])
@@ -285,7 +282,7 @@ class Conformers(ttk.Frame):
         if self.check_missing.var.get(): self.unify_data()
         if (self.blade == self.energies.scf.trimmer.blade).all():
             self.parent.logger.debug(
-                'Energies blades not matchnig internal blade. ' 
+                'Energies blades not matching internal blade. ' 
                 'Will call set_energies_blade.')
             self.set_energies_blade()
         self.table_view_update(show)

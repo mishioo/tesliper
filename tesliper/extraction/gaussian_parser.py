@@ -113,7 +113,7 @@ electr_regs = {
     k: re.compile(
         v + r'(?:' +  # core pattern and start of non-capturing group
         numbers.replace(r'(', r'(?:') +  # make all groups non-capturing
-        r')+\n'  # match all lines of numbers to blank line
+        r')+'  # find all consecutive lines with numbers and terminate
     ) for k, v in electr_dict.items()
 }
 
@@ -245,9 +245,12 @@ def parse(text):
     cmd = command.search(text)
     if not cmd:
         raise ValueError('No command found in text.')
-    extr['command'] = cmd.group(1)
+    extr['command'] = cmd.group()
+    logger.debug('entering _vibr_parse')
     extr.update(_vibr_parse(text))
+    logger.debug('entering _electr_parse')
     extr.update(_electr_parse(text))
+    logger.debug('final searches')
     extr['scf'] = float(scf.findall(text)[-1])
     trmntn = termination.search(text)
     extr['normal_termination'] = True if trmntn else False

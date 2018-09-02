@@ -7,6 +7,7 @@ import logging as lgg
 import tkinter as tk
 import tkinter.ttk as ttk
 
+from tkinter import messagebox
 from threading import Thread
 
 from . import components as guicom
@@ -48,7 +49,6 @@ class TesliperApp(tk.Tk):
         # self.info_tab = ttk.Frame(self)
         # self.add(self.info_tab, text='Info')
         self.notebook.grid(column=0, row=0, sticky='nswe')
-        guicom.WgtStateChanger().set_states(self.main_tab)
 
         # Log & Bar frame
         bottom_frame = tk.Frame(self)
@@ -118,15 +118,21 @@ class TesliperApp(tk.Tk):
             for hdlr in self.handlers:
                 lgr.addHandler(hdlr)
         if _DEVELOPEMENT:
-            #for purposes of debugging
+            # for purposes of debugging
             self.logger.addHandler(tesliper.mainhandler)
             guicom.logger.addHandler(tesliper.mainhandler)
+
+        # WgtStateChanger
+        guicom.WgtStateChanger.gui = self
+        self.new_session()
+        guicom.WgtStateChanger.set_states()
+
 
         self.logger.info(
             'Welcome to Tesliper:\n'
             'Theoretical Spectroscopist Little Helper!'
         )
-          
+
     def validate_entry(self, inserted, text_if_allowed):
         if any(i not in '0123456789.,+-' for i in inserted):
             return False
@@ -156,3 +162,34 @@ class TesliperApp(tk.Tk):
             
     def report_callback_exception(self, exc, val, tb):
         self.logger.critical('An unexpected error occurred.', exc_info=True)
+
+    @guicom.WgtStateChanger
+    def new_session(self):
+        if self.tslr is not None:
+            pop = messagebox.askokcancel(
+                message='Are you sure you want to start new session? Any unsaved '
+                        'changes will be lost!',
+                title='New session', icon='warning', default='cancel')
+            if not pop:
+                return
+        # make new Tesliper instace
+        self.tslr = tesliper.Tesliper()
+        # establish new overview
+        if self.main_tab.overview is not None:
+            self.main_tab.overview.destroy()
+        self.main_tab.overview = guicom.ConformersOverview(
+            self.main_tab.label_overview, self.main_tab
+        )
+        self.main_tab.overview.frame.grid(column=0, row=0, sticky='nswe')
+        # establish new conf_list
+        if self.conf_tab.conf_list is not None:
+            self.conf_tab.conf_list.destroy()
+        self.conf_tab.conf_list = guicom.EnergiesView(self.conf_tab.overview,
+                                                      parent_tab=self.conf_tab)
+        self.conf_tab.conf_list.frame.grid(column=0, row=0, sticky='nswe')
+        self.conf_tab.established = False
+        # clear spectra tab
+        if self.spectra_tab.ax:
+            self.spectra_tab.figure.delaxes(self.spectra_tab.ax)
+            self.spectra_tab.ax = None
+            self.spectra_tab.canvas.show()
