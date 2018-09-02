@@ -125,6 +125,9 @@ class DataArray:
             )
         self.__values = np.array(value, dtype=self.dtype)
 
+    def __len__(self):
+        return self.filenames.size
+
 
 class Info(DataArray):
     associated_genres = ['command', 'cpu_time', 'transitions']
@@ -478,6 +481,17 @@ class Molecules(OrderedDict):
     -----
     Add type checks in update and setting methods."""
 
+    vibrational_keys = (
+        'freq mass frc iri dip rot emang raman depolarp depolaru '
+        'ramact depp depu alpha2 beta2 alphag gamma2 delta2 raman1 '
+        'roa1 cid1 raman2 roa2 cid2  raman3 roa3 cid3 rc180'.split(' ')
+    )
+
+    electronic_keys = (
+        'efreq ex_en eemang vdip ldip vrot lrot vosc losc '
+        'transitions'.split(' ')
+    )
+
     def __init__(self, *args, **kwargs):
         self.kept = []
         self.filenames = []
@@ -535,12 +549,27 @@ class Molecules(OrderedDict):
         -----
         Add some type checking and error handling.
         Handle case when not all have freqs."""
+        if not (self.kept or self.items()):
+            logger.debug(
+                f'Array of gerne {genre} requested, but self.kept or '
+                f'self.items() are wmpty. Returning empty array.'
+            )
+            return DataArray(genre, [], [])
         conarr = self.kept if not full else (True for __ in self.kept)
-        filenames, mols, values = zip(*[
+        array = [
             (fname, mol, mol[genre]) for (fname, mol), con
             in zip(self.items(), conarr) if con and genre in mol
-        ])
-        freqs = [mol['freq'] for mol in mols if 'freq' in mol]
+        ]
+        if array:
+            filenames, mols, values = zip(*array)
+        else:
+            filenames, mols, values = [], [], []
+        if genre in self.vibrational_keys:
+            freqs = [mol['freq'] for mol in mols]
+        elif genre in self.electronic_keys:
+            freqs = [mol['efreq'] for mol in mols]
+        else:
+            freqs = [None for __ in mols]
         arr = DataArray.make(genre, filenames, values, frequencies=freqs)
         return arr
 

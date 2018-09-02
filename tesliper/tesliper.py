@@ -10,6 +10,7 @@ from . import glassware as gw
 from . import datawork as dw
 from . import extraction as ex
 from . import writer as wr
+from .extraction import gaussian_parser as gp
 
 ############################
 ###   GLOBAL VARIABLES   ###
@@ -31,7 +32,7 @@ mainhandler.setLevel(lgg.DEBUG)
 mainhandler.setFormatter(lgg.Formatter(
             '%(levelname)s:%(name)s:%(funcName)s - %(message)s'))
 
-loggers = [logger, dw.logger, ex.logger, wr.logger, gw.logger]
+loggers = [logger, dw.logger, ex.logger, wr.logger, gw.logger, gp.logger]
 for lgr in loggers: lgr.addHandler(mainhandler)
 
 
@@ -76,11 +77,11 @@ class Tesliper:
             List filenames representing wanted files.
         """
         self.molecules = gw.Molecules()
-        self.wanted_files = wanted_files
         self.soxhlet = None
+        self.wanted_files = wanted_files
         self.input_dir = input_dir
         self.output_dir = output_dir
-        # self.spectra = DataHolder()
+        self.spectra = dict()
         self.set_standard_parameters()
         self.writer = wr.Writer(self)
         

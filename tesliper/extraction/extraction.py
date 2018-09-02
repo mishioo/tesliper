@@ -189,7 +189,9 @@ class Soxhlet:
         for num, file in enumerate(self.output_files):
             with open(os.path.join(self.path, file)) as handle:
                 cont = handle.read()
+            logger.debug(f'Starting extraction from file: {file}')
             data[file] = self.parser.parse(cont)
+            logger.debug('file done.\n')
         self.data = data
         return data
 

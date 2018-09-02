@@ -12,7 +12,7 @@ from tkinter.scrolledtext import ScrolledText
 from threading import Thread
 from collections import OrderedDict
 from copy import copy
-from functools import partial
+from functools import partial, wraps
 
 import tesliper
 
@@ -89,16 +89,18 @@ class WgtStateChanger:
     both = []
     spectra = []
     all = []
+    gui = None
 
     def __init__(self, function=None):
         if function is not None:
             self.function = function
         else:
             self.function = lambda *args, **kwargs: None
+        wraps(function)(self)
 
     def __call__(self, other, *args, **kwargs):
         outcome = self.function(other, *args, **kwargs)
-        self.set_states(other)
+        self.set_states()
         return outcome
 
     def __get__(self, obj, objtype):
@@ -110,11 +112,12 @@ class WgtStateChanger:
 
     @property
     def changers(self):
-        bars = None if not self.tslr_inst else self.tslr_inst.bars.spectral
-        energies = None if not self.tslr_inst else self.tslr_inst.energies
-        spectra = None if not self.tslr_inst else self.tslr_inst.spectra
+        tslr = WgtStateChanger.gui.tslr
+        bars = None if not tslr else tslr.spectral
+        energies = None if not tslr else tslr.energies
+        spectra = None if not tslr else tslr.spectra
         return dict(
-            tslr=self.enable if self.tslr_inst else self.disable,
+            tslr=self.enable if tslr else self.disable,
             energies=self.enable if energies else self.disable,
             bars=self.enable if bars else self.disable,
             either=self.enable if (bars or energies) else self.disable,
@@ -123,35 +126,35 @@ class WgtStateChanger:
             all=self.enable if (energies and spectra) else self.disable
         )
 
-    def enable(self, widget):
+    @staticmethod
+    def enable(widget):
         if isinstance(widget, ttk.Combobox):
             widget.configure(state='readonly')
         else:
             widget.configure(state='normal')
 
-    def disable(self, widget):
+    @staticmethod
+    def disable(widget):
         widget.configure(state='disabled')
 
-    def change_spectra_radio(self):
-        if self.tslr_inst:
-            bars = self.tslr_inst.bars.spectral.values()
-            spectra_avaiable = [bar.spectra_name for bar in bars]
-        radio = self.gui.spectra_tab.s_name_radio
+    @staticmethod
+    def change_spectra_radio():
+        tslr = WgtStateChanger.gui.tslr
+        bars = tslr.spectral.values()
+        spectra_available = [bar.spectra_name for bar in bars if bar]
+        radio = WgtStateChanger.gui.spectra_tab.s_name_radio
         for option, widget in radio.items():
-            state = 'disabled' if not self.tslr_inst or \
-                option not in spectra_avaiable else 'normal'
+            state = 'disabled' if not tslr or \
+                option not in spectra_available else 'normal'
             widget.configure(state=state)
 
-    def set_states(self, other):
-        try:
-            self.gui = other.parent
-        except AttributeError:
-            self.gui = other.gui
-        self.tslr_inst = self.gui.tslr
-        for dependency, changer in self.changers.items():
-            for widget in getattr(self, dependency):
+    @classmethod
+    def set_states(cls):
+        inst = cls()
+        for dependency, changer in inst.changers.items():
+            for widget in getattr(inst, dependency):
                 changer(widget)
-        self.change_spectra_radio()
+        WgtStateChanger.change_spectra_radio()
 
 
 class FeedbackThread(Thread):
@@ -623,7 +626,7 @@ class CheckTree(ttk.Treeview):
         self.boxes[box.index] = box
         return super().insert(parent, index, iid=str(box.index), **kw)
 
-    def insert(self, parent='', index=tk.END, iid=None, *kw):
+    def insert(self, parent='', index=tk.END, iid=None, **kw):
         for tree in CheckTree.trees.values():
             tree._insert(parent=parent, index=index, iid=iid, **kw)
 
