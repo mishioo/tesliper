@@ -4,6 +4,7 @@
 
 import logging as lgg
 from collections import OrderedDict, Counter
+from contextlib import contextmanager
 
 import numpy as np
 
@@ -493,7 +494,7 @@ class Molecules(OrderedDict):
     )
 
     def __init__(self, *args, **kwargs):
-        self.kept = []
+        self.__kept = []
         self.filenames = []
         super().__init__(*args, **kwargs)
 
@@ -511,6 +512,31 @@ class Molecules(OrderedDict):
         index = self.filenames.index(key)
         del self.filenames[index]
         del self.kept[index]
+
+    @property
+    def kept(self):
+        return self.__kept
+
+    @kept.setter
+    def kept(self, blade):
+        if isinstance(blade[0], str):
+            blade = set(blade)
+            if not blade.issubset(set(self.keys())):
+                raise ValueError(
+                    f"Unknown conformers: {', '.join(blade)}"
+                )
+            else:
+                self.__kept = [fnm in blade for fnm in self.keys()]
+        elif isinstance(blade[0], bool):
+            if not len(blade) == len(self):
+                raise ValueError(
+                    f"When setting kept directly, must provide boolean value "
+                    f"for each known conformer. {len(blade)} values provided, "
+                    f"{len(self)} excepted."
+                )
+            else:
+                self.__kept = blade
+
 
     def update(self, other=None, **kwargs):
         """Works like dict.update, but if key is already present, it updates
@@ -547,12 +573,11 @@ class Molecules(OrderedDict):
 
         TO DO
         -----
-        Add some type checking and error handling.
-        Handle case when not all have freqs."""
+        Add some type checking and error handling."""
         if not (self.kept or self.items()):
             logger.debug(
                 f'Array of gerne {genre} requested, but self.kept or '
-                f'self.items() are wmpty. Returning empty array.'
+                f'self.items() are empty. Returning empty array.'
             )
             return DataArray(genre, [], [])
         conarr = self.kept if not full else (True for __ in self.kept)
@@ -615,31 +640,12 @@ class Molecules(OrderedDict):
     def select_all(self):
         self.kept = [True for __ in self.kept]
 
-    # def trimm_by_stoich(self, stoich=None):
-    #     if stoich:
-    #             wanted = stoich
-    #         else:
-    #             counter = Counter(self.stoich)
-    #             try:
-    #                 wanted = counter.most_common(1)[0][0]
-    #             except IndexError:
-    #                 wanted = ''
-    #         blade = self._full_stoich == wanted
-    #         self.trimmer.update(blade)
-    #         self.trimming = True
-    #         return self
-    #
-    # @contextmanager
-    # def temporarily_trimmed(self, blade=None):
-    #     curr_trimm = self.trimming
-    #     self.trimming = True
-    #     if blade is not None:
-    #         old_blade = self.trimmer.blade
-    #         self.trimmer.set(blade)
-    #     yield self
-    #     if blade is not None:
-    #         self.trimmer.set(old_blade)
-    #     self.trimming = curr_trimm
+    @contextmanager
+    def untrimmed(self):
+        blade = self.kept
+        self.select_all()
+        yield self
+        self.kept = blade
 
     """# performance test for making arrays
     >>> from timeit import timeit

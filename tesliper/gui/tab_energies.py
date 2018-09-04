@@ -7,7 +7,7 @@ import tkinter as tk
 import tkinter.ttk as ttk
 
 from functools import reduce
-from itertools import zip_longest, cycle
+from itertools import  cycle
 
 from . import components as guicom
 
@@ -32,7 +32,7 @@ class Conformers(ttk.Frame):
         self.overview.grid(column=0, row=0, columnspan=6, sticky='nwse')
         tk.Grid.rowconfigure(self.overview, 0, weight=1)
         tk.Grid.columnconfigure(self.overview, 0, weight=1)
-        self.conf_list = None
+        self.conf_list = None  # obj is created in main.TesliperApp.new_session
 
         b_select = ttk.Button(self, text='Select all', command=self.select_all)
         b_select.grid(column=0, row=1)
@@ -40,11 +40,10 @@ class Conformers(ttk.Frame):
             self, text='Disselect all',
             command=self.disselect_all)
         b_disselect.grid(column=0, row=2)
-        # ttk.Button(self, text='Refresh', command=self.refresh).grid(column=3, row=2, sticky='swe')
         ttk.Label(self, text='Show:').grid(column=2, row=1, sticky='sw')
         self.show_var = tk.StringVar()
         show_values = ('Energy /Hartree', 'Delta /(kcal/mol)',
-                       'Min. Boltzmann factor', 'Population/%')
+                       'Min. Boltzmann factor', 'Population /%')
         show_id = ('values', 'deltas', 'min_factor', 'populations')
         self.show_ref = {k: v for k, v in zip(show_values, show_id)}
         self.show_combo = ttk.Combobox(self, textvariable=self.show_var,
@@ -110,32 +109,26 @@ class Conformers(ttk.Frame):
 
         self.established = False
 
-        # b_stoich = ttk.Button(filter_frame, text='Non-matching\nstoichiometry', command=self.filter_stoich)
-        # b_stoich.grid(column=4, row=0, rowspan=2)
-        # b_imag = ttk.Button(filter_frame, text='Imaginary\nfrequencies', command=self.filter_imag)
-        # b_imag.grid(column=5, row=0, rowspan=2)
         guicom.WgtStateChanger.energies.extend(
-            [b_select, b_disselect, self.show_combo, lentry, uentry,
+            [b_select, b_disselect, b_filter, self.show_combo, lentry, uentry,
              self.filter_combo, self.check_stoich, self.check_imag,
              self.check_missing]
-            # b_filter, b_stoich, b_imag]
         )
 
     def establish(self):
-        en = self.parent.tslr.molecules.arrayed('scf', full=True)
-        stoich = self.parent.tslr.molecules.arrayed('stoich', full=True)
-        print(type(stoich))
-        for num, (fnm, st) in enumerate(zip_longest(en.filenames, stoich.values)):
-            self.conf_list.insert('', 'end', text=fnm)
-            self.conf_list.set(num, column='stoich', value=st)
-        # frame = ttk.Frame(self.conf_list.frame, height=15, width=17)
-        # frame.grid(column=0, row=2, sticky='sw')
-        # frame.grid_propagate(False)
         self.show_combo.set('Energy /Hartree')
         self.filter_combo.set('Thermal')
-        self.update('values')
-        self.show_imag()
         self.established = True
+
+    def update_conf_list(self):
+        en = self.parent.tslr.molecules.arrayed('gib', full=True)
+        children = self.conf_list.owned_children
+        for num, fnm in enumerate(en.filenames):
+            if fnm not in children:
+                self.conf_list.insert('', 'end', text=fnm)
+        if not self.established:
+            self.establish()
+        self.conf_list.refresh()
 
     @property
     def energies(self):
@@ -157,18 +150,13 @@ class Conformers(ttk.Frame):
         self.set_energies_blade()
         self.update()
 
-    def refresh(self):
-        self.parent.logger.debug('conf_tab.refresh called.')
-        self.set_energies_blade()
-        self.table_view_update()
-
     def set_energies_blade(self):
         dummy = self.conf_list.dummy
         for en in self.energies.values():
             en.trimmer.match(dummy)
 
     def set_blade(self, blade):
-        for box, value in zip(self.conf_list.boxes.values().values(), blade):
+        for box, value in zip(self.conf_list.boxes.values(), blade):
             box.var.set(1 if value else 0)
             # need to check value this way
             # because tkinter doesn't understand numpy.bool_ type
@@ -250,31 +238,9 @@ class Conformers(ttk.Frame):
             for box, value in zip(self.conf_list.boxes.values(), imag):
                 if value.sum(0): box.var.set(False)
 
-    def unify_data(self):
-        stencil = None if not self.established else self._dummy
-        self.parent.tslr.unify_data(stencil=stencil)
-        if stencil is not None:
-            for box, value in zip(self.conf_list.boxes.values(), self.energies.scf.trimmer.blade):
-                box.var.set(1 if value else 0)
-            # need to check value this way
-            # because tkinter doesn't understand numpy.bool_ type
-
     def show_combo_sel(self, event):
         self.parent.logger.debug('Show combobox selected.')
-        self.table_view_update()
-
-    def show_imag(self):
-        bar = 'iri' if 'iri' in self.parent.tslr.bars else 'ir'
-        try:
-            bar = self.parent.tslr.bars[bar].full
-            imag = bar.imag
-            stoich = bar.stoich
-        except KeyError:
-            imag = []
-            stoich = []
-        for num, (imag_val, stoich_val) in enumerate(zip(imag, stoich)):
-            self.parent.conf_tab.conf_list.set(num, column='imag', value=imag_val.sum(0))
-            # self.parent.conf_tab.conf_list.set(num, column='stoich', value=stoich_val)
+        self.conf_list.refresh()
 
     def update(self, show=None):
         if self.check_imag.var.get(): self.filter_imag()
@@ -286,26 +252,3 @@ class Conformers(ttk.Frame):
                 'Will call set_energies_blade.')
             self.set_energies_blade()
         self.table_view_update(show)
-
-    def table_view_update(self, show=None):
-        show = show if show else self.showing
-        self.parent.logger.debug('Going to update by showing {}.'.format(show))
-        e_keys = 'ten ent gib scf zpe'.split(' ')
-        formats = dict(
-            values=lambda v: '{:.6f}'.format(v),
-            deltas=lambda v: '{:.4f}'.format(v),
-            min_factor=lambda v: '{:.4f}'.format(v),
-            populations=lambda v: '{:.4f}'.format(v * 100)
-        )
-        scope = 'full' if show == 'values' else 'trimmed'
-        en_get_attr = lambda e, scope, show: reduce(
-            lambda obj, attr: getattr(obj, attr), (e, scope, show), self.energies
-        )
-        trimmed = zip(*[en_get_attr(e, scope, show) for e in e_keys])
-        what_to_show = self.blade if show != 'values' else (True for __ in self.blade)
-        for index, kept in enumerate(what_to_show):
-            values = ['--' for _ in range(5)] if not kept else map(formats[show], next(trimmed))
-            for energy, value in zip(e_keys, values):
-                self.parent.conf_tab.conf_list.set(index, column=energy, value=value)
-        self.set_upper_and_lower()
-

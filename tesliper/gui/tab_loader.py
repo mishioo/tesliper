@@ -33,7 +33,7 @@ class Loader(ttk.Frame):
         self.parent = parent
         self.grid(column=0, row=0, sticky='nwse')
         tk.Grid.columnconfigure(self, 2, weight=1)
-        tk.Grid.rowconfigure(self, 2, weight=1)
+        tk.Grid.rowconfigure(self, 5, weight=1)
 
         # Extract data
         extract_frame = ttk.LabelFrame(self, text='Extract data...')
@@ -51,7 +51,7 @@ class Loader(ttk.Frame):
         # Session control
         buttons_frame = ttk.LabelFrame(self, text="Session control", width=90)
         buttons_frame.grid(column=0, row=1, columnspan=2, sticky='nwe')
-        tk.Grid.columnconfigure(buttons_frame, (0,1), weight=1)
+        tk.Grid.columnconfigure(buttons_frame, (0, 1), weight=1)
         self.b_clear_session = ttk.Button(
             buttons_frame, text='Clear session', command=self.parent.new_session
         )
@@ -90,13 +90,16 @@ class Loader(ttk.Frame):
         tk.Grid.columnconfigure(self.overview_control_frame, 4, weight=1)
         overview_vars = namedtuple('overview', ['checked', 'all', 'button'])
         self.overview_control = dict()
-        for i, name in enumerate('Files Energy IR VCD UV ECD RAM ROA'.split(' ')):
+        for i, name in enumerate(
+                'Files Energy IR VCD UV ECD Raman ROA Incomplete Errors '
+                'Unoptimised'.split(' ')):
             tk.Label(self.overview_control_frame, text=name, anchor='w'
                      ).grid(column=0, row=i)
             var_checked = tk.IntVar(value=0)
             tk.Label(self.overview_control_frame, textvariable=var_checked
                      ).grid(column=1, row=i)
-            tk.Label(self.overview_control_frame, text='/').grid(column=2, row=i)
+            tk.Label(self.overview_control_frame, text='/').grid(column=2,
+                                                                 row=i)
             var_all = tk.IntVar(value=0)
             tk.Label(self.overview_control_frame, textvariable=var_all
                      ).grid(column=3, row=i)
@@ -106,9 +109,49 @@ class Loader(ttk.Frame):
                 var_checked, var_all, butt
             )
 
+        # keep unchecked
+        self.keep_unchecked_frame = ttk.LabelFrame(
+            self, text='Keep unchecked?'
+        )
+        self.keep_unchecked_frame.grid(
+            column=0, row=3, columnspan=2, sticky='nswe'
+        )
+        self.var_error = tk.BooleanVar()
+        self.keep_error = ttk.Checkbutton(
+            self.keep_unchecked_frame, text='Error termination',
+            variable=self.var_error
+        )
+        self.keep_error.grid(column=0, row=0, sticky='nw')
+        self.var_unopt = tk.BooleanVar()
+        self.keep_unopt = ttk.Checkbutton(
+            self.keep_unchecked_frame, text='Unoptimised',
+            variable=self.var_unopt
+        )
+        self.keep_unopt.grid(column=0, row=1, sticky='nw')
+        self.var_imag = tk.BooleanVar()
+        self.keep_imag = ttk.Checkbutton(
+            self.keep_unchecked_frame, text='Imaginary frequencies',
+            variable=self.var_imag
+        )
+        self.keep_imag.grid(column=0, row=2, sticky='nw')
+        self.var_stoich = tk.BooleanVar()
+        self.keep_stoich = ttk.Checkbutton(
+            self.keep_unchecked_frame, text='Non-matching stoichiometry',
+            variable=self.var_stoich
+        )
+        self.keep_stoich.grid(column=0, row=3, sticky='nw')
+        self.var_incomplete = tk.BooleanVar()
+        self.keep_incomplete = ttk.Checkbutton(
+            self.keep_unchecked_frame, text='Incomplete entries',
+            variable=self.var_incomplete
+        )
+        self.keep_incomplete.grid(column=0, row=4, sticky='nw')
+
         # Conformers Overview
         self.label_overview = ttk.LabelFrame(self, text='Conformers Overview')
-        self.label_overview.grid(column=2, row=0, columnspan=3, rowspan=3, sticky='nwse')
+        self.label_overview.grid(
+            column=2, row=0, columnspan=3, rowspan=5, sticky='nwse'
+        )
         self.overview = None
         # unify naes with overview in conformers tab
         tk.Grid.rowconfigure(self.label_overview, 0, weight=1)
@@ -135,25 +178,28 @@ class Loader(ttk.Frame):
 
     def save_text(self):
         output = self.get_save_output()
-        if not output: return
+        if not output:
+            return
         self.execute_save_command(output, format='txt')
 
     def save_excel(self):
         output = self.get_save_output()
-        if not output: return
+        if not output:
+            return
         self.execute_save_command(output, format='xlsx')
 
     def save_csv(self):
         output = self.get_save_output()
-        if not output: return
+        if not output:
+            return
         self.execute_save_command(output, format='csv')
 
     @guicom.WgtStateChanger
     def clear_session(self):
         if self.parent.tslr:
             pop = messagebox.askokcancel(
-                message='Are you sure you want to start new session? Any unsaved '
-                        'changes will be lost!',
+                message='Are you sure you want to start new session? Any '
+                        'unsaved changes will be lost!',
                 title='New session', icon='warning', default='cancel')
             if pop:
                 if self.parent.tslr:
@@ -174,7 +220,8 @@ class Loader(ttk.Frame):
 
     def from_dir(self):
         work_dir = askdirectory()
-        if not work_dir: return
+        if not work_dir:
+            return
         self.extract(path=work_dir)
 
     @guicom.WgtStateChanger
@@ -193,18 +240,15 @@ class Loader(ttk.Frame):
         popup = guicom.ExtractPopup(self)
         popup.wait_window()
         query, sox = popup.query, popup.soxhlet
-        if not query: return
+        if not query:
+            return
         self.parent.tslr.soxhlet = sox
         self.extract(query)
 
     @guicom.Feedback('Extracting...')
     def extract(self, path):
         self.parent.tslr.extract(path)
-        if not self.parent.conf_tab.established:
-            if self.parent.tslr.energies:
-                self.parent.conf_tab.establish()
-        elif self.parent.tslr.bars:
-            self.parent.conf_tab.unify_data()
+        self.parent.conf_tab.update_conf_list()
 
     @guicom.Feedback('Calculating populations...')
     def calc_popul(self):

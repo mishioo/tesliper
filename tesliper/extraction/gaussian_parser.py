@@ -163,17 +163,20 @@ def _vibr_parse(text):
     dict
         Dictionary of data extracted from input string."""
 
+    logger.debug('entering _vibr_parse')
     data = {}
     ens = energies.search(text)
     if ens:
         data.update({k: float(v) for k, v in ens.groupdict().items()})
+    else:
+        logger.debug("No energies found!")
     for key, patt in vibr_regs.items():
         m = patt.findall(text)
         if m:
             data[key] = np.array([i for t in m for i in t], dtype=float)
     # if not data:
     #     logger.warning('No expected freq data found.')
-        return {}
+    #     return {}
     return data
 
 
@@ -191,6 +194,7 @@ def _electr_parse(text):
     dict
         Dictionary of data extracted from input string."""
 
+    logger.debug('entering _electr_parse')
     data = {}
     for key, patt in electr_regs.items():
         key1, key2 = key.split('_')
@@ -246,9 +250,7 @@ def parse(text):
     if not cmd:
         raise ValueError('No command found in text.')
     extr['command'] = cmd.group()
-    logger.debug('entering _vibr_parse')
     extr.update(_vibr_parse(text))
-    logger.debug('entering _electr_parse')
     extr.update(_electr_parse(text))
     logger.debug('final searches')
     extr['scf'] = float(scf.findall(text)[-1])
