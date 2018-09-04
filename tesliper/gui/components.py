@@ -113,9 +113,9 @@ class WgtStateChanger:
     @property
     def changers(self):
         tslr = WgtStateChanger.gui.tslr
-        bars = None if not tslr else tslr.spectral
-        energies = None if not tslr else tslr.energies
-        spectra = None if not tslr else tslr.spectra
+        bars = False if not tslr else any(tslr.spectral.values())
+        energies = False if not tslr else any(tslr.energies.values())
+        spectra = False if not tslr else any(tslr.spectra.values())
         return dict(
             tslr=self.enable if tslr else self.disable,
             energies=self.enable if energies else self.disable,
@@ -498,10 +498,9 @@ class BoxVar(tk.BooleanVar):
     def set(self, value):
         # set is not called by tkinter when checkbutton is clicked
         super().set(value)
-        if value:
-            self.box.tree.item(self.box.index, tags=())
-        else:
-            self.box.tree.item(self.box.index, tags='discarded')
+        tags = () if value else 'discarded'
+        self.box.tree.item(self.box.index, tags=tags)
+        self.box.tree.tslr.molecules.kept[int(self.box.index)] = bool(value)
 
 
 class Checkbox(ttk.Checkbutton):
@@ -518,7 +517,7 @@ class Checkbox(ttk.Checkbutton):
 
     def clicked(self):
         self.tree.click_all(index=self.index, value=self.var.get())
-        logger.debug('box index: {}'.format(self.index))
+        logger.debug(f'box index: {self.index}')
         # self.tree.selection_set(str(self.index))
 
 
@@ -566,6 +565,13 @@ class CheckTree(ttk.Treeview):
         self.configure(yscrollcommand=self.yscroll)
         self.boxes = OrderedDict()
 
+        self.owned_children = {}
+        self.children_names = {}
+
+    @property
+    def tslr(self):
+        return self.parent_tab.parent.tslr
+
     @property
     def blade(self):
         return [box.var.get() for box in self.boxes.values()]
@@ -581,9 +587,9 @@ class CheckTree(ttk.Treeview):
     def _sort_button(self, reverse=True):
         ls = [(b.var.get(), b.index) for b in self.boxes.values()]
         ls.sort(reverse=reverse)
-        for i, (val, k) in enumerate(ls):
-            box = self.boxes[k]
-            self.move(k, '', i)
+        for i, (val, iid) in enumerate(ls):
+            box = self.boxes[iid]
+            self.move(iid, '', i)
             box.frame.grid_forget()
             box.frame.grid_propagate(False)
             box.frame.grid(column=0, row=i, sticky='n', pady=0)
@@ -591,17 +597,18 @@ class CheckTree(ttk.Treeview):
 
     def _sort(self, col, reverse=True):
         try:
-            ls = [(self.set(k, col), k) for k in self.get_children('')]
-        except TclError:
-            ls = [(self.item(k)['text'], k) for k in self.get_children('')]
+            ls = [(self.set(iid, col), iid) for iid in self.get_children('')]
+        except tk.TclError:
+            ls = [(self.item(iid)['text'],
+                   iid) for iid in self.get_children('')]
         try:
-            ls = [(-1e10 if v == '--' else float(v), k) for v, k in ls]
+            ls = [(-1e10 if v == '--' else float(v), iid) for v, iid in ls]
         except ValueError:
             pass
         ls.sort(reverse=reverse)
-        for i, (val, k) in enumerate(ls):
-            self.move(k, '', i)
-            box = self.boxes[int(k)]
+        for i, (val, iid) in enumerate(ls):
+            self.move(iid, '', i)
+            box = self.boxes[iid]
             box.frame.grid_forget()
             box.frame.grid_propagate(False)
             box.frame.grid(column=0, row=i, sticky='n', pady=0)
@@ -621,12 +628,25 @@ class CheckTree(ttk.Treeview):
         logger.debug(self.canvas.yview())
 
     def _insert(self, parent='', index=tk.END, iid=None, **kw):
-        box = Checkbox(self.boxes_frame, self, index=len(self.boxes))
-        box.frame.grid(column=0, row=box.index)
+        logger.debug(
+            f"CALLED on {self.__class__} with parameters: parent={parent!r}, "
+            f"index={index!r}, iid={iid!r}, kw={kw}"
+        )
+        box = Checkbox(self.boxes_frame, self, index=iid)
+        box.frame.grid(column=0, row=len(self.boxes))
         self.boxes[box.index] = box
-        return super().insert(parent, index, iid=str(box.index), **kw)
+        iid = super().insert(parent, index, iid=str(box.index), **kw)
+        self.owned_children[kw['text']] = iid
+        self.children_names[iid] = kw['text']
+        return iid
 
     def insert(self, parent='', index=tk.END, iid=None, **kw):
+        if iid is not None:
+            logger.debug('Overriding passed iid value.')
+        iid = str(self.trees['main'].curr_iid)
+        self.trees['main'].curr_iid += 1
+        if 'text' not in kw:
+            raise TypeError("Required keyword argument 'text' not found.")
         for tree in CheckTree.trees.values():
             tree._insert(parent=parent, index=index, iid=iid, **kw)
 
@@ -638,7 +658,6 @@ class CheckTree(ttk.Treeview):
     def click_all(self, index, value):
         # this solution is somewhat redundant
         # (evaluets set(value) on clicked tree box as well)
-        # for now will work only on same size trees
         for tree in CheckTree.trees.values():
             tree.boxes[index].var.set(value)
             tree.refresh()
@@ -648,37 +667,70 @@ class CheckTree(ttk.Treeview):
 
 
 class EnergiesView(CheckTree):
+    formats = dict(
+        values=lambda v: '{:.6f}'.format(v),
+        deltas=lambda v: '{:.4f}'.format(v),
+        min_factor=lambda v: '{:.4f}'.format(v),
+        populations=lambda v: '{:.4f}'.format(v * 100)
+    )
+    e_keys = 'ten ent gib scf zpe'.split(' ')
+
     def __init__(self, master, parent_tab=None, **kwargs):
-        kwargs['columns'] = 'ten ent gib scf zpe imag stoich'.split(' ')
+        kwargs['columns'] = 'ten ent gib scf zpe imag'.split(' ')
         super().__init__(master, 'energies', parent_tab=parent_tab, **kwargs)
 
         # Columns
-        for cid, text in zip('#0 stoich imag ten ent gib scf zpe'.split(' '),
-                             'Filenames, Stoichiometry, Imag, Thermal, '
-                             'Enthalpy, Gibbs, SCF, Zero-Point'.split(', ')):
-            if not cid in ('#0', 'stoich', 'imag'):
-                self.column(cid, width=20, anchor='e')
+        for cid, text in zip('#0 imag ten ent gib scf zpe'.split(' '),
+                             'Filenames Imag Thermal Enthalpy Gibbs '
+                             'SCF Zero-Point'.split(' ')):
+            if not cid in ('#0', 'imag'):
+                self.column(cid, width=100, anchor='e', stretch=False)
             self.heading(cid, text=text)
-        self.column('#0', width=100)
-        self.column('stoich', width=100)
+        self.column('#0', width=200)
         self.column('imag', width=40, anchor='center', stretch=False)
+
+    def _insert(self, parent='', index=tk.END, iid=None, **kw):
+        text = kw['text']
+        freqs = self.tslr.molecules[text]['freq']
+        imag = str((freqs < 0).sum())
+        iid = super()._insert(parent=parent, index=index, iid=iid, **kw)
+        self.set(iid, 'imag', imag)
+        return iid
 
     def refresh(self):
         # TO DO: implement this based on table_view_update from main.Conformers
-        pass
+        show = self.parent_tab.show_ref[self.parent_tab.show_var.get()]
+        logger.debug('Going to update by showing {}.'.format(show))
+        if show == 'values':
+            with self.tslr.molecules.untrimmed():
+                scope = self.tslr.energies
+        else:
+            scope = self.tslr.energies
+        # values in groups of 5, ordered as e_keys
+        values_to_show = zip(*[getattr(scope[e], show) for e in self.e_keys])
+        fnames = set(scope['gib'].filenames)
+        for child in sorted(self.get_children()):
+            values = ['--' for _ in range(5)] \
+                if self.children_names[child] not in fnames else \
+                map(self.formats[show], next(values_to_show))
+            for col, value in zip(self.e_keys, values):
+                self.set(child, column=col, value=value)
 
 
 class ConformersOverview(CheckTree):
     def __init__(self, master, parent_tab=None, **kwargs):
-        kwargs['columns'] = 'en ir vcd uv ecd ram roa'.split(' ')
+        kwargs['columns'] = 'term opt en ir vcd uv ecd ram roa'.split(' ')
         super().__init__(master, 'main', parent_tab=parent_tab, **kwargs)
+        self.curr_iid = 0
 
         # Columns
-        self.column('#0', width=300, stretch=False)
+        self.column('#0', width=250)
         self.heading('#0', text='Filenames')
-        for cid, text in zip('en ir vcd uv ecd ram roa'.split(' '),
-                             'EN IR VCD UV ECD RAM ROA'.split(' ')):
-            self.column(cid, width=35, anchor='center', stretch=False)
+        for cid, text in zip('term opt en ir vcd uv ecd ram roa'.split(' '),
+                             'Termination Opt Energy IR VCD UV ECD '
+                             'Raman ROA'.split(' ')):
+            width = 80 if cid == 'term' else 50 if cid in ('en', 'ram') else 35
+            self.column(cid, width=width, anchor='center', stretch=False)
             self.heading(cid, text=text)
 
     @classmethod
@@ -687,7 +739,8 @@ class ConformersOverview(CheckTree):
         new = cls(master, columns=('b'))
         new.heading('b', text='afasdgf')
         new.heading('#0', text='asdgasdfg')
-        gen = (''.join(random.choices(string.ascii_lowercase, k=7)) for x in range(num))
+        gen = (''.join(random.choices(string.ascii_lowercase, k=7))
+               for x in range(num))
         for x, bla in enumerate(gen):
             new.insert(text=bla + ' ' + str(x), values=[x])
         return (new)
