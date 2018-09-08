@@ -177,6 +177,9 @@ class TesliperApp(tk.Tk):
         # establish new overview
         if self.main_tab.overview is not None:
             self.main_tab.overview.destroy()
+            for checked, _all, __ in self.main_tab.overview_control.values():
+                checked.set(0)
+                _all.set(0)
         self.main_tab.overview = guicom.ConformersOverview(
             self.main_tab.label_overview, self.main_tab
         )

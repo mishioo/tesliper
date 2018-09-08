@@ -9,7 +9,7 @@ import tkinter as tk
 import tkinter.ttk as ttk
 
 from tkinter import messagebox
-from tkinter.filedialog import askdirectory
+from tkinter.filedialog import askdirectory, askopenfilenames
 
 from . import components as guicom
 from .. import tesliper
@@ -90,9 +90,12 @@ class Loader(ttk.Frame):
         tk.Grid.columnconfigure(self.overview_control_frame, 4, weight=1)
         overview_vars = namedtuple('overview', ['checked', 'all', 'button'])
         self.overview_control = dict()
-        for i, name in enumerate(
-                'Files Energy IR VCD UV ECD Raman ROA Incomplete Errors '
-                'Unoptimised'.split(' ')):
+        for i, (name, key) in enumerate(zip(
+                'Files Energy IR VCD UV ECD Raman ROA Incompl. Errors '
+                'Unopt. Imag.'.split(' '),
+                'file en ir vcd uv ecd ram roa incompl term '
+                'opt imag'.split(' ')
+        )):
             tk.Label(self.overview_control_frame, text=name, anchor='w'
                      ).grid(column=0, row=i)
             var_checked = tk.IntVar(value=0)
@@ -105,7 +108,7 @@ class Loader(ttk.Frame):
                      ).grid(column=3, row=i)
             butt = ttk.Button(self.overview_control_frame, text='un/check')
             butt.grid(column=4, row=i, sticky='ne')
-            self.overview_control[name.lower()] = overview_vars(
+            self.overview_control[key] = overview_vars(
                 var_checked, var_all, butt
             )
 
@@ -146,11 +149,14 @@ class Loader(ttk.Frame):
             variable=self.var_incomplete
         )
         self.keep_incomplete.grid(column=0, row=4, sticky='nw')
+        for var in (self.var_error, self.var_unopt, self.var_imag,
+                    self.var_stoich, self.var_error, self.var_incomplete):
+            var.set(True)
 
         # Conformers Overview
         self.label_overview = ttk.LabelFrame(self, text='Conformers Overview')
         self.label_overview.grid(
-            column=2, row=0, columnspan=3, rowspan=5, sticky='nwse'
+            column=2, row=0, columnspan=3, rowspan=6, sticky='nwse'
         )
         self.overview = None
         # unify naes with overview in conformers tab
@@ -226,29 +232,25 @@ class Loader(ttk.Frame):
 
     @guicom.WgtStateChanger
     def man_extract(self):
-        # proceed = self.clear_session()
-        # if not proceed: return
-        # files = askopenfilenames(
-        #     filetypes=[("log files", "*.log"), ("out files", "*.out"),
-        #                ("all files", "*.*")],
-        #     defaultextension='.log'
-        # )
-        # if not files: return
-        # new_dir = os.path.split(files[0])[0]
-        # filenames = list(map(lambda p: os.path.split(p)[1], files))
-        # self.instantiate_tslr(new_dir, filenames)
-        popup = guicom.ExtractPopup(self)
-        popup.wait_window()
-        query, sox = popup.query, popup.soxhlet
-        if not query:
+        files = askopenfilenames(
+            filetypes=[("gaussian output", ("*.log", "*.out")),
+                       ("log files", "*.log"), ("out files", "*.out"),
+                       ("all files", "*.*")],
+            defaultextension='.log'
+        )
+        if not files:
             return
-        self.parent.tslr.soxhlet = sox
-        self.extract(query)
+        path = os.path.split(files[0])[0]
+        filenames = list(map(lambda p: os.path.split(p)[1], files))
+        self.extract(path, filenames)
 
     @guicom.Feedback('Extracting...')
-    def extract(self, path):
-        self.parent.tslr.extract(path)
-        self.parent.conf_tab.update_conf_list()
+    def extract(self, path, wanted_files=None):
+        self.parent.tslr.extract(path, wanted_files)
+        for filename in self.parent.tslr.molecules:
+            self.overview.insert('', tk.END, text=filename)
+        self.parent.conf_tab.conf_list.refresh()
+        # self.parent.conf_tab.update_conf_list()
 
     @guicom.Feedback('Calculating populations...')
     def calc_popul(self):

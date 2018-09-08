@@ -632,6 +632,8 @@ class CheckTree(ttk.Treeview):
             f"CALLED on {self.__class__} with parameters: parent={parent!r}, "
             f"index={index!r}, iid={iid!r}, kw={kw}"
         )
+        if kw['text'] in self.owned_children:
+            return iid
         box = Checkbox(self.boxes_frame, self, index=iid)
         box.frame.grid(column=0, row=len(self.boxes))
         self.boxes[box.index] = box
@@ -641,12 +643,17 @@ class CheckTree(ttk.Treeview):
         return iid
 
     def insert(self, parent='', index=tk.END, iid=None, **kw):
+        try:
+            text = kw['text']
+        except KeyError:
+            raise TypeError("Required keyword argument 'text' not found.")
         if iid is not None:
             logger.debug('Overriding passed iid value.')
-        iid = str(self.trees['main'].curr_iid)
-        self.trees['main'].curr_iid += 1
-        if 'text' not in kw:
-            raise TypeError("Required keyword argument 'text' not found.")
+        if text in self.trees['main'].owned_children:
+            iid = self.trees['main'].owned_children[text]
+        else:
+            iid = str(self.trees['main'].curr_iid)
+            self.trees['main'].curr_iid += 1
         for tree in CheckTree.trees.values():
             tree._insert(parent=parent, index=index, iid=iid, **kw)
 
@@ -676,25 +683,24 @@ class EnergiesView(CheckTree):
     e_keys = 'ten ent gib scf zpe'.split(' ')
 
     def __init__(self, master, parent_tab=None, **kwargs):
-        kwargs['columns'] = 'ten ent gib scf zpe imag'.split(' ')
+        kwargs['columns'] = 'ten ent gib scf zpe'.split(' ')
         super().__init__(master, 'energies', parent_tab=parent_tab, **kwargs)
 
         # Columns
-        for cid, text in zip('#0 imag ten ent gib scf zpe'.split(' '),
-                             'Filenames Imag Thermal Enthalpy Gibbs '
-                             'SCF Zero-Point'.split(' ')):
-            if not cid in ('#0', 'imag'):
+        for cid, text in zip(
+                '#0 ten ent gib scf zpe'.split(' '),
+                'Filenames Thermal Enthalpy Gibbs SCF Zero-Point'.split(' ')
+        ):
+            if not cid == '#0':
                 self.column(cid, width=100, anchor='e', stretch=False)
             self.heading(cid, text=text)
-        self.column('#0', width=200)
-        self.column('imag', width=40, anchor='center', stretch=False)
+        self.column('#0', width=150)
 
     def _insert(self, parent='', index=tk.END, iid=None, **kw):
         text = kw['text']
-        freqs = self.tslr.molecules[text]['freq']
-        imag = str((freqs < 0).sum())
+        if 'gib' not in self.tslr.molecules[text]:
+            return
         iid = super()._insert(parent=parent, index=index, iid=iid, **kw)
-        self.set(iid, 'imag', imag)
         return iid
 
     def refresh(self):
@@ -718,20 +724,77 @@ class EnergiesView(CheckTree):
 
 
 class ConformersOverview(CheckTree):
+
     def __init__(self, master, parent_tab=None, **kwargs):
-        kwargs['columns'] = 'term opt en ir vcd uv ecd ram roa'.split(' ')
+        kwargs['columns'] = 'term opt en ir vcd uv ecd ram roa ' \
+                            'imag stoich'.split(' ')
         super().__init__(master, 'main', parent_tab=parent_tab, **kwargs)
         self.curr_iid = 0
 
         # Columns
-        self.column('#0', width=250)
+        self.column('#0', width=150)
         self.heading('#0', text='Filenames')
-        for cid, text in zip('term opt en ir vcd uv ecd ram roa'.split(' '),
-                             'Termination Opt Energy IR VCD UV ECD '
-                             'Raman ROA'.split(' ')):
-            width = 80 if cid == 'term' else 50 if cid in ('en', 'ram') else 35
+        for cid, text in zip(
+                'term opt en ir vcd uv ecd ram roa imag stoich'.split(' '),
+                'Termination Opt Energy IR VCD UV ECD Raman ROA Imag '
+                'Stoichiometry'.split(' ')
+        ):
+            width = 80 if cid == 'term' else 90 if cid == 'stoich' else \
+                50 if cid in ('en', 'ram') else 35
             self.column(cid, width=width, anchor='center', stretch=False)
             self.heading(cid, text=text)
+        self.__max_length = 0
+
+    def _insert(self, parent='', index=tk.END, iid=None, **kw):
+        text = kw['text']
+        mol = self.tslr.molecules[text]
+        values = OrderedDict()
+        values['term'] = 'normal' if mol['normal_termination'] else 'ERROR'
+        values['opt'] = 'n/a' if 'optimization_completed' not in mol else \
+            'ok' if mol['optimization_completed'] else False
+        values['en'] = \
+            'ok' if all(e in mol for e in EnergiesView.e_keys) else False
+        values['ir'] = 'ok' if 'dip' in mol else False
+        values['vcd'] = 'ok' if 'rot' in mol else False
+        values['uv'] = 'ok' if 'vosc' in mol else False
+        values['ecd'] = 'ok' if 'vrot' in mol else False
+        values['ram'] = 'ok' if 'raman1' in mol else False
+        values['roa'] = 'ok' if 'roa1' in mol else False
+        if 'freq' in mol:
+            freqs = self.tslr.molecules[text]['freq']
+            imag = str((freqs < 0).sum())
+            values['imag'] = imag
+        else:
+            values['imag'] = False
+        values['stoich'] = mol['stoichiometry']
+        iid = super()._insert(parent=parent, index=index, iid=iid, **kw)
+        for k, v in values.items():
+            self.set(iid, k, v or 'X')
+            if k in ('stoich', 'file', 'incompl'):
+                continue
+            var = self.parent_tab.overview_control[k][1]
+            if k == 'term':
+                if v == 'ERROR':
+                    var.set(var.get() + 1)
+            elif k == 'opt':
+                if not v:
+                    var.set(var.get() + 1)
+            elif k == 'imag':
+                if v == '1':
+                    var.set(var.get() + 1)
+            elif v:
+                var.set(var.get() + 1)
+        var = self.parent_tab.overview_control['file'][1]
+        var.set(var.get() + 1)
+        var = self.parent_tab.overview_control['incompl'][1]
+        if len(mol) < self.__max_length:
+            var.set(var.get() + 1)
+        elif len(mol) > self.__max_length:
+            self.__max_length = len(mol)
+            var.set(len(self.get_children()) - 1)
+        else:
+            pass
+        return iid
 
     @classmethod
     def test_populate(cls, master, num=30):
