@@ -152,8 +152,9 @@ class Tesliper:
             logger.info('Current output directory is: {}'.format(path))
         self.__output_dir = path
 
-    def extract(self, path=None):
-        soxhlet = ex.Soxhlet(path, self.wanted_files) if path else self.soxhlet
+    def extract(self, path=None, wanted_files=None):
+        files = wanted_files or self.wanted_files
+        soxhlet = ex.Soxhlet(path, files) if path else self.soxhlet
         data = soxhlet.extract()
         self.update(data)
         return data

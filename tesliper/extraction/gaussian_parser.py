@@ -261,6 +261,9 @@ def parse(text):
         extr['cpu_time'] = cpu_time
     if 'opt' in extr['command'].lower():
         extr['optimization_completed'] = 'Optimization completed.' in text
+    stoichiometries = stoich.findall(text)
+    if stoich:
+        extr['stoichiometry'] = stoichiometries[-1]
     return extr
 
 

@@ -7,7 +7,7 @@ import tkinter as tk
 import tkinter.ttk as ttk
 
 from functools import reduce
-from itertools import  cycle
+from itertools import cycle
 
 from . import components as guicom
 
@@ -25,94 +25,97 @@ class Conformers(ttk.Frame):
         super().__init__(parent)
         self.parent = parent
         self.grid(column=0, row=0, sticky='nwse')
-        tk.Grid.rowconfigure(self, 0, weight=1)
-        tk.Grid.columnconfigure(self, 0, weight=1)
+        tk.Grid.rowconfigure(self, 5, weight=1)
+        tk.Grid.columnconfigure(self, 2, weight=1)
 
         self.overview = ttk.LabelFrame(self, text='Conformers overview')
-        self.overview.grid(column=0, row=0, columnspan=6, sticky='nwse')
+        self.overview.grid(column=2, row=0, rowspan=6, sticky='nwse')
         tk.Grid.rowconfigure(self.overview, 0, weight=1)
         tk.Grid.columnconfigure(self.overview, 0, weight=1)
         self.conf_list = None  # obj is created in main.TesliperApp.new_session
 
-        b_select = ttk.Button(self, text='Select all', command=self.select_all)
-        b_select.grid(column=0, row=1)
+        frame = ttk.Frame(self, width=200)  # left frame
+        frame.grid(column=0, row=0)
+        tk.Grid.columnconfigure(frame, 0, weight=1)
+        # control frame
+        control_frame = ttk.LabelFrame(frame, text='Overview control')
+        control_frame.grid(column=0, row=0, sticky='nwe')
+        tk.Grid.columnconfigure(control_frame, 0, weight=1)
+
+        b_select = ttk.Button(control_frame, text='Select all',
+                              command=self.select_all)
+        b_select.grid(column=0, row=0, sticky='nwe')
         b_disselect = ttk.Button(
-            self, text='Disselect all',
+            control_frame, text='Disselect all',
             command=self.disselect_all)
-        b_disselect.grid(column=0, row=2)
-        ttk.Label(self, text='Show:').grid(column=2, row=1, sticky='sw')
+        b_disselect.grid(column=0, row=1, sticky='nwe')
+        ttk.Label(frame, text='Show:').grid(
+            column=0, row=2, columnspan=2, sticky='nw'
+        )
         self.show_var = tk.StringVar()
         show_values = ('Energy /Hartree', 'Delta /(kcal/mol)',
                        'Min. Boltzmann factor', 'Population /%')
         show_id = ('values', 'deltas', 'min_factor', 'populations')
         self.show_ref = {k: v for k, v in zip(show_values, show_id)}
-        self.show_combo = ttk.Combobox(self, textvariable=self.show_var,
-                                       values=show_values, state='readonly')
+        self.show_combo = ttk.Combobox(
+            frame, textvariable=self.show_var,
+            values=show_values, state='readonly', width=21
+        )
         self.show_combo.bind('<<ComboboxSelected>>', self.show_combo_sel)
-        self.show_combo.grid(column=2, row=2)
+        self.show_combo.grid(column=0, row=3, sticky='nwe')
 
         # filter
-        filter_frame = ttk.LabelFrame(self, text='Filter')
-        filter_frame.grid(column=1, row=1, rowspan=2)
+        filter_frame = ttk.LabelFrame(frame, text='Filter')
+        filter_frame.grid(column=0, row=1, columnspan=2, sticky='nwe')
+        tk.Grid.columnconfigure(filter_frame, 1, weight=1)
         ttk.Label(filter_frame, text='Lower limit').grid(column=0, row=0)
         ttk.Label(filter_frame, text='Upper limit').grid(column=0, row=1)
+        ttk.Label(filter_frame, text='Energy type').grid(column=0, row=2)
         self.lower_var = tk.StringVar()
         self.upper_var = tk.StringVar()
-        lentry = ttk.Entry(filter_frame, textvariable=self.lower_var, validate='key',
+        lentry = ttk.Entry(filter_frame, textvariable=self.lower_var,
+                           width=15, validate='key',
                            validatecommand=self.parent.validate_entry)
-        lentry.grid(column=1, row=0)
-        lentry.bind('<FocusOut>',
-                    lambda e, var=self.lower_var: self.parent.entry_out_validation(var)
-                    )
-        uentry = ttk.Entry(filter_frame, textvariable=self.upper_var, validate='key',
+        lentry.grid(column=1, row=0, sticky='ne')
+        lentry.bind(
+            '<FocusOut>',
+            lambda e, var=self.lower_var: self.parent.entry_out_validation(var)
+        )
+        uentry = ttk.Entry(filter_frame, textvariable=self.upper_var,
+                           width=15, validate='key',
                            validatecommand=self.parent.validate_entry)
-        uentry.grid(column=1, row=1)
-        uentry.bind('<FocusOut>',
-                    lambda e, var=self.upper_var: self.parent.entry_out_validation(var)
-                    )
+        uentry.grid(column=1, row=1, sticky='ne')
+        uentry.bind(
+            '<FocusOut>',
+            lambda e, var=self.upper_var: self.parent.entry_out_validation(var)
+        )
         self.en_filter_var = tk.StringVar()
         filter_values = 'Thermal Enthalpy Gibbs SCF Zero-Point'.split(' ')
         filter_id = 'ten ent gib scf zpe'.split(' ')
         self.filter_ref = {k: v for k, v in zip(filter_values, filter_id)}
         self.filter_combo = ttk.Combobox(
             filter_frame, textvariable=self.en_filter_var,
-            values=filter_values, state='readonly'
+            values=filter_values, state='readonly', width=12
         )
-        self.filter_combo.grid(column=3, row=0)
+        self.filter_combo.grid(column=1, row=2, sticky='ne')
         self.filter_combo.bind('<<ComboboxSelected>>', self.set_upper_and_lower)
 
-        b_filter = ttk.Button(filter_frame, text='Filter by energy type', command=self.filter_energy)
-        b_filter.grid(column=3, row=1)
-        check_frame = ttk.Frame(filter_frame)
-        check_frame.grid(column=4, row=0, rowspan=2)
-        var_stoich = tk.BooleanVar()
-        var_stoich.set(True)
-        self.check_stoich = ttk.Checkbutton(
-            check_frame, text='Discard non-matching stoichiometry',
-            variable=var_stoich, command=self.update)
-        self.check_stoich.grid(column=4, row=0, sticky='w')
-        self.check_stoich.var = var_stoich
-        var_imag = tk.BooleanVar()
-        var_imag.set(True)
-        self.check_imag = ttk.Checkbutton(
-            check_frame, text='Discard imaginary frequencies',
-            variable=var_imag, command=self.update)
-        self.check_imag.grid(column=4, row=1, sticky='w')
-        self.check_imag.var = var_imag
-        var_missing = tk.BooleanVar()
-        var_missing.set(True)
-        self.check_missing = ttk.Checkbutton(
-            check_frame, text='Discard excessive conformers',
-            variable=var_missing, command=self.update)
-        self.check_missing.grid(column=4, row=2, sticky='w')
-        self.check_missing.var = var_missing
+        b_filter = ttk.Button(filter_frame, text='Filter',
+                              command=self.filter_energy)
+        b_filter.grid(column=0, row=3, columnspan=2, sticky='nwe')
+        self.show_combo.set('Energy /Hartree')
+        self.filter_combo.set('Thermal')
+
+        # can't make it work other way
+        dummy = ttk.Frame(frame, width=185)
+        dummy.grid(column=0, row=5)
+        dummy.grid_propagate(False)
 
         self.established = False
 
         guicom.WgtStateChanger.energies.extend(
             [b_select, b_disselect, b_filter, self.show_combo, lentry, uentry,
-             self.filter_combo, self.check_stoich, self.check_imag,
-             self.check_missing]
+             self.filter_combo]
         )
 
     def establish(self):
@@ -186,10 +189,12 @@ class Conformers(ttk.Frame):
     def filter_energy(self):
         lower = float(self.lower_var.get())
         upper = float(self.upper_var.get())
-        self.parent.logger.debug('lower limit: {}\nupper limit: {}'.format(lower, upper))
+        self.parent.logger.debug(
+            'lower limit: {}\nupper limit: {}'.format(lower, upper))
         energy = self.filter_ref[self.en_filter_var.get()]
         values = iter(getattr(self.energies[energy], self.showing))
-        self.parent.logger.debug('energy: {}\nshowing: {}'.format(energy, self.showing))
+        self.parent.logger.debug(
+            'energy: {}\nshowing: {}'.format(energy, self.showing))
         factor = 100 if self.showing == 'populations' else 1
         # must init new_blade with Falses for sake of already discarded
         # new_blade = np.zeros_like(energy.trimmer.blade)
@@ -205,7 +210,8 @@ class Conformers(ttk.Frame):
             if box.var.get():
                 value = next(values)
                 new = False if not lower <= value * factor <= upper else True
-                self.parent.logger.debug('value: {}, setting {}'.format(value, new))
+                self.parent.logger.debug(
+                    'value: {}, setting {}'.format(value, new))
             else:
                 new = False
                 self.parent.logger.debug('no value, setting {}'.format(new))
@@ -248,7 +254,7 @@ class Conformers(ttk.Frame):
         if self.check_missing.var.get(): self.unify_data()
         if (self.blade == self.energies.scf.trimmer.blade).all():
             self.parent.logger.debug(
-                'Energies blades not matching internal blade. ' 
+                'Energies blades not matching internal blade. '
                 'Will call set_energies_blade.')
             self.set_energies_blade()
         self.table_view_update(show)
