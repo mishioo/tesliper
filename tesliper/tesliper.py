@@ -152,12 +152,16 @@ class Tesliper:
             logger.info('Current output directory is: {}'.format(path))
         self.__output_dir = path
 
-    def extract(self, path=None, wanted_files=None):
+    def extract_iterate(self, path=None, wanted_files=None):
         files = wanted_files or self.wanted_files
         soxhlet = ex.Soxhlet(path, files) if path else self.soxhlet
-        data = soxhlet.extract()
-        self.update(data)
-        return data
+        for file, data in soxhlet.extract():
+            self.update(((file, data),))
+            yield file, data
+
+    def extract(self, path=None, wanted_files=None):
+        return {file: data for file, data
+                in self.extract_iterate(path, wanted_files)}
     
     def smart_extract(self, deep_search=True, with_load=True):
         #TO DO: add deep search and loading

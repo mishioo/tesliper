@@ -87,12 +87,12 @@ class DataArray:
         return constructors[genre]
 
     @staticmethod
-    def make(genre, filenames, values, dtype=float, **kwargs):
+    def make(genre, filenames, values, **kwargs):
         try:
             cls = DataArray.get_constructor(genre)
         except KeyError:
             cls = DataArray
-        instance = cls(genre, filenames, values, dtype=dtype, **kwargs)
+        instance = cls(genre, filenames, values, **kwargs)
         return instance
 
     def __init__(self, genre, filenames, values, dtype=float, **kwargs):
@@ -133,14 +133,14 @@ class DataArray:
 class Info(DataArray):
     associated_genres = ['command', 'cpu_time', 'transitions']
 
-    def __init__(self, genre, filenames, values, dtype=str):
+    def __init__(self, genre, filenames, values, dtype=str, **kwargs):
         super().__init__(genre, filenames, values, dtype=dtype)
 
 
 class Booleans(DataArray):
     associated_genres = ['normal_termination', 'optimization_completed']
 
-    def __init__(self, genre, filenames, values, dtype=bool):
+    def __init__(self, genre, filenames, values, dtype=bool, **kwargs):
         super().__init__(genre, filenames, values, dtype=dtype)
 
 
@@ -620,7 +620,7 @@ class Molecules(OrderedDict):
 
     def trim_not_optimized(self):
         for index, mol in enumerate(self.values()):
-            if 'opt' in mol['command'] and not mol['optimized']:
+            if 'opt' in mol['command'] and not mol['optimization_completed']:
                 self.kept[index] = False
 
     def trim_non_normal_termination(self):

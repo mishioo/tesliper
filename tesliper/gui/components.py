@@ -164,7 +164,7 @@ class FeedbackThread(Thread):
         self.kwargs = kwargs
         self.progbar_msg = progbar_msg
         self.gui = gui
-        super().__init__()
+        super().__init__(daemon=True)
 
     @WgtStateChanger
     def run(self):
@@ -518,6 +518,8 @@ class Checkbox(ttk.Checkbutton):
     def clicked(self):
         self.tree.click_all(index=self.index, value=self.var.get())
         logger.debug(f'box index: {self.index}')
+        self.tree.trees['main'].parent_tab.discard_not_kept()
+        self.tree.trees['main'].parent_tab.update_overview_values()
         # self.tree.selection_set(str(self.index))
 
 
@@ -532,7 +534,8 @@ class CheckTree(ttk.Treeview):
         self.grid(column=0, row=0, rowspan=2, columnspan=2, sticky='nwse')
         tk.Grid.columnconfigure(self.frame, 1, weight=1)
         tk.Grid.rowconfigure(self.frame, 1, weight=1)
-        self.vsb = ttk.Scrollbar(self.frame, orient='vertical', command=self.on_bar)
+        self.vsb = ttk.Scrollbar(self.frame, orient='vertical',
+                                 command=self.on_bar)
         self.vsb.grid(column=2, row=0, rowspan=2, sticky='nse')
 
         self.tag_configure('discarded', foreground='gray')
@@ -746,20 +749,23 @@ class ConformersOverview(CheckTree):
         self.__max_length = 0
 
     def _insert(self, parent='', index=tk.END, iid=None, **kw):
+        # TO DO: correct wrong files counting when smaller set is extracted
+        # first
         text = kw['text']
         mol = self.tslr.molecules[text]
-        values = OrderedDict()
-        values['term'] = 'normal' if mol['normal_termination'] else 'ERROR'
-        values['opt'] = 'n/a' if 'optimization_completed' not in mol else \
-            'ok' if mol['optimization_completed'] else False
-        values['en'] = \
-            'ok' if all(e in mol for e in EnergiesView.e_keys) else False
-        values['ir'] = 'ok' if 'dip' in mol else False
-        values['vcd'] = 'ok' if 'rot' in mol else False
-        values['uv'] = 'ok' if 'vosc' in mol else False
-        values['ecd'] = 'ok' if 'vrot' in mol else False
-        values['ram'] = 'ok' if 'raman1' in mol else False
-        values['roa'] = 'ok' if 'roa1' in mol else False
+        values = {
+            'term': 'normal' if mol['normal_termination'] else 'ERROR',
+            'opt': 'n/a' if 'optimization_completed' not in mol else
+                'ok' if mol['optimization_completed'] else False,
+            'en': 'ok' if all(
+                e in mol for e in EnergiesView.e_keys) else False,
+            'ir': 'ok' if 'dip' in mol else False,
+            'vcd': 'ok' if 'rot' in mol else False,
+            'uv': 'ok' if 'vosc' in mol else False,
+            'ecd': 'ok' if 'vrot' in mol else False,
+            'ram': 'ok' if 'raman1' in mol else False,
+            'roa': 'ok' if 'roa1' in mol else False
+        }
         if 'freq' in mol:
             freqs = self.tslr.molecules[text]['freq']
             imag = str((freqs < 0).sum())
@@ -770,30 +776,6 @@ class ConformersOverview(CheckTree):
         iid = super()._insert(parent=parent, index=index, iid=iid, **kw)
         for k, v in values.items():
             self.set(iid, k, v or 'X')
-            if k in ('stoich', 'file', 'incompl'):
-                continue
-            var = self.parent_tab.overview_control[k][1]
-            if k == 'term':
-                if v == 'ERROR':
-                    var.set(var.get() + 1)
-            elif k == 'opt':
-                if not v:
-                    var.set(var.get() + 1)
-            elif k == 'imag':
-                if v == '1':
-                    var.set(var.get() + 1)
-            elif v:
-                var.set(var.get() + 1)
-        var = self.parent_tab.overview_control['file'][1]
-        var.set(var.get() + 1)
-        var = self.parent_tab.overview_control['incompl'][1]
-        if len(mol) < self.__max_length:
-            var.set(var.get() + 1)
-        elif len(mol) > self.__max_length:
-            self.__max_length = len(mol)
-            var.set(len(self.get_children()) - 1)
-        else:
-            pass
         return iid
 
     @classmethod
@@ -806,7 +788,7 @@ class ConformersOverview(CheckTree):
                for x in range(num))
         for x, bla in enumerate(gen):
             new.insert(text=bla + ' ' + str(x), values=[x])
-        return (new)
+        return new
 
 
 class MaxLevelFilter:
