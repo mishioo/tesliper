@@ -16,6 +16,7 @@ from .tab_spectra import Spectra
 from .tab_energies import Conformers
 
 from .. import tesliper
+
 # from ..tesliper import __version__, __author__
 _DEVELOPEMENT = True
 
@@ -35,6 +36,7 @@ class TesliperApp(tk.Tk):
 
         self.report_callback_exception = self.report_callback_exception
         self.validate_entry = (self.register(self.validate_entry), '%S', '%P')
+        self.protocol("WM_DELETE_WINDOW", self.on_closing)
 
         # Notebook
         tk.Grid.columnconfigure(self, 0, weight=1)
@@ -58,7 +60,7 @@ class TesliperApp(tk.Tk):
 
         # Progress bar
         self.progbar = ttk.Progressbar(
-            bottom_frame, length=170, orient=tk.HORIZONTAL, mode='determinate'
+            bottom_frame, length=185, orient=tk.HORIZONTAL, mode='determinate'
         )
         self.progbar.grid(column=0, row=0, sticky='sw')
         self.progtext = tk.StringVar()
@@ -84,24 +86,24 @@ class TesliperApp(tk.Tk):
         text_handler = guicom.TextHandler(self.log)
         text_handler.setLevel(lgg.INFO)
         text_handler.addFilter(guicom.MaxLevelFilter(lgg.INFO))
-        
+
         text_warning_handler = guicom.TextHandler(self.log)
         text_warning_handler.setLevel(lgg.WARNING)
         text_warning_handler.addFilter(guicom.MaxLevelFilter(lgg.WARNING))
         text_warning_handler.setFormatter(lgg.Formatter(
             '%(levelname)s: %(message)s'))
-        
+
         self.error_location = os.getcwd()
         self.error_msg = (
             "Please provide a problem description to Tesliper's "
             "developer along with tslr_err_log.txt file, witch can be "
             "found here: {}".format(self.error_location)
-            )
+        )
         text_error_handler = guicom.TextHandler(self.log)
         text_error_handler.setLevel(lgg.ERROR)
         text_error_handler.setFormatter(guicom.ShortExcFormatter(
             'ERROR! %(message)s \n' + self.error_msg))
-        
+
         error_handler = lgg.FileHandler(
             os.path.join(self.error_location, 'tslr_err_log.txt'), delay=True)
         error_handler.setLevel(lgg.ERROR)
@@ -127,7 +129,6 @@ class TesliperApp(tk.Tk):
         self.new_session()
         guicom.WgtStateChanger.set_states()
 
-
         self.logger.info(
             'Welcome to Tesliper:\n'
             'Theoretical Spectroscopist Little Helper!'
@@ -147,7 +148,7 @@ class TesliperApp(tk.Tk):
             except ValueError:
                 return False
         return True
-        
+
     def entry_out_validation(self, var):
         value = var.get()
         if ',' in value:
@@ -159,7 +160,7 @@ class TesliperApp(tk.Tk):
         if value.startswith(('.', '-.')):
             value = value.replace('.', '0.')
         var.set(value)
-            
+
     def report_callback_exception(self, exc, val, tb):
         self.logger.critical('An unexpected error occurred.', exc_info=True)
 
@@ -167,8 +168,8 @@ class TesliperApp(tk.Tk):
     def new_session(self):
         if self.tslr is not None:
             pop = messagebox.askokcancel(
-                message='Are you sure you want to start new session? Any unsaved '
-                        'changes will be lost!',
+                message='Are you sure you want to start new session? '
+                        'Any unsaved changes will be lost!',
                 title='New session', icon='warning', default='cancel')
             if not pop:
                 return
@@ -196,3 +197,14 @@ class TesliperApp(tk.Tk):
             self.spectra_tab.figure.delaxes(self.spectra_tab.ax)
             self.spectra_tab.ax = None
             self.spectra_tab.canvas.show()
+
+    def on_closing(self):
+        if self.thread.is_alive():
+            quit = messagebox.askyesno(
+                message='Tesliper is still running an operation. '
+                        'Do you wish to force exit?',
+                title='Exit?', icon='warning', default='no'
+            )
+            if not quit:
+                return
+        self.destroy()
