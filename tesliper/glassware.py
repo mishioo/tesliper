@@ -321,7 +321,10 @@ class Bars(DataArray):
         -------
         numpy.ndarray
             Number of imaginary frequencies of each conformer."""
-        return (self.frequencies < 0).sum(1)
+        if self.frequencies.size > 0:
+            return (self.frequencies < 0).sum(1)
+        else:
+            return np.array([])
 
     def find_imag(self):
         """Finds all freqs with imaginary values and creates 'imag' entry with
@@ -594,12 +597,16 @@ class Molecules(OrderedDict):
         elif genre in self.electronic_keys:
             freqs = [mol['efreq'] for mol in mols]
         else:
-            freqs = [None for __ in mols]
+            freqs = [[] for __ in mols]
         arr = DataArray.make(genre, filenames, values, frequencies=freqs)
         return arr
 
+    @property
+    def _max_len(self):
+        return max(len(m) for m in self.values())
+
     def trim_incomplete(self):
-        longest = max(len(m) for m in self.values())
+        longest = self._max_len
         for index, mol in enumerate(self.values()):
             if len(mol) < longest:
                 self.kept[index] = False

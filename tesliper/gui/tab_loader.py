@@ -89,7 +89,22 @@ class Loader(ttk.Frame):
         )
         tk.Grid.columnconfigure(self.overview_control_frame, 4, weight=1)
         overview_vars = namedtuple('overview', ['checked', 'all', 'button'])
-        self.overview_control = dict()
+        self.overview_funcs = dict(
+            file=lambda mol, max_len: True,
+            en=lambda mol, max_len: 'gib' in mol,
+            ir=lambda mol, max_len: 'dip' in mol,
+            vcd=lambda mol, max_len: 'rot' in mol,
+            uv=lambda mol, max_len: 'vosc' in mol,
+            ecd=lambda mol, max_len: 'vrot' in mol,
+            ram=lambda mol, max_len: 'raman1' in mol,
+            roa=lambda mol, max_len: 'roa1' in mol,
+            incompl=lambda mol, max_len: mol,
+            term=lambda mol, max_len: mol['notmal_termination'],
+            opt=lambda mol, max_len: 'optimization_completed' in mol
+                                     and not mol['optimization_completed'],
+            imag=lambda mol, max_len: 'freq' in mol and
+                                      any([f < 0 for f in mol['freq']])
+        )
         self.overview_control_ref = {
             k: v for k, v in zip(
                 'file en ir vcd uv ecd ram roa incompl term opt '
@@ -98,6 +113,7 @@ class Loader(ttk.Frame):
                 'normal_termination optimization_completed freq'.split(' ')
             )
         }
+        self.overview_control = dict()
         for i, (name, key) in enumerate(zip(
                 'Files Energy IR VCD UV ECD Raman ROA Incompl. Errors '
                 'Unopt. Imag.Freq.'.split(' '),
@@ -119,13 +135,18 @@ class Loader(ttk.Frame):
             tk.Label(
                 self.overview_control_frame, textvariable=var_all, bd=0, width=3
             ).grid(column=3, row=i)
-            butt = ttk.Button(self.overview_control_frame, text='un/check')
+            butt = ttk.Button(
+                self.overview_control_frame, text='check',
+                command=lambda key=key: self.un_check(key, True)
+            )
             butt.grid(column=4, row=i, sticky='ne')
+            guicom.WgtStateChanger.either.append(butt)
             self.overview_control[key] = overview_vars(
                 var_checked, var_all, butt
             )
 
         # keep unchecked
+        # TO DO: add binding to method to execute when clicked
         self.keep_unchecked_frame = ttk.LabelFrame(
             self, text='Keep unchecked?'
         )
@@ -138,7 +159,8 @@ class Loader(ttk.Frame):
         }
         self.kept_buttons = {
             k: ttk.Checkbutton(
-                self.keep_unchecked_frame, text=text, variable=var
+                self.keep_unchecked_frame, text=text, variable=var,
+                command=lambda k=k: self.discard(k)
             ) for (k, var), text in zip(
                 self.kept_vars.items(),
                 ['Error termination', 'Unoptimised', 'Imaginary frequencies',
@@ -155,9 +177,23 @@ class Loader(ttk.Frame):
             column=2, row=0, columnspan=3, rowspan=6, sticky='nwse'
         )
         self.overview = None
-        # unify naes with overview in conformers tab
         tk.Grid.rowconfigure(self.label_overview, 0, weight=1)
         tk.Grid.columnconfigure(self.label_overview, 0, weight=1)
+
+    def un_check(self, key, keep):
+        mols = self.parent.tslr.molecules
+        condition = self.overview_funcs[key]
+        overview = self.overview
+        max_len = 0 if not key == 'incompl' else mols._max_len
+        for n, mol in enumerate(mols.values()):
+            if condition(mol, max_len):
+                overview.boxes[str(n)].var.set(keep)
+        self.discard_not_kept()
+        self.update_overview_values()
+        self.overview_control[key][2].configure(
+            text='check' if not keep else 'uncheck',
+            command=lambda key=key, keep=keep: self.un_check(key, not keep)
+        )
 
     @property
     def kept_funcs(self):
@@ -307,12 +343,12 @@ class Loader(ttk.Frame):
 
     def update_overview_values(self):
         for key, value in self.overview_control_ref.items():
-            arr = self.parent.tslr.molecules.arrayed(value).values
+            arr = self.parent.tslr.molecules.arrayed(value)
             var = self.overview_control[key][0]
             if key == 'file':
-                value = len(arr)
+                value = len(arr.values)
             elif key == 'term':
-                value = (arr == 0).sum()
+                value = (arr.values == 0).sum()
             elif key == 'incompl':
                 mols = self.parent.tslr.molecules
                 value = 0
@@ -323,13 +359,20 @@ class Loader(ttk.Frame):
                     if kept and len(mol) < longest:
                         value += 1
             elif key == 'opt':
-                value = (arr == 0).sum()
+                value = (arr.values == 0).sum()
             elif key == 'imag':
-                imag = (arr < 0).sum(1)
-                value = (imag > 0).sum()
+                value = int(arr.imaginary.sum())
             else:
-                value = len(arr)
+                value = len(arr.values)
             var.set(value)
+
+    def discard(self, key):
+        if self.kept_vars[key].get():
+            self.kept_funcs[key]()
+            for box, kept in zip(self.overview.boxes.values(),
+                                 self.parent.tslr.molecules.kept):
+                box.var.set(kept)
+        self.update_overview_values()
 
     def discard_not_kept(self):
         for key, var in self.kept_vars.items():
