@@ -495,13 +495,19 @@ class BoxVar(tk.BooleanVar):
         super().__init__(*args, **kwargs)
         super().set(True)
 
-    def set(self, value):
-        # set is not called by tkinter when checkbutton is clicked
+    def _set(self, value):
         super().set(value)
         tags = () if value else 'discarded'
         self.box.tree.item(self.box.index, tags=tags)
-        self.box.tree.tslr.molecules.kept[int(self.box.index)] = bool(value)
 
+    def set(self, value):
+        # set is not called by tkinter when checkbutton is clicked
+        self.box.tree.tslr.molecules.kept[int(self.box.index)] = bool(value)
+        for tree in self.box.tree.trees.values():
+            try:
+                tree.boxes[self.box.index].var._set(value)
+            except KeyError:
+                logger.debug(f"{tree} doesn't have box iid {self.box.index}")
 
 class Checkbox(ttk.Checkbutton):
     def __init__(self, master, tree, index, *args, **kwargs):
@@ -516,10 +522,12 @@ class Checkbox(ttk.Checkbutton):
         self.grid(column=0, row=0)
 
     def clicked(self):
-        self.tree.click_all(index=self.index, value=self.var.get())
         logger.debug(f'box index: {self.index}')
+        value = self.var.get()
+        self.var.set(value)
         self.tree.trees['main'].parent_tab.discard_not_kept()
         self.tree.trees['main'].parent_tab.update_overview_values()
+        self.tree.trees['energies'].parent_tab.refresh()
         # self.tree.selection_set(str(self.index))
 
 
@@ -674,6 +682,11 @@ class CheckTree(ttk.Treeview):
 
     def refresh(self):
         pass
+        # logger.debug(f"Called .refresh on {type(self)}")
+        # kept = self.tslr.molecules.kept
+        # boxes = self.boxes
+        # for iid, name in self.children_names.items():
+        #     boxes[iid].var.set(kept[int(iid)])
 
 
 class EnergiesView(CheckTree):
@@ -708,6 +721,7 @@ class EnergiesView(CheckTree):
 
     def refresh(self):
         # TO DO: implement this based on table_view_update from main.Conformers
+        # super().refresh()
         show = self.parent_tab.show_ref[self.parent_tab.show_var.get()]
         logger.debug('Going to update by showing {}.'.format(show))
         if show == 'values':
