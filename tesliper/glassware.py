@@ -522,23 +522,46 @@ class Molecules(OrderedDict):
 
     @kept.setter
     def kept(self, blade):
-        if isinstance(blade[0], str):
+        try:
+            first = blade[0]
+        except (TypeError, KeyError):
+            raise TypeError(f"Excepted sequence, got: {type(blade)}.")
+        except IndexError:
+            self.__kept = [False for __ in self.kept]
+            return
+        if isinstance(first, str):
             blade = set(blade)
             if not blade.issubset(set(self.keys())):
-                raise ValueError(
-                    f"Unknown conformers: {', '.join(blade)}"
+                raise KeyError(
+                    f"Unknown conformers: {', '.join(blade-set(self.keys()))}"
                 )
             else:
                 self.__kept = [fnm in blade for fnm in self.keys()]
-        elif isinstance(blade[0], bool):
+        elif isinstance(first, (bool, np.bool_)):
             if not len(blade) == len(self):
                 raise ValueError(
-                    f"When setting kept directly, must provide boolean value "
-                    f"for each known conformer. {len(blade)} values provided, "
-                    f"{len(self)} excepted."
+                    f"When setting molecules.kept directly, must provide "
+                    f"boolean value for each known conformer. {len(blade)} "
+                    f"values provided, {len(self)} excepted."
                 )
             else:
-                self.__kept = blade
+                self.__kept = [bool(b) for b in blade]  # convert from np.bool_
+        elif isinstance(first, int):
+            length = len(self.kept)
+            out_of_bounds = [b for b in blade if not -length <= b < length]
+            if out_of_bounds:
+                raise IndexError(
+                    f"Indexes out of bounds: "
+                    f"{', '.join(str(n) for n in out_of_bounds)}."
+                )
+            else:
+                blade = set(blade)
+                self.__kept = [num in blade for num in range(len(self.kept))]
+        else:
+            raise TypeError(
+                f"Expected sequence of strings, integers or booleans, got: "
+                f"{type(first)} as first sequence's element."
+            )
 
 
     def update(self, other=None, **kwargs):
@@ -627,7 +650,7 @@ class Molecules(OrderedDict):
 
     def trim_not_optimized(self):
         for index, mol in enumerate(self.values()):
-            if 'opt' in mol['command'] and not mol['optimization_completed']:
+            if not mol.get('optimization_completed', True):
                 self.kept[index] = False
 
     def trim_non_normal_termination(self):
@@ -635,14 +658,32 @@ class Molecules(OrderedDict):
             if not mol['normal_termination']:
                 self.kept[index] = False
 
-    def trim_to_range(self, genre, minimum=None, maximum=None):
-        arr = self.arrayed(genre, full=True)
-        blade = (True for __ in arr.values)
-        if minimum is not None:
-            blade = (k and b for k, b in zip(arr.values >= minimum, blade))
-        if maximum is not None:
-            blade = (k and b for k, b in zip(arr.values <= maximum, blade))
-        self.kept = [k and b for k, b in zip(self.kept, blade)]
+    def trim_to_range(self, genre, minimum=float("-inf"), maximum=float("inf"),
+                      attribute='values'):
+        try:
+            arr = self.arrayed(genre)
+            atr = getattr(arr, attribute)
+            assert isinstance(atr[0], (int, float))
+        except AttributeError:
+            raise ValueError(
+                f"Invalid genre/attribute combination: {genre}/{attribute}. "
+                f"Resulting DataArray object has no attribute {attribute}."
+            )
+        except AssertionError:
+            raise ValueError(
+                f"Invalid genre/attribute combination: {genre}/{attribute}. "
+                f"Resulting DataArray must contain objects of type int or "
+                f"float, not {type(atr[0])}"
+            )
+        except TypeError:
+            raise ValueError(
+                f"Invalid genre/attribute combination: {genre}/{attribute}. "
+                f"DataArray's attribute must be iterable."
+            )
+        blade = [
+            fnm for v, fnm in zip(atr, arr.filenames) if minimum <= v <= maximum
+        ]
+        self.kept = blade
 
     def select_all(self):
         self.kept = [True for __ in self.kept]

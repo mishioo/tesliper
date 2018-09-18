@@ -34,6 +34,7 @@ class Loader(ttk.Frame):
         self.grid(column=0, row=0, sticky='nwse')
         tk.Grid.columnconfigure(self, 2, weight=1)
         tk.Grid.rowconfigure(self, 5, weight=1)
+        self.bind('<FocusIn>', lambda e: self.update_overview_values())
 
         # Extract data
         extract_frame = ttk.LabelFrame(self, text='Extract data...')
@@ -81,6 +82,8 @@ class Loader(ttk.Frame):
         )
 
         # Overview control
+        # TO DO: consider switching to three buttons: 'include', 'exclude',
+        # 'limit to', or similar
         self.overview_control_frame = ttk.Labelframe(
             self, text="Overview control", width=90
         )
@@ -146,7 +149,6 @@ class Loader(ttk.Frame):
             )
 
         # keep unchecked
-        # TO DO: add binding to method to execute when clicked
         self.keep_unchecked_frame = ttk.LabelFrame(
             self, text='Keep unchecked?'
         )
@@ -291,7 +293,7 @@ class Loader(ttk.Frame):
         overview = self.overview
         for file, data in tslr.extract_iterate(path, wanted_files):
             overview.insert('', tk.END, text=file)
-        self.parent.conf_tab.conf_list.refresh()
+        # self.parent.conf_tab.conf_list.refresh()
         self.set_overview_values()
         self.discard_not_kept()
         self.update_overview_values()
@@ -342,6 +344,11 @@ class Loader(ttk.Frame):
             self.overview_control[key][1].set(value)
 
     def update_overview_values(self):
+        if not self.parent.tslr.molecules:
+            for key in self.overview_control_ref.keys():
+                var = self.overview_control[key][0]
+                var.set(0)
+            return
         for key, value in self.overview_control_ref.items():
             arr = self.parent.tslr.molecules.arrayed(value)
             var = self.overview_control[key][0]

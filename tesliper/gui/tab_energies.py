@@ -7,7 +7,6 @@ import tkinter as tk
 import tkinter.ttk as ttk
 
 from functools import reduce
-from itertools import cycle
 
 from . import components as guicom
 
@@ -33,13 +32,14 @@ class Conformers(ttk.Frame):
         tk.Grid.rowconfigure(self.overview, 0, weight=1)
         tk.Grid.columnconfigure(self.overview, 0, weight=1)
         self.conf_list = None  # obj is created in main.TesliperApp.new_session
+        self.bind('<FocusIn>', self.refresh)
 
         frame = ttk.Frame(self, width=200)  # left frame
         frame.grid(column=0, row=0)
         tk.Grid.columnconfigure(frame, 0, weight=1)
         # control frame
         control_frame = ttk.LabelFrame(frame, text='Overview control')
-        control_frame.grid(column=0, row=0, sticky='nwe')
+        control_frame.grid(column=0, row=0, columnspan=2, sticky='nwe')
         tk.Grid.columnconfigure(control_frame, 0, weight=1)
 
         b_select = ttk.Button(control_frame, text='Select all',
@@ -49,9 +49,7 @@ class Conformers(ttk.Frame):
             control_frame, text='Disselect all',
             command=self.disselect_all)
         b_disselect.grid(column=0, row=1, sticky='nwe')
-        ttk.Label(frame, text='Show:').grid(
-            column=0, row=2, columnspan=2, sticky='nw'
-        )
+        ttk.Label(frame, text='Show:').grid(column=0, row=2, sticky='nw')
         self.show_var = tk.StringVar()
         show_values = ('Energy /Hartree', 'Delta /(kcal/mol)',
                        'Min. Boltzmann factor', 'Population /%')
@@ -59,17 +57,17 @@ class Conformers(ttk.Frame):
         self.show_ref = {k: v for k, v in zip(show_values, show_id)}
         self.show_combo = ttk.Combobox(
             frame, textvariable=self.show_var,
-            values=show_values, state='readonly', width=21
+            values=show_values, state='readonly'  # , width=21
         )
-        self.show_combo.bind('<<ComboboxSelected>>', self.show_combo_sel)
-        self.show_combo.grid(column=0, row=3, sticky='nwe')
+        self.show_combo.bind('<<ComboboxSelected>>', self.refresh)
+        self.show_combo.grid(column=1, row=2, sticky='nwe')
 
         # filter
-        filter_frame = ttk.LabelFrame(frame, text='Filter')
+        filter_frame = ttk.LabelFrame(frame, text='Energies range')
         filter_frame.grid(column=0, row=1, columnspan=2, sticky='nwe')
         tk.Grid.columnconfigure(filter_frame, 1, weight=1)
-        ttk.Label(filter_frame, text='Lower limit').grid(column=0, row=0)
-        ttk.Label(filter_frame, text='Upper limit').grid(column=0, row=1)
+        ttk.Label(filter_frame, text='Minimum').grid(column=0, row=0)
+        ttk.Label(filter_frame, text='Maximum').grid(column=0, row=1)
         ttk.Label(filter_frame, text='Energy type').grid(column=0, row=2)
         self.lower_var = tk.StringVar()
         self.upper_var = tk.StringVar()
@@ -100,16 +98,16 @@ class Conformers(ttk.Frame):
         self.filter_combo.grid(column=1, row=2, sticky='ne')
         self.filter_combo.bind('<<ComboboxSelected>>', self.set_upper_and_lower)
 
-        b_filter = ttk.Button(filter_frame, text='Filter',
+        b_filter = ttk.Button(filter_frame, text='Limit to...',
                               command=self.filter_energy)
         b_filter.grid(column=0, row=3, columnspan=2, sticky='nwe')
         self.show_combo.set('Energy /Hartree')
         self.filter_combo.set('Thermal')
 
         # can't make it work other way
-        dummy = ttk.Frame(frame, width=185)
-        dummy.grid(column=0, row=5)
-        dummy.grid_propagate(False)
+        # dummy = ttk.Frame(frame, width=185)
+        # dummy.grid(column=0, row=5)
+        # dummy.grid_propagate(False)
 
         self.established = False
 
@@ -123,16 +121,6 @@ class Conformers(ttk.Frame):
         self.filter_combo.set('Thermal')
         self.established = True
 
-    def update_conf_list(self):
-        en = self.parent.tslr.molecules.arrayed('gib', full=True)
-        children = self.conf_list.owned_children
-        for num, fnm in enumerate(en.filenames):
-            if fnm not in children:
-                self.conf_list.insert('', 'end', text=fnm)
-        if not self.established:
-            self.establish()
-        self.conf_list.refresh()
-
     @property
     def energies(self):
         return reduce(
@@ -143,26 +131,31 @@ class Conformers(ttk.Frame):
     def showing(self):
         return self.show_ref[self.show_var.get()]
 
+    def discard_lacking_energies(self):
+        if not self.parent.main_tab.kept_vars['incompl'].get():
+            self.parent.logger.info(
+                'Any conformers without energy data will be discarded.'
+            )
+            boxes = self.conf_list.trees['main'].boxes
+            for num, mol in enumerate(self.parent.tslr.molecules.values()):
+                if 'gib' not in mol:
+                    boxes[str(num)].var.set(False)
+
+    def refresh(self, event=None):
+        self.conf_list.refresh()
+        self.set_upper_and_lower()
+
     def select_all(self):
-        self.set_blade(cycle([True]))
-        self.set_energies_blade()
-        self.update()
+        for box in self.conf_list.boxes.values():
+            box.var.set(True)
+        self.parent.main_tab.discard_not_kept()
+        self.discard_lacking_energies()
+        self.refresh()
 
     def disselect_all(self):
-        self.set_blade(cycle([False]))
-        self.set_energies_blade()
-        self.update()
-
-    def set_energies_blade(self):
-        dummy = self.conf_list.dummy
-        for en in self.energies.values():
-            en.trimmer.match(dummy)
-
-    def set_blade(self, blade):
-        for box, value in zip(self.conf_list.boxes.values(), blade):
-            box.var.set(1 if value else 0)
-            # need to check value this way
-            # because tkinter doesn't understand numpy.bool_ type
+        for box in self.conf_list.boxes.values():
+            box.var.set(False)
+        self.refresh()
 
     def set_upper_and_lower(self, event=None):
         energy = self.filter_ref[self.en_filter_var.get()]
@@ -173,88 +166,25 @@ class Conformers(ttk.Frame):
         except ValueError:
             lower, upper = 0, 0
         else:
-            if self.showing == 'populations':
-                n = 2
-            elif self.showing == 'values':
+            if self.showing == 'values':
                 n = 6
             else:
                 n = 4
             lower, upper = map(lambda v: '{:.{}f}'.format(v * factor, n),
-                               (lower - 1e-6 if lower != 0 else 0,
-                                upper + 1e-6 if upper != 0 else 0))
+                               (lower, upper))
         finally:
             self.lower_var.set(lower)
             self.upper_var.set(upper)
 
     def filter_energy(self):
-        lower = float(self.lower_var.get())
-        upper = float(self.upper_var.get())
-        self.parent.logger.debug(
-            'lower limit: {}\nupper limit: {}'.format(lower, upper))
         energy = self.filter_ref[self.en_filter_var.get()]
-        values = iter(getattr(self.energies[energy], self.showing))
-        self.parent.logger.debug(
-            'energy: {}\nshowing: {}'.format(energy, self.showing))
-        factor = 100 if self.showing == 'populations' else 1
-        # must init new_blade with Falses for sake of already discarded
-        # new_blade = np.zeros_like(energy.trimmer.blade)
-        # iter_new = np.nditer(new_blade, op_flags=['readwrite'])
-        # for box, new in zip(self.conf_list.boxes.values(), iter_new):
-        #    if box.var.get():
-        # must iterate through trimmed object to get correct values
-        # so should get next value only if conformer not suppressed
-        #        value = next(values)
-        #        new[...] = False if not lower <= value * factor <= upper else True
-        new_blade = []
-        for box in self.conf_list.boxes.values():
-            if box.var.get():
-                value = next(values)
-                new = False if not lower <= value * factor <= upper else True
-                self.parent.logger.debug(
-                    'value: {}, setting {}'.format(value, new))
-            else:
-                new = False
-                self.parent.logger.debug('no value, setting {}'.format(new))
-            new_blade.append(new)
-        for en in self.energies.values():
-            en.trimmer.set(new_blade)
-        self.set_blade(new_blade)
-        self.table_view_update()
-
-    def filter_stoich(self):
-        for en in self.energies.values():
-            en.trimm_by_stoich()
-        for box, kept in zip(self.conf_list.boxes.values(), en.trimmer.blade):
-            if not kept: box.var.set(False)
-            # need to check kept value this way
-            # because tkinter doesn't understand numpy.bool_ type
-
-    def filter_imag(self):
-        try:
-            imag = self.parent.tslr.bars.iri.full.imag
-        except AttributeError:
-            self.parent.logger.warning(
-                "Can't show optimised conformers "
-                "imaginary frequencies count: no appropiate data found. "
-                "Please keep 'Discard imaginary frequencies' option unchecked."
-            )
-            self.check_imag.var.set(False)
-        else:
-            # self.set_blade([not value.sum(0) for value in imag])
-            for box, value in zip(self.conf_list.boxes.values(), imag):
-                if value.sum(0): box.var.set(False)
-
-    def show_combo_sel(self, event):
-        self.parent.logger.debug('Show combobox selected.')
+        factor = 1e-2 if self.showing == 'populations' else 1
+        lower = float(self.lower_var.get()) * factor
+        upper = float(self.upper_var.get()) * factor
+        self.parent.tslr.molecules.trim_to_range(
+            energy, minimum=lower, maximum=upper, attribute=self.showing
+        )
+        for box, kept in zip(self.conf_list.trees['main'].boxes.values(),
+                             self.parent.tslr.molecules.kept):
+            box.var.set(kept)
         self.conf_list.refresh()
-
-    def update(self, show=None):
-        if self.check_imag.var.get(): self.filter_imag()
-        if self.check_stoich.var.get(): self.filter_stoich()
-        if self.check_missing.var.get(): self.unify_data()
-        if (self.blade == self.energies.scf.trimmer.blade).all():
-            self.parent.logger.debug(
-                'Energies blades not matching internal blade. '
-                'Will call set_energies_blade.')
-            self.set_energies_blade()
-        self.table_view_update(show)

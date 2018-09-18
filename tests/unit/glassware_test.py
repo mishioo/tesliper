@@ -98,42 +98,42 @@ class TestMolecules(unittest.TestCase):
                  'stoichiometry': 'C3H8',
                  'scf': 1,
                  'normal_termination': True,
-                 'optimized': True,
+                 'optimization_completed': True,
                  'additional': True},
             two={'command': '# opt freq B3LYP/6-31G',
                  'freq': [-1,2,3,4,5],
                  'stoichiometry': 'C3H8',
                  'scf': 2,
                  'normal_termination': True,
-                 'optimized': True,
+                 'optimization_completed': True,
                  'additional': True},
             tree={'command': '# opt freq B3LYP/6-31G',
                   'freq': [1,2,3,4,5],
                   'stoichiometry': 'C3H9',
                   'scf': 3,
                   'normal_termination': True,
-                  'optimized': True,
+                  'optimization_completed': True,
                   'additional': True},
             four={'command': '# opt freq B3LYP/6-31G',
                   'freq': [1,2,3,4,5],
                   'stoichiometry': 'C3H8',
                   'scf': 4,
                   'normal_termination': True,
-                  'optimized': False,
+                  'optimization_completed': False,
                   'additional': True},
             five={'command': '# opt freq B3LYP/6-31G',
                   'freq': [1,2,3,4,5],
                   'stoichiometry': 'C3H8',
                   'scf': 5,
                   'normal_termination': False,
-                  'optimized': True,
+                  'optimization_completed': True,
                   'additional': True},
             six={'command': '# opt freq B3LYP/6-31G',
                  'freq': [1,2,3,4,5],
                  'stoichiometry': 'C3H8',
                  'scf': 6,
                  'normal_termination': True,
-                 'optimized': True}
+                 'optimization_completed': True}
         )
 
     def test_instantiation(self):
@@ -214,11 +214,43 @@ class TestMolecules(unittest.TestCase):
         self.assertEqual(self.arrs.kept, [True, True, True, True, False, True])
         
     def test_trim_to_range(self):
+        with self.assertRaises(ValueError):
+            self.arrs.trim_to_range('command')
+        with self.assertRaises(ValueError):
+            self.arrs.trim_to_range('gib', attribute='bla')
+        with self.assertRaises(ValueError):
+            self.arrs.trim_to_range('gib', attribute='full_name')
         self.arrs.trim_to_range('scf', minimum=2, maximum=5)
         self.assertEqual(self.arrs.kept, [False, True, True, True, True, False])
         
     def test_select_all(self):
         pass
+
+    def test_kept_raises(self):
+        with self.assertRaises(TypeError):
+            self.arrs.kept = 1
+        with self.assertRaises(TypeError):
+            self.arrs.kept = {'bla': 1}
+        with self.assertRaises(KeyError):
+            self.arrs.kept = ['zero']
+        with self.assertRaises(ValueError):
+            self.arrs.kept = [True] * 2
+        with self.assertRaises(ValueError):
+            self.arrs.kept = [True] * 20
+        with self.assertRaises(IndexError):
+            self.arrs.kept = [200]
+        with self.assertRaises(TypeError):
+            self.arrs.kept = [[]]
+
+    def test_kept(self):
+        self.arrs.kept = 'one two tree'.split(' ')
+        self.assertSequenceEqual(self.arrs.kept, [True] * 3 + [False] * 3)
+        self.arrs.kept = [1, 3, 5]
+        self.assertSequenceEqual(self.arrs.kept, [False, True] * 3)
+        self.arrs.kept = [True, False, False] * 2
+        self.assertSequenceEqual(self.arrs.kept, [True, False, False] * 2)
+        self.arrs.kept = []
+        self.assertSequenceEqual(self.arrs.kept, [False] * 6)
 
 
 if __name__ is '__main__':
