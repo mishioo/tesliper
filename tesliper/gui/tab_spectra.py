@@ -117,7 +117,7 @@ class Spectra(ttk.Frame):
         self.stack_box.bind('<<ComboboxSelected>>', self.change_colour)
         self.stack_box.grid(column=0, row=7)
         self.stack_box['values'] = ('Blues Reds Greens spring summer autumn '
-                                    'winter copper ocean rainbow jet '
+                                    'winter copper ocean rainbow '
                                     'nipy_spectral gist_ncar'.split(' '))
         guicom.WgtStateChanger.bars.extend([self.single_radio, self.single_box])
         guicom.WgtStateChanger.both.extend([self.average_radio, self.average_box,
@@ -138,12 +138,6 @@ class Spectra(ttk.Frame):
                                    command=self.recalculate_command)
         self.recalc_b.grid(column=1, row=0)
         guicom.WgtStateChanger.bars.extend([self.live_prev, self.recalc_b])
-
-        # Progress bar
-        # lab = ttk.Label(self, textvariable=parent.main_tab.progtext, anchor='w', foreground='gray')
-        # lab.grid(column=0, row=9, sticky='sw')
-        # self.progbar = ttk.Progressbar(self, orient=tk.HORIZONTAL, mode='indeterminate')
-        # self.progbar.grid(column=0, row=10, sticky='swe')
 
         # Spectrum
         spectra_view = ttk.LabelFrame(self, text='Spectra view')
@@ -168,7 +162,7 @@ class Spectra(ttk.Frame):
         bar_name = tesliper.dw.default_spectra_bars[value]
         bar = tslr.bars[bar_name]
         self.visualize_settings()
-        self.single_box['values'] = list(bar.full.filenames)
+        self.single_box['values'] = list(tslr.molecules.keys())
         if self.mode.get():
             self.live_preview_callback()
         else:
@@ -176,7 +170,7 @@ class Spectra(ttk.Frame):
 
     def visualize_settings(self):
         spectra_name = self.s_name.get()
-        spectra_type = tesliper.dw.Bars.spectra_type_ref[spectra_name]
+        spectra_type = tesliper.gw.Bars.spectra_type_ref[spectra_name]
         tslr = self.parent.tslr
         try:
             settings = self.last_used_settings[spectra_name]
@@ -198,6 +192,7 @@ class Spectra(ttk.Frame):
                        self.current_settings != self.last_used_settings[spectra_name]
         core = any([not self.ax, mode_con, settings_con])
         if all([core, self.live_prev.var.get(), self.mode.get()]):
+            # self.mode.get() unnecessary because included in mode_con?
             self.recalculate_command()
 
     def new_plot(self):
@@ -223,15 +218,16 @@ class Spectra(ttk.Frame):
         # for num, spc in enumerate(spectra):
         # ax = self.figure.add_subplot(len(spectra), 1, num)
         # self.axes.append(ax)
-        # ax.plot(spc.base)
+        # ax.plot(spc.abscissa)
 
     def average_draw(self, spectra_name, option):
+        # TO DO: ensure same conformers are taken into account
         tslr = self.parent.tslr
         en_name = self.average_ref[option]
-        en = tslr.energies[en_name]
-        bar_name = tesliper.dw.default_spectra_bars[spectra_name]
-        bar = tslr.bars[bar_name]
-        bar.trimmer.match(en)
+        # en = tslr.energies[en_name]
+        # bar_name = tesliper.dw.default_spectra_bars[spectra_name]
+        # bar = tslr.bars[bar_name]
+        # bar.trimmer.match(en)
         tslr.calculate_spectra(spectra_name, **self.current_settings)
         spc = tslr.get_averaged_spectrum(spectra_name, en_name)
         self.show_spectra(*spc)
@@ -240,21 +236,22 @@ class Spectra(ttk.Frame):
     def single_draw(self, spectra_name, option):
         tslr = self.parent.tslr
         spc = tslr.calculate_single_spectrum(spectra_name=spectra_name,
-                                             conformer=option, **self.current_settings)
-        self.show_spectra(spc.base, spc.values[0])
+                                             conformer=option,
+                                             **self.current_settings)
+        self.show_spectra(spc.abscissa, spc.values[0])
 
     def stack_draw(self, spectra_name, option):
         # TO DO: color of line depending on population
         tslr = self.parent.tslr
         bar_name = tesliper.dw.default_spectra_bars[spectra_name]
         bar = tslr.bars[bar_name]
-        dummy = self.parent.conf_tab._dummy
-        bar.trimmer.match(dummy)
+        # dummy = self.parent.conf_tab._dummy
+        # bar.trimmer.match(dummy)
         tslr.calculate_spectra(spectra_name, **self.current_settings)
         spc = tslr.spectra[spectra_name]
         if self.ax: self.figure.delaxes(self.ax)
         self.ax = self.figure.add_subplot(111)
-        self.show_spectra(spc.base, spc.values, colour=option, stack=True)
+        self.show_spectra(spc.abscissa, spc.values, colour=option, stack=True)
 
     def change_colour(self, event=None):
         if not self.ax: return
@@ -274,7 +271,7 @@ class Spectra(ttk.Frame):
                         for key in ('start stop step hwhm'.split(' '))
                         }
             fit = self.fitting.get()
-            settings['fitting'] = getattr(tesliper, fit)
+            settings['fitting'] = getattr(tesliper.dw, fit)
         except ValueError:
             return {}
         return settings

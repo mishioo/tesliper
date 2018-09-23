@@ -99,7 +99,7 @@ class Tesliper:
     @property
     def bars(self):
         # TO DO: put proper keys here
-        keys = 'zpe ent ten gib scf'.split(' ')
+        keys = 'dip rot vosc vrot raman1 roa1'.split(' ')
         return {k: self.molecules.arrayed(k) for k in keys}
         
     @property
@@ -168,8 +168,7 @@ class Tesliper:
         soxhlet = self.soxhlet
         args = soxhlet.parse_command()
         return self.extract(*args)
-        pass
-        
+
     def smart_calculate(self, average=True):
         # TO DO: do it
         pass
@@ -204,7 +203,9 @@ class Tesliper:
     def calculate_single_spectrum(self, spectra_name, conformer, start=None,
                                   stop=None, step=None, hwhm=None,
                                   fitting=None):
-        bar = self.molecules[conformer][gw.default_spectra_bars[spectra_name]]
+        bar_name = gw.default_spectra_bars[spectra_name]
+        with self.molecules.trimmed_to([conformer]):
+            bar = self.molecules.arrayed(bar_name)
         sett_from_args = {
             k: v for k, v in zip(('start', 'stop', 'step', 'hwhm', 'fitting'),
                                  (start, stop, step, hwhm, fitting))
@@ -261,4 +262,3 @@ class Tesliper:
                 
     def export_averaged(self, format='txt'):
         self.writer.save_output(self.output_dir, 'averaged', format)
-        

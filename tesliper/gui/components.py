@@ -725,7 +725,7 @@ class EnergiesView(CheckTree):
         show = self.parent_tab.show_ref[self.parent_tab.show_var.get()]
         logger.debug('Going to update by showing {}.'.format(show))
         if show == 'values':
-            with self.tslr.molecules.untrimmed():
+            with self.tslr.molecules.untrimmed:
                 scope = self.tslr.energies
         else:
             scope = self.tslr.energies
