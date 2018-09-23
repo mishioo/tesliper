@@ -48,10 +48,10 @@ geom_line = re.compile(geom_line_pat)
 
 # VIBRATIONAL
 energies = re.compile(
-    r' Zero-point correction=\s*(?P<zpec>-?\d+\.?\d*).*\n'
-    r' Thermal correction to Energy=\s*(?P<tenc>-?\d+\.?\d*)\n'
-    r' Thermal correction to Enthalpy=\s*(?P<entc>-?\d+\.?\d*)\n'
-    r' Thermal correction to Gibbs Free Energy=\s*(?P<gibc>-?\d+\.?\d*)\n'
+    r' Zero-point correction=\s*(?P<zpecorr>-?\d+\.?\d*).*\n'
+    r' Thermal correction to Energy=\s*(?P<tencorr>-?\d+\.?\d*)\n'
+    r' Thermal correction to Enthalpy=\s*(?P<entcorr>-?\d+\.?\d*)\n'
+    r' Thermal correction to Gibbs Free Energy=\s*(?P<gibcorr>-?\d+\.?\d*)\n'
     r' Sum of electronic and zero-point Energies=\s*(?P<zpe>-?\d+\.?\d*)\n'
     r' Sum of electronic and thermal Energies=\s*(?P<ten>-?\d+\.?\d*)\n'
     r' Sum of electronic and thermal Enthalpies=\s*(?P<ent>-?\d+\.?\d*)\n'
@@ -233,7 +233,7 @@ def parse(text):
         ramact, depp, depu, alpha2, beta2, alphag, gamma2, delta2, raman1,
         roa1, cid1, raman2, roa2, cid2,  raman3, roa3, cid3, rc180,
         efreq, ex_en, eemang, vdip, ldip, vrot, lrot, vosc, losc, transitions,
-        scf, zpe, ten, ent, gib, zpec, tenc, entc, gibc, command,
+        scf, zpe, ten, ent, gib, zpecorr, tencorr, entcorr, gibcorr, command,
         normal_termination, cpu_time, optimization_completed.
 
     Raises
