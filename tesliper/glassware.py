@@ -70,13 +70,13 @@ class DataArray:
         scf='SCF',
         ex_en='Excitation energy',
         vfreq='Frequency',
-        efreq='Wavelength',
+        wave='Wavelength',
         energies='Energies'
     )
 
-    associated_genres = 'zpec tenc entc gibc mass frc emang depolarp ' \
-                        'depolaru depp depu alpha2 beta2 alphag gamma2 ' \
-                        'delta2 cid1 cid2 cid3 rc180'.split(' ')
+    associated_genres = 'zpecorr tencorr entcorr gibcorr mass frc emang ' \
+                        'depolarp depolaru depp depu alpha2 beta2 alphag ' \
+                        'gamma2 delta2 cid1 cid2 cid3 rc180'.split(' ')
 
     @staticmethod
     def get_constructor(genre):
@@ -84,6 +84,10 @@ class DataArray:
             key: cls for cls in DataArray.__subclasses__()
             for key in cls.associated_genres
         }
+        constructors.update({
+            key: DataArray for key in DataArray.associated_genres
+        })  # Need to update this way because DataArray.__subclasses__() doesn't
+            # include DataArray itself
         return constructors[genre]
 
     @staticmethod
@@ -91,7 +95,7 @@ class DataArray:
         try:
             cls = DataArray.get_constructor(genre)
         except KeyError:
-            cls = DataArray
+            raise ValueError(f"Unknown genre '{genre}'.")
         instance = cls(genre, filenames, values, **kwargs)
         return instance
 
@@ -118,26 +122,41 @@ class DataArray:
         return self.__values
 
     @values.setter
-    def values(self, value):
-        if not len(value) == len(self.filenames):
+    def values(self, values):
+        if not len(values) == len(self.filenames):
             raise ValueError(
                 f"Values and filenames must be the same length. Arrays of"
-                f"length {len(value)} and {len(self.filenames)} were given."
+                f"length {len(values)} and {len(self.filenames)} were given."
             )
-        self.__values = np.array(value, dtype=self.dtype)
+        try:
+            self.__values = np.array(values, dtype=self.dtype)
+        except ValueError:
+            lengths = [len(v) for v in values]
+            longest = max(lengths)
+            self.__values = np.array(
+                [np.pad(v, (0, longest-len_), 'constant', constant_values=0)
+                    for v, len_ in zip(values, lengths)], dtype=self.dtype
+            )
+            logger.warning(
+                'DataArray with unequal number of elements for entry '
+                'requested. Arrays were appended with zeros to match length '
+                'of longest entry.'
+            )
 
     def __len__(self):
         return self.filenames.size
 
 
-class Info(DataArray):
-    associated_genres = ['command', 'cpu_time', 'transitions']
+class InfoArray(DataArray):
+    associated_genres = [
+        'command', 'cpu_time', 'transitions', 'stoichiometry'
+    ]
 
     def __init__(self, genre, filenames, values, dtype=str, **kwargs):
         super().__init__(genre, filenames, values, dtype=dtype)
 
 
-class Booleans(DataArray):
+class BooleanArray(DataArray):
     associated_genres = ['normal_termination', 'optimization_completed']
 
     def __init__(self, genre, filenames, values, dtype=bool, **kwargs):
@@ -227,7 +246,7 @@ class Energies(DataArray):
 
 class Bars(DataArray):
     associated_genres = 'freq iri dip rot raman ramact raman1 roa1 raman2 ' \
-                        'roa2 raman3 roa3 efreq ex_en eemang vdip ldip vrot ' \
+                        'roa2 raman3 roa3 wave ex_en eemang vdip ldip vrot '\
                         'lrot vosc losc'.split(' ')
 
     spectra_name_ref = dict(
@@ -267,11 +286,24 @@ class Bars(DataArray):
     def frequencies(self, frequencies):
         if not len(frequencies) == len(self.filenames):
             raise ValueError(
-                f"Values and filenames must be the same length. Arrays of"
+                f"Frequencies and filenames must be the same length. Arrays of"
                 f"length {len(frequencies)} and {len(self.filenames)} "
                 f"were given."
             )
-        self.__frequencies = np.array(frequencies, dtype=float)
+        try:
+            self.__frequencies = np.array(frequencies, dtype=float)
+        except ValueError:
+            lengths = [len(v) for v in frequencies]
+            longest = max(lengths)
+            self.__frequencies = np.array(
+                [np.pad(v, (0, longest-len_), 'constant', constant_values=0)
+                    for v, len_ in zip(frequencies, lengths)], dtype=float
+            )
+            logger.warning(
+                'DataArray with unequal number of frequency values for entry '
+                'requested. Arrays were appended with zeros to match length '
+                'of longest entry.'
+            )
 
     @property
     def spectra_name(self):
@@ -389,6 +421,7 @@ class Bars(DataArray):
 
 
 class Spectra(DataArray):
+    associated_genres = []
     units = {
         'vibra': {'hwhm': 'cm-1',
                   'start': 'cm-1',
@@ -459,20 +492,6 @@ class Spectra(DataArray):
                                                          energy_type))
         return av_spec
 
-    # @property
-    # def text_header(self):
-    #     header = '{} spectrum, HWHM = {} {}, fitting = {}'
-    #     header = header.format(
-    #         self.name.upper(), self.hwhm, self.units[self.genre]['hwhm'],
-    #         self.fitting.__name__)
-    #     return header
-    #
-    # @property
-    # def averaged_header(self):
-    #     header = self.text_header + ', averaged by {}.'
-    #     header.format(DataArray.full_name_ref[self.energy_type])
-    #     return header
-
 
 class Molecules(OrderedDict):
     """Ordered mapping of dictionaries.
@@ -492,7 +511,7 @@ class Molecules(OrderedDict):
     )
 
     electronic_keys = (
-        'efreq ex_en eemang vdip ldip vrot lrot vosc losc '
+        'wave ex_en eemang vdip ldip vrot lrot vosc losc '
         'transitions'.split(' ')
     )
 
@@ -618,7 +637,7 @@ class Molecules(OrderedDict):
         if genre in self.vibrational_keys:
             freqs = [mol['freq'] for mol in mols]
         elif genre in self.electronic_keys:
-            freqs = [mol['efreq'] for mol in mols]
+            freqs = [mol['wave'] for mol in mols]
         else:
             freqs = [[] for __ in mols]
         arr = DataArray.make(genre, filenames, values, frequencies=freqs)
@@ -663,22 +682,21 @@ class Molecules(OrderedDict):
         try:
             arr = self.arrayed(genre)
             atr = getattr(arr, attribute)
-            assert isinstance(atr[0], (int, float))
         except AttributeError:
             raise ValueError(
                 f"Invalid genre/attribute combination: {genre}/{attribute}. "
                 f"Resulting DataArray object has no attribute {attribute}."
             )
-        except AssertionError:
-            raise ValueError(
-                f"Invalid genre/attribute combination: {genre}/{attribute}. "
-                f"Resulting DataArray must contain objects of type int or "
-                f"float, not {type(atr[0])}"
-            )
         except TypeError:
             raise ValueError(
                 f"Invalid genre/attribute combination: {genre}/{attribute}. "
                 f"DataArray's attribute must be iterable."
+            )
+        if not isinstance(atr[0], (int, float)):
+            raise ValueError(
+                f"Invalid genre/attribute combination: {genre}/{attribute}. "
+                f"Resulting DataArray must contain objects of type int or "
+                f"float, not {type(atr[0])}"
             )
         blade = [
             fnm for v, fnm in zip(atr, arr.filenames) if minimum <= v <= maximum
@@ -688,12 +706,35 @@ class Molecules(OrderedDict):
     def select_all(self):
         self.kept = [True for __ in self.kept]
 
+    def trimmed_keys(self):
+        for key, kept in zip(self.keys(), self.kept):
+            if kept:
+                yield key
+
+    def trimmed_values(self):
+        for value, kept in zip(self.values(), self.kept):
+            if kept:
+                yield value
+
+    def trimmed_items(self):
+        for (key, value), kept in zip(self.items(), self.kept):
+            if kept:
+                yield key, value
+
+    @property
     @contextmanager
     def untrimmed(self):
         blade = self.kept
         self.select_all()
         yield self
         self.kept = blade
+
+    @contextmanager
+    def trimmed_to(self, blade):
+        old_blade = self.kept
+        self.kept = blade
+        yield self
+        self.kept = old_blade
 
     """# performance test for making arrays
     >>> from timeit import timeit

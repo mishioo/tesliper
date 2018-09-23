@@ -189,7 +189,8 @@ def intensities(bars, frequencies, genre, t=289.15, laser=532):
     pass
 
 
-def calculate_spectra(frequencies, intensities, start, stop, step, hwhm, fitting):
+def calculate_spectra(frequencies, intensities, start, stop, step, hwhm,
+                      fitting):
     """Calculates spectrum for each individual conformer.
 
     Parameters
@@ -217,22 +218,10 @@ def calculate_spectra(frequencies, intensities, start, stop, step, hwhm, fitting
     numpy.ndarray
         Array of intensity values for each conformer.
     """
-    base = np.arange(start, stop + step, step)
-    # spectrum base, 1d numpy.array of wavelengths/wave numbers
-    # electronic : bool, optional
-    #     Name of spectrum, which is going to be calculated. Valid names
-    #     are: vcd, ir, raman, roa, ecd, uv.
-    # if electronic:
-    #     width = hwhm / 1.23984e-4  # from eV to cm-1
-    #     w_nums = 1e7 / base  # from nm to cm-1
-    #     freqs = 1e7 / self.frequencies  # from nm to cm-1
-    # else:
-    #     width = hwhm
-    #     w_nums = base
-    #     freqs = self.frequencies
-    spectra = np.zeros([len(frequencies), base.shape[0]])  # template
+    abscissa = np.arange(start, stop + step, step)
+    spectra = np.zeros([len(frequencies), abscissa.shape[0]])  # template
     for bar, freq, spr in zip(intensities, frequencies, spectra):
-        spr[...] = fitting(bar, freq, base, hwhm)
+        spr[...] = fitting(bar, freq, abscissa, hwhm)
     return spectra  # , base ?
 
 
