@@ -8,7 +8,7 @@ import numpy as np
 ##################
 
 logger = lgg.getLogger(__name__)
-logger.setLevel(lgg.DEBUG)
+logger.setLevel(lgg.INFO)
 
 
 ##################
@@ -94,7 +94,7 @@ vibr_regs = {k: re.compile(v + '(?:\s+(?:Fr= \d+)?--\s+)' + 3 * number_group)
 excited_grouped = re.compile(
     r'Excited State\s+(\d+).*\s+'  # beginning of pattern and state's number
     r'(-?\d+\.?\d*) eV\s+'   # state's energy, key = ex_en
-    r'(-?\d+\.?\d*) nm.*\n'  # state's frequency, key = efreq
+    r'(-?\d+\.?\d*) nm.*\n'  # state's frequency, key = wave
     r'((?:\s*\d+\s*->\s*\d+\s+-?\d+\.\d+)+)'  # state's transitions
     # with use of \s* in the beginning of repeating transitions pattern
     # this regex will match until first blank line
@@ -210,7 +210,7 @@ def _electr_parse(text):
         if excited:
             n, e, f, t = zip(*excited)
             data['ex_en'] = np.array(e, dtype=float)
-            data['efreq'] = np.array(f, dtype=float)
+            data['wave'] = np.array(f, dtype=float)
             data['transition'] = [transitions_reg.findall(x) for x in t]
     return data
 
@@ -232,7 +232,7 @@ def parse(text):
         freq, mass, frc, iri, dip, rot, emang, raman, depolarp, depolaru,
         ramact, depp, depu, alpha2, beta2, alphag, gamma2, delta2, raman1,
         roa1, cid1, raman2, roa2, cid2,  raman3, roa3, cid3, rc180,
-        efreq, ex_en, eemang, vdip, ldip, vrot, lrot, vosc, losc, transitions,
+        wave, ex_en, eemang, vdip, ldip, vrot, lrot, vosc, losc, transitions,
         scf, zpe, ten, ent, gib, zpecorr, tencorr, entcorr, gibcorr, command,
         normal_termination, cpu_time, optimization_completed.
 
@@ -272,7 +272,7 @@ def main():
     #     data = {}
     #     for n, e, f, t in excited_grouped.findall(text):
     #         data.setdefault('ex_en', []).append(float(e))
-    #         data.setdefault('efreq', []).append(float(f))
+    #         data.setdefault('wave', []).append(float(f))
     #         data.setdefault('transition', []).append(
     #             transitions_reg.findall(t)
     #         )
@@ -282,7 +282,7 @@ def main():
     #     data = {}
     #     n, e, f, t = zip(*excited_grouped.findall(text))
     #     data['ex_en'] = [float(x) for x in e]
-    #     data['efreq'] = [float(x) for x in f]
+    #     data['wave'] = [float(x) for x in f]
     #     data['transition'] = [transitions_reg.findall(x) for x in t]
     #     return data
 

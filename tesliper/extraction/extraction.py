@@ -220,8 +220,8 @@ class Soxhlet:
         no = len(self.bar_files)
         # Create empty dict with list of empty lists as default value.
         output = defaultdict(lambda: [[] for _ in range(no)])
-        keys = 'vfreq dip rot vemang'.split(' ') if spectra_type == 'vibra' else \
-            'efreq vosc srot losc lrot energy eemang'.split(' ')
+        keys = 'freq dip rot vemang'.split(' ') if spectra_type == 'vibra' else\
+            'wave vosc srot losc lrot energy eemang'.split(' ')
         for num, bar in enumerate(self.bar_files):
             with open(os.path.join(self.path, bar), newline='') as handle:
                 header = handle.readline()

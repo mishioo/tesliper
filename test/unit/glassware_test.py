@@ -25,11 +25,11 @@ class TestDataArray(unittest.TestCase):
     def test_get_constructor(self):
         self.assertIs(
             gw.DataArray.get_constructor('normal_termination'),
-            gw.Booleans
+            gw.BooleanArray
         )
         self.assertIs(
             gw.DataArray.get_constructor('command'),
-            gw.Info
+            gw.InfoArray
         )
         self.assertIs(
             gw.DataArray.get_constructor('scf'),
@@ -44,11 +44,11 @@ class TestDataArray(unittest.TestCase):
     def test_make_types(self):
         self.assertIs(
             type(gw.DataArray.make('normal_termination', [], [])),
-            gw.Booleans
+            gw.BooleanArray
         )
         self.assertIs(
             type(gw.DataArray.make('command', [], [])),
-            gw.Info
+            gw.InfoArray
         )
         self.assertIs(
             type(gw.DataArray.make('scf', [], [])),
