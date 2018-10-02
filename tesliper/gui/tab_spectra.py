@@ -159,8 +159,6 @@ class Spectra(ttk.Frame):
 
     def spectra_choosen(self, value):
         tslr = self.parent.tslr
-        bar_name = tesliper.dw.default_spectra_bars[value]
-        bar = tslr.bars[bar_name]
         self.visualize_settings()
         self.single_box['values'] = list(tslr.molecules.keys())
         if self.mode.get():

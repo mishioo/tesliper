@@ -25,7 +25,21 @@ class Writer:
 
     def __init__(self, tesliper):
         self.ts = tesliper
-        self.path = None
+        self.path = os.getcwd()
+
+    @property
+    def path(self):
+        return self.__path
+
+    @path.setter
+    def path(self, value):
+        if not os.path.isdir(value):
+            raise FileNotFoundError(
+                f'Path {value} does not exists or is not a directory.'
+            )
+        else:
+            self.__path = value
+
 
     @property
     def distribution_center(self):
@@ -45,20 +59,6 @@ class Writer:
         )
 
     def save_output(self, output, format=None, output_dir=None):
-        # populations, bars (with e-m), spectra, averaged, settings
-        # if 'popul' in args:
-        # for en in self.energies.values():
-        # path = os.path.join(output_dir,
-        # 'Distribution.{}.txt'.format(en.type))
-        # f = open(path, 'w', newline='')
-        # writer = csv.writer(f, delimiter='\t')
-        # writer.writerow(['Gaussian output file', 'Population', 'DE',
-        # 'Energy', 'Imag', 'Stoichiometry'])
-        # writer.writerows([[f, p, d, e, i, s] for f, p, d, e, i, s in \
-        # zip(en.filenames, en.populations, en.deltas, en.values,
-        # self.bars.iri.imag.sum(0), en.stoich)])
-        # f.close()
-
         output_dir = output_dir if output_dir else self.ts.output_dir
         self.path = output_dir
         format = ['txt'] if not format else [format] \
@@ -76,46 +76,47 @@ class Writer:
         for func in functions:
             func()
 
-        # if 'ens' in args:
-        # if 'txt' in format:
-        # self.ens_txt_separately()
-        # self.ens_txt_collectively()
-        # if 'xlsx' in format:
-        # self.energies_xlsx()
-        # if 'csv' in format:
-        # self.energies_csv()
-        # if 'bars' in args:
-        # self.bars_txts()
-        # if 'spectra' in args:
-        # for spc in self.spectra.values():
-        # spc.export_txts()
-        # logger.info("Individual conformers' spectra text export done.")
-
-        # if 'averaged' in args:
-        # pass
-        # if 'settings' in args:
-        # pass
-
     __header = dict(
-        rot='Rot. Str. ',
-        dip='Dip. Str. ',
-        roa1='ROA1      ',
-        raman1='Raman1    ',
+        freq='Frequencies',
+        mass=r'Red. masses',
+        frc=r'Frc consts',
+        raman=r'Raman Activ',
+        depolarp=r'Depolar \(P\)',
+        depolaru=r'Depolar \(U\)',
+        ramact=r'RamAct',
+        depp=r'Dep-P',
+        depu=r'Dep-U',
+        alpha2=r'Alpha2',
+        beta2=r'Beta2',
+        alphag=r'AlphaG',
+        gamma2=r'Gamma2',
+        delta2=r'Delta2',
+        cid1=r'CID1',
+        raman2=r'Raman2',
+        roa2=r'ROA2',
+        cid2=r'CID2',
+        raman3=r'Raman3',
+        roa3=r'ROA3',
+        cid3=r'CID3',
+        rc180=r'RC180',
+        rot='Rot. Str.',
+        dip='Dip. Str.',
+        roa1='ROA1',
+        raman1='Raman1',
+        ex_en='Excit. Energy',
+        wave='Wavelenght',
         vrot='Rot.(velo)',
         lrot='Rot. (len)',
         vosc='Osc.(velo)',
         losc='Osc. (len)',
-        iri='IR Int.   ',
-        vemang='E-M Angle ',
-        eemang='E-M Angle ',
+        iri='IR Int.',
+        emang='E-M Angle',
+        eemang='E-M Angle',
         zpe='Zero-point',
         ten='Thermal',
         ent='Enthalpy',
         gib='Gibbs',
-        scf='SCF',
-        ex_en='Excit. Energy',
-        freq='Frequency ',
-        wave='Wavelenght'
+        scf='SCF'
     )
 
     __formatters = dict(
@@ -128,7 +129,7 @@ class Writer:
         vosc='{:> 10.4f}',
         losc='{:> 10.4f}',
         iri='{:> 10.4f}',
-        vemang='{:> 10.4f}',
+        emang='{:> 10.4f}',
         eemang='{:> 10.4f}',
         zpe='{:> 13.4f}',
         ten='{:> 13.4f}',
@@ -137,16 +138,80 @@ class Writer:
         scf='{:> 13.4f}',
         ex_en='{:> 13.4f}',
         freq='{:> 10.2f}',
-        wave='{:> 10.2f}'
+        wave='{:> 10.2f}',
+        mass=r'{:> 11.4f}',
+        frc=r'{:> 10.4f}',
+        raman=r'{:> 11.4f}',
+        depolarp=r'{:> 11.4f}',
+        depolaru=r'{:> 11.4f}',
+        ramact=r'{:> 10.4f}',
+        depp=r'{:> 9.4f}',
+        depu=r'{:> 9.4f}',
+        alpha2=r'{:> 9.4f}',
+        beta2=r'{:> 9.4f}',
+        alphag=r'{:> 9.4f}',
+        gamma2=r'{:> 9.4f}',
+        delta2=r'{:> 9.4f}',
+        cid1=r'{:> 8.3f}',
+        raman2=r'{:> 8.3f}',
+        roa2=r'{:> 8.3f}',
+        cid2=r'{:> 8.3f}',
+        raman3=r'{:> 8.3f}',
+        roa3=r'{:> 8.3f}',
+        cid3=r'{:> 8.3f}',
+        rc180=r'{:> 8.3f}',
+    )
+
+    __excel_formats = dict(
+        freq='0.0000',
+        mass=r'0.0000',
+        frc=r'0.0000',
+        raman=r'0.0000',
+        depolarp=r'0.0000',
+        depolaru=r'0.0000',
+        ramact=r'0.0000',
+        depp=r'0.0000',
+        depu=r'0.0000',
+        alpha2=r'0.0000',
+        beta2=r'0.0000',
+        alphag=r'0.0000',
+        gamma2=r'0.0000',
+        delta2=r'0.0000',
+        cid1=r'0.000',
+        raman2=r'0.000',
+        roa2=r'0.000',
+        cid2=r'0.000',
+        raman3=r'0.000',
+        roa3=r'0.000',
+        cid3=r'0.000',
+        rc180=r'0.000',
+        rot='0.0000',
+        dip='0.0000',
+        roa1='0.000',
+        raman1='0.000',
+        ex_en='0.0000',
+        wave='0.0000',
+        vrot='0.0000',
+        lrot='0.0000',
+        vosc='0.0000',
+        losc='0.0000',
+        iri='0.0000',
+        emang='0.0000',
+        eemang='0.0000',
+        zpe='0.000000',
+        ten='0.000000',
+        ent='0.000000',
+        gib='0.000000',
+        scf='0.00000000'
     )
 
     energies_order = 'zpe ten ent gib scf'.split(' ')
 
     def energies_txt(self):
-        self.ens_txt_collectively()
-        self.ens_txt_separately()
+        self._energies_txt_collectively()
+        self._energies_txt_separately()
 
-    def ens_txt_separately(self):
+    def _energies_txt_separately(self):
         h = ' | '.join(['Population/%', 'Min.B.Factor',
                         'DE/(kcal/mol)', 'Energy/Hartree'])
         align = ('<', '>', '>', '>', '>', '>')
@@ -176,7 +241,7 @@ class Writer:
                     file.write(' | '.join(new_row) + '\n')
         logger.info('Energies separate export to text files done.')
 
-    def ens_txt_collectively(self):
+    def _energies_txt_collectively(self):
         data = self.ts.energies
         ens = [data[en] for en in self.energies_order]
         # get them sorted
@@ -193,8 +258,8 @@ class Writer:
             'Gaussian output file', 'Population / %', 'Energy / Hartree',
             'Stoichiometry', lgst=max_fnm, stoich=max_stoich)
         names = [self.__header[en] for en in self.energies_order]
-        wfname = 'distribution_overview.txt'
-        with open(os.path.join(self.path, wfname), 'w') as file:
+        fname = 'distribution_overview.txt'
+        with open(os.path.join(self.path, fname), 'w') as file:
             file.write(header + '\n')
             names_line = \
                 ' ' * max_fnm + ' | ' + \
@@ -231,123 +296,176 @@ class Writer:
         ws['A1'] = 'Gaussian output file'
         ws['B1'] = 'Populations / %'
         ws['G1'] = 'Energies / hartree'
+        ws['L1'] = 'Imag'
+        ws['M1'] = 'Stoichiometry'
         names = [self.__header[name] for name in self.energies_order]
         ws.append([''] + names + names)
         ws.merge_cells('A1:A2')
         ws.merge_cells('B1:F1')
         ws.merge_cells('G1:K1')
+        ws.merge_cells('L1:L2')
+        ws.merge_cells('M1:M2')
         ws.freeze_panes = 'A3'
-        with self.ts.unified_data(data_type='e') as data:
-            filenames = data['scf'].filenames
+        data = self.ts.energies
+        filenames = data['gib'].filenames
+        fmts = ['0'] + ['0.00%'] * 5 + ['0.000000'] * 4 + \
+               ['0.00000000', '0', '0']
+        with self.ts.molecules.trimmed_to(filenames) as mols:
             values = [data[name].values for name in self.energies_order]
             populs = [data[name].populations for name in self.energies_order]
-            for row in zip(filenames, *populs, *values):
-                ws.append(row)
-        iri = self.ts.bars.iri
-        for name in self.energies_order:
-            ws = wb.create_sheet(title=self.__header[name])
-            en = self.ts.energies[name]
-            iri.trimmer.match(en)
+            imag = mols.arrayed('iri').imaginary
+            stoich = mols.arrayed('stoichiometry').values
+            rows = zip(filenames, *populs, *values, imag, stoich)
+            for row_num, values in enumerate(rows):
+                for col_num, (fmt, value) in enumerate(zip(fmts, values)):
+                    cell = ws.cell(row=row_num+3, column=col_num+1)
+                    cell.value = value
+                    cell.number_format = fmt
+        # set cells width
+        widths = [0] + [10] * 5 + [14] * 4 + [16, 6, 0]
+        for column, width in zip(ws.columns, widths):
+            if not width:
+                width = max(len(str(cell.value)) for cell in column) + 2
+            ws.column_dimensions[column[0].column].width = width
+        # proceed to write detailed info on separate sheet for each energy
+        for key in self.energies_order:
+            fmts = ['0', '0.00%'] + ['0.0000'] * 2 + \
+                   ['0.00000000' if key == 'scf' else '0.000000'] * 2
+            ws = wb.create_sheet(title=self.__header[key])
+            en = data[key]
             ws.freeze_panes = 'A2'
-            header = ['Gaussian output file', 'Population / %',
-                      'Min. B. Factor', 'DE / (kcal/mol)', 'Energy / Hartree',
-                      'Imag', 'Stoichiometry']
+            if key != 'scf':
+                corr = self.ts.molecules.arrayed(f'{key}corr')
+                header = ['Gaussian output file', 'Population / %',
+                          'Min. B. Factor', 'DE / (kcal/mol)',
+                          'Energy / Hartree', 'Correction / Hartree']
+                rows = zip(en.filenames, en.populations, en.min_factor,
+                           en.deltas, en.values, corr.values)
+            else:
+                header = ['Gaussian output file', 'Population / %',
+                          'Min. B. Factor', 'DE / (kcal/mol)',
+                          'Energy / Hartree']
+                rows = zip(en.filenames, en.populations, en.min_factor,
+                           en.deltas, en.values)
             ws.append(header)
-            for row in zip(en.filenames, en.populations, en.min_factor,
-                           en.deltas, en.values, iri.imaginary, en.stoich):
-                ws.append(row)
-        wb.save(os.path.join(self.path, '!distribution.xlsx'))
+            for row_num, values in enumerate(rows):
+                for col_num, (fmt, value) in enumerate(zip(fmts, values)):
+                    cell = ws.cell(row=row_num+2, column=col_num+1)
+                    cell.value = value
+                    cell.number_format = fmt
+            # set cells width
+            widths = [0, 15, 14, 15, 16, 19]
+            for column, width in zip(ws.columns, widths):
+                if not width:
+                    width = max(len(str(cell.value)) for cell in column) + 2
+                ws.column_dimensions[column[0].column].width = width
+        wb.save(os.path.join(self.path, 'distribution.xlsx'))
         logger.info('Energies export to xlsx files done.')
 
     def energies_csv(self):
         header = 'population min_factor delta energy'.split(' ')
         header = ['Gaussian output file'] + header
-        for name, en in self.ts.energies.items():
+        for key, en in self.ts.energies.items():
             file_path = os.path.join(self.path,
-                                     '!distribution.{}.csv'.format(name))
+                                     'distribution.{}.csv'.format(key))
+            if key == 'scf':
+                rows = zip(en.filenames, en.populations, en.min_factor,
+                           en.deltas, en.values)
+            else:
+                corr = self.ts.molecules.arrayed(f'{key}corr')
+                rows = zip(en.filenames, en.populations, en.min_factor,
+                           en.deltas, en.values, corr.values)
             with open(file_path, 'w', newline='') as file:
                 csvwriter = csv.writer(file)
-                csvwriter.writerow(header)
-                for row in zip(en.filenames, en.populations, en.min_factor,
-                               en.deltas, en.values):
+                csvwriter.writerow(
+                    header if key == 'scf' else header + ['corrections']
+                )
+                for row in rows:
                     csvwriter.writerow(row)
         logger.info('Energies export to csv files done.')
 
-    def bars_export(self):
-        # TO DO: refactor to not use soxhlet.instances
-        separated = defaultdict(list)
-        for bar in self.ts.bars.values():
-            separated[bar._soxhlet_id].append(bar)
-        order = 'dip rot raman1 roa1 vemang vrot vosc lrot losc eemang' \
-            .split(' ')
-        sox_ref = {'=vcd': 'vibra',
-                   '=roa': 'raman',
-                   'td=': 'electr'}
-        for sox_id, bars in separated.items():
-            com = self.ts.soxhlet.instances[sox_id].command
-            _type = [val for key, val in sox_ref.items() if key in com][0]
-            bars_sorted = \
-                [bar for name in order for bar in bars if bar.type == name]
-            freq_type = 'wave' if _type == 'electr' else 'freq'
-            values_sorted = [iter(bar.values) for bar in bars_sorted]
-            frequencies = iter(bars[0].full.frequencies)
-            logger.debug('Will make an attempt to export data to txt '
-                         'from soxhlet {}.'.format(sox_id))
-            if not bars_sorted:
-                logger.debug('This soxhlet instance have not provided any '
-                             'exportable data. Continuing to next soxhlet.')
-                continue
-            logger.debug('This soxhlet instance provided following data'
-                         ' types: {}.'.format(', '.join([bar.type for bar \
-                                                         in bars_sorted])))
-            for fname in self.ts.soxhlet.instances[sox_id].output_files:
-                values, types = zip(
-                    *[(next(val), bar.type) for val, bar
-                      in zip(values_sorted, bars_sorted)
-                      if fname in bar.filenames])
-                freqs = [next(frequencies)]
-                if values:
-                    values = freqs + list(values)
-                    types = [freq_type] + list(types)
-                    yield ('.'.join(fname.split('.')[:-1]), _type, types,
-                           np.array(values).T)
+    def _get_ground_bars(self, wanted=None):
+        if not wanted:
+            wanted = 'freq iri dip rot ramact raman1 roa1 emang'.split(' ')
+        else:
+            ground_bars = set(self.ts.molecules.vibrational_keys)
+            wanted = [bar for bar in wanted if bar in ground_bars]
+        for fname, mol in self.ts.molecules.trimmed_items():
+            bars = [bar for bar in wanted if bar in mol]
+            yield fname, bars, [mol[v] for v in bars]
 
-    def bars_txt(self):
-        for fname, _type, types, values_list in self.bars_export():
-            filename = '{}.{}.bar.txt'.format(fname, _type)
-            with open(os.path.join(self.path, filename), 'w') as file:
-                file.write('\t'.join([self.__header[type] for type in types]))
-                file.write('\n')
-                for values in values_list:
-                    line = '\t'.join(self.__formatters[tp].format(v) \
-                                     for v, tp in zip(values, types))
-                    file.write(line + '\n')
+    def _get_excited_bars(self, wanted=None):
+        if not wanted:
+            wanted = 'wave ex_en vrot vosc vdip lrot losc ldip ' \
+                     'eemang'.split(' ')
+        else:
+            excited_bars = set(self.ts.molecules.electronic_keys)
+            wanted = [bar for bar in wanted if bar in excited_bars]
+        for fname, mol in self.ts.molecules.trimmed_items():
+            bars = [bar for bar in wanted if bar in mol]
+            yield fname, bars, [mol[v] for v in bars]
+
+    def bars_txt(self, wanted=None):
+        for key, getter in (('v', self._get_ground_bars(wanted)),
+                            ('e', self._get_excited_bars(wanted))):
+            for fname, bars, values in getter:
+                filename = f"{'.'.join(fname.split('.')[:-1])}.{key}.txt"
+                if not bars:
+                    continue
+                with open(os.path.join(self.path, filename), 'w') as file:
+                    headers = [self.__header[bar] for bar in bars]
+                    widths = [self.__formatters[bar][4:6] for bar in bars]
+                    formatted = [f'{h: <{w}}' for h, w in zip(headers, widths)]
+                    file.write('\t'.join(formatted))
+                    file.write('\n')
+                    for vals in zip(*values):
+                        line = '\t'.join(self.__formatters[b].format(v)
+                                         for v, b in zip(vals, bars))
+                        file.write(line + '\n')
         logger.info('Bars export to text files done.')
 
-    def bars_csv(self):
-        for fname, _type, types, values_list in self.bars_export():
-            file_path = (os.path.join(self.path,
-                                      '{}.{}.bar.csv'.format(fname, _type)))
-            with open(file_path, 'w', newline='') as file:
-                csvwriter = csv.writer(file)
-                csvwriter.writerow([self.__header[name] for name in types])
-                for values in values_list:
-                    csvwriter.writerow(values)
+    def bars_csv(self, wanted=None):
+        for key, getter in (('v', self._get_ground_bars(wanted)),
+                            ('e', self._get_excited_bars(wanted))):
+            for fname, bars, values in getter:
+                if not bars:
+                    continue
+                filename = f"{'.'.join(fname.split('.')[:-1])}.{key}.csv"
+                path = os.path.join(self.path, filename)
+                with open(path, 'w', newline='') as file:
+                    csvwriter = csv.writer(file)
+                    headers = [self.__header[bar] for bar in bars]
+                    csvwriter.writerow(headers)
+                    for row in zip(*values):
+                        csvwriter.writerow(row)
         logger.info('Bars export to csv files done.')
 
-    def bars_xlsx(self):
-        wbs = defaultdict(oxl.Workbook)
-        for fname, _type, types, values_list in self.bars_export():
-            wb = wbs[fname]
-            ws = wb.create_sheet()
-            ws.title = _type
-            ws.freeze_panes = 'A2'
-            ws.append([self.__header[name] for name in types])
-            for values in values_list:
-                ws.append([*values])
-        for fname, wb in wbs.items():
-            del wb['Sheet']
-            wb.save(os.path.join(self.path, fname + '.bar.xlsx'))
+    def bars_xlsx(self, wanted=None):
+        wbs = {key: oxl.Workbook() for key in ('ground_state', 'excited_state')}
+        getters = {'ground_state': self._get_ground_bars(wanted),
+                   'excited_state': self._get_excited_bars(wanted)}
+        for key, wb in wbs.items():
+            wb.remove(wb.active)
+            got_something = False
+            for fname, bars, values in getters[key]:
+                if not bars:
+                    continue
+                got_something = True
+                ws = wb.create_sheet(fname)
+                headers = [self.__header[bar] for bar in bars]
+                widths = [max(len(h), 10) for h in headers]
+                fmts = [self.__excel_formats[bar] for bar in bars]
+                ws.append(headers)
+                ws.freeze_panes = 'B2'
+                for column, width in zip(ws.columns, widths):
+                    ws.column_dimensions[column[0].column].width = width
+                for col_num, (vals, fmt) in enumerate(zip(values, fmts)):
+                    for row_num, v in enumerate(vals):
+                        cell = ws.cell(row=row_num+2, column=col_num+1)
+                        cell.value = v
+                        cell.number_format = fmt
+            if got_something:
+                wb.save(os.path.join(self.path, 'bars_' + key + '.xlsx'))
         logger.info('Bars export to xlsx files done.')
 
     @property
