@@ -223,11 +223,11 @@ class Writer:
             if key != 'scf':
                 header = header + ' | Corr/Hartree'
                 corrections = self.ts.molecules.arrayed(f'{key}corr')
-                rows = zip(en.filenames, en.populations * 100, en.min_factor,
+                rows = zip(en.filenames, en.populations * 100, en.min_factors,
                            en.deltas, en.values, corrections.values)
                 fmt = ('', '.4f', '.4f', '.4f', '.6f', 'f')
             else:
-                rows = zip(en.filenames, en.populations * 100, en.min_factor,
+                rows = zip(en.filenames, en.populations * 100, en.min_factors,
                            en.deltas, en.values)
                 fmt = ('', '.4f', '.4f', '.4f', '.8f', 'f')
             with open(file_path, 'w') as file:
@@ -339,13 +339,13 @@ class Writer:
                 header = ['Gaussian output file', 'Population / %',
                           'Min. B. Factor', 'DE / (kcal/mol)',
                           'Energy / Hartree', 'Correction / Hartree']
-                rows = zip(en.filenames, en.populations, en.min_factor,
+                rows = zip(en.filenames, en.populations, en.min_factors,
                            en.deltas, en.values, corr.values)
             else:
                 header = ['Gaussian output file', 'Population / %',
                           'Min. B. Factor', 'DE / (kcal/mol)',
                           'Energy / Hartree']
-                rows = zip(en.filenames, en.populations, en.min_factor,
+                rows = zip(en.filenames, en.populations, en.min_factors,
                            en.deltas, en.values)
             ws.append(header)
             for row_num, values in enumerate(rows):
@@ -369,11 +369,11 @@ class Writer:
             file_path = os.path.join(self.path,
                                      'distribution.{}.csv'.format(key))
             if key == 'scf':
-                rows = zip(en.filenames, en.populations, en.min_factor,
+                rows = zip(en.filenames, en.populations, en.min_factors,
                            en.deltas, en.values)
             else:
                 corr = self.ts.molecules.arrayed(f'{key}corr')
-                rows = zip(en.filenames, en.populations, en.min_factor,
+                rows = zip(en.filenames, en.populations, en.min_factors,
                            en.deltas, en.values, corr.values)
             with open(file_path, 'w', newline='') as file:
                 csvwriter = csv.writer(file)
@@ -487,8 +487,9 @@ class Writer:
                 for fnm, values in zip(spectra.filenames, spectra.values):
                     filename = '.'.join(fnm.split('.')[:-1])
                     yield (
-                    filename, spectra.name, spectra, values, spectra.base,
-                    spectra.text_header)
+                        filename, spectra.name, spectra, values, spectra.base,
+                        spectra.text_header
+                    )
 
     def spectra_txt(self):
         for fnm, name, spc, values, base, title in self.spectra_export():
@@ -497,8 +498,9 @@ class Writer:
                 file.write(title + '\n')
                 file.write(
                     '\n'.join(
-                        '{:>4d}\t{: .4f}'.format(int(b), s) \
-                        for b, s in zip(base, values))
+                        '{:>4d}\t{: .4f}'.format(int(b), s)
+                        for b, s in zip(base, values)
+                    )
                 )
         logger.info('Spectra export to text files done.')
 

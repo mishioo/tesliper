@@ -53,7 +53,7 @@ class Conformers(ttk.Frame):
         self.show_var = tk.StringVar()
         show_values = ('Energy /Hartree', 'Delta /(kcal/mol)',
                        'Min. Boltzmann factor', 'Population /%')
-        show_id = ('values', 'deltas', 'min_factor', 'populations')
+        show_id = ('values', 'deltas', 'min_factors', 'populations')
         self.show_ref = {k: v for k, v in zip(show_values, show_id)}
         self.show_combo = ttk.Combobox(
             frame, textvariable=self.show_var,

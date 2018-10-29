@@ -1,31 +1,34 @@
 CURRENT:
 energies extraction from spectra outputs
-correct text saving precision
-check intensity calculations
 add graph labels
 add graph baseline reversal
-~~add bars values on single spectra graph~~
 correct displaying of checkboxes
 impement smart calculation and smart export
 bind <<enter>> to entry widgets
 add errors prompt/focus on log
-~~add gui feedback on session instantiation~~
 prevent spectra recalculating if settings not changed
+refresh 'single conformer' list after new data loaded
+~~check roa intensity calculations~~
+~~check spectra calculations (signals intensity)~~
+~~correct text saving precision~~
+~~check intensity calculations~~
+~~add bars values on single spectra graph~~
+~~add gui feedback on session instantiation~~
 
 DESIGN:
-move conformers information table to front page
-start new session -> clear session
-one-click extract data from destination
-separate manual extraction window (popup)
-separate visual for what is available
 conformers tab has visual info for each entry
-move conformers information table to front page
-number of selected items in conformers tab
 export directory must be choosen on each export 
-remove work/output dir information
-show conformers with no energies in conformers tab
+~~move conformers information table to front page~~
+~~start new session -> clear session~~
+~~one-click extract data from destination~~
+~~separate visual for what is available~~
+~~number of selected items in conformers tab~~
+~~remove work/output dir information~~
+CANCELED separate manual extraction window (popup)
+CANCELED show conformers with no energies in conformers tab
 
 SOON:
+add finding optimal spectra range
 switch to installable version
 handle uncompatible Gaussian versions
 add jaguar support
@@ -44,9 +47,10 @@ solve silent data overriding problem
 FUTURE:
 add tooltips
 add spectra comparition feature
-manage e-m angle and energy corrections
 add velo and lenght electronic spectra comparition
 add anharmonic spectra support
-add easy access to conformer data ? unnececery ?
+add nmr spectra
 add geometry analysis feature
 add molecule dispay window ?
+~~add easy access to conformer data~~
+~~manage e-m angle and energy corrections~~

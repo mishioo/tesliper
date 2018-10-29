@@ -10,3 +10,6 @@ build/
 *.spec
 .idea/
 tesliper_output/
+*.pkl
+changes.diff
+message.txt

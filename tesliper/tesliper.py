@@ -52,12 +52,12 @@ class Tesliper:
     """
     
     standard_parameters = {
-        'vibra': {'hwhm': 6,
+        'vibra': {'width': 6,
                   'start': 800,
                   'stop': 2900,
                   'step': 2,
                   'fitting': dw.lorentzian},
-        'electr': {'hwhm': 0.35,
+        'electr': {'width': 0.35,
                    'start': 150,
                    'stop': 800,
                    'step': 1,
@@ -200,24 +200,42 @@ class Tesliper:
         self.settings[spectra_type].update(settings)
         return self.settings
         
-    def calculate_single_spectrum(self, spectra_name, conformer, start=None,
-                                  stop=None, step=None, hwhm=None,
-                                  fitting=None):
+    def calculate_single_spectrum(
+            self, spectra_name, conformer, start=None, stop=None, step=None,
+            width=None, fitting=None
+    ):
+        # TO DO: add error handling when no data for requested spectrum
         bar_name = gw.default_spectra_bars[spectra_name]
-        with self.molecules.trimmed_to([conformer]):
-            bar = self.molecules.arrayed(bar_name)
+        is_excited = spectra_name.lower() in ('uv', 'ecd')
+        conformer = self.molecules[conformer]
+        values = conformer[bar_name]
+        freqs = 1e7 / conformer['wave'] if is_excited else conformer['freq']
+        inten = dw.calculate_intensities(bar_name, values, freqs)
         sett_from_args = {
-            k: v for k, v in zip(('start', 'stop', 'step', 'hwhm', 'fitting'),
-                                 (start, stop, step, hwhm, fitting))
+            k: v for k, v in zip(('start', 'stop', 'step', 'width', 'fitting'),
+                                 (start, stop, step, width, fitting))
             if v is not None
             }
-        sett = self.parameters[bar.spectra_type].copy()
+        sett = self.parameters[gw.Bars.spectra_type_ref[spectra_name]].copy()
         sett.update(sett_from_args)
-        spc = bar.calculate_spectra(**sett)
-        return spc
+        start, stop, step = [sett.pop(k) for k in ('start', 'stop', 'step')]
+        abscissa = np.arange(start, stop, step)
+        if not is_excited:
+            converted = sett
+            converted['abscissa'] = abscissa
+        else:
+            converted = dict(
+                width=sett['width'] / 1.23984e-4,
+                fitting=sett['fitting'],
+                abscissa=1e7 / abscissa
+            )
+        spc = dw.calculate_spectra([freqs], [inten], **converted)
+        return abscissa, spc[0]
         
-    def calculate_spectra(self, *args, start=None, stop=None,
-                          step=None, hwhm=None, fitting=None):
+    def calculate_spectra(
+            self, *args, start=None, stop=None, step=None, width=None,
+            fitting=None
+    ):
         if not args:
             bars = self.spectral.values()
         else:
@@ -225,30 +243,36 @@ class Tesliper:
             bar_names = gw.default_spectra_bars
             query = [bar_names[v] if v in bar_names else v for v in args]
             query = set(query)  # ensure no duplicates
+            spectral = self.spectral
             bar_names, bars = zip(
-                *[(k, v) for k, v in self.spectral.items() if k in query])
-            unknown = query - set(self.spectral.keys())
+                *[(k, v) for k, v in spectral.items() if k in query])
+            unknown = query - set(spectral.keys())
             if unknown:
                 info = "No other requests provided." if not bar_names else \
-                       "Will proceed using only those bars: {}".format(bar_names)
-                msg = "Don't have those bar types: {}. {}".format(unknown, info)
+                       f"Will proceed using only those bars: {bar_names}"
+                msg = f"Don't have those bar types: {unknown}. {info}"
                 logger.warning(msg)
         sett_from_args = {
-            k: v for k, v in zip(('start', 'stop', 'step', 'hwhm', 'fitting'),
-                                 (start, stop, step, hwhm, fitting))
+            k: v for k, v in zip(('start', 'stop', 'step', 'width', 'fitting'),
+                                 (start, stop, step, width, fitting))
             if v is not None
             }
         output = {}
         for bar in bars:
             sett = self.parameters[bar.spectra_type].copy()
             sett.update(sett_from_args)
-            spc = bar.calculate_spectra(**sett)
-            self.spectra[bar.spectra_name] = spc
-            output[bar.spectra_name] = spc
+            spectra = bar.calculate_spectra(**sett)
+            # is this good method of storing?
+            abscissa = np.arange(sett['start'], sett['stop'], sett['step'])
+            for conformer, spc in zip(self.molecules.trimmed_values(), spectra):
+                conformer[bar.spectra_name] = (abscissa, spc)
+            output[bar.spectra_name] = spectra
         return output
         
-    def get_averaged_spectrum(self, spectr, energy):
-        output = self.spectra[spectr].average(self.energies[energy])
+    def get_averaged_spectrum(self, spectrum, energy):
+        spectra = self.molecules.arrayed(spectrum)
+        en = self.molecules.arrayed(energy)
+        output = spectra.average(en)
         return output
                         
     def export_energies(self, format='txt'):

@@ -7,6 +7,7 @@ from collections import OrderedDict, Counter
 from contextlib import contextmanager
 
 import numpy as np
+from . import datawork as dw
 
 ##################
 ###   LOGGER   ###
@@ -193,15 +194,10 @@ class Energies(DataArray):
         -------
         numpy.ndarray
             List of energy differences from lowest energy in kcal/mol."""
-        try:
-            return (self.values - self.values.min()) * 627.5095
-            # convert hartree to kcal/mol by multiplying by 627.5095
-        except ValueError:
-            # if no values, return empty array.
-            return np.array([])
+        return dw.calculate_deltas(self.values)
 
     @property
-    def min_factor(self):
+    def min_factors(self):
         """Calculates list of conformers' Boltzmann factors respective to lowest
         energy conformer in system.
 
@@ -219,7 +215,7 @@ class Energies(DataArray):
             List of conformers' Boltzmann factors respective to lowest
             energy conformer."""
         # F(state_n)/F(state_min)
-        return np.exp(-self.deltas / (self.t * self.Boltzmann))
+        return dw.calculate_min_factors(self.values, self.t)
 
     @property
     def populations(self):
@@ -230,8 +226,7 @@ class Energies(DataArray):
         numpy.ndarary
             List of conformers populations calculated as Boltzmann
             distribution."""
-        x = self.min_factor
-        return x / x.sum()
+        return dw.calculate_populations(self.values, self.t)
 
     def calculate_populations(self, t):
         """Calculates conformers' Boltzmann distribution in given temperature.
@@ -240,8 +235,7 @@ class Energies(DataArray):
         ----------
         t : int or float
             Temperature of calculated state in K."""
-        x = np.exp(-self.deltas / (t * self.Boltzmann))
-        return x / x.sum()
+        return dw.calculate_populations(self.values, t)
 
 
 class Bars(DataArray):
@@ -270,20 +264,27 @@ class Bars(DataArray):
         uv='electr'
     )
 
-    def __init__(self, genre, filenames, values, frequencies,
-                 t=298.15, laser=532, **kwargs):
+    def __init__(self, genre, filenames, values, frequencies=None,
+                 wavelengths=None, t=298.15, laser=532, **kwargs):
         super().__init__(genre, filenames, values, **kwargs)
-        self.frequencies = frequencies
+        self.frequencies = frequencies  # in cm-1
+        self.wavelengths = wavelengths  # in nm
         self.t = t  # temperature in K
         self.laser = laser  # in nm
         # rename to raman_laser?
 
     @property
     def frequencies(self):
-        return self.__frequencies
+        if self.__frequencies is None:
+            return 1e7 / self.wavelengths
+        else:
+            return self.__frequencies
 
     @frequencies.setter
     def frequencies(self, frequencies):
+        if frequencies is None:
+            self.__frequencies = None
+            return
         if not len(frequencies) == len(self.filenames):
             raise ValueError(
                 f"Frequencies and filenames must be the same length. Arrays of"
@@ -306,6 +307,43 @@ class Bars(DataArray):
             )
 
     @property
+    def wavelengths(self):
+        if self.__wavelengths is None:
+            return 1e7 / self.frequencies
+        else:
+            return self.__wavelengths
+
+    @wavelengths.setter
+    def wavelengths(self, wavelengths):
+        if wavelengths is None:
+            if self.frequencies is None:
+                raise TypeError(
+                    "At least one: frequencies or wavelengths must not be None."
+                )
+            self.__wavelengths = None
+            return
+        if not len(wavelengths) == len(self.filenames):
+            raise ValueError(
+                f"Wavelengths and filenames must be the same length. Arrays of"
+                f"length {len(wavelengths)} and {len(self.filenames)} "
+                f"were given."
+            )
+        try:
+            self.__wavelengths = np.array(wavelengths, dtype=float)
+        except ValueError:
+            lengths = [len(v) for v in wavelengths]
+            longest = max(lengths)
+            self.__wavelengths = np.array(
+                [np.pad(v, (0, longest-len_), 'constant', constant_values=0)
+                    for v, len_ in zip(wavelengths, lengths)], dtype=float
+            )
+            logger.warning(
+                'DataArray with unequal number of wavelength values for entry '
+                'requested. Arrays were appended with zeros to match length '
+                'of longest entry.'
+            )
+
+    @property
     def spectra_name(self):
         if self.genre in self.spectra_name_ref:
             return self.spectra_name_ref[self.genre]
@@ -316,24 +354,6 @@ class Bars(DataArray):
             return self.spectra_type_ref[self.spectra_name]
 
     @property
-    def get_intensity_factor(self):
-        def raman(obj):
-            f = 9.695104081272649e-08
-            e = 1 - np.exp(-14387.751601679205 * obj.frequencies / obj.t)
-            out = f * (obj.laser - obj.frequencies) ** 4 / (obj.frequencies * e)
-            return out
-
-        reference = dict(
-            raman=raman,
-            roa=raman,
-            ir=lambda obj: obj.frequencies / 91.48,
-            vcd=lambda obj: obj.frequencies / 2.296e5,
-            uv=lambda obj: obj.frequencies * 2.87e4,
-            ecd=lambda obj: obj.frequencies / 22.96
-        )
-        return reference[self.spectra_name]
-
-    @property
     def intensities(self):
         """Converts spectral activity calculated by quantum chemistry software
         to signal intensity.
@@ -342,7 +362,9 @@ class Bars(DataArray):
         -------
         numpy.ndarray
             Signal intensities for each conformer."""
-        intensities = self.values * self.get_intensity_factor(self)
+        intensities = dw.calculate_intensities(
+            self.genre, self.values, self.frequencies, self.t, self.laser
+        )
         return intensities
 
     @property
@@ -358,7 +380,7 @@ class Bars(DataArray):
         else:
             return np.array([])
 
-    def find_imag(self):
+    def find_imaginary(self):
         """Finds all freqs with imaginary values and creates 'imag' entry with
         list of indicants of imaginery values presence.
         
@@ -371,7 +393,7 @@ class Bars(DataArray):
         imag = self.imaginary
         return {k: v for k, v in zip(self.filenames, imag) if v}
 
-    def calculate_spectra(self, start, stop, step, hwhm, fitting):
+    def calculate_spectra(self, start, stop, step, width, fitting):
         """Calculates spectrum of desired type for each individual conformer.
         
         Parameters
@@ -382,10 +404,10 @@ class Bars(DataArray):
             Number representing end of spectral range in relevant units.
         step : int or float
             Number representing step of spectral range in relevant units.
-        hwhm : int or float
+        width : int or float
             Number representing half width of maximum peak hight.
         fitting : function
-            Function, which takes bars, freqs, abscissa, hwhm as parameters and
+            Function, which takes bars, freqs, abscissa, width as parameters and
             returns numpy.array of calculated, non-corrected spectrum points.
             
         Returns
@@ -395,56 +417,54 @@ class Bars(DataArray):
             wavelengths/wave numbers, arr[1] is list of corresponding
             intensity values).
         """
-        abscissa = np.arange(start, stop + step, step)
-        # spectrum abscissa, 1d numpy.array of wavelengths/wave numbers
+        abscissa = np.arange(start, stop, step)
         if self.spectra_type == 'electr':
-            width = hwhm / 1.23984e-4  # from eV to cm-1
-            w_nums = 1e7 / abscissa  # from nm to cm-1
-            freqs = 1e7 / self.frequencies  # from nm to cm-1
-        else:
-            width = hwhm
-            w_nums = abscissa
-            freqs = self.frequencies
+            width = width / 1.23984e-4  # from eV to cm-1
+            abscissa = 1e7 / abscissa  # from nm to cm-1
+        freqs = self.frequencies
         inten = self.intensities
-        spectra = np.zeros([len(freqs), abscissa.shape[0]])
-        for bar, freq, spr in zip(inten, freqs, spectra):
-            spr[...] = fitting(bar, freq, w_nums, width)
-        output = Spectra(self.spectra_name, self.filenames, abscissa,
-                         spectra, hwhm, fitting)
-        if output:
-            logger.info(
-                "{} spectra calculated with HWHM = {} and {} fitting.".format(
-                    self.spectra_name, hwhm, fitting.__name__
+        spectra = dw.calculate_spectra(
+            freqs, inten, abscissa, width, fitting
+        )
+        if spectra.size:
+            logger.debug(
+                "{} spectra calculated with width = {} and {} fitting.".format(
+                    self.spectra_name, width, fitting.__name__
                 )
             )
-        return output
+        return spectra
 
 
 class Spectra(DataArray):
-    associated_genres = []
+    associated_genres = 'ir uv vcd ecd raman roa'.split(' ')
     units = {
-        'vibra': {'hwhm': 'cm-1',
+        'vibra': {'width': 'cm-1',
                   'start': 'cm-1',
                   'stop': 'cm-1',
                   'step': 'cm-1'},
-        'electr': {'hwhm': 'eV',
+        'electr': {'width': 'eV',
                    'start': 'nm',
                    'stop': 'nm',
                    'step': 'nm'}
     }
 
-    def __init__(self, name, filenames, abscissa, values, hwhm, fitting,
-                 **kwargs):
-        super().__init__(Bars.spectra_type_ref[name],
-                         filenames, values=values, **kwargs)
-        self.name = name
+    def __init__(self, genre, filenames, values, abscissa, **kwargs):
+        super().__init__(genre, filenames, values=values, **kwargs)
         self.abscissa = abscissa
         self.start = abscissa[0]
         self.stop = abscissa[-1]
         self.step = abs(abscissa[0] - abscissa[1])
-        self.hwhm = hwhm
-        self.fitting = fitting
-        self._averaged = {}
+        self.scaling_factor = 1.0
+        self.offset = 0.0
+
+    # how should be scaling_factor and offset implemented?
+    @property
+    def x(self):
+        return self.abscissa + self.offset
+
+    @property
+    def y(self):
+        return self.values * self.scaling_factor
 
     def average(self, energies):
         """A method for averaging spectra by population of conformers.
@@ -464,33 +484,29 @@ class Spectra(DataArray):
         """
         populations = energies.populations
         energy_type = energies.genre
-        try:
-            old_popul = self._averaged[energy_type]['populations']
-            if populations.shape == old_popul.shape:
-                if (populations == old_popul).all():
-                    logger.debug('Populations same as previously used. '
-                                 'Returning cashed spectrum.')
-                    return self._averaged[energy_type]['spectrum']
-                else:
-                    logger.debug('Spectrum previously averaged with '
-                                 'different populations.')
-            else:
-                logger.debug('Spectrum previously averaged with '
-                             'different populations.')
-        except KeyError:
-            logger.debug('No previously averaged spectrum found.')
-        # populations must be of same shape as spectra
-        # so we expand populations with np.newaxis
-        av = (self.values * populations[:, np.newaxis]).sum(0)
-        av_spec = np.array([self.abscissa, av])
-        self._averaged[energy_type] = dict(
-            populations=populations,
-            spectrum=av_spec,
-            values=av,
-            base=self.abscissa)
-        logger.info('{} spectrum averaged by {}.'.format(self.name,
-                                                         energy_type))
+        av_spec = (self.x, dw.calculate_average(self.y, populations))
+        # self._averaged[energy_type] = dict(
+        #     populations=populations,
+        #     spectrum=av_spec,
+        #     values=av,
+        #     base=self.abscissa)
+        logger.debug(f'{self.genre} spectrum averaged by {energy_type}.')
         return av_spec
+
+
+class Spectrum:
+    # will this be useful?
+    def __init__(
+            self, genre, abscissa, ordinate, width, fitting, scaling_factor=1,
+            offset=0
+    ):
+        self.genre = genre
+        self.abscissa = abscissa
+        self.ordinate = ordinate
+        self.width = width
+        self.fitting = fitting
+        self.scaling_factor = scaling_factor
+        self.offset = offset
 
 
 class Molecules(OrderedDict):
@@ -509,11 +525,11 @@ class Molecules(OrderedDict):
         'ramact depp depu alpha2 beta2 alphag gamma2 delta2 raman1 '
         'roa1 cid1 raman2 roa2 cid2  raman3 roa3 cid3 rc180'.split(' ')
     )
-
     electronic_keys = (
         'wave ex_en eemang vdip ldip vrot lrot vosc losc '
         'transitions'.split(' ')
     )
+    spectra_keys = 'ir uv vcd ecd raman roa'.split(' ')
 
     def __init__(self, *args, **kwargs):
         self.__kept = []
@@ -582,14 +598,15 @@ class Molecules(OrderedDict):
                 f"{type(first)} as first sequence's element."
             )
 
-
     def update(self, other=None, **kwargs):
         """Works like dict.update, but if key is already present, it updates
         dictionary associated with given key rather than changing its value.
 
         TO DO
         -----
-        Add type checks."""
+        Add type checks.
+        Figure out what to do with values like optimization_completed
+        and normal_termination."""
         molecules = dict()
         if other is not None:
             molecules.update(other)
@@ -635,12 +652,15 @@ class Molecules(OrderedDict):
         else:
             filenames, mols, values = [], [], []
         if genre in self.vibrational_keys:
-            freqs = [mol['freq'] for mol in mols]
+            kwargs = {'frequencies': [mol['freq'] for mol in mols]}
         elif genre in self.electronic_keys:
-            freqs = [mol['wave'] for mol in mols]
+            kwargs = {'wavelengths': [mol['wave'] for mol in mols]}
+        elif genre in self.spectra_keys:
+            abscissa, values = zip(*values) if values else ([], [])
+            kwargs = {'abscissa': abscissa[0] if abscissa else []}
         else:
-            freqs = [[] for __ in mols]
-        arr = DataArray.make(genre, filenames, values, frequencies=freqs)
+            kwargs = {'unused': [[] for __ in mols]}  # is this needed?
+        arr = DataArray.make(genre, filenames, values, **kwargs)
         return arr
 
     @property
