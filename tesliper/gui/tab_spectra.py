@@ -50,7 +50,7 @@ class Spectra(ttk.Frame):
         # Settings
         sett = ttk.LabelFrame(self, text="Settings:")
         sett.grid(column=0, row=1)
-        for no, name in enumerate('Start Stop Step HWHM'.split(' ')):
+        for no, name in enumerate('Start Stop Step Width'.split(' ')):
             ttk.Label(sett, text=name).grid(column=0, row=no)
             var = tk.StringVar()
             entry = ttk.Entry(sett, textvariable=var, width=10, state='disabled',
@@ -174,7 +174,7 @@ class Spectra(ttk.Frame):
             settings = self.last_used_settings[spectra_name]
         except KeyError:
             settings = tslr.parameters[spectra_type]
-        for name in 'start stop step hwhm'.split(' '):
+        for name in 'start stop step width'.split(' '):
             entry = getattr(self, name)
             entry.var.set(settings[name])
             entry.unit.set(tslr.units[spectra_type][name])
@@ -233,10 +233,11 @@ class Spectra(ttk.Frame):
 
     def single_draw(self, spectra_name, option):
         tslr = self.parent.tslr
-        spc = tslr.calculate_single_spectrum(spectra_name=spectra_name,
-                                             conformer=option,
-                                             **self.current_settings)
-        self.show_spectra(spc.abscissa, spc.values[0])
+        spc = tslr.calculate_single_spectrum(
+            spectra_name=spectra_name, conformer=option,
+            **self.current_settings
+        )
+        self.show_spectra(*spc)
 
     def stack_draw(self, spectra_name, option):
         # TO DO: color of line depending on population
@@ -266,7 +267,7 @@ class Spectra(ttk.Frame):
     def current_settings(self):
         try:
             settings = {key: float(getattr(self, key).get())
-                        for key in ('start stop step hwhm'.split(' '))
+                        for key in ('start stop step width'.split(' '))
                         }
             fit = self.fitting.get()
             settings['fitting'] = getattr(tesliper.dw, fit)
@@ -284,8 +285,10 @@ class Spectra(ttk.Frame):
         mode = self.mode.get()
         # get value of self.single, self.average or self.stack respectively
         option = getattr(self, mode).get()
-        if option.startswith('Choose '): return
+        if option.startswith('Choose '):
+            return
         self.new_plot()
-        # call self.single_draw, self.average_draw or self.stack_draw respectively
+        # call self.single_draw, self.average_draw or self.stack_draw
+        # respectively
         spectra_drawer = getattr(self, '{}_draw'.format(mode))
         spectra_drawer(spectra_name, option)
