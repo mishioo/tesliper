@@ -521,7 +521,7 @@ class Molecules(OrderedDict):
     Add type checks in update and setting methods."""
 
     vibrational_keys = (
-        'freq mass frc iri dip rot emang raman depolarp depolaru '
+        'freq mass frc iri dip rot emang depolarp depolaru '
         'ramact depp depu alpha2 beta2 alphag gamma2 delta2 raman1 '
         'roa1 cid1 raman2 roa2 cid2  raman3 roa3 cid3 rc180'.split(' ')
     )

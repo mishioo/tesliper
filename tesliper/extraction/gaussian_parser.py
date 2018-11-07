@@ -65,7 +65,6 @@ vibr_dict = dict(
     dip=r'Dip. str.',
     rot=r'Rot. str.',
     emang=r'E-M angle',
-    raman=r'Raman Activ',
     depolarp=r'Depolar \(P\)',
     depolaru=r'Depolar \(U\)',
     ramact=r'RamAct',
