@@ -419,52 +419,99 @@ class Bars(DataArray):
         """
         abscissa = np.arange(start, stop, step)
         if self.spectra_type == 'electr':
-            width = width / 1.23984e-4  # from eV to cm-1
-            abscissa = 1e7 / abscissa  # from nm to cm-1
+            _width = width / 1.23984e-4  # from eV to cm-1
+            _abscissa = 1e7 / abscissa  # from nm to cm-1
+        else:
+            _width = width
+            _abscissa = abscissa
         freqs = self.frequencies
         inten = self.intensities
-        spectra = dw.calculate_spectra(
-            freqs, inten, abscissa, width, fitting
+        values = dw.calculate_spectra(
+            freqs, inten, _abscissa, _width, fitting
         )
-        if spectra.size:
+        spectra_name = self.spectra_name
+        fitting_name = fitting.__name__
+        if values.size:
             logger.debug(
-                "{} spectra calculated with width = {} and {} fitting.".format(
-                    self.spectra_name, width, fitting.__name__
-                )
+                f"Bar {self.genre}: {spectra_name} spectra calculated with "
+                f"width = {width} and {fitting_name} fitting."
             )
+        spectra = Spectra(
+            spectra_name, self.filenames, values, abscissa, width, fitting_name
+        )
         return spectra
 
 
 class Spectra(DataArray):
     associated_genres = 'ir uv vcd ecd raman roa'.split(' ')
-    units = {
-        'vibra': {'width': 'cm-1',
-                  'start': 'cm-1',
-                  'stop': 'cm-1',
-                  'step': 'cm-1'},
-        'electr': {'width': 'eV',
-                   'start': 'nm',
-                   'stop': 'nm',
-                   'step': 'nm'}
+    _vibra_units = {
+        'width': 'cm-1',
+        'start': 'cm-1',
+        'stop': 'cm-1',
+        'step': 'cm-1',
+        'x': 'Frequency (cm-1)'
     }
+    _electr_units = {
+        'width': 'eV',
+        'start': 'nm',
+        'stop': 'nm',
+        'step': 'nm',
+        'x': 'Wavelength (nm)'
+    }
+    _units = {
+        'ir': {'y': 'Epsilon'},
+        'uv': {'y': 'Epsilon'},
+        'vcd': {'y': 'Delta Epsilon'},
+        'ecd': {'y': 'Delta Epsilon'},
+        'raman': {'y': 'I(R)+I(L)'},
+        'roa': {'y': 'I(R)-I(L)'}
+    }
+    for u in 'ir vcd raman roa'.split(' '):
+        _units[u].update(_vibra_units)
+    for u in ('uv', 'ecd'):
+        _units[u].update(_electr_units)
 
-    def __init__(self, genre, filenames, values, abscissa, **kwargs):
+    def __init__(self, genre, filenames, values, abscissa, width=0.0,
+                 fitting='n/a', scaling=1.0, offset=0.0, **kwargs):
         super().__init__(genre, filenames, values=values, **kwargs)
         self.abscissa = abscissa
         self.start = abscissa[0]
         self.stop = abscissa[-1]
         self.step = abs(abscissa[0] - abscissa[1])
-        self.scaling_factor = 1.0
-        self.offset = 0.0
+        self.width = width
+        self.fitting = fitting
+        self.scaling = scaling
+        self.offset = offset
 
-    # how should be scaling_factor and offset implemented?
+    @property
+    def units(self):
+        return Spectra._units[self.genre]
+
+    @property
+    def scaling(self):
+        return self.__scaling
+
+    @scaling.setter
+    def scaling(self, factor):
+        self.__scaling = factor
+        self.__y = self.values * factor
+
+    @property
+    def offset(self):
+        return self.__offset
+
+    @offset.setter
+    def offset(self, offset):
+        self.__offset = offset
+        self.__x = self.abscissa + offset
+
     @property
     def x(self):
-        return self.abscissa + self.offset
+        return self.__x
 
     @property
     def y(self):
-        return self.values * self.scaling_factor
+        return self.__y
 
     def average(self, energies):
         """A method for averaging spectra by population of conformers.
@@ -492,21 +539,6 @@ class Spectra(DataArray):
         #     base=self.abscissa)
         logger.debug(f'{self.genre} spectrum averaged by {energy_type}.')
         return av_spec
-
-
-class Spectrum:
-    # will this be useful?
-    def __init__(
-            self, genre, abscissa, ordinate, width, fitting, scaling_factor=1,
-            offset=0
-    ):
-        self.genre = genre
-        self.abscissa = abscissa
-        self.ordinate = ordinate
-        self.width = width
-        self.fitting = fitting
-        self.scaling_factor = scaling_factor
-        self.offset = offset
 
 
 class Molecules(OrderedDict):
