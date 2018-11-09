@@ -237,7 +237,7 @@ class Tesliper:
             fitting=None
     ):
         if not args:
-            bars = self.spectral.values()
+            bars = self.bars.values()
         else:
             # convert to spectra name if bar name passed
             bar_names = gw.default_spectra_bars
@@ -262,27 +262,26 @@ class Tesliper:
             sett = self.parameters[bar.spectra_type].copy()
             sett.update(sett_from_args)
             spectra = bar.calculate_spectra(**sett)
-            # is this good method of storing?
-            abscissa = np.arange(sett['start'], sett['stop'], sett['step'])
-            for conformer, spc in zip(self.molecules.trimmed_values(), spectra):
-                conformer[bar.spectra_name] = (abscissa, spc)
-            output[bar.spectra_name] = spectra
+            if spectra:
+                output[bar.spectra_name] = spectra
+        self.spectra.update(output)
         return output
         
     def get_averaged_spectrum(self, spectrum, energy):
-        spectra = self.molecules.arrayed(spectrum)
-        en = self.molecules.arrayed(energy)
+        spectra = self.spectra[spectrum]
+        with self.molecules.trimmed_to(spectra.filenames):
+            en = self.molecules.arrayed(energy)
         output = spectra.average(en)
         return output
-                        
+
     def export_energies(self, format='txt'):
-        self.writer.save_output(self.output_dir, 'energies', format)
+        self.writer.save_output('energies', format, self.output_dir)
         
     def export_bars(self, format='txt'):
-        self.writer.save_output(self.output_dir, 'bars', format)
+        self.writer.save_output('bars', format, self.output_dir)
                 
     def export_spectra(self, format='txt'):
-        self.writer.save_output(self.output_dir, 'spectra', format)
+        self.writer.save_output('spectra', format, self.output_dir)
                 
     def export_averaged(self, format='txt'):
-        self.writer.save_output(self.output_dir, 'averaged', format)
+        self.writer.save_output('averaged', format, self.output_dir)

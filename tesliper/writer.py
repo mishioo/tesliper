@@ -484,16 +484,19 @@ class Writer:
             if format == 'xlsx':
                 yield spectra
             else:
-                for fnm, values in zip(spectra.filenames, spectra.values):
+                x = spectra.x
+                name = spectra.genre
+                title = f'{name} calculated with peak width = {spectra.width}' \
+                        f' {spectra.units["width"]} and {spectra.fitting} ' \
+                        f'fitting, shown as {spectra.units["x"]} vs. ' \
+                        f'{spectra.units["y"]}'
+                for fnm, y in zip(spectra.filenames, spectra.y):
                     filename = '.'.join(fnm.split('.')[:-1])
-                    yield (
-                        filename, spectra.name, spectra, values, spectra.base,
-                        spectra.text_header
-                    )
+                    yield (filename, name, y, x, title)
 
     def spectra_txt(self):
-        for fnm, name, spc, values, base, title in self.spectra_export():
-            file_path = os.path.join(self.path, '{}.{}.txt'.format(fnm, name))
+        for fnm, name, values, base, title in self.spectra_export():
+            file_path = os.path.join(self.path, f'{fnm}.{name}.txt')
             with open(file_path, 'w') as file:
                 file.write(title + '\n')
                 file.write(
@@ -505,8 +508,8 @@ class Writer:
         logger.info('Spectra export to text files done.')
 
     def spectra_csv(self):
-        for fnm, name, spc, values, base, title in self.spectra_export():
-            file_path = os.path.join(self.path, '{}.{}.csv'.format(fnm, name))
+        for fnm, name, values, base, title in self.spectra_export():
+            file_path = os.path.join(self.path, f'{fnm}.{name}.csv')
             with open(file_path, 'w', newline='') as file:
                 csvwriter = csv.writer(file)
                 for row in zip(base, values): csvwriter.writerow(row)
@@ -517,54 +520,60 @@ class Writer:
         del wb['Sheet']
         for spectra in self.spectra_export('xlsx'):
             ws = wb.create_sheet()
-            ws.title = spectra.name
+            ws.title = spectra.genre
             ws.freeze_panes = 'B2'
-            A0 = 'Wavelenght' if spectra.name in ('uv', 'ecd') else 'Frequency'
+            A0 = spectra.units['x']
             ws.append([A0] + list(spectra.filenames))
-            ws["A1"].comment = oxl.comments.Comment(spectra.text_header,
-                                                    'Tesliper')
-            for line in zip(spectra.base, *spectra.values):
+            title = f'{spectra.genre} calculated with peak width = ' \
+                    f'{spectra.width} {spectra.units["width"]} and ' \
+                    f'{spectra.fitting} fitting, shown as ' \
+                    f'{spectra.units["x"]} vs. {spectra.units["y"]}'
+            ws["A1"].comment = oxl.comments.Comment(title, 'Tesliper')
+            for line in zip(spectra.x, *spectra.y):
                 ws.append(line)
-        wb.save(os.path.join(self.path, '!spectra.xlsx'))
+        wb.save(os.path.join(self.path, 'spectra.xlsx'))
         logger.info('Spectra export to xlsx file done.')
 
     def averaged_export(self):
         for name, spc in self.ts.spectra.items():
-            spectra = [spc.average(self.ts.energies[en]) \
-                       for en in self.energies_order]
-            freq_type = 'wave' if spc.type == 'electr' else 'freq'
-            yield (name, spc, spectra, freq_type)
+            spectra = []
+            for en in self.energies_order:
+                spectra.append(self.ts.get_averaged_spectrum(name, en))
+            yield (name, spc, spectra)
 
     def averaged_txt(self):
-        for name, spc, averaged, freq_type in self.averaged_export():
+        for name, spectra, averaged in self.averaged_export():
+            title = f'{name} calculated with peak width = {spectra.width} ' \
+                    f'{spectra.units["width"]} and {spectra.fitting} ' \
+                    f'fitting, shown as {spectra.units["x"]} vs. ' \
+                    f'{spectra.units["y"]}'
             for en, av in zip(self.energies_order, averaged):
                 file_path = os.path.join(self.path,
                                          'averaged.{}.{}.txt'.format(name, en))
                 with open(file_path, 'w') as file:
-                    file.write(spc.text_header + '\n')
-                    file.write('{} conformes averaged based on {}\n'.format(
-                        len(spc._averaged[en]['populations']),
-                        self.__header[en])
+                    file.write(title + '\n')
+                    file.write(
+                        f'{len(spectra.filenames)} conformers averaged based on'
+                        f' {self.__header[en]}\n'
                     )
                     file.write(
                         '\n'.join(
-                            '{:>4d}\t{: .4f}'.format(int(b), s) \
-                            for b, s in zip(*av))
+                            f'{int(b):>4d}\t{s: .4f}' for b, s in zip(*av))
                     )
         logger.info('Averaged export to text files done.')
 
     def averaged_csv(self):
-        for name, spc, averaged, freq_type in self.averaged_export():
+        for name, __, averaged in self.averaged_export():
             for en, av in zip(self.energies_order, averaged):
-                file_path = os.path.join(self.path,
-                                         'averaged.{}.{}.csv'.format(name, en))
+                file_path = os.path.join(self.path, f'averaged.{name}.{en}.csv')
                 with open(file_path, 'w', newline='') as file:
                     csvwriter = csv.writer(file)
                     for row in zip(*av): csvwriter.writerow(row)
         logger.info('Averaged export to csv files done.')
 
     def averaged_xlsx(self):
-        for name, spc, averaged, freq_type in self.averaged_export():
+        # TO DO: add comment as in txt export
+        for name, __, averaged in self.averaged_export():
             wb = oxl.Workbook()
             del wb['Sheet']
             for en, av in zip(self.energies_order, averaged):
@@ -572,5 +581,6 @@ class Writer:
                 ws.title = self.__header[en]
                 for row in zip(*av): ws.append(row)
             wb.save(
-                os.path.join(self.path, 'averaged.{}.xlsx'.format(name, en)))
+                os.path.join(self.path, f'averaged.{name}.xlsx')
+            )
         logger.info('Averaged export to xlsx files done.')
