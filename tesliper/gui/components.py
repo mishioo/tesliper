@@ -576,8 +576,8 @@ class CheckTree(ttk.Treeview):
         self.configure(yscrollcommand=self.yscroll)
         self.boxes = OrderedDict()
 
-        self.owned_children = {}
-        self.children_names = {}
+        self.owned_children = OrderedDict()
+        self.children_names = OrderedDict()
 
     @property
     def tslr(self):
@@ -674,8 +674,7 @@ class CheckTree(ttk.Treeview):
         # logger.debug(self.canvas.yview())
 
     def click_all(self, index, value):
-        # this solution is somewhat redundant
-        # (evaluets set(value) on clicked tree box as well)
+        # this is not used currently 21.11.2018
         for tree in CheckTree.trees.values():
             tree.boxes[index].var.set(value)
             tree.refresh()
@@ -693,7 +692,7 @@ class EnergiesView(CheckTree):
     formats = dict(
         values=lambda v: '{:.6f}'.format(v),
         deltas=lambda v: '{:.4f}'.format(v),
-        min_factor=lambda v: '{:.4f}'.format(v),
+        min_factors=lambda v: '{:.4f}'.format(v),
         populations=lambda v: '{:.4f}'.format(v * 100)
     )
     e_keys = 'ten ent gib scf zpe'.split(' ')
@@ -725,19 +724,24 @@ class EnergiesView(CheckTree):
         show = self.parent_tab.show_ref[self.parent_tab.show_var.get()]
         logger.debug('Going to update by showing {}.'.format(show))
         if show == 'values':
+            # we don't want to hide energy values of non-kept conformer
             with self.tslr.molecules.untrimmed:
                 scope = self.tslr.energies
         else:
             scope = self.tslr.energies
-        # values in groups of 5, ordered as e_keys
         values_to_show = zip(*[getattr(scope[e], show) for e in self.e_keys])
+        # values in groups of 5, ordered as e_keys
         fnames = set(scope['gib'].filenames)
-        for child in sorted(self.get_children()):
-            values = ['--' for _ in range(5)] \
-                if self.children_names[child] not in fnames else \
+        for name, iid in self.owned_children.items():
+            # owned_children is OrderedDict, so we get name and iid in ordered
+            # they were inserted to treeview, which is same as order of data
+            # stored in Tesliper instance
+            values = ['--'] * 5 if name not in fnames else \
                 map(self.formats[show], next(values_to_show))
+            # if this conformer's kept value is False,
+            # use -- in place of missing values
             for col, value in zip(self.e_keys, values):
-                self.set(child, column=col, value=value)
+                self.set(iid, column=col, value=value)
 
 
 class ConformersOverview(CheckTree):

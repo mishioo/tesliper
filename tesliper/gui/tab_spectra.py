@@ -222,10 +222,6 @@ class Spectra(ttk.Frame):
         # TO DO: ensure same conformers are taken into account
         tslr = self.parent.tslr
         en_name = self.average_ref[option]
-        # en = tslr.energies[en_name]
-        # bar_name = tesliper.dw.default_spectra_bars[spectra_name]
-        # bar = tslr.bars[bar_name]
-        # bar.trimmer.match(en)
         tslr.calculate_spectra(spectra_name, **self.current_settings)
         spc = tslr.get_averaged_spectrum(spectra_name, en_name)
         self.show_spectra(*spc)
