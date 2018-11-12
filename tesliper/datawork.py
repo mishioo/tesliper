@@ -80,7 +80,7 @@ def calculate_min_factors(energies, t=298.15):
     numpy.ndarary
         List of conformers' Boltzmann factors respective to lowest
         energy conformer."""
-    arr = calculate_deltas(energies)
+    arr = -calculate_deltas(energies)
     return np.exp(arr / (t * Boltzmann))
 
 
