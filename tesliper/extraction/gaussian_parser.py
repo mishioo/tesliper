@@ -252,7 +252,9 @@ def parse(text):
     extr.update(_vibr_parse(text))
     extr.update(_electr_parse(text))
     logger.debug('final searches')
-    extr['scf'] = float(scf.findall(text)[-1])
+    scf_match = scf.findall(text)
+    if scf_match:
+        extr['scf'] = float(scf_match[-1])
     trmntn = termination.search(text)
     extr['normal_termination'] = True if trmntn else False
     cpu_time = cpu_time_reg.findall(text)
@@ -261,7 +263,7 @@ def parse(text):
     if 'opt' in extr['command'].lower():
         extr['optimization_completed'] = 'Optimization completed.' in text
     stoichiometries = stoich.findall(text)
-    if stoich:
+    if stoichiometries:
         extr['stoichiometry'] = stoichiometries[-1]
     return extr
 

@@ -84,7 +84,13 @@ class Tesliper:
         self.spectra = dict()
         self.set_standard_parameters()
         self.writer = wr.Writer(self)
-        
+
+    def __getitem__(self, item):
+        try:
+            return self.molecules.arrayed(item)
+        except ValueError:
+            raise KeyError(f"Unknown genre '{item}'.")
+
     @property
     def energies(self):
         keys = 'zpe ent ten gib scf'.split(' ')

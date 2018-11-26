@@ -150,7 +150,7 @@ class DataArray:
 
 class InfoArray(DataArray):
     associated_genres = [
-        'command', 'cpu_time', 'transitions', 'stoichiometry'
+        'command', 'cpu_time', 'transitions', 'stoichiometry'  # , 'filenames'
     ]
 
     def __init__(self, genre, filenames, values, dtype=str, **kwargs):
@@ -667,6 +667,8 @@ class Molecules(OrderedDict):
 
         TO DO
         -----
+        Add support for 'filenames'
+        Move DataArray.make to this class
         Add some type checking and error handling."""
         if not (self.kept or self.items()):
             logger.debug(
@@ -695,6 +697,10 @@ class Molecules(OrderedDict):
         arr = DataArray.make(genre, filenames, values, **kwargs)
         return arr
 
+    def by_index(self, index):
+        """Returns data for conformer on desired index."""
+        return self[self.filenames[index]]
+
     @property
     def _max_len(self):
         return max(len(m) for m in self.values())
@@ -706,17 +712,19 @@ class Molecules(OrderedDict):
                 self.kept[index] = False
         
     def trim_imaginary_frequencies(self):
-        arr = self.arrayed('freq', full=True)
-        imaginary = arr.imaginary
-        for index, imag in enumerate(imaginary):
-            if imag > 0:
+        dummy = np.array([1])
+        for index, mol in enumerate(self.values()):
+            freq = mol.get('freq', dummy)
+            if (freq < 0).any():
                 self.kept[index] = False
 
     def trim_non_matching_stoichiometry(self):
-        counter = Counter((mol['stoichiometry'] for mol in self.values()))
+        counter = Counter(
+            mol.get('stoichiometry', 'unknown') for mol in self.values()
+        )
         stoich = counter.most_common()[0][0]
         for index, mol in enumerate(self.values()):
-            if not mol['stoichiometry'] == stoich:
+            if not mol.get('stoichiometry', 'unknown') == stoich:
                 self.kept[index] = False
 
     def trim_not_optimized(self):
@@ -725,8 +733,9 @@ class Molecules(OrderedDict):
                 self.kept[index] = False
 
     def trim_non_normal_termination(self):
+        # TO DO: ensure its working properly
         for index, mol in enumerate(self.values()):
-            if not mol['normal_termination']:
+            if not mol.get('normal_termination', False):
                 self.kept[index] = False
 
     def trim_to_range(self, genre, minimum=float("-inf"), maximum=float("inf"),
