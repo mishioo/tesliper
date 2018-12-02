@@ -51,7 +51,7 @@ class Tesliper:
     ? make it inherit mapping ?
     """
     
-    standard_parameters = {
+    _standard_parameters = {
         'vibra': {'width': 6,
                   'start': 800,
                   'stop': 2900,
@@ -63,7 +63,6 @@ class Tesliper:
                    'step': 1,
                    'fitting': dw.gaussian}
         }
-    units = gw.Spectra.units
 
     def __init__(self, input_dir=None, output_dir=None, wanted_files=None):
         """
@@ -82,8 +81,8 @@ class Tesliper:
         self.input_dir = input_dir
         self.output_dir = output_dir
         self.spectra = dict()
-        self.set_standard_parameters()
         self.writer = wr.Writer(self)
+        self.parameters = self.standard_parameters
 
     def __getitem__(self, item):
         try:
@@ -119,11 +118,12 @@ class Tesliper:
             self.soxhlet.wanted_files = wanted_files
             logger.info("New list of wanted_files established.")
 
-    def set_standard_parameters(self):
-        self.parameters = {
-            'vibra': self.standard_parameters['vibra'].copy(),
-            'electr': self.standard_parameters['electr'].copy()
-            }
+    @property
+    def standard_parameters(self):
+        return {
+            'vibra': self._standard_parameters['vibra'].copy(),
+            'electr': self._standard_parameters['electr'].copy()
+        }
         
     def update(self, *args, **kwargs):
         self.molecules.update(*args, **kwargs)
@@ -238,7 +238,11 @@ class Tesliper:
                 abscissa=1e7 / abscissa
             )
         spc = dw.calculate_spectra([freqs], [inten], **converted)
-        return abscissa, spc[0]
+        spc = gw.Spectra(
+            spectra_name.lower(), conformer, spc[0], abscissa, width,
+            fitting.__name__, check_sizes=False
+        )
+        return spc
         
     def calculate_spectra(
             self, *args, start=None, stop=None, step=None, width=None,

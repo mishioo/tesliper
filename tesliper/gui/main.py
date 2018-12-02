@@ -173,7 +173,7 @@ class TesliperApp(tk.Tk):
                 title='New session', icon='warning', default='cancel')
             if not pop:
                 return
-        # make new Tesliper instace
+        # make new Tesliper instance
         self.tslr = tesliper.Tesliper()
         # establish new overview
         if self.main_tab.overview is not None:
@@ -193,18 +193,21 @@ class TesliperApp(tk.Tk):
         self.conf_tab.conf_list.frame.grid(column=0, row=0, sticky='nswe')
         self.conf_tab.established = False
         # clear spectra tab
-        if self.spectra_tab.ax:
-            self.spectra_tab.figure.delaxes(self.spectra_tab.ax)
-            self.spectra_tab.ax = None
+        # TO DO: clear other axes
+        # TO DO: make sure to clear comboboxes and stored settings
+        # maybe would be easier to create new tabs?
+        if self.spectra_tab.tslr_ax:
+            self.spectra_tab.figure.delaxes(self.spectra_tab.tslr_ax)
+            self.spectra_tab.tslr_ax = None
             self.spectra_tab.canvas.show()
 
     def on_closing(self):
         if self.thread.is_alive():
-            quit = messagebox.askyesno(
+            quit_ = messagebox.askyesno(
                 message='Tesliper is still running an operation. '
                         'Do you wish to force exit?',
                 title='Exit?', icon='warning', default='no'
             )
-            if not quit:
+            if not quit_:
                 return
         self.destroy()
