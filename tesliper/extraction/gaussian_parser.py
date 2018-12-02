@@ -228,7 +228,7 @@ def parse(text):
     dict
         Dictionary of data extracted from input string. Keys present in
         returned dict depends on data found in input file and may be any from:
-        freq, mass, frc, iri, dip, rot, emang, raman, depolarp, depolaru,
+        freq, mass, frc, iri, dip, rot, emang, depolarp, depolaru,
         ramact, depp, depu, alpha2, beta2, alphag, gamma2, delta2, raman1,
         roa1, cid1, raman2, roa2, cid2,  raman3, roa3, cid3, rc180,
         wave, ex_en, eemang, vdip, ldip, vrot, lrot, vosc, losc, transitions,

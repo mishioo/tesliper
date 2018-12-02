@@ -77,7 +77,7 @@ class DataArray:
 
     associated_genres = 'zpecorr tencorr entcorr gibcorr mass frc emang ' \
                         'depolarp depolaru depp depu alpha2 beta2 alphag ' \
-                        'gamma2 delta2 cid1 cid2 cid3 rc180'.split(' ')
+                        'gamma2 delta2 cid1 cid2 cid3 rc180 eemang'.split(' ')
 
     @staticmethod
     def get_constructor(genre):
@@ -100,9 +100,11 @@ class DataArray:
         instance = cls(genre, filenames, values, **kwargs)
         return instance
 
-    def __init__(self, genre, filenames, values, dtype=float, **kwargs):
+    def __init__(self, genre, filenames, values, dtype=float, check_sizes=True,
+                 **kwargs):
         self.genre = genre
         self.dtype = dtype
+        self.check_sizes = check_sizes
         self.filenames = filenames
         self.values = values
 
@@ -124,7 +126,7 @@ class DataArray:
 
     @values.setter
     def values(self, values):
-        if not len(values) == len(self.filenames):
+        if self.check_sizes and not len(values) == len(self.filenames):
             raise ValueError(
                 f"Values and filenames must be the same length. Arrays of"
                 f"length {len(values)} and {len(self.filenames)} were given."
@@ -239,8 +241,8 @@ class Energies(DataArray):
 
 
 class Bars(DataArray):
-    associated_genres = 'freq iri dip rot raman ramact raman1 roa1 raman2 ' \
-                        'roa2 raman3 roa3 wave ex_en eemang vdip ldip vrot '\
+    associated_genres = 'freq iri dip rot ramact raman1 roa1 raman2 ' \
+                        'roa2 raman3 roa3 wave ex_en vdip ldip vrot '\
                         'lrot vosc losc'.split(' ')
 
     spectra_name_ref = dict(
@@ -254,7 +256,6 @@ class Bars(DataArray):
         vosc='uv',
         losc='uv'
     )
-
     spectra_type_ref = dict(
         vcd='vibra',
         ir='vibra',
@@ -262,6 +263,27 @@ class Bars(DataArray):
         raman='vibra',
         ecd='electr',
         uv='electr'
+    )
+    _units = dict(
+        freq='Frequency / cm^(-1)',
+        wave='Wavenlength / nm',
+        ex_en='Excitation energy / eV',
+        rot='R / 10^(-44) esu^2 cm^2',
+        dip='D / 10^(-40) esu^2 cm^2',
+        iri='KM/Mole',
+        ramact='Raman scattering activities / A^4/AMU',
+        roa1='ROA intensiy / 10^4 K',
+        raman1='Raman intensity / K',
+        roa2='ROA intensiy / 10^4 K',
+        raman2='Raman intensity / K',
+        roa3='ROA intensiy / 10^4 K',
+        raman3='Raman intensity / K',
+        vrot='R / 10^(-40) erg*esu*cm/Gauss',
+        lrot='R / 10^(-40) erg*esu*cm/Gauss',
+        vosc='Oscillator strength',
+        losc='Oscillator strength',
+        vdip='D / 10^(-44) esu^2 cm^2',
+        ldip='D / 10^(-44) esu^2 cm^2'
     )
 
     def __init__(self, genre, filenames, values, frequencies=None,
@@ -285,10 +307,10 @@ class Bars(DataArray):
         if frequencies is None:
             self.__frequencies = None
             return
-        if not len(frequencies) == len(self.filenames):
+        if self.check_sizes and not len(frequencies) == len(self.values):
             raise ValueError(
-                f"Frequencies and filenames must be the same length. Arrays of"
-                f"length {len(frequencies)} and {len(self.filenames)} "
+                f"Frequencies and values must be the same length. Arrays of"
+                f"length {len(frequencies)} and {len(self.values)} "
                 f"were given."
             )
         try:
@@ -322,10 +344,10 @@ class Bars(DataArray):
                 )
             self.__wavelengths = None
             return
-        if not len(wavelengths) == len(self.filenames):
+        if self.check_sizes and not len(wavelengths) == len(self.values):
             raise ValueError(
-                f"Wavelengths and filenames must be the same length. Arrays of"
-                f"length {len(wavelengths)} and {len(self.filenames)} "
+                f"Wavelengths and values must be the same length. Arrays of"
+                f"length {len(wavelengths)} and {len(self.values)} "
                 f"were given."
             )
         try:
@@ -352,6 +374,13 @@ class Bars(DataArray):
     def spectra_type(self):
         if self.genre in self.spectra_name_ref:
             return self.spectra_type_ref[self.spectra_name]
+
+    @property
+    def units(self):
+        try:
+            return self._units[self.genre]
+        except KeyError:
+            return ''
 
     @property
     def intensities(self):
@@ -449,14 +478,14 @@ class Spectra(DataArray):
         'start': 'cm-1',
         'stop': 'cm-1',
         'step': 'cm-1',
-        'x': 'Frequency (cm-1)'
+        'x': 'Frequency / cm^(-1)'
     }
     _electr_units = {
         'width': 'eV',
         'start': 'nm',
         'stop': 'nm',
         'step': 'nm',
-        'x': 'Wavelength (nm)'
+        'x': 'Wavelength / nm'
     }
     _units = {
         'ir': {'y': 'Epsilon'},
@@ -531,12 +560,11 @@ class Spectra(DataArray):
         """
         populations = energies.populations
         energy_type = energies.genre
-        av_spec = (self.x, dw.calculate_average(self.y, populations))
-        # self._averaged[energy_type] = dict(
-        #     populations=populations,
-        #     spectrum=av_spec,
-        #     values=av,
-        #     base=self.abscissa)
+        av_spec = dw.calculate_average(self.values, populations)
+        av_spec = Spectra(
+            self.genre, self.filenames, av_spec, self.abscissa, self.width,
+            self.fitting, self.scaling, self.offset, check_sizes=False
+        )
         logger.debug(f'{self.genre} spectrum averaged by {energy_type}.')
         return av_spec
 

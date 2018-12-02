@@ -2,6 +2,7 @@
 ###   IMPORTS   ###
 ###################
 
+import math
 import logging as lgg
 import tkinter as tk
 import tkinter.ttk as ttk
@@ -22,7 +23,6 @@ _DEVELOPEMENT = False
 ###   CLASSES   ###
 ###################
 
-
 class Spectra(ttk.Frame):
 
     def __init__(self, parent):
@@ -41,102 +41,143 @@ class Spectra(ttk.Frame):
         values = 'ir uv raman vcd ecd roa'.split(' ')
         positions = [(c, r) for c in range(2) for r in range(3)]
         for n, v, (c, r) in zip(names, values, positions):
-            b = ttk.Radiobutton(s_name_frame, text=n, variable=self.s_name, value=v,
-                                command=lambda v=v: self.spectra_choosen(v))
+            b = ttk.Radiobutton(s_name_frame, text=n, variable=self.s_name,
+                                value=v,
+                                command=lambda v=v: self.spectra_chosen(v))
             b.configure(state='disabled')
             b.grid(column=c, row=r, sticky='w', padx=5)
             self.s_name_radio[v] = b
 
         # Settings
         sett = ttk.LabelFrame(self, text="Settings:")
-        sett.grid(column=0, row=1)
-        for no, name in enumerate('Start Stop Step Width'.split(' ')):
-            ttk.Label(sett, text=name).grid(column=0, row=no)
+        sett.grid(column=0, row=1, sticky='we')
+        tk.Grid.columnconfigure(sett, (1, 2), weight=1)
+        ttk.Label(sett, text='Fitting').grid(column=0, row=0)
+        fit = tk.StringVar()
+        self.fitting = ttk.Combobox(sett, textvariable=fit, state='disabled',
+                                    width=13)
+        self.fitting.bind('<<ComboboxSelected>>', self.live_preview_callback)
+        self.fitting.var = fit
+        self.fitting.grid(column=1, row=0, columnspan=2, sticky='e')
+        self.fitting['values'] = ('lorentzian', 'gaussian')
+        guicom.WgtStateChanger.bars.append(self.fitting)
+        for no, name in enumerate(
+                'Start Stop Step Width Offset Scaling'.split(' ')
+        ):
+            ttk.Label(sett, text=name).grid(column=0, row=no+1)
             var = tk.StringVar()
-            entry = ttk.Entry(sett, textvariable=var, width=10, state='disabled',
-                              validate='key', validatecommand=self.parent.validate_entry)
+            entry = ttk.Entry(sett, textvariable=var, width=10,
+                              state='disabled', validate='key',
+                              validatecommand=self.parent.validate_entry)
             entry.bind('<FocusOut>',
-                       lambda e, var=var: (self.parent.entry_out_validation(var),
-                                           self.live_preview_callback()
-                                           )
-                       )
+                       lambda e, var=var: (
+                           self.parent.entry_out_validation(var),
+                           self.live_preview_callback()
+                       ))
             setattr(self, name.lower(), entry)
             entry.var = var
-            entry.grid(column=1, row=no)
+            entry.grid(column=1, row=no+1, sticky='e')
             unit = tk.StringVar()
             unit.set('-')
             entry.unit = unit
             label = ttk.Label(sett, textvariable=unit)
-            label.grid(column=2, row=no)
+            label.grid(column=2, row=no+1, sticky='e')
             guicom.WgtStateChanger.bars.append(entry)
-        ttk.Label(sett, text='Fitting').grid(column=0, row=4)
-        fit = tk.StringVar()
-        self.fitting = ttk.Combobox(sett, textvariable=fit, state='disabled', width=13)
-        self.fitting.bind('<<ComboboxSelected>>', self.live_preview_callback)
-        self.fitting.var = fit
-        self.fitting.grid(column=1, row=4, columnspan=2)
-        self.fitting['values'] = ('lorentzian', 'gaussian')
-        guicom.WgtStateChanger.bars.append(self.fitting)
-        self.settings_established = False
 
         # Calculation Mode
         self.mode = tk.StringVar()
-        self.single_radio = ttk.Radiobutton(self, text='Single file:',
-                                            variable=self.mode, value='single', state='disabled',
-                                            command=self.live_preview_callback)
+        self.single_radio = ttk.Radiobutton(self, text='Single file',
+                                            variable=self.mode, value='single',
+                                            state='disabled',
+                                            command=self.mode_chosen)
         self.single_radio.grid(column=0, row=2, sticky='w')
-        self.average_radio = ttk.Radiobutton(self, text='Average by:',
-                                             variable=self.mode, value='average', state='disabled',
-                                             command=self.live_preview_callback)
-        self.average_radio.grid(column=0, row=4, sticky='w')
+        self.average_radio = ttk.Radiobutton(self, text='Average by energy',
+                                             variable=self.mode,
+                                             value='average', state='disabled',
+                                             command=self.mode_chosen)
+        self.average_radio.grid(column=0, row=3, sticky='w')
         self.stack_radio = ttk.Radiobutton(self, text='Stack by overview',
-                                           variable=self.mode, value='stack', state='disabled',
-                                           command=self.live_preview_callback)
-        self.stack_radio.grid(column=0, row=6, sticky='w')
+                                           variable=self.mode, value='stack',
+                                           state='disabled',
+                                           command=self.mode_chosen)
+        self.stack_radio.grid(column=0, row=4, sticky='w')
 
         self.single = tk.StringVar()
         self.single.set('Choose conformer...')
-        self.single_box = ttk.Combobox(self, textvariable=self.single, state='disabled')
-        self.single_box.bind('<<ComboboxSelected>>',
-                             lambda event: self.live_preview_callback(event, mode='single'))
-        self.single_box.grid(column=0, row=3)
+        self.single_box = ttk.Combobox(self, textvariable=self.single,
+                                       state='disabled')
+        self.single_box.bind(
+            '<<ComboboxSelected>>',
+            lambda event: self.live_preview_callback(event, mode='single')
+        )
+        # self.single_box.grid(column=0, row=3)
         self.single_box['values'] = ()
         self.average = tk.StringVar()
         self.average.set('Choose energy...')
-        self.average_box = ttk.Combobox(self, textvariable=self.average, state='disabled')
-        self.average_box.bind('<<ComboboxSelected>>',
-                              lambda event: self.live_preview_callback(event, mode='average'))
-        self.average_box.grid(column=0, row=5)
+        self.average_box = ttk.Combobox(self, textvariable=self.average,
+                                        state='disabled')
+        self.average_box.bind(
+            '<<ComboboxSelected>>',
+            lambda event: self.live_preview_callback(event, mode='average')
+        )
+        # self.average_box.grid(column=0, row=5)
         average_names = 'Thermal Enthalpy Gibbs SCF Zero-Point'.split(' ')
         self.average_box['values'] = average_names
         average_keys = 'ten ent gib scf zpe'.split(' ')
         self.average_ref = {k: v for k, v in zip(average_names, average_keys)}
         self.stack = tk.StringVar()
         self.stack.set('Choose colour...')
-        self.stack_box = ttk.Combobox(self, textvariable=self.stack, state='disabled')
+        self.stack_box = ttk.Combobox(self, textvariable=self.stack,
+                                      state='disabled')
         self.stack_box.bind('<<ComboboxSelected>>', self.change_colour)
-        self.stack_box.grid(column=0, row=7)
+        # self.stack_box.grid(column=0, row=7)
         self.stack_box['values'] = ('Blues Reds Greens spring summer autumn '
                                     'winter copper ocean rainbow '
                                     'nipy_spectral gist_ncar'.split(' '))
         guicom.WgtStateChanger.bars.extend([self.single_radio, self.single_box])
-        guicom.WgtStateChanger.both.extend([self.average_radio, self.average_box,
-                                            self.stack_radio, self.stack_box])
+        guicom.WgtStateChanger.both.extend(
+            [self.average_radio, self.average_box,
+             self.stack_radio, self.stack_box])
+        self.boxes = dict(single=self.single_box, average=self.average_box,
+                          stack=self.stack_box)
+        self.current_box = None
 
         # Live preview
         # Recalculate
         frame = ttk.Frame(self)
         frame.grid(column=0, row=8, sticky='n')
         var = tk.BooleanVar()
+        var.set(True)
+        self.show_bars = ttk.Checkbutton(frame, variable=var, text='Show bars',
+                                         state='disabled',
+                                         command=self.live_preview_callback)
+        self.show_bars.grid(column=0, row=0, sticky='w')
+        self.show_bars.var = var
+        self.show_bars.previous_value = True
+        var = tk.BooleanVar()
         var.set(False)
-        self.live_prev = ttk.Checkbutton(frame, variable=var, text='Live preview',
-                                         state='disabled')
-        self.live_prev.grid(column=0, row=0)
+        self.show_exp = ttk.Checkbutton(frame, variable=var,
+                                        text='Experimental', state='disabled',
+                                        command=self.live_preview_callback)
+        self.show_exp.grid(column=0, row=1, sticky='w')
+        self.show_exp.var = var
+        self.load_exp = ttk.Button(
+            frame, text='Load...', state='disabled',
+            command=lambda: (
+                self.load_exp_command(), self.live_preview_callback()
+            )
+        )
+        self.load_exp.grid(column=1, row=1)
+        var = tk.BooleanVar()
+        var.set(False)
+        self.live_prev = ttk.Checkbutton(frame, variable=var,
+                                         text='Live preview', state='disabled')
+        self.live_prev.grid(column=0, row=2, sticky='w')
         self.live_prev.var = var
         # previously labeled 'Recalculate'
         self.recalc_b = ttk.Button(frame, text='Redraw', state='disabled',
                                    command=self.recalculate_command)
-        self.recalc_b.grid(column=1, row=0)
+        self.recalc_b.grid(column=1, row=2)
         guicom.WgtStateChanger.bars.extend([self.live_prev, self.recalc_b])
 
         # Spectrum
@@ -150,17 +191,56 @@ class Spectra(ttk.Frame):
         self.canvas = FigureCanvasTkAgg(self.figure, master=spectra_view)
         self.canvas.show()
         self.canvas.get_tk_widget().grid(column=0, row=0, sticky='nwse')
-        self.ax = None
+        self.tslr_ax = None
+        self.bars_ax = None
+        self.exp_ax = None
         self.last_used_settings = {}
-        # self.axes = []
+        self._exp_spc = {k: None for k in self.s_name_radio.keys()}
 
         # TO DO:
         # add save/save img buttons
 
-    def spectra_choosen(self, value):
+    @property
+    def exp_spc(self):
+        return self._exp_spc[self.s_name.get()]
+
+    @exp_spc.setter
+    def exp_spc(self, value):
+        self._exp_spc[self.s_name.get()] = value
+
+    def load_exp_command(self):
+        # TO DO: implement this
+        # TO DO: implement appropriate function in tesliper
+        if self.exp_spc and self.exp_spc[1][0] == 300:
+            self.exp_spc = [[1000, 1200, 1400, 1600, 1800, 2000, 2200],
+                            [3, -5, 8, 4, -6, -1, 5]]
+        else:
+            self.exp_spc = [[1000, 1200, 1400, 1600, 1800, 2000, 2200],
+                            [300, 280, 370, 320, 210, 240, 110]]
+
+    def mode_chosen(self, event=None):
+        mode = self.mode.get()
+        if self.current_box is not None:
+            self.current_box.grid_forget()
+        self.current_box = self.boxes[mode]
+        self.current_box.grid(column=0, row=5)
+        if mode == 'single':
+            self.show_bars.config(state='normal')
+            self.show_bars.var.set(self.show_bars.previous_value)
+        else:
+            self.show_bars.config(state='disabled')
+            self.show_bars.previous_value = self.show_bars.var.get()
+            self.show_bars.var.set(False)
+        self.live_preview_callback()
+
+    def spectra_chosen(self, event=None):
         tslr = self.parent.tslr
         self.visualize_settings()
-        self.single_box['values'] = list(tslr.molecules.keys())
+        bar = tesliper.gw.default_spectra_bars[self.s_name.get()]
+        self.single_box['values'] = [k for k, v in tslr.molecules.items()
+                                     if bar in v]
+        self.load_exp.config(state='normal')
+        self.show_exp.config(state='normal')
         if self.mode.get():
             self.live_preview_callback()
         else:
@@ -173,98 +253,215 @@ class Spectra(ttk.Frame):
         try:
             settings = self.last_used_settings[spectra_name]
         except KeyError:
-            settings = tslr.parameters[spectra_type]
-        for name in 'start stop step width'.split(' '):
-            entry = getattr(self, name)
-            entry.var.set(settings[name])
-            entry.unit.set(tslr.units[spectra_type][name])
-        try:
-            self.fitting.var.set(settings['fitting'].__name__)
-        except AttributeError:
-            self.fitting.var.set(settings['fitting'])
+            settings = tslr.parameters[spectra_type].copy()
+            settings['offset'] = 0
+            settings['scaling'] = 1
+        for name, sett in settings.items():
+            if name == 'fitting':
+                try:
+                    self.fitting.var.set(settings['fitting'].__name__)
+                except AttributeError:
+                    self.fitting.var.set(settings['fitting'])
+            else:
+                entry = getattr(self, name)
+                entry.var.set(sett)
+                try:
+                    entry.unit.set(
+                        tesliper.gw.Spectra._units[spectra_name][name])
+                except KeyError:
+                    if name == 'offset':
+                        entry.unit.set(
+                            tesliper.gw.Spectra._units[spectra_name]['start'])
+                    elif name == 'scaling':
+                        pass
+                    else:
+                        raise ValueError(f'Invalid setting name: {name}')
 
     def live_preview_callback(self, event=None, mode=False):
+        # TO DO: separate things, that don't need recalculation
         spectra_name = self.s_name.get()
         mode_con = self.mode.get() == mode if mode else True
         settings_con = spectra_name not in self.last_used_settings or \
-                       self.current_settings != self.last_used_settings[spectra_name]
-        core = any([not self.ax, mode_con, settings_con])
+            self.current_settings != self.last_used_settings[spectra_name]
+        core = any([not self.tslr_ax, mode_con, settings_con])
         if all([core, self.live_prev.var.get(), self.mode.get()]):
             # self.mode.get() unnecessary because included in mode_con?
             self.recalculate_command()
 
     def new_plot(self):
-        if self.ax: self.figure.delaxes(self.ax)
-        self.ax = self.figure.add_subplot(111)
+        if self.tslr_ax:
+            self.figure.delaxes(self.tslr_ax)
+            self.tslr_ax = None
+        if self.bars_ax:
+            self.figure.delaxes(self.bars_ax)
+            self.bars_ax = None
+        if self.exp_ax:
+            self.figure.delaxes(self.exp_ax)
+            self.exp_ax = None
 
-    def show_spectra(self, x, y, colour=None, width=0.5, stack=False):
+    def align_axes(self, axes, values):
+        """Align zeros of the axes, zooming them out by same ratio"""
+        # based on https://stackoverflow.com/a/46901839
+        if not len(values) == len(axes):
+            raise ValueError(
+                f"Number of values ({len(values)}) different than number of"
+                f"axes ({len(axes)})."
+            )
+        extrema = [[min(v), max(v)] for v in values]
+        # upper and lower limits
+        lowers, uppers = zip(*extrema)
+        all_positive = min(lowers) > 0
+        all_negative = max(uppers) < 0
+        # reset for divide by zero issues
+        lowers = [1 if math.isclose(l, 0.0) else l for l in lowers]
+        uppers = [-1 if math.isclose(u, 0.0) else u for u in uppers]
+        # pick "most centered" axis
+        res = [abs(u + l) for l, u in zip(lowers, uppers)]
+        min_index = res.index(min(res))
+        # scale positive or negative part
+        multiplier1 = -abs(uppers[min_index] / lowers[min_index])
+        multiplier2 = -abs(lowers[min_index] / uppers[min_index])
+        lower_lims, upper_lims = [], []
+        for i, (low, up) in enumerate(extrema):
+            # scale positive or negative part based on which induces valid
+            if i != min_index:
+                lower_change = up * multiplier2
+                upper_change = low * multiplier1
+                if upper_change < up:
+                    lower_lims.append(lower_change)
+                    upper_lims.append(up)
+                else:
+                    lower_lims.append(low)
+                    upper_lims.append(upper_change)
+            else:
+                lower_lims.append(low)
+                upper_lims.append(up)
+        # bump by 10% for a margin
+        if all_positive:
+            lower_lims = [0 for _ in range(len(lower_lims))]
+        if all_negative:
+            upper_lims = [0 for _ in range(len(upper_lims))]
+        diff = [abs(u - l) for l, u in zip(lower_lims, upper_lims)]
+        margin = [x * .05 for x in diff]
+        lower_lims = [lim - m for lim, m in zip(lower_lims, margin)]
+        upper_lims = [lim + m for lim, m in zip(upper_lims, margin)]
+        # set axes limits
+        [ax.set_ylim(low, up) for ax, low, up in
+         zip(axes, lower_lims, upper_lims)]
+
+    def show_spectra(self, spc, bars=None, colour=None, width=0.5,
+                     stack=False):
+        spc.offset = float(self.offset.var.get())
+        spc.scaling = float(self.scaling.var.get())
         self.new_plot()
+        self.tslr_ax = tslr_ax = self.figure.add_subplot(111)
+        tslr_ax.set_xlabel(spc.units['x'])
+        tslr_ax.set_ylabel(spc.units['y'])
+        tslr_ax.axhline(color='lightgray', lw=width)
         if stack:
             col = cm.get_cmap(colour)
-            no = len(y)
-            for num, y_ in enumerate(y):
-                self.ax.plot(x, y_, lw=width, color=col(num / no))
+            no = len(spc.y)
+            x = spc.x
+            for num, y_ in enumerate(spc.y):
+                tslr_ax.plot(x, y_, lw=width, color=col(num / no))
         else:
-            self.ax.plot(x, y, lw=width)
+            tslr_ax.plot(spc.x, spc.y, lw=width, color='k')
+            values = [spc.y]
+            axes = [tslr_ax]
+            if self.show_bars.var.get() and bars is not None:
+                self.bars_ax = bars_ax = tslr_ax.twinx()
+                freqs = bars.frequencies[0] + spc.offset
+                # show only bars within range requested in calculations
+                blade = (freqs >= min(spc.x)) & (freqs <= max(spc.x))
+                markerline, stemlines, baseline = bars_ax.stem(
+                    freqs[blade], bars.values[0][blade], linefmt='b-',
+                    markerfmt=' ', basefmt=' '
+                )
+                for line in stemlines:
+                    line.set_linewidth(width)
+                bars_ax.set_ylabel(bars.units)
+                bars_ax.tick_params(axis='y', colors='b')
+                values.append(bars.values[0])
+                axes.append(bars_ax)
+            if self.show_exp.var.get() and self.exp_spc is not None:
+                maxes = [max(self.exp_spc[1]), max(spc.y)]
+                if min(maxes) / max(maxes) > 0.4:
+                    # if both will fit fine in one plot
+                    tslr_ax.plot(*self.exp_spc, lw=width, color='r')
+                    values[0] = maxes + [min(self.exp_spc[1]), min(spc.y)]
+                else:
+                    self.exp_ax = exp_ax = tslr_ax.twinx()
+                    exp_ax.plot(*self.exp_spc, lw=width, color='r')
+                    exp_ax.spines["left"].set_position(("axes", -0.1))
+                    exp_ax.spines["left"].set_visible(True)
+                    exp_ax.yaxis.set_ticks_position('left')
+                    exp_ax.tick_params(axis='y', colors='r')
+                    tslr_ax.yaxis.set_label_coords(-0.17, 0.5)
+                    # tslr_ax.tick_params(axis='y', colors='navy')
+                    values.append(self.exp_spc[1])
+                    axes.append(exp_ax)
+            self.align_axes(axes, values)
         spectra_name = self.s_name.get()
         if spectra_name in ('uv', 'ecd'):
-            self.ax.invert_xaxis()
+            tslr_ax.invert_xaxis()
         self.figure.tight_layout()
         self.canvas.show()
-        # map(self.figure.delaxes, self.axes)
-        # self.axes = []
-        # for num, spc in enumerate(spectra):
-        # ax = self.figure.add_subplot(len(spectra), 1, num)
-        # self.axes.append(ax)
-        # ax.plot(spc.abscissa)
 
     def average_draw(self, spectra_name, option):
         # TO DO: ensure same conformers are taken into account
         tslr = self.parent.tslr
         en_name = self.average_ref[option]
-        tslr.calculate_spectra(spectra_name, **self.current_settings)
+        tslr.calculate_spectra(spectra_name, **self.calculation_params)
         spc = tslr.get_averaged_spectrum(spectra_name, en_name)
-        self.show_spectra(*spc)
-        self.canvas.show()
+        self.show_spectra(spc)
 
     def single_draw(self, spectra_name, option):
         tslr = self.parent.tslr
         spc = tslr.calculate_single_spectrum(
             spectra_name=spectra_name, conformer=option,
-            **self.current_settings
+            **self.calculation_params
         )
-        self.show_spectra(*spc)
+        bar_name = tesliper.gw.default_spectra_bars[spectra_name]
+        with self.parent.tslr.molecules.trimmed_to([option]):
+            bars = self.parent.tslr[bar_name]
+        self.show_spectra(spc, bars=bars)
 
     def stack_draw(self, spectra_name, option):
         # TO DO: color of line depending on population
         tslr = self.parent.tslr
-        bar_name = tesliper.dw.default_spectra_bars[spectra_name]
-        bar = tslr.bars[bar_name]
-        # dummy = self.parent.conf_tab._dummy
-        # bar.trimmer.match(dummy)
-        tslr.calculate_spectra(spectra_name, **self.current_settings)
+        tslr.calculate_spectra(spectra_name, **self.calculation_params)
         spc = tslr.spectra[spectra_name]
-        if self.ax: self.figure.delaxes(self.ax)
-        self.ax = self.figure.add_subplot(111)
-        self.show_spectra(spc.abscissa, spc.values, colour=option, stack=True)
+        if self.tslr_ax:
+            self.figure.delaxes(self.tslr_ax)
+        self.tslr_ax = self.figure.add_subplot(111)
+        self.show_spectra(spc, colour=option, stack=True)
 
     def change_colour(self, event=None):
-        if not self.ax: return
-        if self.mode.get() != 'stack': return
+        # TO DO: make it color graph same way as show_spectra() does
+        if not self.tslr_ax or self.mode.get() != 'stack':
+            return
         colour = self.stack.get()
         col = cm.get_cmap(colour)
-        lines = self.ax.get_lines()
+        lines = self.tslr_ax.get_lines()
         no = len(lines)
         for num, line in enumerate(lines):
             line.set_color(col(num / no))
-        self.canvas.draw()
+        self.tslr_ax.axhline(color='lightgray', lw=0.5)
+        self.canvas.show()
+
+    @property
+    def calculation_params(self):
+        d = {k: v for k, v in self.current_settings.items()
+             if k in 'start stop step width fitting'.split(' ')}
+        return d
 
     @property
     def current_settings(self):
         try:
-            settings = {key: float(getattr(self, key).get())
-                        for key in ('start stop step width'.split(' '))
-                        }
+            settings = {
+                key: float(getattr(self, key).get())
+                for key in 'start stop step width offset scaling'.split(' ')
+            }
             fit = self.fitting.get()
             settings['fitting'] = getattr(tesliper.dw, fit)
         except ValueError:
