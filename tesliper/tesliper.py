@@ -76,10 +76,10 @@ class Tesliper:
             List filenames representing wanted files.
         """
         self.molecules = gw.Molecules()
-        self.soxhlet = None
-        self.wanted_files = wanted_files
+        self.soxhlet = None if input_dir is not None else ex.Soxhlet()
         self.input_dir = input_dir
         self.output_dir = output_dir
+        self.wanted_files = wanted_files
         self.spectra = dict()
         self.writer = wr.Writer(self)
         self.parameters = self.standard_parameters
@@ -114,9 +114,8 @@ class Tesliper:
     @wanted_files.setter
     def wanted_files(self, wanted_files):
         self.__wanted_files = wanted_files
-        if self.soxhlet is not None:
-            self.soxhlet.wanted_files = wanted_files
-            logger.info("New list of wanted_files established.")
+        self.soxhlet.wanted_files = wanted_files
+        logger.info("New list of wanted_files established.")
 
     @property
     def standard_parameters(self):

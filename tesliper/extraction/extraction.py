@@ -8,6 +8,7 @@ import logging as lgg
 
 from collections import defaultdict
 from . import gaussian_parser
+from . import spectra_parser
 
 #################
 ###   TO DO   ###
@@ -48,7 +49,7 @@ class Soxhlet:
     correct load_bars, load_popul, load_spectrs, load_settings, from_dict methods
     """
 
-    def __init__(self, path, wanted_files=None, ext=None):
+    def __init__(self, path=None, wanted_files=None, extension=None):
         """Initialization of Soxhlet object.
         
         Parameters
@@ -69,28 +70,28 @@ class Soxhlet:
         FileNotFoundError
             If path passed as argument to constructor doesn't exist.
         """
-        if not os.path.isdir(path):
-            raise FileNotFoundError("Path not found: {}".format(path))
         self.path = path
         self.files = os.listdir(path)
         self.wanted_files = wanted_files
-        self.ext = ext if ext is not None else self.log_or_out()
+        self.extension = extension
         self.parser = gaussian_parser
+        self.spectra_parser = spectra_parser.SpectraParser()
 
-    # @property
-    # def wanted_files(self):
-    #     return self._wanted_files
-    #
-    # @wanted_files.setter
-    # def wanted_files(self, files):
-    #     if files:
-    #         wanted_files = tuple(map(
-    #             lambda f: '.'.join(f.split('.')[:-1]) if '.' in f else f, files
-    #             ))
-    #     else:
-    #         wanted_files = tuple()
-    #     self._wanted_files = wanted_files
-    #     return wanted_files
+    @property
+    def path(self):
+        return self._path
+
+    @path.setter
+    def path(self, value):
+        if value is None:
+            self._path = os.getcwd()
+        elif not os.path.isdir(value):
+            raise FileNotFoundError(f"Path not found: {value}")
+        elif hasattr(self, '_foo'):
+            self._path = value
+            self.files = os.listdir(value)
+        else:
+            self._path = value
 
     @property
     def output_files(self):
@@ -98,7 +99,8 @@ class Soxhlet:
         list associated with Soxhlet instance.
         """
         try:
-            ext = self.ext
+            ext = self.extension
+            ext = ext if ext is not None else self.guess_extension()
             gf = sorted(self.filter_files(ext))
         except ValueError:
             gf = None
@@ -134,18 +136,18 @@ class Soxhlet:
         list
             List of filtered filenames as strings.
         """
-        ext = ext if ext is not None else self.ext
+        ext = ext if ext is not None else self.extension
         files = self.wanted_files if self.wanted_files else self.files
         filtered = [f for f in files if f.endswith(ext)]
         return filtered
 
-    def log_or_out(self):
-        """Checks list of file extentions in list of file names.
+    def guess_extension(self):
+        """Checks list of file extensions in list of file names.
         
         Function checks for .log and .out files in passed list of file names.
         If both are present, it raises TypeError exception.
         If either is present, it raises ValueError exception.
-        It returns string representing file extention present in files list.
+        It returns string representing file extension present in files list.
 
         Returns
         -------
@@ -162,7 +164,7 @@ class Soxhlet:
             
         TO DO
         -----
-        correct this to take in consideration wanted_files
+        add support for other extensions when new parsers implemented
         """
         files = self.wanted_files if self.wanted_files else self.files
         logs, outs = (any(f.endswith(ext) for f in files)
@@ -178,13 +180,12 @@ class Soxhlet:
         """Extracts data from gaussian files associated with Soxhlet instance.
         Implemented as generator.
                 
-        Returns
-        -------
+        Yields
+        ------
         tuple
             Two item tuple with name of parsed file as first and  extracted
             data as second item, for each file associated with Soxhlet instance.
         """
-        # logger.warning('Will be extracting, bruh!')
         for num, file in enumerate(self.output_files):
             with open(os.path.join(self.path, file)) as handle:
                 cont = handle.read()
@@ -291,6 +292,15 @@ class Soxhlet:
         f.close()
         return sett
 
-    def load_spectra(self):
-        # TO DO: do it
-        pass
+    def load_spectrum(self, filename):
+        # TO DO: add support for .spc and .csv files
+        # TO DO: add docstring
+        appended = os.path.join(self.path, filename)
+        if os.path.isfile(appended):
+            path = appended
+        elif os.path.isfile(filename):
+            path = filename
+        else:
+            raise FileNotFoundError(f"Cannot find such file: '{filename}'.")
+        spectrum = self.spectra_parser.parse(path)
+        return spectrum

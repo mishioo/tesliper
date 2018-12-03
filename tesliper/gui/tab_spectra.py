@@ -6,6 +6,8 @@ import math
 import logging as lgg
 import tkinter as tk
 import tkinter.ttk as ttk
+from tkinter.filedialog import askopenfilename
+from tkinter import messagebox
 
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
@@ -209,14 +211,24 @@ class Spectra(ttk.Frame):
         self._exp_spc[self.s_name.get()] = value
 
     def load_exp_command(self):
-        # TO DO: implement this
-        # TO DO: implement appropriate function in tesliper
-        if self.exp_spc and self.exp_spc[1][0] == 300:
-            self.exp_spc = [[1000, 1200, 1400, 1600, 1800, 2000, 2200],
-                            [3, -5, 8, 4, -6, -1, 5]]
+        filename = askopenfilename(parent=self, title='Select spectrum file.',
+                                   filetypes=[("text files", "*.txt"),
+                                              ("xy files", "*.xy"),
+                                              # ("spc files", "*.spc"),
+                                              # spc not supported yet
+                                              ("all files", "*.*")])
+        if filename:
+            try:
+                spc = self.parent.tslr.soxhlet.load_spectrum(filename)
+            except ValueError:
+                messagebox.showwarning(
+                    'Sorry!', "Experimental spectrum couldn't be loaded. "
+                              "Please check if format of your file is supported"
+                              " or if file is not corrupted."
+                )
+            self.exp_spc = spc
         else:
-            self.exp_spc = [[1000, 1200, 1400, 1600, 1800, 2000, 2200],
-                            [300, 280, 370, 320, 210, 240, 110]]
+            return
 
     def mode_chosen(self, event=None):
         mode = self.mode.get()
@@ -279,6 +291,7 @@ class Spectra(ttk.Frame):
 
     def live_preview_callback(self, event=None, mode=False):
         # TO DO: separate things, that don't need recalculation
+        # TO DO: show/hide bars/experimental plots when checkbox clicked
         spectra_name = self.s_name.get()
         mode_con = self.mode.get() == mode if mode else True
         settings_con = spectra_name not in self.last_used_settings or \
