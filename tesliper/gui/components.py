@@ -414,7 +414,7 @@ class ExtractPopup(Popup):
     def create_soxhlet(self, path, wanted_files=None):
         soxhlet = tesliper.Soxhlet(path, wanted_files)
         try:
-            ext = soxhlet.log_or_out()
+            ext = soxhlet.guess_extension()
         except ValueError:
             messagebox.showerror(
                 "Mixed output files!",

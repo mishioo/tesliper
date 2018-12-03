@@ -269,6 +269,7 @@ class Loader(ttk.Frame):
         return True
 
     def from_dir(self):
+        # TO DO: add messagebox when output files not found
         work_dir = askdirectory()
         if not work_dir:
             return
