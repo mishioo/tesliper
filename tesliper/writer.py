@@ -1,45 +1,17 @@
-###################
-###   IMPORTS   ###
-###################
-
 import csv
 import numpy as np
 import logging as lgg
 import os
 import openpyxl as oxl
-from collections import defaultdict
+from itertools import zip_longest
 
-##################
-###   LOGGER   ###
-##################
-
+# LOGGER
 logger = lgg.getLogger(__name__)
 logger.setLevel(lgg.DEBUG)
 
 
-###################
-###   CLASSES   ###
-###################
-
+# CLASSES
 class Writer:
-
-    def __init__(self, tesliper):
-        self.ts = tesliper
-        self.path = os.getcwd()
-
-    @property
-    def path(self):
-        return self.__path
-
-    @path.setter
-    def path(self, value):
-        if not os.path.isdir(value):
-            raise FileNotFoundError(
-                f'Path {value} does not exists or is not a directory.'
-            )
-        else:
-            self.__path = value
-
 
     @property
     def distribution_center(self):
@@ -78,27 +50,27 @@ class Writer:
 
     __header = dict(
         freq='Frequencies',
-        mass=r'Red. masses',
-        frc=r'Frc consts',
-        raman=r'Raman Activ',
+        mass='Red. masses',
+        frc='Frc consts',
+        raman='Raman Activ',
         depolarp=r'Depolar \(P\)',
         depolaru=r'Depolar \(U\)',
-        ramact=r'RamAct',
-        depp=r'Dep-P',
-        depu=r'Dep-U',
-        alpha2=r'Alpha2',
-        beta2=r'Beta2',
-        alphag=r'AlphaG',
-        gamma2=r'Gamma2',
-        delta2=r'Delta2',
-        cid1=r'CID1',
-        raman2=r'Raman2',
-        roa2=r'ROA2',
-        cid2=r'CID2',
-        raman3=r'Raman3',
-        roa3=r'ROA3',
-        cid3=r'CID3',
-        rc180=r'RC180',
+        ramact='RamAct',
+        depp='Dep-P',
+        depu='Dep-U',
+        alpha2='Alpha2',
+        beta2='Beta2',
+        alphag='AlphaG',
+        gamma2='Gamma2',
+        delta2='Delta2',
+        cid1='CID1',
+        raman2='Raman2',
+        roa2='ROA2',
+        cid2='CID2',
+        raman3='Raman3',
+        roa3='ROA3',
+        cid3='CID3',
+        rc180='RC180',
         rot='Rot. Str.',
         dip='Dip. Str.',
         roa1='ROA1',
@@ -139,52 +111,52 @@ class Writer:
         ex_en='{:> 13.4f}',
         freq='{:> 10.2f}',
         wave='{:> 10.2f}',
-        mass=r'{:> 11.4f}',
-        frc=r'{:> 10.4f}',
-        raman=r'{:> 11.4f}',
-        depolarp=r'{:> 11.4f}',
-        depolaru=r'{:> 11.4f}',
-        ramact=r'{:> 10.4f}',
-        depp=r'{:> 9.4f}',
-        depu=r'{:> 9.4f}',
-        alpha2=r'{:> 9.4f}',
-        beta2=r'{:> 9.4f}',
-        alphag=r'{:> 9.4f}',
-        gamma2=r'{:> 9.4f}',
-        delta2=r'{:> 9.4f}',
-        cid1=r'{:> 8.3f}',
-        raman2=r'{:> 8.3f}',
-        roa2=r'{:> 8.3f}',
-        cid2=r'{:> 8.3f}',
-        raman3=r'{:> 8.3f}',
-        roa3=r'{:> 8.3f}',
-        cid3=r'{:> 8.3f}',
-        rc180=r'{:> 8.3f}',
+        mass='{:> 11.4f}',
+        frc='{:> 10.4f}',
+        raman='{:> 11.4f}',
+        depolarp='{:> 11.4f}',
+        depolaru='{:> 11.4f}',
+        ramact='{:> 10.4f}',
+        depp='{:> 9.4f}',
+        depu='{:> 9.4f}',
+        alpha2='{:> 9.4f}',
+        beta2='{:> 9.4f}',
+        alphag='{:> 9.4f}',
+        gamma2='{:> 9.4f}',
+        delta2='{:> 9.4f}',
+        cid1='{:> 8.3f}',
+        raman2='{:> 8.3f}',
+        roa2='{:> 8.3f}',
+        cid2='{:> 8.3f}',
+        raman3='{:> 8.3f}',
+        roa3='{:> 8.3f}',
+        cid3='{:> 8.3f}',
+        rc180='{:> 8.3f}',
     )
 
     __excel_formats = dict(
         freq='0.0000',
-        mass=r'0.0000',
-        frc=r'0.0000',
-        raman=r'0.0000',
-        depolarp=r'0.0000',
-        depolaru=r'0.0000',
-        ramact=r'0.0000',
-        depp=r'0.0000',
-        depu=r'0.0000',
-        alpha2=r'0.0000',
-        beta2=r'0.0000',
-        alphag=r'0.0000',
-        gamma2=r'0.0000',
-        delta2=r'0.0000',
-        cid1=r'0.000',
-        raman2=r'0.000',
-        roa2=r'0.000',
-        cid2=r'0.000',
-        raman3=r'0.000',
-        roa3=r'0.000',
-        cid3=r'0.000',
-        rc180=r'0.000',
+        mass='0.0000',
+        frc='0.0000',
+        raman='0.0000',
+        depolarp='0.0000',
+        depolaru='0.0000',
+        ramact='0.0000',
+        depp='0.0000',
+        depu='0.0000',
+        alpha2='0.0000',
+        beta2='0.0000',
+        alphag='0.0000',
+        gamma2='0.0000',
+        delta2='0.0000',
+        cid1='0.000',
+        raman2='0.000',
+        roa2='0.000',
+        cid2='0.000',
+        raman3='0.000',
+        roa3='0.000',
+        cid3='0.000',
+        rc180='0.000',
         rot='0.0000',
         dip='0.0000',
         roa1='0.000',
@@ -207,149 +179,170 @@ class Writer:
 
     energies_order = 'zpe ten ent gib scf'.split(' ')
 
-    def energies_txt(self):
-        self._energies_txt_collectively()
-        self._energies_txt_separately()
+    # TO DO: implement this functionality in Tesliper object
+    # def energies_txt(self, energies, frequencies=None, stoichiometry=None,
+    #                  corrections=None):
+    #     self.write_energies_overview_txt(energies, frequencies=frequencies,
+    #                                      stoichiometry=stoichiometry)
+    #     corrections = {c.genre[:3]: c for c in corrections} \
+    #         if corrections is not None else []
+    #     for ens in energies:
+    #         self.write_energies_txt(ens, corrections=corr)
 
-    def _energies_txt_separately(self):
-        h = ' | '.join(['Population/%', 'Min.B.Factor',
-                        'DE/(kcal/mol)', 'Energy/Hartree'])
+    def energies_txt(self, file, energies, corrections=None):
+        max_fnm = max(np.vectorize(len)(energies.filenames).max(), 20)
+        # file_path = os.path.join(self.path,
+        #                          f'distribution.{energies.genre}.txt')
+        header = [f"{'Gaussian output file':<{max_fnm}}"]
+        header += ['Population/%', 'Min.B.Factor', 'DE/(kcal/mol)',
+                   'Energy/Hartree']
+        header += ['Corr/Hartree'] if corrections is not None else []
+        header = ' | '.join(header)
         align = ('<', '>', '>', '>', '>', '>')
-        for key, en in self.ts.energies.items():
-            max_fnm = max(np.vectorize(len)(en.filenames).max(), 20)
-            file_path = os.path.join(self.path, f'distribution.{key}.txt')
-            header = '{:<{w}} | '.format('Gaussian output file', w=max_fnm) + h
-            width = (max_fnm, 12, 12, 13, 14, 12)
-            if key != 'scf':
-                header = header + ' | Corr/Hartree'
-                corrections = self.ts.molecules.arrayed(f'{key}corr')
-                rows = zip(en.filenames, en.populations * 100, en.min_factors,
-                           en.deltas, en.values, corrections.values)
-                fmt = ('', '.4f', '.4f', '.4f', '.6f', 'f')
-            else:
-                rows = zip(en.filenames, en.populations * 100, en.min_factors,
-                           en.deltas, en.values)
-                fmt = ('', '.4f', '.4f', '.4f', '.8f', 'f')
-            with open(file_path, 'w') as file:
-                file.write(header + '\n')
-                file.write('-' * len(header) + '\n')
-                for row in rows:
-                    new_row = [
-                        '{:{a}{w}{f}}'.format(v, a=a, w=w, f=f)
-                        for v, a, w, f in zip(row, align, width, fmt)
-                    ]
-                    file.write(' | '.join(new_row) + '\n')
+        width = (max_fnm, 12, 12, 13, 14, 12)
+        corrections = corrections.values if corrections is not None else []
+        fmt = ('', '.4f', '.4f', '.4f',
+               '.8f' if energies.genre == 'scf' else '.6f', 'f')
+        rows = zip_longest(energies.filenames, energies.populations * 100,
+                           energies.min_factors, energies.deltas,
+                           energies.values, corrections, fillvalue=None)
+        with open(file, 'w') as file_:
+            file_.write(header + '\n')
+            file_.write('-' * len(header) + '\n')
+            for row in rows:
+                new_row = [f'{v:{a}{w}{f}}'
+                           for v, a, w, f in zip(row, align, width, fmt)
+                           if v is not None]
+                file_.write(' | '.join(new_row) + '\n')
         logger.info('Energies separate export to text files done.')
 
-    def _energies_txt_collectively(self):
-        data = self.ts.energies
-        ens = [data[en] for en in self.energies_order]
-        # get them sorted
-        filenames = ens[0].filenames
-        with self.ts.molecules.trimmed_to(filenames) as mols:
-            imaginary = mols.arrayed('iri').imaginary
-            stoichiometry = mols.arrayed('stoichiometry').values
+    def energies_overview_txt(self, file, energies, frequencies=None,
+                                    stoichiometry=None):
+        filenames = energies[0].filenames
+        imaginary = [] if frequencies is None else frequencies.imaginary
+        stoichiometry = [] if stoichiometry is None else stoichiometry.values
         max_fnm = max(np.vectorize(len)(filenames).max(), 20)
-        max_stoich = max(np.vectorize(len)(stoichiometry).max(), 13)
-        values = np.array([en.values for en in ens]).T
+        try:
+            max_stoich = max(np.vectorize(len)(stoichiometry).max(), 13)
+        except ValueError:
+            max_stoich = 0
+        values = np.array([en.values for en in energies]).T
         # deltas = np.array([en.deltas for en in ens])
-        popul = np.array([en.populations * 100 for en in ens]).T
-        header = '{:<{lgst}} | {:^50} | {:^70} | Imag | {:<{stoich}}'.format(
-            'Gaussian output file', 'Population / %', 'Energy / Hartree',
-            'Stoichiometry', lgst=max_fnm, stoich=max_stoich)
-        names = [self.__header[en] for en in self.energies_order]
-        fname = 'distribution_overview.txt'
-        with open(os.path.join(self.path, fname), 'w') as file:
-            file.write(header + '\n')
-            names_line = \
-                ' ' * max_fnm + ' | ' + \
-                '  '.join(
-                    ['{:<{w}}'.format(n, w=max(8, len(n))) for n in names]
-                ) + ' | ' + \
-                '  '.join(
-                    ['{:<{w}}'.format(n, w=14 if n == 'SCF' else 12)
-                     for n in names]
-                ) + ' |      |\n'
-            file.write(names_line)
-            file.write('-' * len(header) + '\n')
-            rows = zip(filenames, values, popul, imaginary, stoichiometry)
+        popul = np.array([en.populations * 100 for en in energies]).T
+        _stoich = f" | {'Stoichiometry':<{max_stoich}}"
+        names = [self.__header[en.genre] for en in energies]
+        population_widths = [max(8, len(n)) for n in names]
+        population_subheader = '  '.join(
+            [f'{n:<{w}}' for n, w in zip(names, population_widths)]
+        )
+        energies_widths = [14 if n == 'SCF' else 12 for n in names]
+        energies_subheader = '  '.join(
+            [f'{n:<{w}}' for n, w in zip(names, energies_widths)]
+        )
+        precisions = [8 if n == 'SCF' else 6 for n in names]
+        header = f"{'Gaussian output file':<{max_fnm}} | " \
+                 f"{'Population / %':^{len(population_subheader)}} | " \
+                 f"{'Energy / Hartree':^{len(energies_subheader)}}" \
+                 f"{' | Imag' if frequencies is not None else ''}"\
+                 f"{_stoich if max_stoich else ''}"
+        line_format = f"{{:<{max_fnm}}} | {{}} | {{}}" \
+                      f"{' | {:^ 4}' if frequencies is not None else '{}'}" \
+                      f"{f' | {{:<{max_stoich}}}' if max_stoich else '{}'}\n"
+        # fname = 'distribution_overview.txt'
+        with open(file, 'w') as file_:
+            file_.write(header + '\n')
+            names_line = ' ' * max_fnm + ' | ' + population_subheader + \
+                         ' | ' + energies_subheader + \
+                         (' |     ' if frequencies is not None else '') + \
+                         (' | ' if max_stoich else '') + '\n'
+            file_.write(names_line)
+            file_.write('-' * len(header) + '\n')
+            rows = zip_longest(
+                filenames, values, popul, imaginary, stoichiometry, fillvalue=''
+            )
             for fnm, vals, pops, imag, stoich in rows:
                 p_line = '  '.join(
-                    ['{:>{w}.4f}'.format(p, w=max(8, len(n)))
-                     for p, n in zip(pops, names)]
+                    [f'{p:>{w}.4f}' for p, w in zip(pops, population_widths)]
                 )
                 v_line = '  '.join(
-                    ['{:> {w}.{prec}f}'.format(v, w=14 if n == 'SCF' else 12,
-                                               prec=8 if n == 'SCF' else 6)
-                     for v, n in zip(vals, names)]
+                    [f'{v:> {w}.{p}f}' for v, w, p
+                     in zip(vals, energies_widths, precisions)]
                 )
-                line = '{:<{w}}'.format(fnm, w=max_fnm) + ' | ' + p_line + \
-                       ' | ' + v_line + f' | {imag:^ 4}' + \
-                       ' | {:<{w}}'.format(stoich, w=max_stoich) + '\n'
-                file.write(line)
+                line = line_format.format(fnm, p_line, v_line, imag, stoich)
+                file_.write(line)
         logger.info('Energies collective export to text file done.')
 
-    def energies_xlsx(self):
+    def energies_overview_xlsx(self, file, energies, frequencies=None,
+                      stoichiometry=None, corrections=None):
         wb = oxl.Workbook()
         ws = wb.active
+        ens_no = len(energies)
         ws.title = 'Collective overview'
-        ws['A1'] = 'Gaussian output file'
-        ws['B1'] = 'Populations / %'
-        ws['G1'] = 'Energies / hartree'
-        ws['L1'] = 'Imag'
-        ws['M1'] = 'Stoichiometry'
-        names = [self.__header[name] for name in self.energies_order]
+        headers = ['Gaussian output file', 'Populations / %',
+                   'Energies / hartree']
+        headers += ['Imag'] if frequencies is not None else []
+        headers += ['Stoichiometry'] if stoichiometry is not None else []
+        cells = ['A1', 'B1', f'{chr(66+ens_no)}1', f'{chr(66+2*ens_no)}1',
+                 f'{chr(67+2*ens_no)}1']
+        for header, cell in zip(headers, cells):
+            ws[cell] = header
+        names = [self.__header[en.genre] for en in energies]
         ws.append([''] + names + names)
         ws.merge_cells('A1:A2')
-        ws.merge_cells('B1:F1')
-        ws.merge_cells('G1:K1')
-        ws.merge_cells('L1:L2')
-        ws.merge_cells('M1:M2')
+        ws.merge_cells(f'B1:{chr(65+ens_no)}1')
+        ws.merge_cells(f'{chr(66+ens_no)}1:{chr(65+2*ens_no)}1')
+        if frequencies is not None or stoichiometry is not None:
+            ws.merge_cells(f'{chr(66+2*ens_no)}1:{chr(66+2*ens_no)}2')
+        if frequencies is not None and stoichiometry is not None:
+            ws.merge_cells(f'{chr(67+2*ens_no)}1:{chr(67+2*ens_no)}2')
         ws.freeze_panes = 'A3'
-        data = self.ts.energies
-        filenames = data['gib'].filenames
-        fmts = ['0'] + ['0.00%'] * 5 + ['0.000000'] * 4 + \
-               ['0.00000000', '0', '0']
-        with self.ts.molecules.trimmed_to(filenames) as mols:
-            values = [data[name].values for name in self.energies_order]
-            populs = [data[name].populations for name in self.energies_order]
-            imag = mols.arrayed('iri').imaginary
-            stoich = mols.arrayed('stoichiometry').values
-            rows = zip(filenames, *populs, *values, imag, stoich)
-            for row_num, values in enumerate(rows):
-                for col_num, (fmt, value) in enumerate(zip(fmts, values)):
-                    cell = ws.cell(row=row_num+3, column=col_num+1)
-                    cell.value = value
-                    cell.number_format = fmt
+        # data = self.ts.energies
+        filenames = energies[0].filenames
+        fmts = ['0'] + ['0.00%'] * len(energies) + \
+               ['0.'+'0'*(8 if en.genre == 'scf' else 6) for en in energies] + \
+               ['0', '0']
+        values = [en.values for en in energies]
+        populs = [en.populations for en in energies]
+        imag = frequencies.imaginary if frequencies is not None else []
+        stoich = stoichiometry.values if stoichiometry is not None else []
+        rows = zip_longest(filenames, *populs, *values, imag, stoich)
+        for row_num, values in enumerate(rows):
+            filtered_values = ((f, v) for f, v in zip(fmts, values)
+                               if v is not None)
+            for col_num, (fmt, value) in enumerate(filtered_values):
+                cell = ws.cell(row=row_num+3, column=col_num+1)
+                cell.value = value
+                cell.number_format = fmt
         # set cells width
-        widths = [0] + [10] * 5 + [14] * 4 + [16, 6, 0]
+        widths = [0] + [10] * ens_no + [16] * ens_no
+        widths += [6] if frequencies is not None else []
+        widths += [0] if stoichiometry is not None else []
         for column, width in zip(ws.columns, widths):
             if not width:
                 width = max(len(str(cell.value)) for cell in column) + 2
             ws.column_dimensions[column[0].column].width = width
         # proceed to write detailed info on separate sheet for each energy
-        for key in self.energies_order:
+        corrs = {c.genre[:3]: c for c in corrections} \
+            if corrections is not None else {}
+        for en in energies:
+            genre = en.genre
+            corr = corrs.get(genre, None)
             fmts = ['0', '0.00%'] + ['0.0000'] * 2 + \
-                   ['0.00000000' if key == 'scf' else '0.000000'] * 2
-            ws = wb.create_sheet(title=self.__header[key])
-            en = data[key]
+                   ['0.00000000' if genre == 'scf' else '0.000000'] * 2
+            ws = wb.create_sheet(title=self.__header[genre])
             ws.freeze_panes = 'A2'
-            if key != 'scf':
-                corr = self.ts.molecules.arrayed(f'{key}corr')
-                header = ['Gaussian output file', 'Population / %',
-                          'Min. B. Factor', 'DE / (kcal/mol)',
-                          'Energy / Hartree', 'Correction / Hartree']
-                rows = zip(en.filenames, en.populations, en.min_factors,
-                           en.deltas, en.values, corr.values)
-            else:
-                header = ['Gaussian output file', 'Population / %',
-                          'Min. B. Factor', 'DE / (kcal/mol)',
-                          'Energy / Hartree']
-                rows = zip(en.filenames, en.populations, en.min_factors,
-                           en.deltas, en.values)
+            header = ['Gaussian output file', 'Population / %',
+                      'Min. B. Factor', 'DE / (kcal/mol)',
+                      'Energy / Hartree']
+            header += ['Correction / Hartree'] if corr is not None else []
             ws.append(header)
+            corr = corr.values if corr is not None else []
+            rows = zip_longest(en.filenames, en.populations, en.min_factors,
+                               en.deltas, en.values, corr)
             for row_num, values in enumerate(rows):
-                for col_num, (fmt, value) in enumerate(zip(fmts, values)):
+                filtered_values = ((f, v) for f, v in zip(fmts, values)
+                                   if v is not None)
+                for col_num, (fmt, value) in enumerate(filtered_values):
                     cell = ws.cell(row=row_num+2, column=col_num+1)
                     cell.value = value
                     cell.number_format = fmt
@@ -359,29 +352,27 @@ class Writer:
                 if not width:
                     width = max(len(str(cell.value)) for cell in column) + 2
                 ws.column_dimensions[column[0].column].width = width
-        wb.save(os.path.join(self.path, 'distribution.xlsx'))
+        wb.save(file)
         logger.info('Energies export to xlsx files done.')
 
-    def energies_csv(self):
-        header = 'population min_factor delta energy'.split(' ')
-        header = ['Gaussian output file'] + header
-        for key, en in self.ts.energies.items():
-            file_path = os.path.join(self.path,
-                                     'distribution.{}.csv'.format(key))
-            if key == 'scf':
-                rows = zip(en.filenames, en.populations, en.min_factors,
-                           en.deltas, en.values)
-            else:
-                corr = self.ts.molecules.arrayed(f'{key}corr')
-                rows = zip(en.filenames, en.populations, en.min_factors,
-                           en.deltas, en.values, corr.values)
-            with open(file_path, 'w', newline='') as file:
-                csvwriter = csv.writer(file)
-                csvwriter.writerow(
-                    header if key == 'scf' else header + ['corrections']
-                )
-                for row in rows:
-                    csvwriter.writerow(row)
+    def energies_csv(self, file, energies, corrections=None,
+                     include_header=True):
+        header = ['Gaussian output file']
+        header += 'population min_factor delta energy'.split(' ')
+        if corrections is not None:
+            header += ['corrections']
+            corr = corrections.values
+        else:
+            corr = []
+        rows = zip_longest(energies.filenames, energies.populations,
+                           energies.min_factors, energies.deltas,
+                           energies.values, corr)
+        with open(file, 'w', newline='') as file:
+            csvwriter = csv.writer(file)
+            if include_header:
+                csvwriter.writerow(header)
+            for row in rows:
+                csvwriter.writerow(v for v in row if v is not None)
         logger.info('Energies export to csv files done.')
 
     def _get_ground_bars(self, wanted=None):
@@ -467,17 +458,6 @@ class Writer:
             if got_something:
                 wb.save(os.path.join(self.path, 'bars_' + key + '.xlsx'))
         logger.info('Bars export to xlsx files done.')
-
-    @property
-    def exported_filenames(self):
-        make_new_names = lambda fnm: \
-            '{}.{}.txt'.format('.'.join(fnm.split('.')[:-1]), self.name)
-        names = map(make_new_names, self.filenames)
-        return names
-
-    @property
-    def averaged_filename(self):
-        return 'avg_{}_{}'.format(self.name, self.energy_type)
 
     def spectra_export(self, format=''):
         for spectra in self.ts.spectra.values():
