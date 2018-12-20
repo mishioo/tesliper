@@ -1,7 +1,4 @@
-###################
-###   IMPORTS   ###
-###################
-
+# IMPORTS
 import os
 import logging as lgg
 import numpy as np
@@ -12,18 +9,13 @@ from . import extraction as ex
 from . import writer as wr
 from .extraction import gaussian_parser as gp
 
-############################
-###   GLOBAL VARIABLES   ###
-############################
 
+# GLOBAL VARIABLES
 __author__ = "Michał M. Więcław"
 __version__ = "0.7.0"
     
-    
-##################
-###   LOGGER   ###
-##################
 
+# LOGGER
 logger = lgg.getLogger(__name__)
 logger.setLevel(lgg.DEBUG)
 
@@ -36,10 +28,7 @@ loggers = [logger, dw.logger, ex.logger, wr.logger, gw.logger, gp.logger]
 for lgr in loggers: lgr.addHandler(mainhandler)
 
 
-###################
-###   CLASSES   ###
-###################
-
+# CLASSES
 class Tesliper:
     """
     TO DO
@@ -76,12 +65,12 @@ class Tesliper:
             List filenames representing wanted files.
         """
         self.molecules = gw.Molecules()
+        self.writer = wr.Writer()
         self.soxhlet = None if input_dir is not None else ex.Soxhlet()
+        self.wanted_files = wanted_files  # setter modifies self.soxhlet
         self.input_dir = input_dir
         self.output_dir = output_dir
-        self.wanted_files = wanted_files
         self.spectra = dict()
-        self.writer = wr.Writer(self)
         self.parameters = self.standard_parameters
 
     def __getitem__(self, item):
@@ -114,7 +103,8 @@ class Tesliper:
     @wanted_files.setter
     def wanted_files(self, wanted_files):
         self.__wanted_files = wanted_files
-        self.soxhlet.wanted_files = wanted_files
+        if self.soxhlet is not None:
+            self.soxhlet.wanted_files = wanted_files
         logger.info("New list of wanted_files established.")
 
     @property
@@ -154,6 +144,7 @@ class Tesliper:
         if path is not None:
             path = os.path.normpath(path)
             os.makedirs(path, exist_ok=True)
+            # self.writer.path = path  # depreciated
             logger.info('Current output directory is: {}'.format(path))
         self.__output_dir = path
 
