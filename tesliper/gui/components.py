@@ -1,7 +1,4 @@
-###################
-###   IMPORTS   ###
-###################
-
+# IMPORTS
 import os
 import logging as lgg
 import tkinter as tk
@@ -16,19 +13,14 @@ from functools import partial, wraps
 
 import tesliper
 
-##################
-###   LOGGER   ###
-##################
 
+# LOGGER
 logger = lgg.getLogger(__name__)
-logger.setLevel(lgg.DEBUG)
-logger.debug("Workin', baby!")
 
 
-###################
-###   CLASSES   ###
-###################
+# CLASSES
 
+# HELPERS
 class TextHandler(lgg.Handler):
 
     def __init__(self, widget, *args, **kwargs):
@@ -39,6 +31,37 @@ class TextHandler(lgg.Handler):
         msg = self.format(record)
         self.widget.insert('end', msg + '\n', record.levelname)
         self.widget.yview('end')
+
+
+class MaxLevelFilter:
+
+    def __init__(self, max_level):
+        self.max_level = max_level
+
+    def filter(self, record):
+        return record.levelno <= self.max_level
+
+
+class ShortExcFormatter(lgg.Formatter):
+
+    def format(self, record):
+        record = copy(record)
+        record.exc_text = ''
+        return super().format(record)
+
+    def formatException(self, ei):
+        output = ''
+        return output
+
+
+class PopupHandler(lgg.Handler):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def emit(self, record):
+        msg = self.format(record)
+        messagebox.showerror('Something unexpected happened! :(', msg)
 
 
 class ReadOnlyText(ScrolledText):
@@ -53,7 +76,8 @@ class ReadOnlyText(ScrolledText):
         self.pack(fill=tk.BOTH, expand=tk.YES)
         self.tag_config('DEBUG', foreground='gray')
         self.tag_config('INFO', foreground='black')
-        self.tag_config('WARNING', foreground='dark violet', font="Courier 10 italic")
+        self.tag_config('WARNING', foreground='dark violet',
+                        font="Courier 10 italic")
         self.tag_config('ERROR', foreground='red3')
         self.tag_config('CRITICAL', foreground='red3', font="Courier 10 bold")
 
@@ -210,9 +234,7 @@ class Feedback:
         return wrapper
 
 
-##################
-###   POPUPS   ###
-##################
+# POPUPS
 
 class Popup(tk.Toplevel):
 
@@ -244,14 +266,18 @@ class ExportPopup(Popup):
                   for l, v in zip(self.labels, self.vars)]
         for n, check in enumerate(checks):
             check.grid(column=0, row=n, pady=2, padx=5, sticky='nw')
-        checks[0].configure(state='normal' if
-            self.master.parent.tslr.energies else 'disabled')
-        checks[1].configure(state='normal' if
-            self.master.parent.tslr.bars else 'disabled')
-        checks[2].configure(state='normal' if
-            self.master.parent.tslr.spectra else 'disabled')
-        checks[3].configure(state='normal' if
-            self.master.parent.tslr.spectra else 'disabled')
+        checks[0].configure(
+            state='normal' if self.master.parent.tslr.energies else 'disabled'
+        )
+        checks[1].configure(
+            state='normal' if self.master.parent.tslr.bars else 'disabled'
+        )
+        checks[2].configure(
+            state='normal' if self.master.parent.tslr.spectra else 'disabled'
+        )
+        checks[3].configure(
+            state='normal' if self.master.parent.tslr.spectra else 'disabled'
+        )
         self.vars[0].set(True if self.master.parent.tslr.energies else False)
         self.vars[1].set(True if self.master.parent.tslr.bars else False)
         self.vars[2].set(True if self.master.parent.tslr.spectra else False)
@@ -291,7 +317,8 @@ class ExportPopup(Popup):
 
 class BarsPopup(Popup):
     bar_names = "IR Inten.,E-M Angle,Dip. Str.,Rot. Str.,Osc. Str. (velo)," \
-                "Rot. Str. (velo),Osc. Str. (length),Rot. Str. (length),Raman1,ROA1".split(',')
+                "Rot. Str. (velo),Osc. Str. (length),Rot. Str. (length)," \
+                "Raman1,ROA1".split(',')
     bar_keys = "iri emang dip rot vosc vrot losc lrot raman1 roa1".split(' ')
 
     def __init__(self, master, *args, **kwargs):
@@ -484,10 +511,7 @@ class ExtractPopup(Popup):
             self.buttons_frame.grid_forget()
 
 
-######################
-###   CHECK_TREE   ###
-######################
-
+# CHECK TREE
 class BoxVar(tk.BooleanVar):
 
     def __init__(self, box, *args, **kwargs):
@@ -508,6 +532,7 @@ class BoxVar(tk.BooleanVar):
                 tree.boxes[self.box.index].var._set(value)
             except KeyError:
                 logger.debug(f"{tree} doesn't have box iid {self.box.index}")
+
 
 class Checkbox(ttk.Checkbutton):
     def __init__(self, master, tree, index, *args, **kwargs):
@@ -807,24 +832,3 @@ class ConformersOverview(CheckTree):
         for x, bla in enumerate(gen):
             new.insert(text=bla + ' ' + str(x), values=[x])
         return new
-
-
-class MaxLevelFilter:
-
-    def __init__(self, max_level):
-        self.max_level = max_level
-
-    def filter(self, record):
-        return record.levelno <= self.max_level
-
-
-class ShortExcFormatter(lgg.Formatter):
-
-    def format(self, record):
-        record = copy(record)
-        record.exc_text = ''
-        return super().format(record)
-
-    def formatException(self, ei):
-        output = ''
-        return output

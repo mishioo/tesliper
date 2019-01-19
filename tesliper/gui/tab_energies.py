@@ -1,7 +1,4 @@
-###################
-###   IMPORTS   ###
-###################
-
+# IMPORTS
 import logging as lgg
 import tkinter as tk
 import tkinter.ttk as ttk
@@ -10,14 +7,11 @@ from functools import reduce
 
 from . import components as guicom
 
-_DEVELOPEMENT = False
+# LOGGER
+logger = lgg.getLogger(__name__)
 
 
-###################
-###   CLASSES   ###
-###################
-
-
+# CLASSES
 class Conformers(ttk.Frame):
 
     def __init__(self, parent):
@@ -133,7 +127,7 @@ class Conformers(ttk.Frame):
 
     def discard_lacking_energies(self):
         if not self.parent.main_tab.kept_vars['incompl'].get():
-            self.parent.logger.info(
+            logger.info(
                 'Any conformers without energy data will be discarded.'
             )
             boxes = self.conf_list.trees['main'].boxes

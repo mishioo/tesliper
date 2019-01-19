@@ -1,8 +1,6 @@
-###################
-###   IMPORTS   ###
-###################
-
+# IMPORTS
 import os
+import sys
 import logging as lgg
 import tkinter as tk
 import tkinter.ttk as ttk
@@ -11,21 +9,56 @@ from tkinter import messagebox
 from threading import Thread
 
 from . import components as guicom
-from .tab_loader import Loader
-from .tab_spectra import Spectra
-from .tab_energies import Conformers
+from .tab_loader import Loader, logger as loader_logger
+from .tab_spectra import Spectra, logger as spectra_logger
+from .tab_energies import Conformers, logger as energies_logger
 
 from .. import tesliper
 
-# from ..tesliper import __version__, __author__
-_DEVELOPEMENT = True
+
+_DEVELOPMENT = tesliper._DEVELOPMENT
 
 
-###################
-###   CLASSES   ###
-###################
+# LOGGER
+logger = lgg.getLogger(__name__)
+loggers = [
+    logger, guicom.logger, loader_logger, spectra_logger, energies_logger
+] + tesliper.loggers
+error_location = os.getcwd()
+error_msg = (
+    "Please provide a problem description to Tesliper's "
+    'developer along with "tslr_err_log.txt" file, witch can be '
+    f"found here:\n{error_location}"
+)
+error_handler = lgg.FileHandler(
+    os.path.join(error_location, 'tslr_err_log.txt'), delay=True
+)
+error_handler.setLevel(lgg.ERROR)
+error_handler.setFormatter(
+    lgg.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s\n')
+)
+popup_handler = guicom.PopupHandler()
+popup_handler.setLevel(lgg.ERROR)
+popup_handler.setFormatter(
+    guicom.ShortExcFormatter(
+        '%(message)s \n' + error_msg
+    )
+)
+
+handlers = [
+    error_handler,
+    popup_handler
+]
+for lgr in loggers:
+    lgr.setLevel(lgg.DEBUG if _DEVELOPMENT else lgg.INFO)
+    for hdlr in handlers:
+        lgr.addHandler(hdlr)
+    if _DEVELOPMENT:
+        # for purposes of debugging
+        lgr.addHandler(tesliper.mainhandler)
 
 
+# CLASSES
 class TesliperApp(tk.Tk):
 
     def __init__(self):
@@ -81,8 +114,7 @@ class TesliperApp(tk.Tk):
         ).grid(column=2, row=0, sticky='se')
 
         # Logger & handlers
-        self.logger = lgg.getLogger(__name__)
-        self.loggers = [self.logger, guicom.logger] + tesliper.loggers
+        self.logger = logger
         text_handler = guicom.TextHandler(self.log)
         text_handler.setLevel(lgg.INFO)
         text_handler.addFilter(guicom.MaxLevelFilter(lgg.INFO))
@@ -91,38 +123,21 @@ class TesliperApp(tk.Tk):
         text_warning_handler.setLevel(lgg.WARNING)
         text_warning_handler.addFilter(guicom.MaxLevelFilter(lgg.WARNING))
         text_warning_handler.setFormatter(lgg.Formatter(
-            '%(levelname)s: %(message)s'))
-
-        self.error_location = os.getcwd()
-        self.error_msg = (
-            "Please provide a problem description to Tesliper's "
-            "developer along with tslr_err_log.txt file, witch can be "
-            "found here: {}".format(self.error_location)
+            '%(levelname)s: %(message)s')
         )
+
         text_error_handler = guicom.TextHandler(self.log)
         text_error_handler.setLevel(lgg.ERROR)
         text_error_handler.setFormatter(guicom.ShortExcFormatter(
-            'ERROR! %(message)s \n' + self.error_msg))
-
-        error_handler = lgg.FileHandler(
-            os.path.join(self.error_location, 'tslr_err_log.txt'), delay=True)
-        error_handler.setLevel(lgg.ERROR)
-        error_handler.setFormatter(lgg.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s\n'))
-
+            'ERROR! %(message)s \n' + error_msg))
         self.handlers = [
+            text_error_handler,
             text_handler,
             text_warning_handler,
-            text_error_handler,
-            error_handler]
-        for lgr in self.loggers:
-            lgr.setLevel(lgg.DEBUG)
+        ]
+        for lgr in loggers:
             for hdlr in self.handlers:
                 lgr.addHandler(hdlr)
-        if _DEVELOPEMENT:
-            # for purposes of debugging
-            self.logger.addHandler(tesliper.mainhandler)
-            guicom.logger.addHandler(tesliper.mainhandler)
 
         # WgtStateChanger
         guicom.WgtStateChanger.gui = self
@@ -133,6 +148,13 @@ class TesliperApp(tk.Tk):
             'Welcome to Tesliper:\n'
             'Theoretical Spectroscopist Little Helper!'
         )
+        try:
+            iconpath = os.path.abspath(os.path.realpath(__file__))
+            iconpath = os.path.split(os.path.split(iconpath)[0])[0]
+            self.iconbitmap(os.path.join(iconpath, 'tesliper.ico'))
+            self.log.window.iconbitmap(os.path.join(iconpath, 'tesliper.ico'))
+        except tk.TclError:
+            self.logger.warning('Cannot load icon.')
 
     def validate_entry(self, inserted, text_if_allowed):
         if any(i not in '0123456789.,+-' for i in inserted):

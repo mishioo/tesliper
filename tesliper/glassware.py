@@ -1,7 +1,4 @@
-###################
-###   IMPORTS   ###
-###################
-
+# IMPORTS
 import logging as lgg
 from collections import OrderedDict, Counter
 from contextlib import contextmanager
@@ -9,17 +6,13 @@ from contextlib import contextmanager
 import numpy as np
 from . import datawork as dw
 
-##################
-###   LOGGER   ###
-##################
 
+# LOGGER
 logger = lgg.getLogger(__name__)
 logger.setLevel(lgg.DEBUG)
 
-############################
-###   GLOBAL VARIABLES   ###
-############################
 
+# GLOBAL VARIABLES
 default_spectra_bars = {
     'ir': 'dip',
     'vcd': 'rot',
@@ -30,14 +23,28 @@ default_spectra_bars = {
 }
 
 
-###################
-###   CLASSES   ###
-###################
+# CLASSES
+class BaseArray:
+    """Base class for data holding objects."""
+
+    associated_genres = ()
+    constructors = {}
+
+    def __init_subclass__(cls, **kwargs):
+        if not cls.associated_genres or not hasattr(cls, 'associated_genres'):
+            raise AttributeError(
+                'Class derived from BaseArray should provide associated_genres'
+                ' attribute.'
+            )
+        BaseArray.constructors.update(
+            (genre, cls) for genre in cls.associated_genres
+        )
 
 
-class DataArray:
+class DataArray(BaseArray):
     """Base class for data holding objects. It provides trimming functionality
     for filtering data based on other objects content or arbitrary choice.
+    ↑ this is no longer true, TO DO: correct this
     
     Parameters
     ----------
@@ -78,27 +85,6 @@ class DataArray:
     associated_genres = 'zpecorr tencorr entcorr gibcorr mass frc emang ' \
                         'depolarp depolaru depp depu alpha2 beta2 alphag ' \
                         'gamma2 delta2 cid1 cid2 cid3 rc180 eemang'.split(' ')
-
-    @staticmethod
-    def get_constructor(genre):
-        constructors = {
-            key: cls for cls in DataArray.__subclasses__()
-            for key in cls.associated_genres
-        }
-        constructors.update({
-            key: DataArray for key in DataArray.associated_genres
-        })  # Need to update this way because DataArray.__subclasses__() doesn't
-            # include DataArray itself
-        return constructors[genre]
-
-    @staticmethod
-    def make(genre, filenames, values, **kwargs):
-        try:
-            cls = DataArray.get_constructor(genre)
-        except KeyError:
-            raise ValueError(f"Unknown genre '{genre}'.")
-        instance = cls(genre, filenames, values, **kwargs)
-        return instance
 
     def __init__(self, genre, filenames, values, dtype=float, check_sizes=True,
                  **kwargs):
@@ -147,7 +133,10 @@ class DataArray:
             )
 
     def __len__(self):
-        return self.filenames.size
+        return len(self.filenames)
+
+    def __bool__(self):
+        return self.filenames.size != 0
 
 
 class InfoArray(DataArray):
@@ -561,12 +550,24 @@ class Spectra(DataArray):
         populations = energies.populations
         energy_type = energies.genre
         av_spec = dw.calculate_average(self.values, populations)
-        av_spec = Spectra(
-            self.genre, self.filenames, av_spec, self.abscissa, self.width,
-            self.fitting, self.scaling, self.offset, check_sizes=False
+        av_spec = SingleSpectrum(
+            self.genre, av_spec, self.abscissa, self.width, self.fitting,
+            self.scaling, self.offset, filenames=self.filenames,
+            averaged_by=energy_type
         )
         logger.debug(f'{self.genre} spectrum averaged by {energy_type}.')
         return av_spec
+
+
+class SingleSpectrum(Spectra):
+
+    def __init__(self, genre, values, abscissa, width=0.0, fitting='n/a',
+                 scaling=1.0, offset=0.0, filenames=None, averaged_by=None):
+        filenames = [] if filenames is None else filenames
+        super().__init__(genre, filenames, values=values, abscissa=abscissa,
+                         width=width, fitting=fitting, scaling=scaling,
+                         offset=offset, check_sizes=False)
+        self.averaged_by = averaged_by
 
 
 class Molecules(OrderedDict):
@@ -698,6 +699,10 @@ class Molecules(OrderedDict):
         Add support for 'filenames'
         Move DataArray.make to this class
         Add some type checking and error handling."""
+        try:
+            cls = BaseArray.constructors[genre]
+        except KeyError:
+            raise ValueError(f"Unknown genre '{genre}'.")
         if not (self.kept or self.items()):
             logger.debug(
                 f'Array of gerne {genre} requested, but self.kept or '
@@ -705,13 +710,13 @@ class Molecules(OrderedDict):
             )
             return DataArray(genre, [], [])
         conarr = self.kept if not full else (True for __ in self.kept)
-        array = [
+        array = (
             (fname, mol, mol[genre]) for (fname, mol), con
             in zip(self.items(), conarr) if con and genre in mol
-        ]
-        if array:
+        )
+        try:
             filenames, mols, values = zip(*array)
-        else:
+        except ValueError:  # if no elements in array
             filenames, mols, values = [], [], []
         if genre in self.vibrational_keys:
             kwargs = {'frequencies': [mol['freq'] for mol in mols]}
@@ -722,7 +727,7 @@ class Molecules(OrderedDict):
             kwargs = {'abscissa': abscissa[0] if abscissa else []}
         else:
             kwargs = {'unused': [[] for __ in mols]}  # is this needed?
-        arr = DataArray.make(genre, filenames, values, **kwargs)
+        arr = cls(genre, filenames, values, **kwargs)
         return arr
 
     def by_index(self, index):

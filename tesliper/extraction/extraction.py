@@ -1,7 +1,4 @@
-###################
-###   IMPORTS   ###
-###################
-
+# IMPORTS
 import csv
 import os
 import logging as lgg
@@ -10,24 +7,16 @@ from collections import defaultdict
 from . import gaussian_parser
 from . import spectra_parser
 
-#################
-###   TO DO   ###
-#################
+# TO DO
+# correct load_bars, load_popul, load_spectra, load_settings methods
 
-# correct load_bars, load_popul, load_spectrs, load_settings, from_dict methods
 
-##################
-###   LOGGER   ###
-##################
-
+# LOGGER
 logger = lgg.getLogger(__name__)
 logger.setLevel(lgg.DEBUG)
 
 
-###################
-###   CLASSES   ###
-###################
-
+# CLASSES
 class Soxhlet:
     """A tool for data extraction from files in specific directory. Typical
     use:

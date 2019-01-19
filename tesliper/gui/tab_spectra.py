@@ -1,7 +1,4 @@
-###################
-###   IMPORTS   ###
-###################
-
+# IMPORTS
 import math
 import logging as lgg
 import tkinter as tk
@@ -18,13 +15,12 @@ from . import components as guicom
 
 from .. import tesliper as tesliper
 
-_DEVELOPEMENT = False
+
+# LOGGER
+logger = lgg.getLogger(__name__)
 
 
-###################
-###   CLASSES   ###
-###################
-
+# CLASSES
 class Spectra(ttk.Frame):
 
     def __init__(self, parent):
@@ -191,7 +187,7 @@ class Spectra(ttk.Frame):
         # ensure proper plot resizing
         self.bind('<Configure>', lambda event: self.figure.tight_layout())
         self.canvas = FigureCanvasTkAgg(self.figure, master=spectra_view)
-        self.canvas.show()
+        self.canvas.draw()
         self.canvas.get_tk_widget().grid(column=0, row=0, sticky='nwse')
         self.tslr_ax = None
         self.bars_ax = None
@@ -418,7 +414,7 @@ class Spectra(ttk.Frame):
         if spectra_name in ('uv', 'ecd'):
             tslr_ax.invert_xaxis()
         self.figure.tight_layout()
-        self.canvas.show()
+        self.canvas.draw()
 
     def average_draw(self, spectra_name, option):
         # TO DO: ensure same conformers are taken into account
@@ -460,7 +456,7 @@ class Spectra(ttk.Frame):
         for num, line in enumerate(lines):
             line.set_color(col(num / no))
         self.tslr_ax.axhline(color='lightgray', lw=0.5)
-        self.canvas.show()
+        self.canvas.draw()
 
     @property
     def calculation_params(self):
@@ -485,7 +481,7 @@ class Spectra(ttk.Frame):
     def recalculate_command(self):
         spectra_name = self.s_name.get()
         if not spectra_name:
-            self.parent.logger.debug('spectra_name not specified.')
+            logger.debug('spectra_name not specified.')
             return
         self.last_used_settings[spectra_name] = self.current_settings.copy()
         mode = self.mode.get()

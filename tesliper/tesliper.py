@@ -13,11 +13,11 @@ from .extraction import gaussian_parser as gp
 # GLOBAL VARIABLES
 __author__ = "Michał M. Więcław"
 __version__ = "0.7.0"
+_DEVELOPMENT = True
     
 
 # LOGGER
 logger = lgg.getLogger(__name__)
-logger.setLevel(lgg.DEBUG)
 
 mainhandler = lgg.StreamHandler()
 mainhandler.setLevel(lgg.DEBUG)
@@ -25,7 +25,9 @@ mainhandler.setFormatter(lgg.Formatter(
             '%(levelname)s:%(name)s:%(funcName)s - %(message)s'))
 
 loggers = [logger, dw.logger, ex.logger, wr.logger, gw.logger, gp.logger]
-for lgr in loggers: lgr.addHandler(mainhandler)
+for lgr in loggers:
+    lgr.setLevel(lgg.DEBUG if _DEVELOPMENT else lgg.WARNING)
+    lgr.addHandler(mainhandler)
 
 
 # CLASSES
@@ -65,12 +67,13 @@ class Tesliper:
             List filenames representing wanted files.
         """
         self.molecules = gw.Molecules()
-        self.writer = wr.Writer()
+        self.writers = {fmt: Wrt() for fmt, Wrt in wr.Writer.writers.items()}
         self.soxhlet = None if input_dir is not None else ex.Soxhlet()
         self.wanted_files = wanted_files  # setter modifies self.soxhlet
         self.input_dir = input_dir
         self.output_dir = output_dir
         self.spectra = dict()
+        self.averaged = dict()
         self.parameters = self.standard_parameters
 
     def __getitem__(self, item):
@@ -235,15 +238,15 @@ class Tesliper:
         return spc
         
     def calculate_spectra(
-            self, *args, start=None, stop=None, step=None, width=None,
+            self, grnres=(), start=None, stop=None, step=None, width=None,
             fitting=None
     ):
-        if not args:
+        if not grnres:
             bars = self.bars.values()
         else:
             # convert to spectra name if bar name passed
             bar_names = gw.default_spectra_bars
-            query = [bar_names[v] if v in bar_names else v for v in args]
+            query = [bar_names[v] if v in bar_names else v for v in grnres]
             query = set(query)  # ensure no duplicates
             spectral = self.spectral
             bar_names, bars = zip(
@@ -276,14 +279,87 @@ class Tesliper:
         output = spectra.average(en)
         return output
 
-    def export_energies(self, format='txt'):
-        self.writer.save_output('energies', format, self.output_dir)
-        
-    def export_bars(self, format='txt'):
-        self.writer.save_output('bars', format, self.output_dir)
+    def average_spectra(self):
+        for genre, spectra in self.spectra.items():
+            with self.molecules.trimmed_to(spectra.filenames):
+                for energies in self.energies.values():
+                    av = spectra.average(energies)
+                    self.averaged[(genre, energies.genre)] = av
+
+    def export_data(self, genres, dest='', fmt='txt'):
+        """
+        Parameters
+        ----------
+        genres: list of str
+            list of genre names, that are to be saved to disc
+        dest: str
+            path to destination directory
+        fmt: str
+            format of output files
+
+        TO DO
+        -----
+        add checking if freq/wave/ect. passed if needed
+        """
+        dest = dest if dest else self.output_dir
+        if not dest:
+            raise ValueError('No destination provided.')
+        try:
+            writer = self.writers[fmt]
+        except KeyError:
+            raise ValueError(f'Invalid file format: {fmt}')
+        data = [self[g] for g in genres]
+        writer.write(dest, data)
+
+    def export_energies(self, dest='', fmt='txt'):
+        dest = dest if dest else self.output_dir
+        if not dest:
+            raise ValueError('No destination provided.')
+        try:
+            writer = self.writers[fmt]
+        except KeyError:
+            raise ValueError(f'Invalid file format: {fmt}')
+        energies = [e for e in self.energies.values() if e]
+        corrections = (
+            self[f'{e.genre}corr'] for e in energies if e.genre != 'scf'
+        )
+        frequencies = self['freq']
+        stoichiometry = self['stoichiometry']
+        writer.write(
+            dest, data=[*energies, frequencies, stoichiometry, *corrections]
+        )
+
+    def export_bars(self, dest='', fmt='txt'):
+        dest = dest if dest else self.output_dir
+        if not dest:
+            raise ValueError('No destination provided.')
+        try:
+            writer = self.writers[fmt]
+        except KeyError:
+            raise ValueError(f'Invalid file format: {fmt}')
+        bands = [self['freq'], self['wave']]
+        data = [b for b in self.spectral.values() if b] + \
+               [b for b in bands if b]
+        writer.write(dest, data)
                 
-    def export_spectra(self, format='txt'):
-        self.writer.save_output('spectra', format, self.output_dir)
+    def export_spectra(self, dest='', fmt='txt'):
+        dest = dest if dest else self.output_dir
+        if not dest:
+            raise ValueError('No destination provided.')
+        try:
+            writer = self.writers[fmt]
+        except KeyError:
+            raise ValueError(f'Invalid file format: {fmt}')
+        data = [s for s in self.spectra.values() if s]
+        writer.write(dest, data)
                 
-    def export_averaged(self, format='txt'):
-        self.writer.save_output('averaged', format, self.output_dir)
+    def export_averaged(self, dest='', fmt='txt'):
+        dest = dest if dest else self.output_dir
+        if not dest:
+            raise ValueError('No destination provided.')
+        try:
+            writer = self.writers[fmt]
+        except KeyError:
+            raise ValueError(f'Invalid file format: {fmt}')
+        data = [s for s in self.averaged.values() if s]
+        writer.write(dest, data)
