@@ -1,7 +1,4 @@
-###################
-###   IMPORTS   ###
-###################
-
+# IMPORTS
 import os
 import logging as lgg
 from collections import namedtuple
@@ -14,13 +11,12 @@ from tkinter.filedialog import askdirectory, askopenfilenames
 from . import components as guicom
 from .. import tesliper
 
-_DEVELOPEMENT = False
+
+# LOGGER
+logger = lgg.getLogger(__name__)
 
 
-###################
-###   CLASSES   ###
-###################
-
+# CLASSES
 class Loader(ttk.Frame):
 
     def __init__(self, parent):
@@ -265,7 +261,7 @@ class Loader(ttk.Frame):
                     self.parent.spectra_tab.canvas.show()
             else:
                 return False
-        self.parent.logger.info('\nStarting new session...')
+        logger.info('\nStarting new session...')
         return True
 
     def from_dir(self):

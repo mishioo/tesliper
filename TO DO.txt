@@ -1,6 +1,5 @@
 CURRENT:
 energies extraction from spectra outputs
-add graph labels
 add graph baseline reversal
 correct displaying of checkboxes
 impement smart calculation and smart export
@@ -8,6 +7,7 @@ bind <<enter>> to entry widgets
 add errors prompt/focus on log
 prevent spectra recalculating if settings not changed
 refresh 'single conformer' list after new data loaded
+~~add graph labels~~
 ~~check roa intensity calculations~~
 ~~check spectra calculations (signals intensity)~~
 ~~correct text saving precision~~
@@ -17,7 +17,7 @@ refresh 'single conformer' list after new data loaded
 
 DESIGN:
 conformers tab has visual info for each entry
-export directory must be choosen on each export 
+~~export directory must be choosen on each export~~
 ~~move conformers information table to front page~~
 ~~start new session -> clear session~~
 ~~one-click extract data from destination~~
@@ -41,8 +41,8 @@ add some code commentary
 create testing suite
 spectra colour by population
 supplement info tab
-add icon
 solve silent data overriding problem
+~~add icon~~
 
 FUTURE:
 add tooltips

@@ -1,9 +1,14 @@
+# IMPORTS
 import csv
 import numpy as np
 import logging as lgg
 import os
 import openpyxl as oxl
 from itertools import zip_longest
+from collections import OrderedDict
+
+from . import glassware as gw
+
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -13,42 +18,20 @@ logger.setLevel(lgg.DEBUG)
 # CLASSES
 class Writer:
 
-    @property
-    def distribution_center(self):
-        return dict(
-            energies={'txt': self.energies_txt,
-                      'csv': self.energies_csv,
-                      'xlsx': self.energies_xlsx},
-            bars={'txt': self.bars_txt,
-                  'csv': self.bars_csv,
-                  'xlsx': self.bars_xlsx},
-            spectra={'txt': self.spectra_txt,
-                     'csv': self.spectra_csv,
-                     'xlsx': self.spectra_xlsx},
-            averaged={'txt': self.averaged_txt,
-                      'csv': self.averaged_csv,
-                      'xlsx': self.averaged_xlsx}
-        )
+    writers = dict()
 
-    def save_output(self, output, format=None, output_dir=None):
-        output_dir = output_dir if output_dir else self.ts.output_dir
-        self.path = output_dir
-        format = ['txt'] if not format else [format] \
-            if not isinstance(format, (list, tuple)) else format
-        output = output if isinstance(output, (list, tuple)) else [output]
-        functions = []
-        for thing in output:
-            for fmt in format:
-                try:
-                    functions.append(self.distribution_center[thing][fmt])
-                except KeyError:
-                    logger.error('Can not export {} as {}. No such '
-                                 'thing or unsupported format.'.format(thing,
-                                                                       fmt))
-        for func in functions:
-            func()
+    def __init_subclass__(cls, fmt='', **kwargs):
+        if not fmt:
+            raise TypeError('Required keyword argument "fmt" not found.')
+        if not hasattr(cls, 'write'):
+            raise AttributeError(
+                'Class derived from Writer should provide write method.'
+            )
+        super().__init_subclass__(**kwargs)
+        Writer.writers[fmt] = cls
+        logger.info(f'Writer {cls} registered for export to {fmt} file format.')
 
-    __header = dict(
+    _header = dict(
         freq='Frequencies',
         mass='Red. masses',
         frc='Frc consts',
@@ -91,7 +74,7 @@ class Writer:
         scf='SCF'
     )
 
-    __formatters = dict(
+    _formatters = dict(
         rot='{:> 10.4f}',
         dip='{:> 10.4f}',
         roa1='{:> 10.4f}',
@@ -134,7 +117,7 @@ class Writer:
         rc180='{:> 8.3f}',
     )
 
-    __excel_formats = dict(
+    _excel_formats = dict(
         freq='0.0000',
         mass='0.0000',
         frc='0.0000',
@@ -179,17 +162,88 @@ class Writer:
 
     energies_order = 'zpe ten ent gib scf'.split(' ')
 
-    # TO DO: implement this functionality in Tesliper object
-    # def energies_txt(self, energies, frequencies=None, stoichiometry=None,
-    #                  corrections=None):
-    #     self.write_energies_overview_txt(energies, frequencies=frequencies,
-    #                                      stoichiometry=stoichiometry)
-    #     corrections = {c.genre[:3]: c for c in corrections} \
-    #         if corrections is not None else []
-    #     for ens in energies:
-    #         self.write_energies_txt(ens, corrections=corr)
+    def distribute_data(self, data):
+        distr = dict(
+            energies=[],
+            vibra=[],
+            electr=[],
+            other_bars=[],
+            spectra=[],
+            single=[],
+            other=[],
+            corrections={},
+            frequencies=None,
+            wavelenghts=None,
+            stoichiometry=None
+        )
+        for obj in data:
+            if isinstance(obj, gw.Energies):
+                distr['energies'].append(obj)
+            elif obj.genre.endswith('corr'):
+                distr['corrections'][obj.genre[:3]] = obj
+            elif obj.genre == 'freq':
+                distr['frequencies'] = obj
+            elif obj.genre == 'wave':
+                distr['wavelengths'] = obj
+            elif obj.genre == 'stoichiometry':
+                distr['stoichiometry'] = obj
+            elif isinstance(obj, gw.Bars):
+                if obj.spectra_type == 'vibra':
+                    distr['vibra'].append(obj)
+                elif obj.spectra_type == 'electr':
+                    distr['electr'].append(obj)
+                else:
+                    distr['other_bars'].append(obj)
+            elif isinstance(obj, gw.SingleSpectrum):
+                distr['single'].append(obj)
+            elif isinstance(obj, gw.Spectra):
+                distr['spectra'].append(obj)
+            else:
+                distr['other'].append(obj)
+        return distr
 
-    def energies_txt(self, file, energies, corrections=None):
+
+class TxtWriter(Writer, fmt='txt'):
+
+    def write(self, dest, data):
+        data = self.distribute_data(data)
+        if data['energies']:
+            file = os.path.join(dest, 'distribution_overview.txt')
+            self.energies_overview(
+                file, data['energies'], frequencies=data['frequencies'],
+                stoichiometry=data['stoichiometry']
+            )
+            for ens in data['energies']:
+                file = os.path.join(dest, f'distribution.{ens.genre}.txt')
+                self.energies(
+                    file, ens, corrections=data['corrections'].get(ens.genre)
+                )
+        if data['vibra']:
+            self.bars(
+                dest, band=data['frequencies'], bars=data['vibra'],
+                interfix='vibra'
+            )
+        if data['electr']:
+            self.bars(
+                dest, band=data['wavelengths'], bars=data['electr'],
+                interfix='electr'
+            )
+        if data['other_bars']:
+            # TO DO
+            pass
+        if data['spectra']:
+            for spc in data['spectra']:
+                self.spectra(dest, spc, interfix=spc.genre)
+        if data['single']:
+            for spc in data['single']:
+                interfix = f'.{spc.averaged_by}' if spc.averaged_by else ''
+                file = os.path.join(dest, f'spectrum.{spc.genre+interfix}.txt')
+                self.single_spectrum(file, spc)
+        if data['other']:
+            # TO DO
+            pass
+
+    def energies(self, file, energies, corrections=None):
         """Writes Energies object to txt file.
 
         Parameters
@@ -226,8 +280,8 @@ class Writer:
                 file_.write(' | '.join(new_row) + '\n')
         logger.info('Energies separate export to text files done.')
 
-    def energies_overview_txt(self, file, energies, frequencies=None,
-                                    stoichiometry=None):
+    def energies_overview(self, file, energies, frequencies=None,
+                          stoichiometry=None):
         """Writes essential information from multiple Energies objects to
          single txt file.
 
@@ -253,7 +307,7 @@ class Writer:
         # deltas = np.array([en.deltas for en in ens])
         popul = np.array([en.populations * 100 for en in energies]).T
         _stoich = f" | {'Stoichiometry':<{max_stoich}}"
-        names = [self.__header[en.genre] for en in energies]
+        names = [self._header[en.genre] for en in energies]
         population_widths = [max(8, len(n)) for n in names]
         population_subheader = '  '.join(
             [f'{n:<{w}}' for n, w in zip(names, population_widths)]
@@ -266,7 +320,7 @@ class Writer:
         header = f"{'Gaussian output file':<{max_fnm}} | " \
                  f"{'Population / %':^{len(population_subheader)}} | " \
                  f"{'Energy / Hartree':^{len(energies_subheader)}}" \
-                 f"{' | Imag' if frequencies is not None else ''}"\
+                 f"{' | Imag' if frequencies is not None else ''}" \
                  f"{_stoich if max_stoich else ''}"
         line_format = f"{{:<{max_fnm}}} | {{}} | {{}}" \
                       f"{' | {:^ 4}' if frequencies is not None else '{}'}" \
@@ -295,8 +349,147 @@ class Writer:
                 file_.write(line)
         logger.info('Energies collective export to text file done.')
 
-    def energies_overview_xlsx(self, file, energies, frequencies=None,
-                               stoichiometry=None, corrections=None):
+    def bars(self, dest, band, bars, interfix=''):
+        """Writes Bars objects to txt files (one for each conformer).
+
+        Notes
+        -----
+        Filenames are generated in form of conformer_name[.interfix].txt
+
+        Parameters
+        ----------
+        dest: string
+            path to destination directory
+        band: glassware.Bars
+            object containing information about band at which transitions occur;
+            it should be frequencies for vibrational data and wavelengths or
+            excitation energies for electronic data
+        bars: list of glassware.Bars
+            Bars objects that are to be serialized; all should contain
+            information for the same conformers
+        interfix: string, optional
+            string included in produced filenames, nothing is added if omitted
+        """
+        bars = [band] + bars
+        genres = [bar.genre for bar in bars]
+        headers = [self._header[genre] for genre in genres]
+        widths = [self._formatters[genre][4:-4] for genre in genres]
+        formatted = [f'{h: <{w}}' for h, w in zip(headers, widths)]
+        values = zip(*[bar.values for bar in bars])
+        for fname, values_ in zip(bars[0].filenames, values):
+            filename = f"{'.'.join(fname.split('.')[:-1])}" \
+                       f"{'.' if interfix else ''}{interfix}.txt"
+            with open(os.path.join(dest, filename), 'w') as file:
+                file.write('\t'.join(formatted))
+                file.write('\n')
+                for vals in zip(*values_):
+                    line = '\t'.join(self._formatters[g].format(v)
+                                     for v, g in zip(vals, genres))
+                    file.write(line + '\n')
+        logger.info('Bars export to text files done.')
+
+    def spectra(self, dest, spectra, interfix=''):
+        """Writes Spectra object to text files (one for each conformer).
+
+        Notes
+        -----
+        Filenames are generated in form of conformer_name[.interfix].txt
+
+        Parameters
+        ----------
+        dest: string
+            path to destination directory
+        spectra: glassware.Spectra
+            Spectra object, that is to be serialized
+        interfix: string, optional
+            string included in produced filenames, nothing is added if omitted
+        """
+        abscissa = spectra.x
+        title = f'{spectra.genre} calculated with peak width = {spectra.width}' \
+                f' {spectra.units["width"]} and {spectra.fitting} ' \
+                f'fitting, shown as {spectra.units["x"]} vs. ' \
+                f'{spectra.units["y"]}'
+        for fnm, values in zip(spectra.filenames, spectra.y):
+            file_name = f"{'.'.join(fnm.split('.')[:-1])}" \
+                        f"{'.' if interfix else ''}{interfix}.txt"
+            file_path = os.path.join(dest, file_name)
+            with open(file_path, 'w') as file:
+                file.write(title + '\n')
+                file.write(
+                    '\n'.join(
+                        f'{int(a):>4d}\t{v: .4f}'
+                        for a, v in zip(abscissa, values)
+                    )
+                )
+        logger.info('Spectra export to text files done.')
+
+    def single_spectrum(self, file, spectrum, include_header=True):
+        """Writes SingleSpectrum object to txt file.
+
+        Parameters
+        ----------
+        file: string
+            path to file
+        spectrum: glassware.SingleSpectrum
+            spectrum, that is to be serialized
+        include_header: bool, optional
+            determines if file should contain a header with metadata,
+            True by default
+        """
+        title = f'{spectrum.genre} calculated with peak width = ' \
+                f'{spectrum.width} {spectrum.units["width"]} and ' \
+                f'{spectrum.fitting} fitting, shown as {spectrum.units["x"]} ' \
+                f'vs. {spectrum.units["y"]}'
+        with open(file, 'w') as file_:
+            if include_header:
+                file_.write(title + '\n')
+                if spectrum.averaged_by:
+                    file_.write(
+                        f'{len(spectrum.filenames)} conformers averaged base on'
+                        f' {self._header[spectrum.averaged_by]}\n'
+                    )
+            file_.write(
+                '\n'.join(
+                    # TO DO: probably should change when nmr introduced
+                    f'{int(x):>4d}\t{y: .4f}' for x, y in
+                    zip(spectrum.x, spectrum.y)
+                )
+            )
+        logger.info('Spectrum export to text files done.')
+
+
+class XlsxWriter(Writer, fmt='xlsx'):
+
+    def write(self, dest, data):
+        data = self.distribute_data(data)
+        if data['energies']:
+            file = os.path.join(dest, 'distribution.xlsx')
+            self.energies(
+                file, data['energies'], frequencies=data['frequencies'],
+                stoichiometry=data['stoichiometry'],
+                corrections=data['corrections'].values()
+            )
+        if data['vibra']:
+            file = os.path.join(dest, 'bars.vibra.xlsx')
+            self.bars(file, band=data['frequencies'], bars=data['vibra'])
+        if data['electr']:
+            file = os.path.join(dest, 'bars.electr.xlsx')
+            self.bars(file, band=data['wavelengths'], bars=data['electr'])
+        if data['other_bars']:
+            # TO DO
+            pass
+        if data['spectra']:
+            file = os.path.join(dest, 'spectra.xlsx')
+            self.spectra(file, data['spectra'])
+        if data['single']:
+            file = os.path.join(dest, 'averaged_spectra.xlsx')
+            self.single_spectrum(file, data['single'])
+        if data['other']:
+            # TO DO
+            pass
+
+    def energies(self, file, energies, frequencies=None,
+                 stoichiometry=None, corrections=None):
         """Writes detailed information from multiple Energies objects to
          single xlsx file.
 
@@ -324,7 +517,7 @@ class Writer:
                  f'{chr(67+2*ens_no)}1']
         for header, cell in zip(headers, cells):
             ws[cell] = header
-        names = [self.__header[en.genre] for en in energies]
+        names = [self._header[en.genre] for en in energies]
         ws.append([''] + names + names)
         ws.merge_cells('A1:A2')
         ws.merge_cells(f'B1:{chr(65+ens_no)}1')
@@ -337,7 +530,8 @@ class Writer:
         # data = self.ts.energies
         filenames = energies[0].filenames
         fmts = ['0'] + ['0.00%'] * len(energies) + \
-               ['0.'+'0'*(8 if en.genre == 'scf' else 6) for en in energies] + \
+               ['0.' + '0' * (8 if en.genre == 'scf' else 6) for en in
+                energies] + \
                ['0', '0']
         values = [en.values for en in energies]
         populs = [en.populations for en in energies]
@@ -348,7 +542,7 @@ class Writer:
             filtered_values = ((f, v) for f, v in zip(fmts, values)
                                if v is not None)
             for col_num, (fmt, value) in enumerate(filtered_values):
-                cell = ws.cell(row=row_num+3, column=col_num+1)
+                cell = ws.cell(row=row_num + 3, column=col_num + 1)
                 cell.value = value
                 cell.number_format = fmt
         # set cells width
@@ -367,7 +561,7 @@ class Writer:
             corr = corrs.get(genre, None)
             fmts = ['0', '0.00%'] + ['0.0000'] * 2 + \
                    ['0.00000000' if genre == 'scf' else '0.000000'] * 2
-            ws = wb.create_sheet(title=self.__header[genre])
+            ws = wb.create_sheet(title=self._header[genre])
             ws.freeze_panes = 'A2'
             header = ['Gaussian output file', 'Population / %',
                       'Min. B. Factor', 'DE / (kcal/mol)',
@@ -381,7 +575,7 @@ class Writer:
                 filtered_values = ((f, v) for f, v in zip(fmts, values)
                                    if v is not None)
                 for col_num, (fmt, value) in enumerate(filtered_values):
-                    cell = ws.cell(row=row_num+2, column=col_num+1)
+                    cell = ws.cell(row=row_num + 2, column=col_num + 1)
                     cell.value = value
                     cell.number_format = fmt
             # set cells width
@@ -393,8 +587,109 @@ class Writer:
         wb.save(file)
         logger.info('Energies export to xlsx files done.')
 
-    def energies_csv(self, file, energies, corrections=None,
-                     include_header=True):
+    def bars(self, file, band, bars):
+        """Writes Bars objects to xlsx file (one sheet for each conformer).
+
+        Parameters
+        ----------
+        file: string
+            path to file
+        band: glassware.Bars
+            object containing information about band at which transitions occur;
+            it should be frequencies for vibrational data and wavelengths or
+            excitation energies for electronic data
+        bars: list of glassware.Bars
+            Bars objects that are to be serialized; all should contain
+            information for the same conformers"""
+        wb = oxl.Workbook()
+        wb.remove(wb.active)
+        bars = [band] + bars
+        genres = [bar.genre for bar in bars]
+        headers = [self._header[genre] for genre in genres]
+        widths = [max(len(h), 10) for h in headers]
+        fmts = [self._excel_formats[genre] for genre in genres]
+        values = list(zip(*[bar.values for bar in bars]))
+        for fname, values_ in zip(bars[0].filenames, values):
+            ws = wb.create_sheet(fname)
+            ws.append(headers)
+            ws.freeze_panes = 'B2'
+            for column, width in zip(ws.columns, widths):
+                ws.column_dimensions[column[0].column].width = width
+            for col_num, (vals, fmt) in enumerate(zip(values_, fmts)):
+                for row_num, v in enumerate(vals):
+                    cell = ws.cell(row=row_num + 2, column=col_num + 1)
+                    cell.value = v
+                    cell.number_format = fmt
+        wb.save(file)
+        logger.info('Bars export to xlsx files done.')
+
+    def spectra(self, file, spectra):
+        wb = oxl.Workbook()
+        del wb['Sheet']
+        for spectra_ in spectra:
+            ws = wb.create_sheet()
+            ws.title = spectra_.genre
+            ws.freeze_panes = 'B2'
+            A0 = spectra_.units['x']
+            ws.append([A0] + list(spectra_.filenames))
+            title = f'{spectra_.genre} calculated with peak width = ' \
+                    f'{spectra_.width} {spectra_.units["width"]} and ' \
+                    f'{spectra_.fitting} fitting, shown as ' \
+                    f'{spectra_.units["x"]} vs. {spectra_.units["y"]}'
+            ws["A1"].comment = oxl.comments.Comment(title, 'Tesliper')
+            for line in zip(spectra_.x, *spectra_.y):
+                ws.append(line)
+        wb.save(file)
+        logger.info('Spectra export to xlsx file done.')
+
+    def single_spectrum(self, file, spectra):
+        # TO DO: add comment as in txt export
+        # TO DO: think how to do it
+        wb = oxl.Workbook()
+        del wb['Sheet']
+        for spc in spectra:
+            ws = wb.create_sheet()
+            ws.title = spc.genre + '_' + spc.averaged_by
+            for row in zip(spc.x, spc.y):
+                ws.append(row)
+            wb.save(file)
+        logger.info('Spectrum export to xlsx files done.')
+
+
+class CsvWriter(Writer, fmt='csv'):
+
+    def write(self, dest, data):
+        data = self.distribute_data(data)
+        if data['energies']:
+            for en in data['energies']:
+                file = os.path.join(dest, f'distribution.{en.genre}.csv')
+                self.energies(
+                    file, en, corrections=data['corrections'].get(en.genre)
+                )
+        if data['vibra']:
+            self.bars(dest, band=data['frequencies'], bars=data['vibra'],
+                      interfix='vibra')
+        if data['electr']:
+            self.bars(dest, band=data['wavelengths'], bars=data['electr'],
+                      interfix='electr')
+        if data['other_bars']:
+            # TO DO
+            pass
+        if data['spectra']:
+            for spc in data['spectra']:
+                self.spectra(dest, spc, interfix=spc.genre)
+        if data['single']:
+            for spc in data['single']:
+                interfix = f'.{spc.averaged_by}' if spc.averaged_by else ''
+                file = os.path.join(dest, f'spectrum.{spc.genre+interfix}.csv')
+                self.single_spectrum(file, spc)
+        if data['other']:
+            # TO DO
+            pass
+
+
+    def energies(self, file, energies, corrections=None,
+                 include_header=True):
         """Writes Energies object to csv file.
 
         Parameters
@@ -426,68 +721,7 @@ class Writer:
                 csvwriter.writerow(v for v in row if v is not None)
         logger.info('Energies export to csv files done.')
 
-    # TO DO: implement this functionality in Tesliper object
-    # def _get_ground_bars(self, wanted=None):
-    #     if not wanted:
-    #         wanted = 'freq iri dip rot ramact raman1 roa1 emang'.split(' ')
-    #     else:
-    #         ground_bars = set(self.ts.molecules.vibrational_keys)
-    #         wanted = [bar for bar in wanted if bar in ground_bars]
-    #     for fname, mol in self.ts.molecules.trimmed_items():
-    #         bars = [bar for bar in wanted if bar in mol]
-    #         yield fname, bars, [mol[v] for v in bars]
-    #
-    # def _get_excited_bars(self, wanted=None):
-    #     if not wanted:
-    #         wanted = 'wave ex_en vrot vosc vdip lrot losc ldip ' \
-    #                  'eemang'.split(' ')
-    #     else:
-    #         excited_bars = set(self.ts.molecules.electronic_keys)
-    #         wanted = [bar for bar in wanted if bar in excited_bars]
-    #     for fname, mol in self.ts.molecules.trimmed_items():
-    #         bars = [bar for bar in wanted if bar in mol]
-    #         yield fname, bars, [mol[v] for v in bars]
-
-    def bars_txt(self, dest, band, bars, interfix=''):
-        """Writes Bars objects to txt files (one for each conformer).
-
-        Notes
-        -----
-        Filenames are generated in form of conformer_name.bars.txt
-
-        Parameters
-        ----------
-        dest: string
-            path to destination directory
-        band: glassware.Bars
-            object containing information about band at which transitions occur;
-            it should be frequencies for vibrational data and wavelengths or
-            excitation energies for electronic data
-        bars: list of glassware.Bars
-            Bars objects that are to be serialized; all should contain
-            information for the same conformers
-        interfix: string, optional
-            string included in produced filenames, nothing is added if omitted
-        """
-        bars = [band] + bars
-        genres = [bar.genre for bar in bars]
-        headers = [self.__header[genre] for genre in genres]
-        widths = [self.__formatters[genre][4:-4] for genre in genres]
-        formatted = [f'{h: <{w}}' for h, w in zip(headers, widths)]
-        values = zip(*[bar.values for bar in bars])
-        for fname, values_ in zip(bars[0].filenames, values):
-            filename = f"{'.'.join(fname.split('.')[:-1])}" \
-                       f"{'.' if interfix else ''}{interfix}.txt"
-            with open(os.path.join(dest, filename), 'w') as file:
-                file.write('\t'.join(formatted))
-                file.write('\n')
-                for vals in zip(*values_):
-                    line = '\t'.join(self.__formatters[g].format(v)
-                                     for v, g in zip(vals, genres))
-                    file.write(line + '\n')
-        logger.info('Bars export to text files done.')
-
-    def bars_csv(self, dest, band, bars, include_header=True, interfix=''):
+    def bars(self, dest, band, bars, include_header=True, interfix=''):
         """Writes Bars objects to csv files (one for each conformer).
 
         Notes
@@ -512,7 +746,7 @@ class Writer:
             string included in produced filenames, nothing is added if omitted
         """
         bars = [band] + bars
-        headers = [self.__header[bar.genre] for bar in bars]
+        headers = [self._header[bar.genre] for bar in bars]
         values = zip(*[bar.values for bar in bars])
         for fname, values_ in zip(bars[0].filenames, values):
             filename = f"{'.'.join(fname.split('.')[:-1])}" \
@@ -526,83 +760,11 @@ class Writer:
                     csvwriter.writerow(row)
         logger.info('Bars export to csv files done.')
 
-    def bars_xlsx(self, file, band, bars):
-        """Writes Bars objects to xlsx file (one sheet for each conformer).
-
-        Parameters
-        ----------
-        file: string
-            path to file
-        band: glassware.Bars
-            object containing information about band at which transitions occur;
-            it should be frequencies for vibrational data and wavelengths or
-            excitation energies for electronic data
-        bars: list of glassware.Bars
-            Bars objects that are to be serialized; all should contain
-            information for the same conformers"""
-        wb = oxl.Workbook()
-        wb.remove(wb.active)
-        bars = [band] + bars
-        genres = [bar.genre for bar in bars]
-        headers = [self.__header[genre] for genre in genres]
-        widths = [max(len(h), 10) for h in headers]
-        fmts = [self.__excel_formats[genre] for genre in genres]
-        values = zip(*[bar.values for bar in bars])
-        for fname, values_ in zip(bars[0].filenames, values):
-            ws = wb.create_sheet(fname)
-            ws.append(headers)
-            ws.freeze_panes = 'B2'
-            for column, width in zip(ws.columns, widths):
-                ws.column_dimensions[column[0].column].width = width
-            for col_num, (vals, fmt) in enumerate(zip(values_, fmts)):
-                for row_num, v in enumerate(vals):
-                    cell = ws.cell(row=row_num+2, column=col_num+1)
-                    cell.value = v
-                    cell.number_format = fmt
-        wb.save(file)
-        logger.info('Bars export to xlsx files done.')
-
-    # TO DO: implement this functionality in Tesliper object
-    # def spectra_export(self, format=''):
-    #     for spectra in self.ts.spectra.values():
-    #         if format == 'xlsx':
-    #             yield spectra
-    #         else:
-    #             x = spectra.x
-    #             name = spectra.genre
-    #             title = f'{name} calculated with peak width = {spectra.width}' \
-    #                     f' {spectra.units["width"]} and {spectra.fitting} ' \
-    #                     f'fitting, shown as {spectra.units["x"]} vs. ' \
-    #                     f'{spectra.units["y"]}'
-    #             for fnm, y in zip(spectra.filenames, spectra.y):
-    #                 filename = '.'.join(fnm.split('.')[:-1])
-    #                 yield (filename, name, y, x, title)
-
-    def spectra_txt(self, dest, spectra, interfix=''):
-        abscissa = spectra.x
-        title = f'{spectra.genre} calculated with peak width = {spectra.width}'\
-                f' {spectra.units["width"]} and {spectra.fitting} ' \
-                f'fitting, shown as {spectra.units["x"]} vs. ' \
-                f'{spectra.units["y"]}'
-        for fnm, values in zip(spectra.filenames, spectra.y):
-            file_name = f"{'.'.join(fnm.split('.')[:-1])}" \
-                        f"{'.' if interfix else ''}{interfix}.txt"
-            file_path = os.path.join(dest, file_name)
-            with open(file_path, 'w') as file:
-                file.write(title + '\n')
-                file.write(
-                    '\n'.join(
-                        f'{int(a):>4d}\t{v: .4f}'
-                        for a, v in zip(abscissa, values)
-                    )
-                )
-        logger.info('Spectra export to text files done.')
-
-    def spectra_csv(self, dest, spectra, interfix='', include_header=True):
+    def spectra(self, dest, spectra, interfix='', include_header=True):
         abscissa = spectra.x
         for fnm, values in zip(spectra.filenames, spectra.y):
             file_name = f"{'.'.join(fnm.split('.')[:-1])}" \
-                        f"{'.' if interfix else ''}{interfix}.txt"
+                        f"{'.' if interfix else ''}{interfix}.csv"
             file_path = os.path.join(dest, file_name)
             with open(file_path, 'w', newline='') as file:
                 csvwriter = csv.writer(file)
@@ -613,73 +775,9 @@ class Writer:
                     csvwriter.writerow(row)
         logger.info('Spectra export to csv files done.')
 
-    def spectra_xlsx(self, file, spectra):
-        wb = oxl.Workbook()
-        del wb['Sheet']
-        for spectra_ in spectra:
-            ws = wb.create_sheet()
-            ws.title = spectra_.genre
-            ws.freeze_panes = 'B2'
-            A0 = spectra_.units['x']
-            ws.append([A0] + list(spectra_.filenames))
-            title = f'{spectra.genre} calculated with peak width = ' \
-                    f'{spectra.width} {spectra.units["width"]} and ' \
-                    f'{spectra.fitting} fitting, shown as ' \
-                    f'{spectra.units["x"]} vs. {spectra.units["y"]}'
-            ws["A1"].comment = oxl.comments.Comment(title, 'Tesliper')
-            for line in zip(spectra_.x, *spectra_.y):
-                ws.append(line)
-        wb.save(file)
-        logger.info('Spectra export to xlsx file done.')
-
-    # TO DO: implement this functionality in Tesliper object
-    # def averaged_export(self):
-    #     for name, spc in self.ts.spectra.items():
-    #         spectra = []
-    #         for en in self.energies_order:
-    #             spectra.append(self.ts.get_averaged_spectrum(name, en))
-    #         yield (name, spc, spectra)
-
-    def single_spectrum_txt(self, file, spectrum, include_header=True):
-        title = f'{spectrum.genre} calculated with peak width = {spectrum.width}' \
-                f' {spectrum.units["width"]} and {spectrum.fitting} ' \
-                f'fitting, shown as {spectrum.units["x"]} vs. ' \
-                f'{spectrum.units["y"]}'
-        with open(file, 'w') as file_:
-            if include_header:
-                file_.write(title + '\n')
-                # decide how to deal with line below
-                # file_.write(
-                #     f'{len(spectrum.filenames)} conformers averaged based on'
-                #     f' {self.__header[en]}\n'
-                # )
-            file_.write(
-                '\n'.join(
-                    # TO DO: probably should change when nmr introduced
-                    f'{int(x):>4d}\t{y: .4f}' for x, y in
-                    zip(spectrum.x, spectrum.y)
-                )
-            )
-        logger.info('Spectrum export to text files done.')
-
-    def single_spectrum_csv(self, file, spectra):
+    def single_spectrum(self, file, spectrum):
         with open(file, 'w', newline='') as file_:
             csvwriter = csv.writer(file_)
-            for row in zip(spectra.x, spectra.y):
+            for row in zip(spectrum.x, spectrum.y):
                 csvwriter.writerow(row)
         logger.info('Spectrum export to csv files done.')
-
-    def single_spectrum_xlsx(self):
-        # TO DO: add comment as in txt export
-        # TO DO: think how to do it
-        for name, __, averaged in self.averaged_export():
-            wb = oxl.Workbook()
-            del wb['Sheet']
-            for en, av in zip(self.energies_order, averaged):
-                ws = wb.create_sheet()
-                ws.title = self.__header[en]
-                for row in zip(*av): ws.append(row)
-            wb.save(
-                os.path.join(self.path, f'averaged.{name}.xlsx')
-            )
-        logger.info('Spectrum export to xlsx files done.')

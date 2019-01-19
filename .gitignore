@@ -13,3 +13,5 @@ tesliper_output/
 *.pkl
 changes.diff
 message.txt
+icon/
+WinPython/

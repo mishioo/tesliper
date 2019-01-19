@@ -1,10 +1,10 @@
 from .main import TesliperApp
 
-def build():
 
+def build():
     return TesliperApp()
 
-def run():
 
-    app = build()
+def run(app=None):
+    app = build() if app is None else app
     return app.mainloop()
