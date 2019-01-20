@@ -7,7 +7,7 @@ echo %TSLRDIR%
 echo Set oWS = WScript.CreateObject("WScript.Shell") >> %SCRIPT%
 echo sLinkFile = "%TSLRDIR%\Tesliper.lnk" >> %SCRIPT%
 echo Set oLink = oWS.CreateShortcut(sLinkFile) >> %SCRIPT%
-echo oLink.IconLocation = "%TSLRDIR%\tesliper\tesliper.ico" >> %SCRIPT%
+echo oLink.IconLocation = "%TSLRDIR%\tesliper.ico" >> %SCRIPT%
 echo oLink.TargetPath = "%TSLRDIR%\bin\tesliper_gui.bat" >> %SCRIPT%
 echo oLink.Save >> %SCRIPT%
 
