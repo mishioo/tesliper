@@ -5,7 +5,7 @@ skrypty*/
 __*/
 quickcheck*
 tslr_err_log.txt
-ENV/
+ENV*/
 build/
 *.spec
 .idea/
@@ -15,3 +15,4 @@ changes.diff
 message.txt
 icon/
 WinPython/
+tesliper_gui.*
