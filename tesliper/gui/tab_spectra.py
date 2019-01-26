@@ -187,7 +187,7 @@ class Spectra(ttk.Frame):
         # ensure proper plot resizing
         self.bind('<Configure>', lambda event: self.figure.tight_layout())
         self.canvas = FigureCanvasTkAgg(self.figure, master=spectra_view)
-        self.canvas.draw()
+        # self.canvas.draw()
         self.canvas.get_tk_widget().grid(column=0, row=0, sticky='nwse')
         self.tslr_ax = None
         self.bars_ax = None
@@ -216,13 +216,13 @@ class Spectra(ttk.Frame):
         if filename:
             try:
                 spc = self.parent.tslr.soxhlet.load_spectrum(filename)
+                self.exp_spc = spc
             except ValueError:
                 messagebox.showwarning(
                     'Sorry!', "Experimental spectrum couldn't be loaded. "
                               "Please check if format of your file is supported"
                               " or if file is not corrupted."
                 )
-            self.exp_spc = spc
         else:
             return
 
@@ -418,32 +418,26 @@ class Spectra(ttk.Frame):
 
     def average_draw(self, spectra_name, option):
         # TO DO: ensure same conformers are taken into account
-        tslr = self.parent.tslr
-        en_name = self.average_ref[option]
-        tslr.calculate_spectra(spectra_name, **self.calculation_params)
-        spc = tslr.get_averaged_spectrum(spectra_name, en_name)
-        self.show_spectra(spc)
+        self._calculate_spectra(spectra_name, option, 'average')
+        queue = self.parent.thread.queue
+        self._show_spectra(queue)
 
     def single_draw(self, spectra_name, option):
-        tslr = self.parent.tslr
-        spc = tslr.calculate_single_spectrum(
-            spectra_name=spectra_name, conformer=option,
-            **self.calculation_params
-        )
+        self._calculate_spectra(spectra_name, option, 'single')
         bar_name = tesliper.gw.default_spectra_bars[spectra_name]
         with self.parent.tslr.molecules.trimmed_to([option]):
             bars = self.parent.tslr[bar_name]
-        self.show_spectra(spc, bars=bars)
+        queue = self.parent.thread.queue
+        self._show_spectra(queue, bars=bars)
 
     def stack_draw(self, spectra_name, option):
         # TO DO: color of line depending on population
-        tslr = self.parent.tslr
-        tslr.calculate_spectra(spectra_name, **self.calculation_params)
-        spc = tslr.spectra[spectra_name]
+        self._calculate_spectra(spectra_name, option, 'stack')
         if self.tslr_ax:
             self.figure.delaxes(self.tslr_ax)
         self.tslr_ax = self.figure.add_subplot(111)
-        self.show_spectra(spc, colour=option, stack=True)
+        queue = self.parent.thread.queue
+        self._show_spectra(queue, colour=option, stack=True)
 
     def change_colour(self, event=None):
         # TO DO: make it color graph same way as show_spectra() does
@@ -457,6 +451,36 @@ class Spectra(ttk.Frame):
             line.set_color(col(num / no))
         self.tslr_ax.axhline(color='lightgray', lw=0.5)
         self.canvas.draw()
+
+    def _show_spectra(self, queue_, bars=None, colour=None, width=0.5,
+                      stack=False):
+        try:
+            spc = queue_.get(0)
+            self.show_spectra(spc, bars=bars, colour=colour, width=width,
+                              stack=stack)
+        except guicom.queue.Empty:
+            self.after(
+                100, self._show_spectra, queue_, bars, colour, width, stack
+            )
+
+    @guicom.Feedback("Calculating...")
+    def _calculate_spectra(self, spectra_name, option, mode):
+        tslr = self.parent.tslr
+        if mode == 'single':
+            spc = tslr.calculate_single_spectrum(
+                spectra_name=spectra_name, conformer=option,
+                **self.calculation_params
+            )
+        else:
+            spc = tslr.calculate_spectra(
+                spectra_name, **self.calculation_params
+            )
+            if mode == 'average':
+                en_name = self.average_ref[option]
+                spc = tslr.get_averaged_spectrum(spectra_name, en_name)
+        print(f'calculate: {type(spc)}')
+        return spc
+
 
     @property
     def calculation_params(self):
@@ -477,7 +501,6 @@ class Spectra(ttk.Frame):
             return {}
         return settings
 
-    @guicom.Feedback("Calculating...")
     def recalculate_command(self):
         spectra_name = self.s_name.get()
         if not spectra_name:

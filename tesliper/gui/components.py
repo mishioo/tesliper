@@ -10,6 +10,7 @@ from threading import Thread
 from collections import OrderedDict
 from copy import copy
 from functools import partial, wraps
+import queue
 
 import tesliper
 
@@ -188,6 +189,7 @@ class FeedbackThread(Thread):
         self.kwargs = kwargs
         self.progbar_msg = progbar_msg
         self.gui = gui
+        self.queue = queue.Queue()
         super().__init__(daemon=True)
 
     @WgtStateChanger
@@ -198,6 +200,7 @@ class FeedbackThread(Thread):
         self.gui.progbar.start()
         try:
             return_value = self.target(*self.args, **self.kwargs)
+            self.queue.put(return_value)
         except BaseException as exc:
             self.exc = exc
         self.gui.progbar.stop()
@@ -208,7 +211,8 @@ class FeedbackThread(Thread):
                             exc_info=self.exc)
             return
             # raise self.exc
-        return return_value
+        else:
+            return return_value
 
 
 class Feedback:
@@ -222,7 +226,7 @@ class Feedback:
             if other.parent.thread.is_alive():
                 msg = "Can't start {}, while {} is still running.".format(
                     function, other.parent.thread.target)
-                logger.debug(msg)
+                logger.info(msg)
                 return  # log and do nothing
             else:
                 other.parent.thread = FeedbackThread(
