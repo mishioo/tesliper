@@ -37,17 +37,24 @@ error_handler.setLevel(lgg.ERROR)
 error_handler.setFormatter(
     lgg.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s\n')
 )
-popup_handler = guicom.PopupHandler()
-popup_handler.setLevel(lgg.ERROR)
-popup_handler.setFormatter(
-    guicom.ShortExcFormatter(
-        '%(message)s \n' + error_msg
-    )
+error_popup_handler = guicom.PopupHandler(
+    title_msg='Something unexpected happened! :('
+)
+error_popup_handler.setLevel(lgg.ERROR)
+error_popup_handler.setFormatter(
+    guicom.ShortExcFormatter('%(message)s \n\n' + error_msg)
+)
+warning_popup_handler = guicom.PopupHandler(title_msg='Sorry!')
+warning_popup_handler.setLevel(lgg.WARNING)
+warning_popup_handler.addFilter(guicom.MaxLevelFilter(lgg.WARNING))
+warning_popup_handler.setFormatter(
+    guicom.ShortExcFormatter('%(message)s \n\n')
 )
 
 handlers = [
     error_handler,
-    popup_handler
+    error_popup_handler,
+    warning_popup_handler
 ]
 for lgr in loggers:
     lgr.setLevel(lgg.DEBUG if _DEVELOPMENT else lgg.INFO)

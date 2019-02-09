@@ -57,12 +57,18 @@ class ShortExcFormatter(lgg.Formatter):
 
 class PopupHandler(lgg.Handler):
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, title_msg='', **kwargs):
         super().__init__(*args, **kwargs)
+        self.title_msg = title_msg
 
     def emit(self, record):
         msg = self.format(record)
-        messagebox.showerror('Something unexpected happened! :(', msg)
+        if record.levelno == lgg.INFO:
+            messagebox.showinfo(self.title_msg, msg)
+        elif record.levelno == lgg.WARNING:
+            messagebox.showwarning(self.title_msg, msg)
+        elif record.levelno >= lgg.ERROR:
+            messagebox.showerror(self.title_msg, msg)
 
 
 class ReadOnlyText(ScrolledText):
