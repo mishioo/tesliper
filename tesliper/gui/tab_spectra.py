@@ -218,10 +218,10 @@ class Spectra(ttk.Frame):
                 spc = self.parent.tslr.soxhlet.load_spectrum(filename)
                 self.exp_spc = spc
             except ValueError:
-                messagebox.showwarning(
-                    'Sorry!', "Experimental spectrum couldn't be loaded. "
-                              "Please check if format of your file is supported"
-                              " or if file is not corrupted."
+                logger.warning(
+                    "Experimental spectrum couldn't be loaded. "
+                    "Please check if format of your file is supported"
+                    " or if file is not corrupted."
                 )
         else:
             return
