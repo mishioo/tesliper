@@ -1,3 +1,14 @@
+v. 0.7.1
+- fixed crash on spectra drawing when Matplotlib 3 used
+- fixed problem with loading spectra from some txt files
+- added support for loading spectra from csv files
+- other minor fixes
+
+v. 0.7.0
+- graphical user interface redesigned
+- significant changes in code architecture
+- many fixes
+
 v. 0.6.4
 - calculated spectra precision in txt files changed to e-4
 - spectra lines width changed
