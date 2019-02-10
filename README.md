@@ -1,4 +1,5 @@
 <img align="right" width="100" height="100" src="https://raw.githubusercontent.com/Mishioo/tesliper/master/tesliper/tesliper.ico">
+
 # Tesliper
 
 Tesliper: Theoretical Spectroscopist Little Helper is a program for batch processing of Gaussian output files. It is focused on calculation of vibrational and electronic spectra from Gaussian-calculated quantum poroperties of molecule conformers. Please note, that this project is still under developenemt, thus it may be prone to errors.
@@ -25,7 +26,7 @@ To install Tesliper to your python distribution you will need to download (and e
 
 ### Installing as standalone application
 
-This option is currently available only for Windows users. To get your copy of Tesliper up and running, download and run a Windows installer from lastest relase. It will extract all needed files, including Python iterpreter, to choosen directory and create shortcut on desktop.
+This option is currently available only for Windows users. To get your copy of Tesliper up and running, download and run a Windows installer from [latest relase](https://github.com/Mishioo/tesliper/releases/tag/0.7.1). It will extract all needed files, including Python iterpreter, to choosen directory and create shortcut on desktop.
 
 ## Build With
 
