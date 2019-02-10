@@ -1,5 +1,0 @@
-Tesliper: Theoretical Spectroscopist Little Helper is a program for bash processing of Gaussian output files. It is focused on calculation of vibrational and electronic spectra from Gaussian-calculated quantum poroperties of molecules. Please note, that this project is still under developenemt, thus it may be prone to errors. First beta version was relased for testing and is available in this repository.
-Tesliper is written in Python 3.6.4 and makes use of some additional third party packages (see requirements.txt). It may be used as a package or as a stand-alone application with dedicated GUI. It was tested on Windows 10 and Ubuntu 16.04 LTS. Any feedback will be highly appreciated! (you can contact me at wieclawmm@gmail.com)
-Note: executable file of stand-alone GUI version of Tesliper for Windows users is available in this repository.
-Known issues:
--conformers list dispayed incorrectly when scrolled to bottom
