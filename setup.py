@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 from tesliper import tesliper
 
 with open("README", 'r') as readme:
@@ -9,11 +9,12 @@ setup(
     version=tesliper.__version__,
     description="package for batch processing of Gaussian output files "
                 "with spectral data",
+    long_description=long_desc,
     author=tesliper.__author__,
     author_email="wieclawmm@gmail.com",
     url="https://github.com/Mishioo/tesliper",
-    packages=['tesliper'],
+    packages=find_packages(),
     install_requires=['numpy', 'openpyxl'],
-    scripts=['bin/start_gui.py', 'bin/runtests.py'],
+    scripts=['bin/tesliper_gui.py'],
     package_data={'tesliper': ['tesliper.ico']}
 )
