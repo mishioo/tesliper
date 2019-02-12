@@ -3,18 +3,12 @@ import logging as lgg
 import numpy as np
 
 
-##################
-###   LOGGER   ###
-##################
-
+# LOGGER
 logger = lgg.getLogger(__name__)
 logger.setLevel(lgg.INFO)
 
 
-##################
-###   REGEXS   ###
-##################
-
+# REGEXS
 number_group = r'\s*(-?\d+\.?\d*)'
 number = number_group.replace('(', '').replace(')', '')
 
@@ -117,10 +111,146 @@ electr_regs = {
 }
 
 
-#####################
-###   FUNCTIONS   ###
-#####################
+# CLASSES
+class FSMParser:
 
+    def __init__(self, initial_state, **states):
+        self.states = {name: state for name, state in states.items()}
+        self.states.update({'initial': initial_state})
+        self.state = self.states['initial']
+
+    def parse(self, file):
+        self.state = self.states['initial']
+        data = {}
+        with open(file, 'r') as file_:
+            for line in file_:
+                self.state(line, file_, data)
+        return data
+
+
+class GaussianParserObj:
+
+    def __init__(self):
+        self.state = self.initial
+        self.data = {}
+        self.file = None
+
+    def parse(self, file):
+        self.state = self.initial
+        self.data = {}
+        with open(file, 'r') as file_:
+            self.file = file_
+            for line in file_:
+                self.state(line)
+        return self.data
+
+    def command(self, line):
+        if not line.startswith(' --'):
+            self.data['command'].append(line.strip())
+        else:
+            self.data['command'] = ' '.join(self.data['command'])
+            if 'opt' in self.data['command']:
+                self.data['optimization_completed'] = False
+            self.state = self.await_matrix
+
+    def await_matrix(self, line):
+        if line == " Symbolic Z-matrix:\n":
+            c_and_m = re.match(
+                r' Charge =\s*(-?\d) Multiplicity = (\d)', self.file.readline()
+            )
+            self.data['charge'], self.data['multiplicity'] = \
+                map(float, c_and_m.groups())
+            self.data['input_geom'] = []
+            self.state = self.zmatrix
+        else:
+            pass
+
+    def zmatrix(self, line):
+        if line.strip():
+            atom = re.match(r' (\w+)' + 3 * number_group, line)
+            label, *coordinates = atom.groups()
+            self.data['input_geom'].append((label, *map(float, coordinates)))
+        else:
+            self.state = self.passive
+
+    def initial(self, line):
+        if line == ' Cite this work as:\n':
+            self.data['version'] = self.file.readline().strip(' \n,')
+        elif line.startswith(' #'):
+            self.data['command'] = []
+            self.state = self.command
+            self.command(line)
+
+    def passive(self, *ign):
+        pass
+
+
+class GaussianParser(FSMParser):
+
+    def __init__(self):
+        super().__init__(
+            initial_state=self.initial
+        )
+
+    def initial(self, line: str, file, data: dict):
+        while not line == ' Cite this work as:\n':
+            line = file.readline()
+        data['version'] = file.readline().strip(' \n,')
+        while not line.startswith(' #'):
+            line = file.readline()
+        command = []
+        while not line.startswith(' --'):
+            command.append(line.strip())
+            line = file.readline()
+        command = data['command'] = ' '.join(command)
+        if 'opt' in command:
+            data['optimization_completed'] = False
+        while not line == ' Symbolic Z-matrix:\n':
+            line = file.readline()
+        c_and_m = re.match(
+            r' Charge =\s*(-?\d) Multiplicity = (\d)', file.readline()
+        )
+        data['charge'], data['multiplicity'] = map(float, c_and_m.groups())
+        line = file.readline().strip()
+        input_geom = []
+        pattern = r'(\w+)' + 3 * number_group
+        while line:
+            atom = re.match(pattern, line)
+            label, *coordinates = atom.groups()
+            input_geom.append((label, *map(float, coordinates)))
+            line = file.readline().strip()
+        data['input_geom'] = input_geom
+        self.state = self.passive
+
+    def optimization(self):
+        pass
+
+    def frequencies(self):
+        pass
+
+    def excited(self):
+        pass
+
+    def shielding(self):
+        pass
+
+    def coupling(self):
+        pass
+
+    def passive(self, *ign):
+        pass
+
+# gp = GaussianParser(); gpo = GaussianParserObj()
+# >>> timeit("gp.parse(r'D:\\Obliczenia\\acoet1.out')", globals=globals(), number=100)
+# 1.0858578583832141
+# >>> timeit("gp.parse(r'D:\\Obliczenia\\acoet1.out')", globals=globals(), number=100)
+# 1.0933280550701596
+# >>> timeit("gpo.parse(r'D:\\Obliczenia\\acoet1.out')", globals=globals(), number=100)
+# 1.0558939839027914
+# >>> timeit("gpo.parse(r'D:\\Obliczenia\\acoet1.out')", globals=globals(), number=100)
+# 1.0528351362943553
+
+# FUNCTIONS
 def _geom_parse(text):
     """Function for extracting geometry data from output files.
     Needs refactoring and is not included in standard parsing procedure."""
