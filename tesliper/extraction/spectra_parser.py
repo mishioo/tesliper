@@ -10,7 +10,7 @@ class SpectraParser:
 
     def parse(self, filename, delimiter=None, xcolumn=0, ycolumn=1):
         """Loads spectral data from file to numpy.array. Currently supports
-        only .txt files.
+        only .txt, .xy, and .csv files.
 
         Parameters
         ----------
@@ -37,7 +37,7 @@ class SpectraParser:
             https://github.com/audreyr/binaryornot
             https://eli.thegreenplace.net/2011/10/19/perls-guess-if-file-is-text-or-binary-implemented-in-python/
         add csv and binary files support"""
-        if filename.endswith('.txt'):
+        if filename.endswith(('.txt', '.xy')):
             spc = self.parse_txt(filename, delimiter, xcolumn, ycolumn)
         elif filename.endswith('.csv'):
             spc = self.parse_csv(filename, delimiter, xcolumn, ycolumn)

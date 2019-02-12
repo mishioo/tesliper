@@ -1,3 +1,10 @@
+v. 0.7.2
+- added support for string 'genres' parameter in Tesliper.calculate_spectra method
+- added support for .xy spectra files
+- gui: fixed problem with avereged and stacked spectra drawing 
+- gui: set "user_home_dir/tesliper/" as default location for tslr_err_log.exe
+- other minor fixes and enhancements
+
 v. 0.7.1
 - fixed crash on spectra drawing when Matplotlib 3 used
 - fixed problem with loading spectra from some txt files

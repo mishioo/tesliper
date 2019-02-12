@@ -12,7 +12,7 @@ from .extraction import gaussian_parser as gp
 
 # GLOBAL VARIABLES
 __author__ = "Michał M. Więcław"
-__version__ = "0.7.1"
+__version__ = "0.7.2"
 _DEVELOPMENT = False
     
 
@@ -238,20 +238,21 @@ class Tesliper:
         return spc
         
     def calculate_spectra(
-            self, grnres=(), start=None, stop=None, step=None, width=None,
+            self, genres=(), start=None, stop=None, step=None, width=None,
             fitting=None
     ):
-        if not grnres:
+        if not genres:
             bars = self.bars.values()
         else:
             # convert to spectra name if bar name passed
             bar_names = gw.default_spectra_bars
-            query = [bar_names[v] if v in bar_names else v for v in grnres]
-            query = set(query)  # ensure no duplicates
-            spectral = self.spectral
+            genres = genres.split() if isinstance(genres, str) else genres
+            query = [bar_names[v] if v in bar_names else v for v in genres]
+            query_set = set(query)  # ensure no duplicates
             bar_names, bars = zip(
-                *[(k, v) for k, v in spectral.items() if k in query])
-            unknown = query - set(spectral.keys())
+                *[(k, v) for k, v in self.spectral.items() if k in query_set])
+            unknown = query_set - set(self.spectral.keys())
+            # TO DO: change it to handle custom bars
             if unknown:
                 info = "No other requests provided." if not bar_names else \
                        f"Will proceed using only those bars: {bar_names}"
@@ -269,6 +270,12 @@ class Tesliper:
             spectra = bar.calculate_spectra(**sett)
             if spectra:
                 output[bar.spectra_name] = spectra
+            else:
+                # should empty spectra be included in output?
+                logger.warning(
+                    f"No data for {bar.spectra_name} calculation; "
+                    f"appropriate data is not available or was filtered out."
+                )
         self.spectra.update(output)
         return output
         

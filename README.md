@@ -22,7 +22,8 @@ This package is written in Python 3.6.4. and was not tested on previous relases.
 ### Installing to your Python distribution
 
 To install Tesliper to your python distribution you will need to download (and extract zip) or clone the repository. From the resulting directory run:
-`$ python setup.py install'
+
+`$ python setup.py install`
 
 ### Installing as standalone application
 

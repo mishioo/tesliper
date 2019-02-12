@@ -240,32 +240,7 @@ class Loader(ttk.Frame):
             return
         self.execute_save_command(output, format='csv')
 
-    @guicom.WgtStateChanger
-    def clear_session(self):
-        if self.parent.tslr:
-            pop = messagebox.askokcancel(
-                message='Are you sure you want to start new session? Any '
-                        'unsaved changes will be lost!',
-                title='New session', icon='warning', default='cancel')
-            if pop:
-                if self.parent.tslr:
-                    self.parent.tslr = None
-                if self.parent.conf_tab.conf_list:
-                    self.parent.conf_tab.conf_list.destroy()
-                    self.parent.conf_tab.conf_list = None
-                    self.parent.conf_tab.established = False
-                if self.parent.spectra_tab.ax:
-                    self.parent.spectra_tab.figure.delaxes(
-                        self.parent.spectra_tab.ax)
-                    self.parent.spectra_tab.ax = None
-                    self.parent.spectra_tab.canvas.show()
-            else:
-                return False
-        logger.info('\nStarting new session...')
-        return True
-
     def from_dir(self):
-        # TO DO: add messagebox when output files not found
         work_dir = askdirectory()
         if not work_dir:
             return
@@ -286,10 +261,17 @@ class Loader(ttk.Frame):
 
     @guicom.Feedback('Extracting...')
     def extract(self, path, wanted_files=None):
+        # TO DO: handle extraction errors
         tslr = self.parent.tslr
         overview = self.overview
-        for file, data in tslr.extract_iterate(path, wanted_files):
-            overview.insert('', tk.END, text=file)
+        try:
+            for file, data in tslr.extract_iterate(path, wanted_files):
+                overview.insert('', tk.END, text=file)
+        except TypeError as err:
+            logger.warning(
+                "Cannot extract from specified directory: " + err.args[0]
+            )
+            return
         # self.parent.conf_tab.conf_list.refresh()
         self.set_overview_values()
         self.discard_not_kept()
