@@ -240,7 +240,8 @@ class TesliperApp(tk.Tk):
         if self.spectra_tab.exp_ax:
             self.spectra_tab.figure.delaxes(self.spectra_tab.exp_ax)
             self.spectra_tab.exp_ax = None
-        self.spectra_tab.canvas.show()
+        self.spectra_tab.canvas.draw()
+        # TO DO: manage load experimental button
 
     def on_closing(self):
         if self.thread.is_alive():
