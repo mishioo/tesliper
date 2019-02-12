@@ -24,14 +24,16 @@ logger = lgg.getLogger(__name__)
 loggers = [
     logger, guicom.logger, loader_logger, spectra_logger, energies_logger
 ] + tesliper.loggers
-error_location = os.getcwd()
+home_path = os.path.expanduser('~')
+ERROR_LOG_DIR = os.path.join(home_path, 'tesliper')
+os.makedirs(ERROR_LOG_DIR, exist_ok=True)
 error_msg = (
     "Please provide a problem description to Tesliper's "
     'developer along with "tslr_err_log.txt" file, witch can be '
-    f"found here:\n{error_location}"
+    f"found here:\n{ERROR_LOG_DIR}"
 )
 error_handler = lgg.FileHandler(
-    os.path.join(error_location, 'tslr_err_log.txt'), delay=True
+    os.path.join(ERROR_LOG_DIR, 'tslr_err_log.txt'), delay=True
 )
 error_handler.setLevel(lgg.ERROR)
 error_handler.setFormatter(
@@ -222,13 +224,23 @@ class TesliperApp(tk.Tk):
         self.conf_tab.conf_list.frame.grid(column=0, row=0, sticky='nswe')
         self.conf_tab.established = False
         # clear spectra tab
-        # TO DO: clear other axes
-        # TO DO: make sure to clear comboboxes and stored settings
         # maybe would be easier to create new tabs?
+        self.spectra_tab.last_used_settings = {}
+        self.spectra_tab._exp_spc = {
+            k: None for k in self.spectra_tab.s_name_radio.keys()
+        }
+        self.spectra_tab.single_box['values'] = ()
+        self.spectra_tab.single.set('Choose conformer...')
         if self.spectra_tab.tslr_ax:
             self.spectra_tab.figure.delaxes(self.spectra_tab.tslr_ax)
             self.spectra_tab.tslr_ax = None
-            self.spectra_tab.canvas.show()
+        if self.spectra_tab.bars_ax:
+            self.spectra_tab.figure.delaxes(self.spectra_tab.bars_ax)
+            self.spectra_tab.bars_ax = None
+        if self.spectra_tab.exp_ax:
+            self.spectra_tab.figure.delaxes(self.spectra_tab.exp_ax)
+            self.spectra_tab.exp_ax = None
+        self.spectra_tab.canvas.show()
 
     def on_closing(self):
         if self.thread.is_alive():
