@@ -455,7 +455,7 @@ class Spectra(ttk.Frame):
     def _show_spectra(self, queue_, bars=None, colour=None, width=0.5,
                       stack=False):
         try:
-            spc = queue_.get(0)
+            spc = queue_.get(0)  # data put to queue by self._calculate_spectra
             self.show_spectra(spc, bars=bars, colour=colour, width=width,
                               stack=stack)
         except guicom.queue.Empty:
@@ -471,14 +471,13 @@ class Spectra(ttk.Frame):
                 spectra_name=spectra_name, conformer=option,
                 **self.calculation_params
             )
+        elif mode == 'average':
+            en_name = self.average_ref[option]
+            spc = tslr.get_averaged_spectrum(spectra_name, en_name)
         else:
             spc = tslr.calculate_spectra(
                 spectra_name, **self.calculation_params
-            )
-            if mode == 'average':
-                en_name = self.average_ref[option]
-                spc = tslr.get_averaged_spectrum(spectra_name, en_name)
-        print(f'calculate: {type(spc)}')
+            )[spectra_name]  # tslr.calculate_spectra returns dictionary
         return spc
 
 
