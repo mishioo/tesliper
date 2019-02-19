@@ -202,15 +202,17 @@ def _electr_parse(text):
             nums = numbers_reg.findall(found.group())
             vals1, vals2 = zip(*nums)
             data[key1] = np.array(vals1, dtype=float)
-            if key2:    # key2 is '' when key == 'lrot_'
-                        # in such case vals2 will be list of empty strings
+            if key2 and vals2[0]:
+                # key2 is '' when key == 'lrot_'
+                # and eemang is not available in g.09B
+                # in such cases vals2 will be list of empty strings
                 data[key2] = np.array(vals2, dtype=float)
-        excited = excited_grouped.findall(text)
-        if excited:
-            n, e, f, t = zip(*excited)
-            data['ex_en'] = np.array(e, dtype=float)
-            data['wave'] = np.array(f, dtype=float)
-            data['transition'] = [transitions_reg.findall(x) for x in t]
+    excited = excited_grouped.findall(text)
+    if excited:
+        n, e, f, t = zip(*excited)
+        data['ex_en'] = np.array(e, dtype=float)
+        data['wave'] = np.array(f, dtype=float)
+        data['transition'] = [transitions_reg.findall(x) for x in t]
     return data
 
 
