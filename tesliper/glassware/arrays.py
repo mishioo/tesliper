@@ -3,6 +3,7 @@ import logging as lgg
 
 import numpy as np
 from .. import datawork as dw
+from ..exceptions import VariousMoleculesError
 
 
 # LOGGER
@@ -85,10 +86,11 @@ class DataArray(BaseArray):
                         'gamma2 delta2 cid1 cid2 cid3 rc180 eemang'.split(' ')
 
     def __init__(self, genre, filenames, values, dtype=float, check_sizes=True,
-                 **kwargs):
+                 allow_various_molecules=False, **kwargs):
         self.genre = genre
         self.dtype = dtype
         self.check_sizes = check_sizes
+        self.allow_various_molecules = allow_various_molecules
         self.filenames = filenames
         self.values = values
 
@@ -118,16 +120,20 @@ class DataArray(BaseArray):
         try:
             self.__values = np.array(values, dtype=self.dtype)
         except ValueError:
+            if not self.allow_various_molecules:
+                raise VariousMoleculesError(
+                    f"{self.__class__.__name__} with unequal number of values "
+                    f"for molecule requested."
+                )
             lengths = [len(v) for v in values]
             longest = max(lengths)
             self.__values = np.array(
                 [np.pad(v, (0, longest-len_), 'constant', constant_values=0)
                     for v, len_ in zip(values, lengths)], dtype=self.dtype
             )
-            logger.warning(
-                'DataArray with unequal number of elements for entry '
-                'requested. Arrays were appended with zeros to match length '
-                'of longest entry.'
+            logger.info(
+                "Values' lists were appended with zeros to match length "
+                "of longest entry."
             )
 
     def __len__(self):
