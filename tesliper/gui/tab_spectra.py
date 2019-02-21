@@ -471,15 +471,15 @@ class Spectra(ttk.Frame):
                 spectra_name=spectra_name, conformer=option,
                 **self.calculation_params
             )
-        elif mode == 'average':
-            en_name = self.average_ref[option]
-            spc = tslr.get_averaged_spectrum(spectra_name, en_name)
         else:
             spc = tslr.calculate_spectra(
                 spectra_name, **self.calculation_params
             )[spectra_name]  # tslr.calculate_spectra returns dictionary
+            if mode == 'average':
+                en_name = self.average_ref[option]
+                spc = tslr.get_averaged_spectrum(spectra_name, en_name)
+        print(f'calculate: {type(spc)}')
         return spc
-
 
     @property
     def calculation_params(self):
