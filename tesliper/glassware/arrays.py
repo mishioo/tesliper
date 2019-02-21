@@ -1,10 +1,8 @@
 # IMPORTS
 import logging as lgg
-from collections import OrderedDict, Counter
-from contextlib import contextmanager
 
 import numpy as np
-from . import datawork as dw
+from .. import datawork as dw
 
 
 # LOGGER
@@ -45,7 +43,7 @@ class DataArray(BaseArray):
     """Base class for data holding objects. It provides trimming functionality
     for filtering data based on other objects content or arbitrary choice.
     ↑ this is no longer true, TO DO: correct this
-    
+
     Parameters
     ----------
     filenames : numpy.ndarray(dtype=str)
@@ -401,7 +399,7 @@ class Bars(DataArray):
     def find_imaginary(self):
         """Finds all freqs with imaginary values and creates 'imag' entry with
         list of indicants of imaginery values presence.
-        
+
         Returns
         -------
         dict
@@ -413,7 +411,7 @@ class Bars(DataArray):
 
     def calculate_spectra(self, start, stop, step, width, fitting):
         """Calculates spectrum of desired type for each individual conformer.
-        
+
         Parameters
         ----------
         start : int or float
@@ -427,7 +425,7 @@ class Bars(DataArray):
         fitting : function
             Function, which takes bars, freqs, abscissa, width as parameters and
             returns numpy.array of calculated, non-corrected spectrum points.
-            
+
         Returns
         -------
         numpy.ndarray
@@ -533,14 +531,14 @@ class Spectra(DataArray):
 
     def average(self, energies):
         """A method for averaging spectra by population of conformers.
-        
+
         Parameters
         ----------
         energies : Energies object instance
             Object with populations and type attributes containing
             respectively: list of populations values as numpy.ndarray and
             string specifying energy type.
-            
+
         Returns
         -------
         numpy.ndarray
@@ -570,282 +568,22 @@ class SingleSpectrum(Spectra):
         self.averaged_by = averaged_by
 
 
-class Molecules(OrderedDict):
-    """Ordered mapping of dictionaries.
-
-    Notes
-    -----
-    Inherits from collections.OrderedDict.
-
-    TO DO
-    -----
-    Add type checks in update and setting methods."""
-
-    vibrational_keys = (
-        'freq mass frc iri dip rot emang depolarp depolaru '
-        'ramact depp depu alpha2 beta2 alphag gamma2 delta2 raman1 '
-        'roa1 cid1 raman2 roa2 cid2  raman3 roa3 cid3 rc180'.split(' ')
-    )
-    electronic_keys = (
-        'wave ex_en eemang vdip ldip vrot lrot vosc losc '
-        'transitions'.split(' ')
-    )
-    spectra_keys = 'ir uv vcd ecd raman roa'.split(' ')
-
-    def __init__(self, *args, **kwargs):
-        self.__kept = []
-        self.filenames = []
-        super().__init__(*args, **kwargs)
-
-    def __setitem__(self, key, value, **kwargs):
-        # TO DO: enable other, convertible to dict, structures
-        if not isinstance(value, dict):
-            raise TypeError(f'Value should be dict-like object, '
-                            f'not {type(value)}')
-        super().__setitem__(key, value, **kwargs)
-        self.kept.append(True)
-        self.filenames.append(key)
-
-    def __delitem__(self, key, **kwargs):
-        super().__delitem__(key, **kwargs)
-        index = self.filenames.index(key)
-        del self.filenames[index]
-        del self.kept[index]
-
-    @property
-    def kept(self):
-        return self.__kept
-
-    @kept.setter
-    def kept(self, blade):
-        try:
-            first = blade[0]
-        except (TypeError, KeyError):
-            raise TypeError(f"Excepted sequence, got: {type(blade)}.")
-        except IndexError:
-            self.__kept = [False for __ in self.kept]
-            return
-        if isinstance(first, str):
-            blade = set(blade)
-            if not blade.issubset(set(self.keys())):
-                raise KeyError(
-                    f"Unknown conformers: {', '.join(blade-set(self.keys()))}"
-                )
-            else:
-                self.__kept = [fnm in blade for fnm in self.keys()]
-        elif isinstance(first, (bool, np.bool_)):
-            if not len(blade) == len(self):
-                raise ValueError(
-                    f"When setting molecules.kept directly, must provide "
-                    f"boolean value for each known conformer. {len(blade)} "
-                    f"values provided, {len(self)} excepted."
-                )
-            else:
-                self.__kept = [bool(b) for b in blade]  # convert from np.bool_
-        elif isinstance(first, int):
-            length = len(self.kept)
-            out_of_bounds = [b for b in blade if not -length <= b < length]
-            if out_of_bounds:
-                raise IndexError(
-                    f"Indexes out of bounds: "
-                    f"{', '.join(str(n) for n in out_of_bounds)}."
-                )
-            else:
-                blade = set(blade)
-                self.__kept = [num in blade for num in range(len(self.kept))]
-        else:
-            raise TypeError(
-                f"Expected sequence of strings, integers or booleans, got: "
-                f"{type(first)} as first sequence's element."
-            )
-
-    def update(self, other=None, **kwargs):
-        """Works like dict.update, but if key is already present, it updates
-        dictionary associated with given key rather than changing its value.
-
-        TO DO
-        -----
-        Add type checks.
-        Figure out what to do with values like optimization_completed
-        and normal_termination."""
-        molecules = dict()
-        if other is not None:
-            molecules.update(other)
-        molecules.update(**kwargs)
-        for key, value in molecules.items():
-            if key in self:
-                self[key].update(value)
-            else:
-                self[key] = value
-
-    def arrayed(self, genre, full=False):
-        """Lists requested data and returns as appropriate DataArray instance.
-
-        Parameters
-        ----------
-        genre : str
-            String representing data genre. Must be one of known genres.
-        full : bool, optional
-            Boolean indicating if full set of data should be taken, ignoring
-            any trimming conducted earlier. Defaults to False.
-
-        Returns
-        -------
-        DataArray
-            Arrayed data of desired genre as appropriate DataArray object.
-
-        TO DO
-        -----
-        Add support for 'filenames'
-        Move DataArray.make to this class
-        Add some type checking and error handling."""
-        try:
-            cls = BaseArray.constructors[genre]
-        except KeyError:
-            raise ValueError(f"Unknown genre '{genre}'.")
-        if not (self.kept or self.items()):
-            logger.debug(
-                f'Array of gerne {genre} requested, but self.kept or '
-                f'self.items() are empty. Returning empty array.'
-            )
-            return DataArray(genre, [], [])
-        conarr = self.kept if not full else (True for __ in self.kept)
-        array = (
-            (fname, mol, mol[genre]) for (fname, mol), con
-            in zip(self.items(), conarr) if con and genre in mol
-        )
-        try:
-            filenames, mols, values = zip(*array)
-        except ValueError:  # if no elements in array
-            filenames, mols, values = [], [], []
-        if genre in self.vibrational_keys:
-            kwargs = {'frequencies': [mol['freq'] for mol in mols]}
-        elif genre in self.electronic_keys:
-            kwargs = {'wavelengths': [mol['wave'] for mol in mols]}
-        elif genre in self.spectra_keys:
-            abscissa, values = zip(*values) if values else ([], [])
-            kwargs = {'abscissa': abscissa[0] if abscissa else []}
-        else:
-            kwargs = {'unused': [[] for __ in mols]}  # is this needed?
-        arr = cls(genre, filenames, values, **kwargs)
-        return arr
-
-    def by_index(self, index):
-        """Returns data for conformer on desired index."""
-        return self[self.filenames[index]]
-
-    @property
-    def _max_len(self):
-        return max(len(m) for m in self.values())
-
-    def trim_incomplete(self):
-        longest = self._max_len
-        for index, mol in enumerate(self.values()):
-            if len(mol) < longest:
-                self.kept[index] = False
-        
-    def trim_imaginary_frequencies(self):
-        dummy = np.array([1])
-        for index, mol in enumerate(self.values()):
-            freq = mol.get('freq', dummy)
-            if (freq < 0).any():
-                self.kept[index] = False
-
-    def trim_non_matching_stoichiometry(self):
-        counter = Counter(
-            mol.get('stoichiometry', 'unknown') for mol in self.values()
-        )
-        stoich = counter.most_common()[0][0]
-        for index, mol in enumerate(self.values()):
-            if not mol.get('stoichiometry', 'unknown') == stoich:
-                self.kept[index] = False
-
-    def trim_not_optimized(self):
-        for index, mol in enumerate(self.values()):
-            if not mol.get('optimization_completed', True):
-                self.kept[index] = False
-
-    def trim_non_normal_termination(self):
-        # TO DO: ensure its working properly
-        for index, mol in enumerate(self.values()):
-            if not mol.get('normal_termination', False):
-                self.kept[index] = False
-
-    def trim_to_range(self, genre, minimum=float("-inf"), maximum=float("inf"),
-                      attribute='values'):
-        try:
-            arr = self.arrayed(genre)
-            atr = getattr(arr, attribute)
-        except AttributeError:
-            raise ValueError(
-                f"Invalid genre/attribute combination: {genre}/{attribute}. "
-                f"Resulting DataArray object has no attribute {attribute}."
-            )
-        except TypeError:
-            raise ValueError(
-                f"Invalid genre/attribute combination: {genre}/{attribute}. "
-                f"DataArray's attribute must be iterable."
-            )
-        if not isinstance(atr[0], (int, float)):
-            raise ValueError(
-                f"Invalid genre/attribute combination: {genre}/{attribute}. "
-                f"Resulting DataArray must contain objects of type int or "
-                f"float, not {type(atr[0])}"
-            )
-        blade = [
-            fnm for v, fnm in zip(atr, arr.filenames) if minimum <= v <= maximum
-        ]
-        self.kept = blade
-
-    def select_all(self):
-        self.kept = [True for __ in self.kept]
-
-    def trimmed_keys(self):
-        for key, kept in zip(self.keys(), self.kept):
-            if kept:
-                yield key
-
-    def trimmed_values(self):
-        for value, kept in zip(self.values(), self.kept):
-            if kept:
-                yield value
-
-    def trimmed_items(self):
-        for (key, value), kept in zip(self.items(), self.kept):
-            if kept:
-                yield key, value
-
-    @property
-    @contextmanager
-    def untrimmed(self):
-        blade = self.kept
-        self.select_all()
-        yield self
-        self.kept = blade
-
-    @contextmanager
-    def trimmed_to(self, blade):
-        old_blade = self.kept
-        self.kept = blade
-        yield self
-        self.kept = old_blade
-
-    """# performance test for making arrays
-    >>> from timeit import timeit
-    >>> import random
-    >>> dt = {n: chr(n) for n in range(100)}
-    >>> ls = list(range(100))
-    >>> kpt = random.choices(ls, k=80)
-    >>> skpt = set(kpt)
-    >>> timeit('[(k, v) for k, v in dt.items()]', globals=globals())
-    5.26354954301791
-    >>> timeit('[(n, dt[n]) for n in ls]', globals=globals())
-    6.790710222989297
-    >>> timeit('[(k,v) for k,v in dt.items() if k in skpt]', globals=globals())
-    7.0161151549953615
-    >>> timeit('[(n, dt[n]) for n in kpt]', globals=globals())
-    5.522729124628256
-    >>> timeit('[(n,dt[n]) for n,con in zip(ls,ls) if con]', globals=globals())
-    9.363086626095992
-    >>> timeit('[(k,v) for (k,v),con in zip(dt.items(),ls)]',globals=globals())
-    7.463483778659565"""
+"""# performance test for making arrays
+>>> from timeit import timeit
+>>> import random
+>>> dt = {n: chr(n) for n in range(100)}
+>>> ls = list(range(100))
+>>> kpt = random.choices(ls, k=80)
+>>> skpt = set(kpt)
+>>> timeit('[(k, v) for k, v in dt.items()]', globals=globals())
+5.26354954301791
+>>> timeit('[(n, dt[n]) for n in ls]', globals=globals())
+6.790710222989297
+>>> timeit('[(k,v) for k,v in dt.items() if k in skpt]', globals=globals())
+7.0161151549953615
+>>> timeit('[(n, dt[n]) for n in kpt]', globals=globals())
+5.522729124628256
+>>> timeit('[(n,dt[n]) for n,con in zip(ls,ls) if con]', globals=globals())
+9.363086626095992
+>>> timeit('[(k,v) for (k,v),con in zip(dt.items(),ls)]',globals=globals())
+7.463483778659565"""
