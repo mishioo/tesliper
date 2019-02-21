@@ -1,6 +1,5 @@
 # IMPORTS
 import os
-import sys
 import logging as lgg
 import tkinter as tk
 import tkinter.ttk as ttk
@@ -73,7 +72,7 @@ class TesliperApp(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Tesliper")
-        self.tslr = None
+        self.tslr = tesliper.Tesliper()
         self.thread = Thread()
 
         self.report_callback_exception = self.report_callback_exception
@@ -84,12 +83,9 @@ class TesliperApp(tk.Tk):
         tk.Grid.columnconfigure(self, 0, weight=1)
         tk.Grid.rowconfigure(self, 0, weight=1)
         self.notebook = ttk.Notebook(self)
-        self.main_tab = Loader(self)
-        self.notebook.add(self.main_tab, text='Main')
-        self.spectra_tab = Spectra(self)
-        self.notebook.add(self.spectra_tab, text='Spectra')
-        self.conf_tab = Conformers(self)
-        self.notebook.add(self.conf_tab, text='Conformers')
+        self.main_tab = None
+        self.spectra_tab = None
+        self.conf_tab = None
         # self.info_tab = ttk.Frame(self)
         # self.add(self.info_tab, text='Info')
         self.notebook.grid(column=0, row=0, sticky='nswe')
@@ -197,15 +193,22 @@ class TesliperApp(tk.Tk):
 
     @guicom.WgtStateChanger
     def new_session(self):
-        if self.tslr is not None:
+        if self.tslr.molecules:
             pop = messagebox.askokcancel(
                 message='Are you sure you want to start new session? '
                         'Any unsaved changes will be lost!',
                 title='New session', icon='warning', default='cancel')
             if not pop:
                 return
-        # make new Tesliper instance
         self.tslr = tesliper.Tesliper()
+        for tab in self.notebook.tabs():
+                self.notebook.forget(tab)
+        self.main_tab = Loader(self)
+        self.notebook.add(self.main_tab, text='Main')
+        self.spectra_tab = Spectra(self)
+        self.notebook.add(self.spectra_tab, text='Spectra')
+        self.conf_tab = Conformers(self)
+        self.notebook.add(self.conf_tab, text='Conformers')
         # establish new overview
         if self.main_tab.overview is not None:
             self.main_tab.overview.destroy()
@@ -223,25 +226,6 @@ class TesliperApp(tk.Tk):
                                                       parent_tab=self.conf_tab)
         self.conf_tab.conf_list.frame.grid(column=0, row=0, sticky='nswe')
         self.conf_tab.established = False
-        # clear spectra tab
-        # maybe would be easier to create new tabs?
-        self.spectra_tab.last_used_settings = {}
-        self.spectra_tab._exp_spc = {
-            k: None for k in self.spectra_tab.s_name_radio.keys()
-        }
-        self.spectra_tab.single_box['values'] = ()
-        self.spectra_tab.single.set('Choose conformer...')
-        if self.spectra_tab.tslr_ax:
-            self.spectra_tab.figure.delaxes(self.spectra_tab.tslr_ax)
-            self.spectra_tab.tslr_ax = None
-        if self.spectra_tab.bars_ax:
-            self.spectra_tab.figure.delaxes(self.spectra_tab.bars_ax)
-            self.spectra_tab.bars_ax = None
-        if self.spectra_tab.exp_ax:
-            self.spectra_tab.figure.delaxes(self.spectra_tab.exp_ax)
-            self.spectra_tab.exp_ax = None
-        self.spectra_tab.canvas.draw()
-        # TO DO: manage load experimental button
 
     def on_closing(self):
         if self.thread.is_alive():
