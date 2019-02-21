@@ -6,21 +6,9 @@ from contextlib import contextmanager
 import numpy as np
 from .arrays import BaseArray, DataArray
 
-
 # LOGGER
 logger = lgg.getLogger(__name__)
 logger.setLevel(lgg.DEBUG)
-
-
-# GLOBAL VARIABLES
-default_spectra_bars = {
-    'ir': 'dip',
-    'vcd': 'rot',
-    'uv': 'vosc',
-    'ecd': 'vrot',
-    'raman': 'raman1',
-    'roa': 'roa1'
-}
 
 
 # CLASSES
@@ -46,8 +34,9 @@ class Molecules(OrderedDict):
     )
     spectra_keys = 'ir uv vcd ecd raman roa'.split(' ')
 
-    def __init__(self, *args, **kwargs):
-        self.__kept = []
+    def __init__(self, *args, allow_various_molecules=False, **kwargs):
+        self.allow_various_molecules = allow_various_molecules
+        self.kept = []
         self.filenames = []
         super().__init__(*args, **kwargs)
 
@@ -77,7 +66,10 @@ class Molecules(OrderedDict):
         except (TypeError, KeyError):
             raise TypeError(f"Excepted sequence, got: {type(blade)}.")
         except IndexError:
-            self.__kept = [False for __ in self.kept]
+            try:
+                self.__kept = [False for __ in self.kept]
+            except AttributeError:
+                self.__kept = []
             return
         if isinstance(first, str):
             blade = set(blade)
@@ -158,6 +150,7 @@ class Molecules(OrderedDict):
         except KeyError:
             raise ValueError(f"Unknown genre '{genre}'.")
         if not (self.kept or self.items()):
+            # TO DO: return appropriate subclass of DataArray
             logger.debug(
                 f'Array of gerne {genre} requested, but self.kept or '
                 f'self.items() are empty. Returning empty array.'
@@ -181,7 +174,11 @@ class Molecules(OrderedDict):
             kwargs = {'abscissa': abscissa[0] if abscissa else []}
         else:
             kwargs = {'unused': [[] for __ in mols]}  # is this needed?
-        arr = cls(genre, filenames, values, **kwargs)
+        arr = cls(
+            genre=genre, filenames=filenames, values=values,
+            allow_various_molecules=self.allow_various_molecules,
+            **kwargs
+        )
         return arr
 
     def by_index(self, index):
@@ -193,6 +190,7 @@ class Molecules(OrderedDict):
         return max(len(m) for m in self.values())
 
     def trim_incomplete(self):
+        # TO DO: don't take optimization_completed and such into consideration
         longest = self._max_len
         for index, mol in enumerate(self.values()):
             if len(mol) < longest:
