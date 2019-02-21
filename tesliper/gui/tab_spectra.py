@@ -145,11 +145,19 @@ class Spectra(ttk.Frame):
         frame = ttk.Frame(self)
         frame.grid(column=0, row=8, sticky='n')
         var = tk.BooleanVar()
+        var.set(False)
+        self.reverse_ax = ttk.Checkbutton(
+            frame, variable=var, text='Reverse x-axis', state='disabled',
+            command=self.live_preview_callback
+        )
+        self.reverse_ax.grid(column=0, row=0, sticky='w')
+        self.reverse_ax.var = var
+        var = tk.BooleanVar()
         var.set(True)
         self.show_bars = ttk.Checkbutton(frame, variable=var, text='Show bars',
                                          state='disabled',
                                          command=self.live_preview_callback)
-        self.show_bars.grid(column=0, row=0, sticky='w')
+        self.show_bars.grid(column=0, row=1, sticky='w')
         self.show_bars.var = var
         self.show_bars.previous_value = True
         var = tk.BooleanVar()
@@ -157,7 +165,7 @@ class Spectra(ttk.Frame):
         self.show_exp = ttk.Checkbutton(frame, variable=var,
                                         text='Experimental', state='disabled',
                                         command=self.live_preview_callback)
-        self.show_exp.grid(column=0, row=1, sticky='w')
+        self.show_exp.grid(column=0, row=2, sticky='w')
         self.show_exp.var = var
         self.load_exp = ttk.Button(
             frame, text='Load...', state='disabled',
@@ -165,17 +173,17 @@ class Spectra(ttk.Frame):
                 self.load_exp_command(), self.live_preview_callback()
             )
         )
-        self.load_exp.grid(column=1, row=1)
+        self.load_exp.grid(column=1, row=2)
         var = tk.BooleanVar()
-        var.set(False)
+        var.set(True)
         self.live_prev = ttk.Checkbutton(frame, variable=var,
                                          text='Live preview', state='disabled')
-        self.live_prev.grid(column=0, row=2, sticky='w')
+        self.live_prev.grid(column=0, row=3, sticky='w')
         self.live_prev.var = var
         # previously labeled 'Recalculate'
         self.recalc_b = ttk.Button(frame, text='Redraw', state='disabled',
                                    command=self.recalculate_command)
-        self.recalc_b.grid(column=1, row=2)
+        self.recalc_b.grid(column=1, row=3)
         guicom.WgtStateChanger.bars.extend([self.live_prev, self.recalc_b])
 
         # Spectrum
@@ -192,9 +200,13 @@ class Spectra(ttk.Frame):
         self.tslr_ax = None
         self.bars_ax = None
         self.exp_ax = None
-        self.last_used_settings = {}
+        self.last_used_settings = {
+            name: {
+                'offset': 0, 'scaling': 1, 'show_bars': True, 'show_exp': False,
+                'reverse_ax': name not in ('uv', 'ecd')
+            } for name in self.s_name_radio
+        }
         self._exp_spc = {k: None for k in self.s_name_radio.keys()}
-
         # TO DO:
         # add save/save img buttons
 
@@ -247,6 +259,7 @@ class Spectra(ttk.Frame):
         bar = tesliper.gw.default_spectra_bars[self.s_name.get()]
         self.single_box['values'] = [k for k, v in tslr.molecules.items()
                                      if bar in v]
+        self.reverse_ax.config(state='normal')
         self.load_exp.config(state='normal')
         self.show_exp.config(state='normal')
         if self.mode.get():
@@ -258,12 +271,9 @@ class Spectra(ttk.Frame):
         spectra_name = self.s_name.get()
         spectra_type = tesliper.gw.Bars.spectra_type_ref[spectra_name]
         tslr = self.parent.tslr
-        try:
-            settings = self.last_used_settings[spectra_name]
-        except KeyError:
-            settings = tslr.parameters[spectra_type].copy()
-            settings['offset'] = 0
-            settings['scaling'] = 1
+        last_used = self.last_used_settings[spectra_name]
+        settings = tslr.parameters[spectra_type].copy()
+        settings.update(last_used)
         for name, sett in settings.items():
             if name == 'fitting':
                 try:
@@ -276,6 +286,8 @@ class Spectra(ttk.Frame):
                 try:
                     entry.unit.set(
                         tesliper.gw.Spectra._units[spectra_name][name])
+                except AttributeError:
+                    logger.debug(f"Pass on {name}")
                 except KeyError:
                     if name == 'offset':
                         entry.unit.set(
@@ -360,6 +372,7 @@ class Spectra(ttk.Frame):
 
     def show_spectra(self, spc, bars=None, colour=None, width=0.5,
                      stack=False):
+        # TO DO: correct spectra drawing when offset used
         spc.offset = float(self.offset.var.get())
         spc.scaling = float(self.scaling.var.get())
         self.new_plot()
@@ -379,7 +392,9 @@ class Spectra(ttk.Frame):
             axes = [tslr_ax]
             if self.show_bars.var.get() and bars is not None:
                 self.bars_ax = bars_ax = tslr_ax.twinx()
-                freqs = bars.frequencies[0] + spc.offset
+                freqs = bars.wavelengths[0] if spc.genre in ('uv', 'ecd') \
+                    else bars.frequencies[0]
+                freqs = freqs + spc.offset
                 # show only bars within range requested in calculations
                 blade = (freqs >= min(spc.x)) & (freqs <= max(spc.x))
                 markerline, stemlines, baseline = bars_ax.stem(
@@ -410,8 +425,7 @@ class Spectra(ttk.Frame):
                     values.append(self.exp_spc[1])
                     axes.append(exp_ax)
             self.align_axes(axes, values)
-        spectra_name = self.s_name.get()
-        if spectra_name in ('uv', 'ecd'):
+        if self.reverse_ax.var.get():
             tslr_ax.invert_xaxis()
         self.figure.tight_layout()
         self.canvas.draw()
@@ -478,7 +492,6 @@ class Spectra(ttk.Frame):
             if mode == 'average':
                 en_name = self.average_ref[option]
                 spc = tslr.get_averaged_spectrum(spectra_name, en_name)
-        print(f'calculate: {type(spc)}')
         return spc
 
     @property
@@ -494,6 +507,10 @@ class Spectra(ttk.Frame):
                 key: float(getattr(self, key).get())
                 for key in 'start stop step width offset scaling'.split(' ')
             }
+            settings.update({
+                key: getattr(self, key).var.get()
+                for key in 'reverse_ax show_bars show_exp'.split(' ')
+            })
             fit = self.fitting.get()
             settings['fitting'] = getattr(tesliper.dw, fit)
         except ValueError:
