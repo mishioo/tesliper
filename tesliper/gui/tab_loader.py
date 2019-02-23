@@ -280,77 +280,54 @@ class Loader(ttk.Frame):
     def set_overview_values(self):
         values = {k: 0 for k in self.overview_control.keys()}
         longest = 0
-        for num, (file, mol) in enumerate(self.parent.tslr.molecules.items()):
-            for key in values.keys():
-                if key == 'file':
-                    values[key] += 1
-                elif key == 'term':
-                    values[key] += not mol['normal_termination']
-                elif key == 'incompl':
-                    length = len(mol)
-                    if length > longest:
-                        values[key] = num
-                        longest = length
-                    elif length < longest:
-                        values[key] += 1
-                    else:
-                        pass
-                elif key == 'opt':
-                    if 'optimization_completed' in mol:
-                        values[key] += not mol['optimization_completed']
-                elif key == 'imag':
-                    if 'freq' in mol:
-                        freqs = self.parent.tslr.molecules[file]['freq']
-                        imag = (freqs < 0).sum()
-                        values[key] += imag
-                elif key == 'ir':
-                    values[key] += 'dip' in mol
-                elif key == 'vcd':
-                    values[key] += 'rot' in mol
-                elif key == 'uv':
-                    values[key] += 'vosc' in mol
-                elif key == 'ecd':
-                    values[key] += 'vrot' in mol
-                elif key == 'ram':
-                    values[key] += 'raman1' in mol
-                elif key == 'roa':
-                    values[key] += 'roa1' in mol
-                elif key == 'en':
-                    values[key] += 'gib' in mol
-                else:
-                    continue
+        for num, mol in enumerate(self.parent.tslr.molecules.values()):
+            values['file'] += 1
+            values['term'] += not mol['normal_termination']
+            values['opt'] += 'optimization_completed' in mol and \
+                             not mol['optimization_completed']
+            values['imag'] += sum(v < 0 for v in mol['freq']) > 0
+            values['en'] += 'gib' in mol
+            values['ir'] += 'dip' in mol
+            values['vcd'] += 'rot' in mol
+            values['uv'] += 'vosc' in mol
+            values['ecd'] += 'vrot' in mol
+            values['ram'] += 'raman1' in mol
+            values['roa'] += 'roa1' in mol
+            length = len(mol)
+            if length > longest:
+                values['incompl'] = num
+                longest = length
+            elif length < longest:
+                values['incompl'] += 1
+            else:
+                pass
         for key, value in values.items():
             self.overview_control[key][1].set(value)
 
     def update_overview_values(self):
-        if not self.parent.tslr.molecules:
-            for key in self.overview_control_ref.keys():
-                var = self.overview_control[key][0]
-                var.set(0)
-            return
-        for key, value in self.overview_control_ref.items():
-            arr = self.parent.tslr.molecules.arrayed(value)
-            var = self.overview_control[key][0]
-            if key == 'file':
-                value = len(arr.values)
-            elif key == 'term':
-                value = (arr.values == 0).sum()
-            elif key == 'incompl':
-                mols = self.parent.tslr.molecules
-                value = 0
-                longest = max(
-                    len(mol) for mol in mols.values()
-                )
-                for kept, mol in zip(mols.kept, mols.values()):
-                    if kept and len(mol) < longest:
-                        value += 1
-            elif key == 'opt':
-                value = (arr.values == 0).sum()
-            elif key == 'imag':
-                value = int(arr.imaginary.sum())
-            else:
-                value = len(arr.values)
-            var.set(value)
+        values = {k: 0 for k in self.overview_control.keys()}
+        try:
+            longest = max(
+                len(mol) for mol in self.parent.tslr.molecules.trimmed_values()
+            )
+        except ValueError:
+            longest = 0
+        for mol in self.parent.tslr.molecules.trimmed_values():
+            values['file'] += 1
+            values['term'] += not mol['normal_termination']
+            values['incompl'] += len(mol) < longest
+            values['opt'] += 'optimization_completed' in mol and \
+                             not mol['optimization_completed']
+            values['imag'] += sum(v < 0 for v in mol['freq']) > 0
+            values['en'] += 'gib' in mol
+            values['ir'] += 'dip' in mol
+            values['vcd'] += 'rot' in mol
+            values['uv'] += 'vosc' in mol
+            values['ecd'] += 'vrot' in mol
+            values['ram'] += 'raman1' in mol
+            values['roa'] += 'roa1' in mol
+        for key, items in self.overview_control.items():
+            items[0].set(values[key])
 
     def discard(self, key):
         if self.kept_vars[key].get():
