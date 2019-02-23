@@ -5,6 +5,7 @@ import tkinter.ttk as ttk
 from collections import OrderedDict
 
 import tesliper
+from .helpers import WgtStateChanger
 
 
 # LOGGER
@@ -54,6 +55,7 @@ class Checkbox(ttk.Checkbutton):
         self.tree.trees['main'].parent_tab.update_overview_values()
         self.tree.trees['energies'].parent_tab.refresh()
         # self.tree.selection_set(str(self.index))
+        WgtStateChanger.set_states()
 
 
 class CheckTree(ttk.Treeview):

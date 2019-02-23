@@ -136,12 +136,19 @@ class WgtStateChanger:
 
     @property
     def changers(self):
-        tslr = WgtStateChanger.gui.tslr
-        bars = False if not tslr else any(tslr.spectral.values())
-        energies = False if not tslr else any(tslr.energies.values())
-        spectra = False if not tslr else any(tslr.spectra.values())
+        molecules = WgtStateChanger.gui.tslr.molecules
+        bars, energies = False, False
+        for mol in molecules.trimmed_values():
+            bars = bars or any(
+                key in mol for key in
+                'dip rot vosc vrot losc lrot raman1 roa1'.split()
+            )
+            energies = energies or any(
+                key in mol for key in 'zpe ent ten gib scf'.split()
+            )
+        spectra = bool(WgtStateChanger.gui.tslr.spectra)
         return dict(
-            tslr=self.enable if tslr else self.disable,
+            tslr=self.enable if molecules else self.disable,
             energies=self.enable if energies else self.disable,
             bars=self.enable if bars else self.disable,
             either=self.enable if (bars or energies) else self.disable,

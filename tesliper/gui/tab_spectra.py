@@ -379,7 +379,7 @@ class Spectra(ttk.Frame):
         self.tslr_ax = tslr_ax = self.figure.add_subplot(111)
         tslr_ax.set_xlabel(spc.units['x'])
         tslr_ax.set_ylabel(spc.units['y'])
-        tslr_ax.axhline(color='lightgray', lw=width)
+        tslr_ax.hline = tslr_ax.axhline(color='lightgray', lw=width)
         if stack:
             col = cm.get_cmap(colour)
             no = len(spc.y)
@@ -433,16 +433,16 @@ class Spectra(ttk.Frame):
     def average_draw(self, spectra_name, option):
         # TO DO: ensure same conformers are taken into account
         self._calculate_spectra(spectra_name, option, 'average')
-        queue = self.parent.thread.queue
-        self._show_spectra(queue)
+        queue_ = self.parent.thread.queue
+        self._show_spectra(queue_)
 
     def single_draw(self, spectra_name, option):
         self._calculate_spectra(spectra_name, option, 'single')
         bar_name = tesliper.gw.default_spectra_bars[spectra_name]
         with self.parent.tslr.molecules.trimmed_to([option]):
             bars = self.parent.tslr[bar_name]
-        queue = self.parent.thread.queue
-        self._show_spectra(queue, bars=bars)
+        queue_ = self.parent.thread.queue
+        self._show_spectra(queue_, bars=bars)
 
     def stack_draw(self, spectra_name, option):
         # TO DO: color of line depending on population
@@ -450,20 +450,20 @@ class Spectra(ttk.Frame):
         if self.tslr_ax:
             self.figure.delaxes(self.tslr_ax)
         self.tslr_ax = self.figure.add_subplot(111)
-        queue = self.parent.thread.queue
-        self._show_spectra(queue, colour=option, stack=True)
+        queue_ = self.parent.thread.queue
+        self._show_spectra(queue_, colour=option, stack=True)
 
     def change_colour(self, event=None):
-        # TO DO: make it color graph same way as show_spectra() does
         if not self.tslr_ax or self.mode.get() != 'stack':
             return
         colour = self.stack.get()
         col = cm.get_cmap(colour)
+        self.tslr_ax.hline.remove()
         lines = self.tslr_ax.get_lines()
         no = len(lines)
         for num, line in enumerate(lines):
             line.set_color(col(num / no))
-        self.tslr_ax.axhline(color='lightgray', lw=0.5)
+        self.tslr_ax.hline = self.tslr_ax.axhline(color='lightgray', lw=0.5)
         self.canvas.draw()
 
     def _show_spectra(self, queue_, bars=None, colour=None, width=0.5,
@@ -474,7 +474,7 @@ class Spectra(ttk.Frame):
                               stack=stack)
         except queue.Empty:
             self.after(
-                100, self._show_spectra, queue_, bars, colour, width, stack
+                20, self._show_spectra, queue_, bars, colour, width, stack
             )
 
     @guicom.Feedback("Calculating...")
@@ -528,8 +528,14 @@ class Spectra(ttk.Frame):
         option = getattr(self, mode).get()
         if option.startswith('Choose '):
             return
+        logger.debug("Recalculating!")
         self.new_plot()
         # call self.single_draw, self.average_draw or self.stack_draw
         # respectively
-        spectra_drawer = getattr(self, '{}_draw'.format(mode))
+        drawers = {
+            'single': self.single_draw,
+            'average': self.average_draw,
+            'stack': self.stack_draw
+        }
+        spectra_drawer = drawers[mode]
         spectra_drawer(spectra_name, option)
