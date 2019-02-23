@@ -21,7 +21,8 @@ _DEVELOPMENT = tesliper._DEVELOPMENT
 # LOGGER
 logger = lgg.getLogger(__name__)
 loggers = [
-    logger, guicom.logger, loader_logger, spectra_logger, energies_logger
+    logger, guicom.checktree.logger, guicom.helpers.logger,
+    guicom.popups.logger, loader_logger, spectra_logger, energies_logger
 ] + tesliper.loggers
 home_path = os.path.expanduser('~')
 ERROR_LOG_DIR = os.path.join(home_path, 'tesliper')
