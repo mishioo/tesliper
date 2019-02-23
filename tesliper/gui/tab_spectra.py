@@ -1,14 +1,13 @@
 # IMPORTS
 import math
 import logging as lgg
+import queue
 import tkinter as tk
 import tkinter.ttk as ttk
 from tkinter.filedialog import askopenfilename
-from tkinter import messagebox
 
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
-from matplotlib import artist
 from matplotlib import cm
 
 from . import components as guicom
@@ -300,6 +299,7 @@ class Spectra(ttk.Frame):
     def live_preview_callback(self, event=None, mode=False):
         # TO DO: separate things, that don't need recalculation
         # TO DO: show/hide bars/experimental plots when checkbox clicked
+        # TO DO: rewrite this function with sense
         spectra_name = self.s_name.get()
         mode_con = self.mode.get() == mode if mode else True
         settings_con = spectra_name not in self.last_used_settings or \
@@ -472,7 +472,7 @@ class Spectra(ttk.Frame):
             spc = queue_.get(0)  # data put to queue by self._calculate_spectra
             self.show_spectra(spc, bars=bars, colour=colour, width=width,
                               stack=stack)
-        except guicom.queue.Empty:
+        except queue.Empty:
             self.after(
                 100, self._show_spectra, queue_, bars, colour, width, stack
             )
