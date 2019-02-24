@@ -3,6 +3,6 @@ class TesliperError(Exception):
     pass
 
 
-class VariousMoleculesError(TesliperError):
-    """Raised to signalize problems with molecules consistency."""
+class InconsistentDataError(TesliperError):
+    """Raised to signalize problems with molecules' data consistency."""
     pass

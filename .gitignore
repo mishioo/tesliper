@@ -12,7 +12,7 @@ dist/
 .idea/
 tesliper_output/
 *.pkl
-changes.diff
+*.diff
 message.txt
 icon/
 WinPython/

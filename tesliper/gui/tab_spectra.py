@@ -131,10 +131,12 @@ class Spectra(ttk.Frame):
         self.stack_box['values'] = ('Blues Reds Greens spring summer autumn '
                                     'winter copper ocean rainbow '
                                     'nipy_spectral gist_ncar'.split(' '))
-        guicom.WgtStateChanger.bars.extend([self.single_radio, self.single_box])
-        guicom.WgtStateChanger.both.extend(
-            [self.average_radio, self.average_box,
-             self.stack_radio, self.stack_box])
+        guicom.WgtStateChanger.bars.extend([
+            self.single_radio, self.single_box, self.stack_radio, self.stack_box
+        ])
+        guicom.WgtStateChanger.both.extend([
+            self.average_radio, self.average_box
+        ])
         self.boxes = dict(single=self.single_box, average=self.average_box,
                           stack=self.stack_box)
         self.current_box = None
