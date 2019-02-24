@@ -259,9 +259,11 @@ def parse(text):
         extr['scf'] = float(scf_match[-1])
     trmntn = termination.search(text)
     extr['normal_termination'] = True if trmntn else False
-    cpu_time = cpu_time_reg.findall(text)
-    if cpu_time:
-        extr['cpu_time'] = cpu_time
+    # depreciated, as it is not important for tesliper to know this
+    # and causes problems with Molecules.trim_inconsistent_sizes()
+    # cpu_time = cpu_time_reg.findall(text)
+    # if cpu_time:
+    #     extr['cpu_time'] = cpu_time
     if 'opt' in extr['command'].lower():
         extr['optimization_completed'] = 'Optimization completed.' in text
     stoichiometries = stoich.findall(text)

@@ -1,12 +1,14 @@
 # IMPORTS
 import os
 import logging as lgg
-from collections import namedtuple
+from collections import namedtuple, Counter
 import tkinter as tk
 import tkinter.ttk as ttk
 
 from tkinter import messagebox
 from tkinter.filedialog import askdirectory, askopenfilenames
+
+import numpy as np
 
 from . import components as guicom
 from .. import tesliper
@@ -90,22 +92,6 @@ class Loader(ttk.Frame):
         overview_vars = namedtuple(
             'overview', ['kept', 'all', 'check', 'uncheck']
         )
-        self.overview_funcs = dict(
-            file=lambda mol, max_len: True,
-            en=lambda mol, max_len: 'gib' in mol,
-            ir=lambda mol, max_len: 'dip' in mol,
-            vcd=lambda mol, max_len: 'rot' in mol,
-            uv=lambda mol, max_len: 'vosc' in mol,
-            ecd=lambda mol, max_len: 'vrot' in mol,
-            ram=lambda mol, max_len: 'raman1' in mol,
-            roa=lambda mol, max_len: 'roa1' in mol,
-            incompl=lambda mol, max_len: mol,  # TO DO: fix this
-            term=lambda mol, max_len: mol['normal_termination'],
-            opt=lambda mol, max_len: 'optimization_completed' in mol
-                                     and not mol['optimization_completed'],
-            imag=lambda mol, max_len: 'freq' in mol and
-                                      any([f < 0 for f in mol['freq']])
-        )
         self.overview_control_ref = {
             k: v for k, v in zip(
                 'file en ir vcd uv ecd ram roa incompl term opt '
@@ -117,9 +103,9 @@ class Loader(ttk.Frame):
         self.overview_control = dict()
         for i, (name, key) in enumerate(zip(
                 'Files Energy IR VCD UV ECD Raman ROA Incompl. Errors '
-                'Unopt. Imag.Freq.'.split(' '),
+                'Unopt. Imag.Freq. Incons.'.split(),
                 'file en ir vcd uv ecd ram roa incompl term '
-                'opt imag'.split(' ')
+                'opt imag incons'.split()
         )):
             tk.Label(
                 self.overview_control_frame, text=name, anchor='w'
@@ -188,12 +174,52 @@ class Loader(ttk.Frame):
         tk.Grid.columnconfigure(self.label_overview, 0, weight=1)
 
     def un_check(self, key, keep):
+        overview_funcs = dict(
+            file=lambda *args: True,
+            en=lambda *args: 'gib' in args[0],
+            ir=lambda *args: 'dip' in args[0],
+            vcd=lambda *args: 'rot' in args[0],
+            uv=lambda *args: 'vosc' in args[0],
+            ecd=lambda *args: 'vrot' in args[0],
+            ram=lambda *args: 'raman1' in args[0],
+            roa=lambda *args: 'roa1' in args[0],
+            incompl=lambda *args: not all(g in args[0] for g in args[1]),
+            term=lambda *args: args[0]['normal_termination'],
+            opt=lambda *args: 'optimization_completed' in args[0]
+                              and not args[0]['optimization_completed'],
+            imag=lambda *args: 'freq' in args[0] and
+                               any([f < 0 for f in args[0]['freq']]),
+            incons=lambda *args: any(g in args[0] and not len(args[0][g]) == mx
+                                     for g, mx in args[2].items())
+        )
         mols = self.parent.tslr.molecules
-        condition = self.overview_funcs[key]
+        condition = overview_funcs[key]
         overview = self.overview
-        max_len = 0 if not key == 'incompl' else mols._max_len
+        best_match = []
+        maxes = {}
+        if key == 'incompl':
+            try:
+                wanted = 'dip rot vosc vrot losc lrot raman1 roa1 scf zpe ent '\
+                         'ten gib'.split()
+                count = [
+                    [g in mol for g in wanted] for mol
+                    in self.parent.tslr.molecules.values()
+                ]
+                best_match = [g for g, k in zip(wanted, max(count)) if k]
+            except ValueError:
+                best_match = []
+        elif key == 'incons':
+            sizes = {}
+            for fname, mol in self.parent.tslr.molecules.items():
+                for genre, value in mol.items():
+                    if isinstance(value, (np.ndarray, list, tuple)):
+                        sizes.setdefault(genre, {})[fname] = len(value)
+            maxes = {
+                genre: Counter(v for v in values.values()).most_common()[0][0]
+                for genre, values in sizes.items()
+            }
         for n, mol in enumerate(mols.values()):
-            if condition(mol, max_len):
+            if condition(mol, best_match, maxes):
                 overview.boxes[str(n)].var.set(keep)
         self.discard_not_kept()
         self.update_overview_values()
@@ -285,10 +311,29 @@ class Loader(ttk.Frame):
 
     def set_overview_values(self):
         values = {k: 0 for k in self.overview_control.keys()}
-        longest = 0
+        try:
+            wanted = 'dip rot vosc vrot losc lrot raman1 roa1 scf zpe ent ' \
+                     'ten gib'.split()
+            count = [
+                [g in mol for g in wanted] for mol
+                in self.parent.tslr.molecules.values()
+            ]
+            best_match = [g for g, k in zip(wanted, max(count)) if k]
+        except ValueError:
+            best_match = []
+        sizes = {}
+        for fname, mol in self.parent.tslr.molecules.items():
+            for genre, value in mol.items():
+                if isinstance(value, (np.ndarray, list, tuple)):
+                    sizes.setdefault(genre, {})[fname] = len(value)
+        maxes = {
+            genre: Counter(v for v in values.values()).most_common()[0][0]
+            for genre, values in sizes.items()
+        }
         for num, mol in enumerate(self.parent.tslr.molecules.values()):
             values['file'] += 1
             values['term'] += not mol['normal_termination']
+            values['incompl'] += not all(g in mol for g in best_match)
             values['opt'] += 'optimization_completed' in mol and \
                              not mol['optimization_completed']
             values['imag'] += 'freq' in mol and \
@@ -300,29 +345,39 @@ class Loader(ttk.Frame):
             values['ecd'] += 'vrot' in mol
             values['ram'] += 'raman1' in mol
             values['roa'] += 'roa1' in mol
-            length = len(mol)
-            if length > longest:
-                values['incompl'] = num
-                longest = length
-            elif length < longest:
-                values['incompl'] += 1
-            else:
-                pass
+            values['incons'] += any(
+                g in mol and not len(mol[g]) == mx for g, mx in maxes.items()
+            )
         for key, value in values.items():
             self.overview_control[key][1].set(value)
 
     def update_overview_values(self):
         values = {k: 0 for k in self.overview_control.keys()}
         try:
-            longest = max(
-                len(mol) for mol in self.parent.tslr.molecules.trimmed_values()
-            )
+            wanted = 'dip rot vosc vrot losc lrot raman1 roa1 scf zpe ent ' \
+                     'ten gib'.split()
+            count = [
+                [g in mol for g in wanted] for mol
+                in self.parent.tslr.molecules.values()
+            ]
+            best_match = [g for g, k in zip(wanted, max(count)) if k]
         except ValueError:
-            longest = 0
+            best_match = []
+        sizes = {}
+        for fname, mol in self.parent.tslr.molecules.items():
+            for genre, value in mol.items():
+                if isinstance(value, (np.ndarray, list, tuple)):
+                    sizes.setdefault(genre, {})[fname] = len(value)
+        maxes = {
+            genre: Counter(v for v in values.values()).most_common()[0][0]
+            for genre, values in sizes.items()
+        }
+        # if self.parent.tslr.molecules.trimmed_values():
+        #     import pdb; pdb.set_trace()
         for mol in self.parent.tslr.molecules.trimmed_values():
             values['file'] += 1
             values['term'] += not mol['normal_termination']
-            values['incompl'] += len(mol) < longest
+            values['incompl'] += not all(g in mol for g in best_match)
             values['opt'] += 'optimization_completed' in mol and \
                              not mol['optimization_completed']
             values['imag'] += 'freq' in mol and \
@@ -334,6 +389,9 @@ class Loader(ttk.Frame):
             values['ecd'] += 'vrot' in mol
             values['ram'] += 'raman1' in mol
             values['roa'] += 'roa1' in mol
+            values['incons'] += any(
+                g in mol and not len(mol[g]) == mx for g, mx in maxes.items()
+            )
         for key, items in self.overview_control.items():
             items[0].set(values[key])
 
