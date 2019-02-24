@@ -1,8 +1,5 @@
 CURRENT:
-fix check/uncheck incomplete
-add check/uncheck inconsistent
 remove other energies in average by energy when only scf available
-handle VariousMoleculesError in gui
 correct spectra drawing when offset used
 energies extraction from spectra outputs
 correct displaying of checkboxes
@@ -10,25 +7,9 @@ implement smart calculation and smart export
 bind <<enter>> to entry widgets
 prevent spectra recalculating if settings not changed
 refresh 'single conformer' list after new data loaded
-~~-add graph baseline reversal~~
-~~add errors prompt/focus on log~~
-~~add graph labels~~
-~~check roa intensity calculations~~
-~~check spectra calculations (signals intensity)~~
-~~correct text saving precision~~
-~~check intensity calculations~~
-~~add bars values on single spectra graph~~
-~~add gui feedback on session instantiation~~
 
 DESIGN:
 conformers tab has visual info for each entry
-~~export directory must be choosen on each export~~
-~~move conformers information table to front page~~
-~~start new session -> clear session~~
-~~one-click extract data from destination~~
-~~separate visual for what is available~~
-~~number of selected items in conformers tab~~
-~~remove work/output dir information~~
 
 SOON:
 add popup information when inconsistency allowed
@@ -45,8 +26,6 @@ create testing suite
 spectra colour by population
 supplement info tab
 solve silent data overriding problem
-~~switch to installable version~~
-~~add icon~~
 
 FUTURE:
 add tooltips
@@ -56,5 +35,3 @@ add anharmonic spectra support
 add nmr spectra
 add geometry analysis feature
 add molecule dispay window ?
-~~add easy access to conformer data~~
-~~manage e-m angle and energy corrections~~

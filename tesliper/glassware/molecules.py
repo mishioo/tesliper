@@ -16,26 +16,38 @@ logger.setLevel(lgg.DEBUG)
 
 # CLASSES
 class _TrimmedItemsView(_OrderedDictItemsView):
-    def __init__(self, mapping):
+    def __init__(self, mapping, indices=False):
         super().__init__(mapping)
-        self._trimmed_keys = {
-            key for key, kept in zip(self._mapping, self._mapping.kept) if kept
-        }
+        self.indices = indices
 
     def __contains__(self, item):
         key, value = item
-        if key not in self._trimmed_keys:
+        try:
+            kept = self._mapping.kept[self._mapping[key]['_index']]
+        except KeyError:
             return False
         else:
-            return v is value or v == value
+            if not kept:
+                return False
+            else:
+                v = self._mapping[key]
+                return v is value or v == value
 
     def __iter__(self):
-        for key, kept in zip(self._mapping, self._mapping.kept):
+        indices = self.indices
+        for idx, (key, kept) in enumerate(
+                zip(self._mapping, self._mapping.kept)
+        ):
             if kept:
-                yield (key, self._mapping[key])
+                value = self._mapping[key]
+                yield key, value if not indices else (idx, key, value)
 
 
 class _TrimmedValuesView(_OrderedDictValuesView):
+    def __init__(self, mapping, indices=False):
+        super().__init__(mapping)
+        self.indices = indices
+
     def __contains__(self, value):
         for key, kept in zip(self._mapping, self._mapping.kept):
             v = self._mapping[key]
@@ -44,25 +56,33 @@ class _TrimmedValuesView(_OrderedDictValuesView):
         return False
 
     def __iter__(self):
-        for key, kept in zip(self._mapping, self._mapping.kept):
+        indices = self.indices
+        for idx, (key, kept) in enumerate(
+                zip(self._mapping, self._mapping.kept)
+        ):
             if kept:
-                yield self._mapping[key]
+                value = self._mapping[key]
+                yield value if not indices else (idx, value)
 
 
 class _TrimmedKeysView(_OrderedDictKeysView):
-    def __init__(self, mapping):
+    def __init__(self, mapping, indices=False):
         super().__init__(mapping)
-        self._trimmed_keys = {
-            key for key, kept in zip(self._mapping, self._mapping.kept) if kept
-        }
+        self.indices = indices
 
     def __contains__(self, key):
-        return key in self._trimmed_keys
+        try:
+            return self._mapping.kept[self._mapping[key]['_index']]
+        except KeyError:
+            return False
 
     def __iter__(self):
-        for key, kept in zip(self._mapping, self._mapping.kept):
+        indices = self.indices
+        for idx, (key, kept) in enumerate(
+                zip(self._mapping, self._mapping.kept)
+        ):
             if kept:
-                yield key
+                yield key if not indices else (idx, key)
 
 
 class Molecules(OrderedDict):
@@ -99,15 +119,23 @@ class Molecules(OrderedDict):
         if not isinstance(value, dict):
             raise TypeError(f'Value should be dict-like object, '
                             f'not {type(value)}')
+        if key in self:
+            index = self[key]['_index']
+            self.kept[index] = True
+        else:
+            index = len(self.filenames)
+            self.filenames.append(key)
+            self.kept.append(True)
         super().__setitem__(key, value, **kwargs)
-        self.kept.append(True)
-        self.filenames.append(key)
+        self[key]['_index'] = index
 
     def __delitem__(self, key, **kwargs):
         super().__delitem__(key, **kwargs)
-        index = self.filenames.index(key)
+        index = self[key]['_index']
         del self.filenames[index]
         del self.kept[index]
+        for index, mol in enumerate(self.values()):
+            mol['_index'] = index
 
     @property
     def kept(self):
@@ -239,17 +267,35 @@ class Molecules(OrderedDict):
         """Returns data for conformer on desired index."""
         return self[self.filenames[index]]
 
+    def index(self, key):
+        try:
+            return self[key]['_index']
+        except KeyError:
+            raise ValueError(f"No such molecule: {key}.")
+
     @property
     def _max_len(self):
         return max(len(m) for m in self.values())
 
-    def trim_incomplete(self):
+    def trim_incomplete(self, wanted=None):
         # TO DO: don't take optimization_completed and such into consideration
         # TO DO: when above satisfied, change gui.tab_loader.Loader\
         # .update_overview_values() and .set_overview_values()
-        longest = self._max_len
-        for index, mol in enumerate(self.values()):
-            if len(mol) < longest:
+        if wanted is None:
+            wanted = 'dip rot vosc vrot losc lrot raman1 roa1 scf zpe ent ' \
+                     'ten gib'.split()
+        elif isinstance(wanted, str):
+            wanted = wanted.split()
+        elif not isinstance(wanted, (list, tuple)):
+            raise TypeError(
+                f"Expected list, tuple or string, got {type(wanted)}"
+            )
+        else:
+            pass
+        count = [[g in mol for g in wanted] for mol in self.values()]
+        best_match = max(count)
+        for index, match in enumerate(count):
+            if not match == best_match:
                 self.kept[index] = False
 
     def trim_imaginary_frequencies(self):
@@ -282,7 +328,7 @@ class Molecules(OrderedDict):
 
     def trim_inconsistent_sizes(self):
         sizes = {}
-        for index, (fname, mol) in enumerate(self.items()):
+        for fname, mol in self.items():
             for genre, value in mol.items():
                 if isinstance(value, (np.ndarray, list, tuple)):
                     sizes.setdefault(genre, {})[fname] = len(value)
@@ -325,14 +371,14 @@ class Molecules(OrderedDict):
     def select_all(self):
         self.kept = [True for __ in self.kept]
 
-    def trimmed_keys(self):
-        return _TrimmedKeysView(self)
+    def trimmed_keys(self, indices=False):
+        return _TrimmedKeysView(self, indices=indices)
 
-    def trimmed_values(self):
-        return _TrimmedValuesView(self)
+    def trimmed_values(self, indices=False):
+        return _TrimmedValuesView(self, indices=indices)
 
-    def trimmed_items(self):
-        return _TrimmedItemsView(self)
+    def trimmed_items(self, indices=False):
+        return _TrimmedItemsView(self, indices=indices)
 
     @property
     @contextmanager
