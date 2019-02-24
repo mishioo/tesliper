@@ -3,7 +3,7 @@ import logging as lgg
 
 import numpy as np
 from .. import datawork as dw
-from ..exceptions import VariousMoleculesError
+from ..exceptions import InconsistentDataError
 
 
 # LOGGER
@@ -86,11 +86,11 @@ class DataArray(BaseArray):
                         'gamma2 delta2 cid1 cid2 cid3 rc180 eemang'.split(' ')
 
     def __init__(self, genre, filenames, values, dtype=float, check_sizes=True,
-                 allow_various_molecules=False, **kwargs):
+                 allow_data_inconsistency=False, **kwargs):
         self.genre = genre
         self.dtype = dtype
         self.check_sizes = check_sizes
-        self.allow_various_molecules = allow_various_molecules
+        self.allow_data_inconsistency = allow_data_inconsistency
         self.filenames = filenames
         self.values = values
 
@@ -120,11 +120,11 @@ class DataArray(BaseArray):
         try:
             self.__values = np.array(values, dtype=self.dtype)
         except ValueError:
-            if not self.allow_various_molecules:
-                raise VariousMoleculesError(
-                    f"{self.__class__.__name__} with unequal number of values "
-                    f"for molecule requested."
-                )
+            if not self.allow_data_inconsistency:
+                error_msg = f"{self.__class__.__name__} of genre " \
+                            f"{self.genre} with unequal number of values for " \
+                            f"molecule requested."
+                raise InconsistentDataError(error_msg)
             lengths = [len(v) for v in values]
             longest = max(lengths)
             self.__values = np.array(
@@ -132,8 +132,8 @@ class DataArray(BaseArray):
                     for v, len_ in zip(values, lengths)], dtype=self.dtype
             )
             logger.info(
-                "Values' lists were appended with zeros to match length "
-                "of longest entry."
+                f"{self.genre} values' lists were appended with zeros to match "
+                f"length of longest entry."
             )
 
     def __len__(self):
@@ -309,16 +309,20 @@ class Bars(DataArray):
         try:
             self.__frequencies = np.array(frequencies, dtype=float)
         except ValueError:
+            if not self.allow_data_inconsistency:
+                error_msg = f"{self.__class__.__name__} of genre " \
+                            f"{self.genre} with unequal number of frequencies" \
+                            f" for molecule requested."
+                raise InconsistentDataError(error_msg)
             lengths = [len(v) for v in frequencies]
             longest = max(lengths)
             self.__frequencies = np.array(
                 [np.pad(v, (0, longest-len_), 'constant', constant_values=0)
-                    for v, len_ in zip(frequencies, lengths)], dtype=float
+                    for v, len_ in zip(frequencies, lengths)], dtype=self.dtype
             )
-            logger.warning(
-                'DataArray with unequal number of frequency values for entry '
-                'requested. Arrays were appended with zeros to match length '
-                'of longest entry.'
+            logger.info(
+                f"{self.genre} frequencies' lists were appended with zeros to "
+                f"match length of longest entry."
             )
 
     @property
@@ -346,16 +350,20 @@ class Bars(DataArray):
         try:
             self.__wavelengths = np.array(wavelengths, dtype=float)
         except ValueError:
+            if not self.allow_data_inconsistency:
+                error_msg = f"{self.__class__.__name__} of genre " \
+                            f"{self.genre} with unequal number of wavelengths" \
+                            f" for molecule requested."
+                raise InconsistentDataError(error_msg)
             lengths = [len(v) for v in wavelengths]
             longest = max(lengths)
             self.__wavelengths = np.array(
                 [np.pad(v, (0, longest-len_), 'constant', constant_values=0)
-                    for v, len_ in zip(wavelengths, lengths)], dtype=float
+                    for v, len_ in zip(wavelengths, lengths)], dtype=self.dtype
             )
-            logger.warning(
-                'DataArray with unequal number of wavelength values for entry '
-                'requested. Arrays were appended with zeros to match length '
-                'of longest entry.'
+            logger.info(
+                f"{self.genre} wavelengths' lists were appended with zeros to "
+                f"match length of longest entry."
             )
 
     @property

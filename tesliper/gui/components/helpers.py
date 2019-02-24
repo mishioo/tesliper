@@ -9,6 +9,8 @@ from copy import copy
 from functools import partial, wraps
 import queue
 
+from ...glassware.arrays import Bars
+
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -171,8 +173,15 @@ class WgtStateChanger:
     @staticmethod
     def change_spectra_radio():
         tslr = WgtStateChanger.gui.tslr
-        bars = tslr.spectral.values()
-        spectra_available = [bar.spectra_name for bar in bars if bar]
+        bars = {
+            k: False for k in 'dip rot vosc vrot losc lrot raman1 roa1'.split()
+        }
+        for mol in tslr.molecules.values():
+            for key in bars.keys():
+                bars[key] = bars[key] or key in mol
+        spectra_available = [
+            Bars.spectra_name_ref[bar] for bar, got in bars.items() if got
+        ]
         radio = WgtStateChanger.gui.spectra_tab.s_name_radio
         for option, widget in radio.items():
             state = 'disabled' if not tslr or \

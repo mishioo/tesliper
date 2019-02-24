@@ -1,6 +1,9 @@
 # IMPORTS
 import logging as lgg
-from collections import OrderedDict, Counter
+from collections import (
+    OrderedDict, Counter,
+    _OrderedDictKeysView, _OrderedDictItemsView, _OrderedDictValuesView
+)
 from contextlib import contextmanager
 
 import numpy as np
@@ -12,6 +15,56 @@ logger.setLevel(lgg.DEBUG)
 
 
 # CLASSES
+class _TrimmedItemsView(_OrderedDictItemsView):
+    def __init__(self, mapping):
+        super().__init__(mapping)
+        self._trimmed_keys = {
+            key for key, kept in zip(self._mapping, self._mapping.kept) if kept
+        }
+
+    def __contains__(self, item):
+        key, value = item
+        if key not in self._trimmed_keys:
+            return False
+        else:
+            return v is value or v == value
+
+    def __iter__(self):
+        for key, kept in zip(self._mapping, self._mapping.kept):
+            if kept:
+                yield (key, self._mapping[key])
+
+
+class _TrimmedValuesView(_OrderedDictValuesView):
+    def __contains__(self, value):
+        for key, kept in zip(self._mapping, self._mapping.kept):
+            v = self._mapping[key]
+            if (v is value or v == value) and kept:
+                return True
+        return False
+
+    def __iter__(self):
+        for key, kept in zip(self._mapping, self._mapping.kept):
+            if kept:
+                yield self._mapping[key]
+
+
+class _TrimmedKeysView(_OrderedDictKeysView):
+    def __init__(self, mapping):
+        super().__init__(mapping)
+        self._trimmed_keys = {
+            key for key, kept in zip(self._mapping, self._mapping.kept) if kept
+        }
+
+    def __contains__(self, key):
+        return key in self._trimmed_keys
+
+    def __iter__(self):
+        for key, kept in zip(self._mapping, self._mapping.kept):
+            if kept:
+                yield key
+
+
 class Molecules(OrderedDict):
     """Ordered mapping of dictionaries.
 
@@ -34,14 +87,15 @@ class Molecules(OrderedDict):
     )
     spectra_keys = 'ir uv vcd ecd raman roa'.split(' ')
 
-    def __init__(self, *args, allow_various_molecules=False, **kwargs):
-        self.allow_various_molecules = allow_various_molecules
+    def __init__(self, *args, allow_data_inconsistency=False, **kwargs):
+        self.allow_data_inconsistency = allow_data_inconsistency
         self.kept = []
         self.filenames = []
         super().__init__(*args, **kwargs)
 
     def __setitem__(self, key, value, **kwargs):
         # TO DO: enable other, convertible to dict, structures
+        # TO DO: make sure setting same key does not append kept and filenames
         if not isinstance(value, dict):
             raise TypeError(f'Value should be dict-like object, '
                             f'not {type(value)}')
@@ -176,7 +230,7 @@ class Molecules(OrderedDict):
             kwargs = {'unused': [[] for __ in mols]}  # is this needed?
         arr = cls(
             genre=genre, filenames=filenames, values=values,
-            allow_various_molecules=self.allow_various_molecules,
+            allow_data_inconsistency=self.allow_data_inconsistency,
             **kwargs
         )
         return arr
@@ -191,6 +245,8 @@ class Molecules(OrderedDict):
 
     def trim_incomplete(self):
         # TO DO: don't take optimization_completed and such into consideration
+        # TO DO: when above satisfied, change gui.tab_loader.Loader\
+        # .update_overview_values() and .set_overview_values()
         longest = self._max_len
         for index, mol in enumerate(self.values()):
             if len(mol) < longest:
@@ -205,11 +261,12 @@ class Molecules(OrderedDict):
 
     def trim_non_matching_stoichiometry(self):
         counter = Counter(
-            mol.get('stoichiometry', 'unknown') for mol in self.values()
+            mol['stoichiometry'] for mol in self.values()
+            if 'stoichiometry' in mol
         )
         stoich = counter.most_common()[0][0]
         for index, mol in enumerate(self.values()):
-            if not mol.get('stoichiometry', 'unknown') == stoich:
+            if 'stoichiometry' not in mol or not mol['stoichiometry'] == stoich:
                 self.kept[index] = False
 
     def trim_not_optimized(self):
@@ -222,6 +279,22 @@ class Molecules(OrderedDict):
         for index, mol in enumerate(self.values()):
             if not mol.get('normal_termination', False):
                 self.kept[index] = False
+
+    def trim_inconsistent_sizes(self):
+        sizes = {}
+        for index, (fname, mol) in enumerate(self.items()):
+            for genre, value in mol.items():
+                if isinstance(value, (np.ndarray, list, tuple)):
+                    sizes.setdefault(genre, {})[fname] = len(value)
+        maxes = {
+            genre: Counter(v for v in values.values()).most_common()[0][0]
+            for genre, values in sizes.items()
+        }
+        for index, fname in enumerate(self.keys()):
+            for genre, most_common in maxes.items():
+                confs = sizes[genre]
+                if fname in confs and not confs[fname] == most_common:
+                    self.kept[index] = False
 
     def trim_to_range(self, genre, minimum=float("-inf"), maximum=float("inf"),
                       attribute='values'):
@@ -253,19 +326,13 @@ class Molecules(OrderedDict):
         self.kept = [True for __ in self.kept]
 
     def trimmed_keys(self):
-        for key, kept in zip(self.keys(), self.kept):
-            if kept:
-                yield key
+        return _TrimmedKeysView(self)
 
     def trimmed_values(self):
-        for value, kept in zip(self.values(), self.kept):
-            if kept:
-                yield value
+        return _TrimmedValuesView(self)
 
     def trimmed_items(self):
-        for (key, value), kept in zip(self.items(), self.kept):
-            if kept:
-                yield key, value
+        return _TrimmedItemsView(self)
 
     @property
     @contextmanager

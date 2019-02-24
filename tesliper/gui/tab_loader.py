@@ -87,7 +87,9 @@ class Loader(ttk.Frame):
             column=0, row=2, columnspan=2, sticky='nswe'
         )
         tk.Grid.columnconfigure(self.overview_control_frame, 4, weight=1)
-        overview_vars = namedtuple('overview', ['checked', 'all', 'button'])
+        overview_vars = namedtuple(
+            'overview', ['kept', 'all', 'check', 'uncheck']
+        )
         self.overview_funcs = dict(
             file=lambda mol, max_len: True,
             en=lambda mol, max_len: 'gib' in mol,
@@ -97,8 +99,8 @@ class Loader(ttk.Frame):
             ecd=lambda mol, max_len: 'vrot' in mol,
             ram=lambda mol, max_len: 'raman1' in mol,
             roa=lambda mol, max_len: 'roa1' in mol,
-            incompl=lambda mol, max_len: mol,
-            term=lambda mol, max_len: mol['notmal_termination'],
+            incompl=lambda mol, max_len: mol,  # TO DO: fix this
+            term=lambda mol, max_len: mol['normal_termination'],
             opt=lambda mol, max_len: 'optimization_completed' in mol
                                      and not mol['optimization_completed'],
             imag=lambda mol, max_len: 'freq' in mol and
@@ -134,14 +136,20 @@ class Loader(ttk.Frame):
             tk.Label(
                 self.overview_control_frame, textvariable=var_all, bd=0, width=3
             ).grid(column=3, row=i)
-            butt = ttk.Button(
-                self.overview_control_frame, text='check',
+            check_butt = ttk.Button(
+                self.overview_control_frame, text='check', width=6,
                 command=lambda key=key: self.un_check(key, True)
             )
-            butt.grid(column=4, row=i, sticky='ne')
-            guicom.WgtStateChanger.either.append(butt)
+            check_butt.grid(column=4, row=i, sticky='ne')
+            guicom.WgtStateChanger.tslr.append(check_butt)
+            uncheck_butt = ttk.Button(
+                self.overview_control_frame, text='uncheck', width=8,
+                command=lambda key=key: self.un_check(key, False)
+            )
+            uncheck_butt.grid(column=5, row=i, sticky='ne')
+            guicom.WgtStateChanger.tslr.append(uncheck_butt)
             self.overview_control[key] = overview_vars(
-                var_checked, var_all, butt
+                var_checked, var_all, check_butt, uncheck_butt
             )
 
         # keep unchecked
@@ -153,7 +161,7 @@ class Loader(ttk.Frame):
         )
         self.kept_vars = {
             k: tk.BooleanVar() for k
-            in 'error unopt imag stoich incompl'.split(' ')
+            in 'error unopt imag stoich incompl incons'.split(' ')
         }
         self.kept_buttons = {
             k: ttk.Checkbutton(
@@ -162,7 +170,8 @@ class Loader(ttk.Frame):
             ) for (k, var), text in zip(
                 self.kept_vars.items(),
                 ['Error termination', 'Unoptimised', 'Imaginary frequencies',
-                 'Non-matching stoichiometry', 'Incomplete entries']
+                 'Non-matching stoichiometry', 'Incomplete entries',
+                 'Inconsistent data sizes']
             )
         }
         for n, (key, var) in enumerate(self.kept_vars.items()):
@@ -188,10 +197,6 @@ class Loader(ttk.Frame):
                 overview.boxes[str(n)].var.set(keep)
         self.discard_not_kept()
         self.update_overview_values()
-        self.overview_control[key][2].configure(
-            text='check' if not keep else 'uncheck',
-            command=lambda key=key, keep=keep: self.un_check(key, not keep)
-        )
 
     @property
     def kept_funcs(self):
@@ -200,7 +205,8 @@ class Loader(ttk.Frame):
             unopt=self.parent.tslr.molecules.trim_not_optimized,
             imag=self.parent.tslr.molecules.trim_imaginary_frequencies,
             stoich=self.parent.tslr.molecules.trim_non_matching_stoichiometry,
-            incompl=self.parent.tslr.molecules.trim_incomplete
+            incompl=self.parent.tslr.molecules.trim_incomplete,
+            incons=self.parent.tslr.molecules.trim_inconsistent_sizes
         )
 
     def not_impl(self):
@@ -285,7 +291,8 @@ class Loader(ttk.Frame):
             values['term'] += not mol['normal_termination']
             values['opt'] += 'optimization_completed' in mol and \
                              not mol['optimization_completed']
-            values['imag'] += sum(v < 0 for v in mol['freq']) > 0
+            values['imag'] += 'freq' in mol and \
+                              sum(v < 0 for v in mol['freq']) > 0
             values['en'] += 'gib' in mol
             values['ir'] += 'dip' in mol
             values['vcd'] += 'rot' in mol
@@ -318,7 +325,8 @@ class Loader(ttk.Frame):
             values['incompl'] += len(mol) < longest
             values['opt'] += 'optimization_completed' in mol and \
                              not mol['optimization_completed']
-            values['imag'] += sum(v < 0 for v in mol['freq']) > 0
+            values['imag'] += 'freq' in mol and \
+                              sum(v < 0 for v in mol['freq']) > 0
             values['en'] += 'gib' in mol
             values['ir'] += 'dip' in mol
             values['vcd'] += 'rot' in mol
@@ -330,6 +338,9 @@ class Loader(ttk.Frame):
             items[0].set(values[key])
 
     def discard(self, key):
+        if key == 'incons':
+            self.parent.tslr.molecules.allow_data_inconsistency = \
+                not self.kept_vars[key].get()
         if self.kept_vars[key].get():
             self.kept_funcs[key]()
             for box, kept in zip(self.overview.boxes.values(),
