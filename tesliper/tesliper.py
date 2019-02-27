@@ -165,7 +165,7 @@ class Tesliper:
             self.update(((file, data),))
     
     def smart_extract(self, deep_search=True, with_load=True):
-        #TO DO: add deep search and loading
+        # TO DO: add deep search and loading
         soxhlet = self.soxhlet
         args = soxhlet.parse_command()
         return self.extract(*args)

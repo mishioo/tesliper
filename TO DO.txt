@@ -1,9 +1,10 @@
 CURRENT:
-remove other energies in average by energy when only scf available
-correct spectra drawing when offset used
+put conformers without values always on bottom when sorting
+handle SCF energy in conformers tab separately form other energies
+remove other energies in average spectra by energy when only scf available
+implement smart calculation and smart export
 energies extraction from spectra outputs
 correct displaying of checkboxes
-implement smart calculation and smart export
 bind <<enter>> to entry widgets
 prevent spectra recalculating if settings not changed
 refresh 'single conformer' list after new data loaded
@@ -14,7 +15,7 @@ conformers tab has visual info for each entry
 SOON:
 add popup information when inconsistency allowed
 add finding optimal spectra range
-handle uncompatible Gaussian versions
+handle incompatible Gaussian versions
 add jaguar support
 add drag&drop support
 export from spectra tab
