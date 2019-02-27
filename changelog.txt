@@ -1,3 +1,26 @@
+v. 0.7.3
+API:
+    - introduced exceptions.py submodule
+    - glassware module turned into package
+    - improved mechanism for dealing with inconsistent data sizes
+    - added mechanism for trimming conformers with inconsistent data sizes
+    - fixed Molecules' trim_incomplete function
+    - enhanced Molecules' trim_non_matching_stoichiometry function
+    - introduced dict_view classes for iteration through trimmed Molecules 
+    - improved Molecules indexing mechanism to return in O(1)
+    - removed 'cpu_time' from data extracted by gaussian_parser
+    - fixed error on parsing ECD calculations from g.09B 
+GUI:
+    - fixed problem with stacked spectra drawing 
+    - added spectra reversing on demand
+    - fixed stacked spectra coloring
+    - corrected bars drawing for uv and ecd spectra
+    - added option for filtering conformers with inconsistent data sizes
+    - splitted un/check into separate buttons
+    - fixed checking/unchecking incomplete entries
+    - added checking/unchecking inconsistent sizes
+    - other minor changes and fixes
+
 v. 0.7.2
 - added support for string 'genres' parameter in Tesliper.calculate_spectra method
 - added support for .xy spectra files

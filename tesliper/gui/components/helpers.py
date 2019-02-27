@@ -145,7 +145,7 @@ class WgtStateChanger:
                 key in mol for key in
                 'dip rot vosc vrot losc lrot raman1 roa1'.split()
             )
-            energies = energies or any(
+            energies = energies or all(
                 key in mol for key in 'zpe ent ten gib scf'.split()
             )
         spectra = bool(WgtStateChanger.gui.tslr.spectra)
