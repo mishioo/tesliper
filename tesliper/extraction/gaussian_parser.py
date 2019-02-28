@@ -20,6 +20,7 @@ cpu_time_reg = re.compile(
 )  # use .findall(text)
 scf = re.compile(r'SCF Done.*=\s+(-?\d+\.?\d*)')  # use .findall(text)
 stoich = re.compile(r'Stoichiometry\s*(\w*)\n')  # use .findall(text)
+stoich_ = re.compile(r'^ Stoichiometry\s*(\w*)\n')  # use .findall(text)
 
 # GEOMETRY
 # not used currently
@@ -62,6 +63,7 @@ vibr_dict = dict(
     depolarp=r'Depolar \(P\)',
     depolaru=r'Depolar \(U\)',
     ramact=r'RamAct',
+    ramanactiv=r'Raman Activ',
     depp=r'Dep-P',
     depu=r'Dep-U',
     alpha2=r'Alpha2',
@@ -80,6 +82,14 @@ vibr_dict = dict(
     cid3=r'CID3',
     rc180=r'RC180'
 )
+vibr_dict_ = vibr_dict.copy()
+vibr_dict_['depolarp'] = r'Depolar (P)'
+vibr_dict_['depolaru'] = r'Depolar (U)'
+vibr_dict_ = {value: key for key, value in vibr_dict_.items()}
+vibrational_reg = re.compile(
+    r'^\s\s?([a-zA-Z.\-]+[0-9]*(?:\s?[a-zA-Z.()]+)?)\s*(?:(?:Fr= \d+)?--)'
+    + 3 * number_group
+)
 vibr_regs = {k: re.compile(v + '(?:\s+(?:Fr= \d+)?--\s+)' + 3 * number_group)
              for k, v in vibr_dict.items()}
 
@@ -92,7 +102,7 @@ excited_grouped = re.compile(
     # with use of \s* in the beginning of repeating transitions pattern
     # this regex will match until first blank line
 )
-transitions = '\s*(\d+\s*->\s*\d+)\s+(-?\d+\.\d+)'
+transitions = r'\s*(\d+\s*->\s*\d+)\s+(-?\d+\.\d+)'
 transitions_reg = re.compile(transitions)
 numbers = 4 * number + 2 * number_group + r'?\n'
 numbers_reg = re.compile(numbers)
@@ -118,70 +128,18 @@ class FSMParser:
         self.states = {name: state for name, state in states.items()}
         self.states.update({'initial': initial_state})
         self.state = self.states['initial']
+        self.iterator = iter([])
+        self.data = {}
 
-    def parse(self, file):
-        self.state = self.states['initial']
-        data = {}
-        with open(file, 'r') as file_:
-            for line in file_:
-                self.state(line, file_, data)
-        return data
-
-
-class GaussianParserObj:
-
-    def __init__(self):
+    def parse(self, lines) -> dict:
         self.state = self.initial
         self.data = {}
-        self.file = None
-
-    def parse(self, file):
-        self.state = self.initial
-        self.data = {}
-        with open(file, 'r') as file_:
-            self.file = file_
-            for line in file_:
-                self.state(line)
+        self.iterator = iter(lines)
+        for line in self.iterator:
+            self.state(line)
         return self.data
 
-    def command(self, line):
-        if not line.startswith(' --'):
-            self.data['command'].append(line.strip())
-        else:
-            self.data['command'] = ' '.join(self.data['command'])
-            if 'opt' in self.data['command']:
-                self.data['optimization_completed'] = False
-            self.state = self.await_matrix
-
-    def await_matrix(self, line):
-        if line == " Symbolic Z-matrix:\n":
-            c_and_m = re.match(
-                r' Charge =\s*(-?\d) Multiplicity = (\d)', self.file.readline()
-            )
-            self.data['charge'], self.data['multiplicity'] = \
-                map(float, c_and_m.groups())
-            self.data['input_geom'] = []
-            self.state = self.zmatrix
-        else:
-            pass
-
-    def zmatrix(self, line):
-        if line.strip():
-            atom = re.match(r' (\w+)' + 3 * number_group, line)
-            label, *coordinates = atom.groups()
-            self.data['input_geom'].append((label, *map(float, coordinates)))
-        else:
-            self.state = self.passive
-
-    def initial(self, line):
-        if line == ' Cite this work as:\n':
-            self.data['version'] = self.file.readline().strip(' \n,')
-        elif line.startswith(' #'):
-            self.data['command'] = []
-            self.state = self.command
-            self.command(line)
-
-    def passive(self, *ign):
+    def initial(self, line: str) -> None:
         pass
 
 
@@ -189,66 +147,101 @@ class GaussianParser(FSMParser):
 
     def __init__(self):
         super().__init__(
-            initial_state=self.initial
+            initial_state=self.initial,
+            optimization=self.optimization,
+            frequencies=self.frequencies,
+            excited=self.excited,
+            shielding=self.shielding,
+            coupling=self.coupling
+        )
+        self.delimiters = dict(
+            frequencies=re.compile(' Harmonic frequencies')
+            # optimization=re.compile(''),
+            # excited=re.compile(''),
+            # shielding=re.compile(''),
+            # coupling=re.compile('')
         )
 
-    def initial(self, line: str, file, data: dict):
+    def initial(self, line: str) -> None:
+        data, iterator = self.data, self.iterator
+        data['normal_termination'] = True
         while not line == ' Cite this work as:\n':
-            line = file.readline()
-        data['version'] = file.readline().strip(' \n,')
+            line = next(iterator)
+        data['version'] = next(iterator).strip(' \n,')
         while not line.startswith(' #'):
-            line = file.readline()
+            line = next(iterator)
         command = []
         while not line.startswith(' --'):
             command.append(line.strip())
-            line = file.readline()
+            line = next(iterator)
         command = data['command'] = ' '.join(command)
         if 'opt' in command:
             data['optimization_completed'] = False
         while not line == ' Symbolic Z-matrix:\n':
-            line = file.readline()
+            line = next(iterator)
         c_and_m = re.match(
-            r' Charge =\s*(-?\d) Multiplicity = (\d)', file.readline()
+            r' Charge =\s*(-?\d) Multiplicity = (\d)', next(iterator)
         )
         data['charge'], data['multiplicity'] = map(float, c_and_m.groups())
-        line = file.readline().strip()
+        line = next(iterator).strip()
         input_geom = []
         pattern = r'(\w+)' + 3 * number_group
         while line:
             atom = re.match(pattern, line)
             label, *coordinates = atom.groups()
             input_geom.append((label, *map(float, coordinates)))
-            line = file.readline().strip()
+            line = next(iterator).strip()
         data['input_geom'] = input_geom
-        self.state = self.passive
+        match = stoich_.match(line)
+        while not match:
+            match = stoich_.match(next(iterator))
+        data['stoichiometry'] = match.group(1)
+        self.state = self.wait
 
-    def optimization(self):
+    def wait(self, line: str) -> None:
+        for name, reg in self.delimiters.items():
+            match = reg.match(line)
+            if match:
+                self.state = self.states[name]
+                return
+        if 'Error termination' in line:
+            self.data['normal_termination'] = False
+        elif line.startswith(" SCF Done:"):
+            self.data['scf'] = float(re.search(number, line).group())
+
+    def optimization(self, line: str) -> None:
         pass
 
-    def frequencies(self):
+    def frequencies(self, line: str) -> None:
+        data, iterator = self.data, self.iterator
+        while not line == '\n':
+            # while frequencies section is not over
+            match = vibrational_reg.match(line)
+            while match:
+                # unpack values from current line to list of corresponding genre
+                name, *values = match.groups()
+                genre = vibr_dict_[name]  # convert gaussian line name to genre
+                data.setdefault(genre, list()).extend(float(x) for x in values)
+                line = next(iterator)
+                match = vibrational_reg.match(line)
+            line = next(iterator)
+        while not line.startswith(" Zero-point correction="):
+            line = next(iterator)
+        # parse energies values
+        for genre in 'zpecorr tencorr entcorr gibcorr zpe ten ent gib'.split():
+            data[genre] = float(re.search(number, line).group())
+            line = next(iterator)
+        self.state = self.wait
+
+    def excited(self, line: str) -> None:
         pass
 
-    def excited(self):
+    def shielding(self, line: str) -> None:
         pass
 
-    def shielding(self):
+    def coupling(self, line: str) -> None:
         pass
 
-    def coupling(self):
-        pass
-
-    def passive(self, *ign):
-        pass
-
-# gp = GaussianParser(); gpo = GaussianParserObj()
-# >>> timeit("gp.parse(r'D:\\Obliczenia\\acoet1.out')", globals=globals(), number=100)
-# 1.0858578583832141
-# >>> timeit("gp.parse(r'D:\\Obliczenia\\acoet1.out')", globals=globals(), number=100)
-# 1.0933280550701596
-# >>> timeit("gpo.parse(r'D:\\Obliczenia\\acoet1.out')", globals=globals(), number=100)
-# 1.0558939839027914
-# >>> timeit("gpo.parse(r'D:\\Obliczenia\\acoet1.out')", globals=globals(), number=100)
-# 1.0528351362943553
 
 # FUNCTIONS
 def _geom_parse(text):
