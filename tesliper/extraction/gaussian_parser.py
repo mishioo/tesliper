@@ -2,11 +2,9 @@ import re
 import logging as lgg
 import numpy as np
 
-
 # LOGGER
 logger = lgg.getLogger(__name__)
 logger.setLevel(lgg.INFO)
-
 
 # REGEXS
 number_group = r'\s*(-?\d+\.?\d*)'
@@ -30,14 +28,14 @@ geom_part = re.compile(
     flags=re.DOTALL
 )
 geom_line_pat = r'\s*(\d+)\s+(\d+)\s+(\d+)' + \
-            3 * number_group + r'\s*\n'
+                3 * number_group + r'\s*\n'
 geom_inp_pat = r'Input orientation:.*?-+\n(?:' + \
-           geom_line_pat.replace('(', '(?:') + \
-           r')+?\s-+\n'
+               geom_line_pat.replace('(', '(?:') + \
+               r')+?\s-+\n'
 geom_inp = re.compile(geom_inp_pat, flags=re.DOTALL)
 geom_std_pat = r'Standard orientation:.*?-+\n(?:' + \
-           geom_line_pat.replace('(', '(?:') + \
-           r')+?\s-+\n'
+               geom_line_pat.replace('(', '(?:') + \
+               r')+?\s-+\n'
 geom_std = re.compile(geom_std_pat, flags=re.DOTALL)
 geom_line = re.compile(geom_line_pat)
 
@@ -96,14 +94,19 @@ vibr_regs = {k: re.compile(v + '(?:\s+(?:Fr= \d+)?--\s+)' + 3 * number_group)
 # ELECTRIC
 excited_grouped = re.compile(
     r'Excited State\s+(\d+).*\s+'  # beginning of pattern and state's number
-    r'(-?\d+\.?\d*) eV\s+'   # state's energy, key = ex_en
+    r'(-?\d+\.?\d*) eV\s+'  # state's energy, key = ex_en
     r'(-?\d+\.?\d*) nm.*\n'  # state's frequency, key = wave
     r'((?:\s*\d+\s*->\s*\d+\s+-?\d+\.\d+)+)'  # state's transitions
     # with use of \s* in the beginning of repeating transitions pattern
     # this regex will match until first blank line
 )
+excited_reg = re.compile(
+    r'^ Excited State\s+\d+:[a-zA-Z\-\s]*(-?\d+\.?\d*) eV\s+(-?\d+\.?\d*) nm'
+)
 transitions = r'\s*(\d+\s*->\s*\d+)\s+(-?\d+\.\d+)'
 transitions_reg = re.compile(transitions)
+transitions_ = r'(\d+)\s*->\s*(\d+)\s+(-?\d+\.\d+)'
+transitions_reg_ = re.compile(transitions_)
 numbers = 4 * number + 2 * number_group + r'?\n'
 numbers_reg = re.compile(numbers)
 electr_dict = dict(
@@ -155,9 +158,9 @@ class GaussianParser(FSMParser):
             coupling=self.coupling
         )
         self.delimiters = dict(
-            frequencies=re.compile(' Harmonic frequencies')
+            frequencies=re.compile('^ Harmonic frequencies'),
             # optimization=re.compile(''),
-            # excited=re.compile(''),
+            excited=re.compile('^ Excited states from')
             # shielding=re.compile(''),
             # coupling=re.compile('')
         )
@@ -233,8 +236,48 @@ class GaussianParser(FSMParser):
             line = next(iterator)
         self.state = self.wait
 
+    def _excited_states(self, line: str) -> list:
+        iterator = self.iterator
+        while not line.startswith(' Excited State'):
+            line = next(iterator)
+        out = [map(float, excited_reg.match(line).groups())]
+        while line.strip():
+            line = next(iterator)
+            match = transitions_reg_.search(line)
+            if match:
+                out.append(match.groups())
+        return out
+
     def excited(self, line: str) -> None:
-        pass
+        data, iterator = self.data, self.iterator
+        for genres, header in (
+                (('vdip', 'vosc'), 'electric dipole'),
+                (('ldip', 'losc'), 'velocity dipole'),
+                (('vrot', 'eemang'), 'Rotatory Strengths'),
+                (('lrot', ''), 'Rotatory Strengths')
+        ):
+            while header not in line:
+                line = next(iterator)
+            next(iterator)  # skip column names
+            match = numbers_reg.search(next(iterator))
+            values = []
+            while match:
+                values.append(float(x) if x else None for x in match.groups())
+                line = next(iterator)
+                match = numbers_reg.search(line)
+            for genre, values in zip(genres, zip(*values)):
+                if genre:
+                    data[genre] = values
+        while not line.startswith(' **'):
+            (wave, energy), *transitions = self._excited_states(line)
+            data.setdefault('wave', []).append(wave)
+            data.setdefault('ex_en', []).append(energy)
+            data.setdefault('transitions', []).append(
+                [(int(low), int(high), float(coef)) for low, high, coef
+                 in transitions]
+            )
+            line = next(iterator)
+        self.state = self.wait
 
     def shielding(self, line: str) -> None:
         pass
