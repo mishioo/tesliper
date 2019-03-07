@@ -38,6 +38,7 @@ geom_std_pat = r'Standard orientation:.*?-+\n(?:' + \
                r')+?\s-+\n'
 geom_std = re.compile(geom_std_pat, flags=re.DOTALL)
 geom_line = re.compile(geom_line_pat)
+geom_line_ = re.compile(r'^\s*(\d+)\s+(\d+)\s+(\d+)' + 3 * number_group)
 
 # VIBRATIONAL
 energies = re.compile(
@@ -151,15 +152,17 @@ class GaussianParser(FSMParser):
     def __init__(self):
         super().__init__(
             initial_state=self.initial,
-            optimization=self.optimization,
             frequencies=self.frequencies,
+            geometry=self.geometry,
+            optimization=self.optimization,
             excited=self.excited,
             shielding=self.shielding,
             coupling=self.coupling
         )
-        self.delimiters = dict(
+        self.triggers = dict(
             frequencies=re.compile('^ Harmonic frequencies'),
-            # optimization=re.compile(''),
+            geometry=re.compile(r'^\s+Standard orientation'),
+            optimization=re.compile('^ Berny optimization'),
             excited=re.compile('^ Excited states from')
             # shielding=re.compile(''),
             # coupling=re.compile('')
@@ -195,14 +198,10 @@ class GaussianParser(FSMParser):
             input_geom.append((label, *map(float, coordinates)))
             line = next(iterator).strip()
         data['input_geom'] = input_geom
-        match = stoich_.match(line)
-        while not match:
-            match = stoich_.match(next(iterator))
-        data['stoichiometry'] = match.group(1)
         self.state = self.wait
 
     def wait(self, line: str) -> None:
-        for name, reg in self.delimiters.items():
+        for name, reg in self.triggers.items():
             match = reg.match(line)
             if match:
                 self.state = self.states[name]
@@ -212,8 +211,36 @@ class GaussianParser(FSMParser):
         elif line.startswith(" SCF Done:"):
             self.data['scf'] = float(re.search(number, line).group())
 
+    def geometry(self, line: str) -> None:
+        data, iterator = self.data, self.iterator
+        match = geom_line_.match(line)
+        while not match:
+            line = next(iterator)
+            match = geom_line_.match(line)
+        geom = []
+        while match:
+            geom.append(match.groups())
+            line = next(iterator)
+            match = geom_line_.match(line)
+        geom = (
+            (int(a), (float(x), float(y), float(z)))
+            for _, a, _, x, y, z in geom
+        )
+        data['atoms'], data['geometry'] = zip(*geom)
+        self.state = self.wait
+
     def optimization(self, line: str) -> None:
-        pass
+        if self.triggers['geometry'].match(line):
+            self.geometry(line)
+            self.state = self.optimization
+        elif line.startswith(" Stoichiometry"):
+            self.data['stoichiometry'] = stoich_.match(line).group(1)
+        elif line.startswith(" SCF Done:"):
+            self.data['scf'] = float(re.search(number, line).group())
+        elif line.startswith(" Optimization completed."):
+            self.data['optimization_completed'] = True
+        elif line == '\n':
+            self.state = self.wait
 
     def frequencies(self, line: str) -> None:
         data, iterator = self.data, self.iterator
