@@ -247,30 +247,43 @@ class Loader(ttk.Frame):
         return query
 
     @guicom.Feedback('Saving...')
-    def execute_save_command(self, output, format):
-        self.parent.tslr.writer.save_output(output, format)
+    def execute_save_command(self, output, dest, fmt):
+        savers = {
+            'energies': self.parent.tslr.export_energies,
+            'bars': self.parent.tslr.export_bars,
+            'spectra': self.parent.tslr.export_spectra,
+            'averaged': self.parent.tslr.export_averaged
+        }
+        if 'averaged' in output:
+            self.parent.progtext.set('Averaging spectra...')
+            self.parent.tslr.average_spectra()
+            self.parent.progtext.set('Saving...')
+        for thing in output:
+            savers[thing](dest, fmt)
 
-    @guicom.Feedback('Saving...')
-    def save(self):
-        pass
+    def save(self, output, fmt):
+        dest = askdirectory()
+        if dest:
+            logger.debug(f'Export requested: {output}; format: {fmt}')
+            self.execute_save_command(output, dest, fmt)
 
     def save_text(self):
         output = self.get_save_output()
         if not output:
             return
-        self.execute_save_command(output, format='txt')
+        self.save(output, fmt='txt')
 
     def save_excel(self):
         output = self.get_save_output()
         if not output:
             return
-        self.execute_save_command(output, format='xlsx')
+        self.save(output, fmt='xlsx')
 
     def save_csv(self):
         output = self.get_save_output()
         if not output:
             return
-        self.execute_save_command(output, format='csv')
+        self.save(output, fmt='csv')
 
     def from_dir(self):
         work_dir = askdirectory()
@@ -416,6 +429,7 @@ class Loader(ttk.Frame):
 
     @guicom.Feedback('Calculating populations...')
     def calc_popul(self):
+        logger.debug('Calculating populations...')
         self.parent.tslr.calculate_populations()
 
     @guicom.Feedback('Calculating spectra...')
@@ -424,9 +438,7 @@ class Loader(ttk.Frame):
 
     @guicom.Feedback('Averaging spectra...')
     def calc_average(self):
-        tslr = self.parent.tslr
-        for spc in tslr.spectra.values():
-            averaged = [spc.average(en) for en in tslr.energies.values()]
+        self.parent.tslr.average_spectra()
 
     def get_wanted_bars(self):
         popup = guicom.BarsPopup(self, width='250', height='190')

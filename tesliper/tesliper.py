@@ -13,7 +13,7 @@ from .extraction import gaussian_parser as gp
 # GLOBAL VARIABLES
 __author__ = "Michał M. Więcław"
 __version__ = "0.7.3"
-_DEVELOPMENT = False
+_DEVELOPMENT = True
     
 
 # LOGGER
@@ -292,6 +292,7 @@ class Tesliper:
                 for energies in self.energies.values():
                     av = spectra.average(energies)
                     self.averaged[(genre, energies.genre)] = av
+        return self.averaged
 
     def export_data(self, genres, dest='', fmt='txt'):
         """

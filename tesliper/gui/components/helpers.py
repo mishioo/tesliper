@@ -249,5 +249,4 @@ class Feedback:
                     [other] + list(args), kwargs
                 )
             other.parent.thread.start()
-
         return wrapper
