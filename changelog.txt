@@ -1,5 +1,11 @@
 v. 0.7.3
 API:
+    - Tesliper's method 'average_spectra' returns reference to dict of averaged spectra
+GUI:
+    - fixed files export (broken in v. 0.7.3)
+
+v. 0.7.3
+API:
     - introduced exceptions.py submodule
     - glassware module turned into package
     - improved mechanism for dealing with inconsistent data sizes
