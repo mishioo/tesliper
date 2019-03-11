@@ -12,8 +12,8 @@ from .extraction import gaussian_parser as gp
 
 # GLOBAL VARIABLES
 __author__ = "Michał M. Więcław"
-__version__ = "0.7.3"
-_DEVELOPMENT = True
+__version__ = "0.7.4"
+_DEVELOPMENT = False
     
 
 # LOGGER
