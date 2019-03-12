@@ -102,7 +102,8 @@ excited_grouped = re.compile(
     # this regex will match until first blank line
 )
 excited_reg = re.compile(
-    r'^ Excited State\s+\d+:[a-zA-Z\-\s]*(-?\d+\.?\d*) eV\s+(-?\d+\.?\d*) nm'
+    r'^ Excited State\s+\d+:[a-zA-Z\-\s\'\"]*(-?\d+\.?\d*) '
+    r'eV\s+(-?\d+\.?\d*) nm'
 )
 transitions = r'\s*(\d+\s*->\s*\d+)\s+(-?\d+\.\d+)'
 transitions_reg = re.compile(transitions)
@@ -123,6 +124,10 @@ electr_regs = {
         r')+'  # find all consecutive lines with numbers and terminate
     ) for k, v in electr_dict.items()
 }
+shielding_reg = re.compile(r'Isotropic =' + number_group +
+                           r'\s+Anisotropy =' + number_group)
+fc_sci_not = r'(-?\d\.\d+D[+-]\d\d)'
+fc_reg = re.compile(r'\d+\s+' + fc_sci_not + (r'\s' + fc_sci_not + '?') * 4)
 
 
 # CLASSES
@@ -163,9 +168,9 @@ class GaussianParser(FSMParser):
             frequencies=re.compile('^ Harmonic frequencies'),
             geometry=re.compile(r'^\s+Standard orientation'),
             optimization=re.compile('^ Berny optimization'),
-            excited=re.compile('^ Excited states from')
-            # shielding=re.compile(''),
-            # coupling=re.compile('')
+            excited=re.compile('^ Excited states from'),
+            shielding=re.compile(r'[\w\s]*Magnetic shielding tensor'),
+            coupling=re.compile('^ Fermi Contact (FC) contribution to J')
         )
 
     def initial(self, line: str) -> None:
@@ -210,6 +215,8 @@ class GaussianParser(FSMParser):
             self.data['normal_termination'] = False
         elif line.startswith(" SCF Done:"):
             self.data['scf'] = float(re.search(number, line).group())
+        elif line.startswith(" Stoichiometry"):
+            self.data['stoichiometry'] = stoich_.match(line).group(1)
 
     def geometry(self, line: str) -> None:
         data, iterator = self.data, self.iterator
@@ -278,8 +285,8 @@ class GaussianParser(FSMParser):
     def excited(self, line: str) -> None:
         data, iterator = self.data, self.iterator
         for genres, header in (
-                (('vdip', 'vosc'), 'electric dipole'),
-                (('ldip', 'losc'), 'velocity dipole'),
+                (('ldip', 'losc'), 'electric dipole'),
+                (('vdip', 'vosc'), 'velocity dipole'),
                 (('vrot', 'eemang'), 'Rotatory Strengths'),
                 (('lrot', ''), 'Rotatory Strengths')
         ):
@@ -296,21 +303,35 @@ class GaussianParser(FSMParser):
                 if genre:
                     data[genre] = values
         while not line.startswith(' **'):
-            (wave, energy), *transitions = self._excited_states(line)
+            (energy, wave), *transitions = self._excited_states(line)
             data.setdefault('wave', []).append(wave)
             data.setdefault('ex_en', []).append(energy)
             data.setdefault('transitions', []).append(
-                [(int(low), int(high), float(coef)) for low, high, coef
-                 in transitions]
+                tuple((int(low), int(high), float(coef)) for low, high, coef
+                      in transitions)
             )
             line = next(iterator)
         self.state = self.wait
 
     def shielding(self, line: str) -> None:
-        pass
+        match = shielding_reg.search(line)
+        if match:
+            self.data.setdefault('shielding', []).append(float(match.group(1)))
+            self.data.setdefault(
+                'shielding_aniso', []
+            ).append(float(match.group(2)))
+        elif line == '\n':
+            self.state = self.wait
 
     def coupling(self, line: str) -> None:
-        pass
+        match = fc_reg.search(line)
+        if match:
+            self.data.setdefault('fermi', []).extend(
+                float(num.replace('D', 'e')) for num in match.groups()
+            )
+        else:
+            if re.match(r'^ \w', line):
+                self.state = self.wait
 
 
 # FUNCTIONS
@@ -463,74 +484,3 @@ def parse(text):
     if stoichiometries:
         extr['stoichiometry'] = stoichiometries[-1]
     return extr
-
-
-def main():
-    # def with_groups(text):
-    #     data = {}
-    #     for n, e, f, t in excited_grouped.findall(text):
-    #         data.setdefault('ex_en', []).append(float(e))
-    #         data.setdefault('wave', []).append(float(f))
-    #         data.setdefault('transition', []).append(
-    #             transitions_reg.findall(t)
-    #         )
-    #     return data
-    #
-    # def zipped_groups(text):
-    #     data = {}
-    #     n, e, f, t = zip(*excited_grouped.findall(text))
-    #     data['ex_en'] = [float(x) for x in e]
-    #     data['wave'] = [float(x) for x in f]
-    #     data['transition'] = [transitions_reg.findall(x) for x in t]
-    #     return data
-
-    # def no_groups(text):
-    #     data = {}
-    #     for match in excited_states.findall(text):
-    #         for k, v in excit_regs.items():
-    #             if k == 'transition':
-    #                 data.setdefault(k, []).append(
-    #                     v.findall(match)
-    #                 )
-    #             elif k == 'state_n':
-    #                 pass
-    #             else:
-    #                 data.setdefault(k, []).append(float(v.search(match).group(1)))
-    #     return data
-
-    # with open(r'D:\Code\python-projects\Tesliper\logi\Tolbutamid\gjf\LOGI\ECD do '
-    #           r'5kcal\ecd gjf\LOGI\Tolbutamid_c1.log', 'r') as f:
-    #     cont = f.read()
-    # w = with_groups(cont)
-    # z = zipped_groups(cont)
-    # n = no_groups(cont)
-    # print(w==z)
-
-    # for k in w.keys():
-    #     print(k, w[k] == n[k])
-
-    # from timeit import timeit
-    # print(timeit('with_groups(cont)', globals=locals(), number=1000))    # 0.8390080543772318
-    # print(timeit('zipped_groups(cont)', globals=locals(), number=1000))  # 0.7781612425541962
-    # print(timeit('no_groups(cont)', globals=locals(), number=1000))      # 1.6335766830799694
-
-    pass
-    # with open(r'D:\Code\python-projects\Tesliper\logi\opt only\c-t1_B6311.log', 'r') as f:
-    #     cont = f.read()
-    #
-    # print(trie_regex)
-    #
-    # print(vibr_parse_old(cont) == vibr_parse(cont))
-    # from timeit import timeit
-    # import cProfile
-    #
-    # print(f'new: {timeit("vibr_parse(cont)", globals=globals(), number=100)}')
-    # print(f'old: {timeit("vibr_parse_old(cont)", globals=globals(), number=100)}')
-    # print(f'onp: {timeit("vibr_parse_old_no_preproc(cont)", globals=globals(), number=100)}')
-    # cProfile.run('for _ in range(100): vibr_parse(cont)')
-    # cProfile.run('for _ in range(100): vibr_parse_old(cont)')
-    # cProfile.run('for _ in range(100): vibr_parse_old_no_preproc(cont)')
-
-
-if __name__ == '__main__':
-    main()

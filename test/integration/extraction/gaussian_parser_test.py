@@ -5,15 +5,17 @@ from tesliper.extraction import gaussian_parser as gprs
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
-# or maybe like this?
-# https://gist.github.com/jonashaag/834a5f6051094dbed3bc
-class ParserTestCase:
+class ParserTestCase(unittest.TestCase):
     """This is mix-in class for test cases for gaussian files parsing."""
     # name of gaussian output file in fixtures dir
     file = ''  # molecule is formaldehyde by default
 
     @classmethod
     def setUpClass(cls):
+        if cls is ParserTestCase:
+            raise unittest.SkipTest(
+                'Base class for gaussian files parser test cases.'
+            )
         parser = gprs.GaussianParser()
         path = os.path.join(THIS_DIR, os.pardir, 'fixtures', cls.file)
         with open(path, 'r') as file:
@@ -41,7 +43,7 @@ class ParserTestCase:
         )
 
 
-class TestFreq(ParserTestCase, unittest.TestCase):
+class TestFreq(ParserTestCase):
     file = 'fal-freq.out'
 
     def test_keys(self):
@@ -126,14 +128,14 @@ class TestFreq(ParserTestCase, unittest.TestCase):
     def test_geometry(self):
         self.assertSequenceEqual(
             self.data['geometry'],
-            [(-0.497382, 0.727749, 0.000000),
-             (0.035782, -0.199956, 0.000000),
-             (-1.567382, 0.727749, 0.000000),
-             (0.129658, 1.818799, 0.000000)]
+            [(0.000199, 0.562211, 0.000000),
+             (0.924720, 1.100877, 0.000000),
+             (-0.927506, 1.095374, 0.000000),
+             (0.000199, -0.696189, 0.000000)]
         )
 
 
-class TestFreqRoa(ParserTestCase, unittest.TestCase):
+class TestFreqRoa(ParserTestCase):
     file = 'fal-freq-roa.out'
 
     def test_keys(self):
@@ -141,7 +143,8 @@ class TestFreqRoa(ParserTestCase, unittest.TestCase):
             set(self.data.keys()),
             {'normal_termination', 'version', 'command', 'charge',
              'multiplicity', 'input_geom', 'scf', 'stoichiometry',
-             'geometry', 'atoms', 'freq', 'mass', 'frc ', 'iri', 'ramact',
+             'geometry', 'atoms', 'zpecorr', 'tencorr', 'entcorr', 'gibcorr',
+             'zpe', 'ten', 'ent', 'gib', 'freq', 'mass', 'frc', 'iri', 'ramact',
              'depp', 'depu', 'alpha2', 'beta2', 'alphag', 'gamma2', 'delta2',
              'raman1', 'roa1', 'cid1', 'raman2', 'roa2', 'cid2', 'raman3',
              'roa3', 'cid3', 'rc180'}
@@ -280,7 +283,7 @@ class TestFreqRoa(ParserTestCase, unittest.TestCase):
         )
 
 
-class TestOpt(ParserTestCase, unittest.TestCase):
+class TestOpt(ParserTestCase):
     file = 'fal-opt.out'
 
     def test_keys(self):
@@ -310,7 +313,7 @@ class TestOpt(ParserTestCase, unittest.TestCase):
         )
 
 
-class TestOptFreq(ParserTestCase, unittest.TestCase):
+class TestOptFreq(ParserTestCase):
     file = 'fal-opt-freq.out'
 
     def test_keys(self):
@@ -324,7 +327,7 @@ class TestOptFreq(ParserTestCase, unittest.TestCase):
         )
 
 
-class TestInputError(ParserTestCase, unittest.TestCase):
+class TestInputError(ParserTestCase):
     file = 'fal-input-error.out'
 
     def test_keys(self):
@@ -344,19 +347,7 @@ class TestInputError(ParserTestCase, unittest.TestCase):
         self.assertNotIn('atoms', self.data)
 
 
-class TestNmr(ParserTestCase, unittest.TestCase):
-    file = 'fal-nmr.out'
-
-    def test_keys(self):
-        self.assertSetEqual(
-            set(self.data.keys()),
-            {'normal_termination', 'version', 'command', 'charge',
-             'multiplicity', 'input_geom', 'scf', 'stoichiometry',
-             'geometry', 'atoms'}
-        )
-
-
-class TestTd(ParserTestCase, unittest.TestCase):
+class TestTd(ParserTestCase):
     file = 'fal-td.out'
 
     def test_keys(self):
@@ -364,7 +355,149 @@ class TestTd(ParserTestCase, unittest.TestCase):
             set(self.data.keys()),
             {'normal_termination', 'version', 'command', 'charge',
              'multiplicity', 'input_geom', 'scf', 'stoichiometry',
-             'geometry', 'atoms'}
+             'vdip', 'vosc', 'ldip', 'losc', 'vrot', 'lrot', 'eemang',
+             'wave', 'ex_en', 'transitions', 'geometry', 'atoms'}
+        )
+
+    def test_vdip(self):
+        self.assertSequenceEqual(
+            self.data['vdip'],
+            [0.0000, 0.0100, 0.0360]
+        )
+
+    def test_vosc(self):
+        self.assertSequenceEqual(
+            self.data['vosc'],
+            [0.0000, 0.0218, 0.0714]
+        )
+
+    def test_ldip(self):
+        self.assertSequenceEqual(
+            self.data['ldip'],
+            [0.0000, 0.0199, 0.8344]
+        )
+
+    def test_losc(self):
+        self.assertSequenceEqual(
+            self.data['losc'],
+            [0.0000, 0.0040, 0.1869]
+        )
+
+    def test_vrot(self):
+        self.assertSequenceEqual(
+            self.data['vrot'],
+            [0.0000, 0.0000, 0.0000]
+        )
+
+    def test_lrot(self):
+        self.assertSequenceEqual(
+            self.data['lrot'],
+            [0.0000, 0.0000, 0.0000]
+        )
+
+    def test_eemang(self):
+        self.assertSequenceEqual(
+            self.data['eemang'],
+            [90.00, 90.00, 90.00]
+        )
+
+    def test_wave(self):
+        self.assertSequenceEqual(
+            self.data['wave'],
+            [326.42, 149.31, 135.60]
+        )
+
+    def test_ex_en(self):
+        self.assertSequenceEqual(
+            self.data['ex_en'],
+            [3.7983, 8.3039, 9.1437]
+        )
+
+    def test_transitions(self):
+        self.assertSequenceEqual(
+            self.data['transitions'],
+            [((5, 9, 0.10410),
+              (8, 9, 0.69982)),
+             ((6, 9, 0.70461),),
+             ((6, 12, 0.12121),
+              (7, 9, 0.68192),
+              (8, 11, -0.11535))]
+        )
+
+
+class TestNmr(ParserTestCase):
+    file = 'fal-nmr.out'
+
+    def test_keys(self):
+        self.assertSetEqual(
+            set(self.data.keys()),
+            {'normal_termination', 'version', 'command', 'charge',
+             'multiplicity', 'input_geom', 'scf', 'stoichiometry',
+             'shielding', 'shielding_aniso', 'geometry', 'atoms'}
+        )
+
+    def test_shielding(self):
+        self.assertSequenceEqual(
+            self.data['shielding'],
+            [6.5510, 21.8561, 21.8602, -602.8143]
+        )
+
+    def test_shielding_aniso(self):
+        self.assertSequenceEqual(
+            self.data['shielding_aniso'],
+            [218.4892, 5.9560, 5.8977, 1580.7327]
+        )
+
+
+class TestNmrFconly(ParserTestCase):
+    file = 'fal-nmr-fconly.out'
+
+    def test_keys(self):
+        self.assertSetEqual(
+            set(self.data.keys()),
+            {'normal_termination', 'version', 'command', 'charge',
+             'multiplicity', 'input_geom', 'scf', 'stoichiometry',
+             'shielding', 'shielding_aniso', 'fermi', 'geometry', 'atoms'}
+        )
+
+    def test_fermi(self):
+        self.assertSequenceEqual(
+            self.data['fermi'],
+            [0.243533e+11, 0.108616e+03, 0.385007e+12, 0.108383e+03,
+             0.334431e+02, 0.385007e+12, 0.486052e+02, -0.202081e+02,
+             -0.202455e+02, 0.708114e+10]
+        )
+
+
+class TestNmrMixed(ParserTestCase):
+    file = 'fal-nmr-mixed.out'
+
+    def test_keys(self):
+        self.assertSetEqual(
+            set(self.data.keys()),
+            {'normal_termination', 'version', 'command', 'charge',
+             'multiplicity', 'input_geom', 'scf', 'stoichiometry',
+             'fermi', 'geometry', 'atoms'}
+        )
+
+    def test_shielding(self):
+        self.assertSequenceEqual(
+            self.data['shielding'],
+            [6.5509, 21.8561, 21.8602, -602.8143]
+        )
+
+    def test_shielding_aniso(self):
+        self.assertSequenceEqual(
+            self.data['shielding_aniso'],
+            [218.4892, 5.9560, 5.8977, 1580.7327]
+        )
+
+    def test_fermi(self):
+        self.assertSequenceEqual(
+            self.data['fermi'],
+            [0.243533e+11, 0.163826e+03, 0.385007e+12, 0.163361e+03,
+             0.468260e+02, 0.385007e+12, 0.513083e+02, -0.203586e+02,
+             -0.204018e+02, 0.708114e+10]
         )
 
 
