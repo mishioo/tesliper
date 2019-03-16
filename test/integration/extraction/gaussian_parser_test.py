@@ -457,7 +457,7 @@ class TestNmrFconly(ParserTestCase):
             set(self.data.keys()),
             {'normal_termination', 'version', 'command', 'charge',
              'multiplicity', 'input_geom', 'scf', 'stoichiometry',
-             'shielding', 'shielding_aniso', 'fermi', 'geometry', 'atoms'}
+             'fermi', 'geometry', 'atoms'}
         )
 
     def test_fermi(self):
@@ -477,7 +477,7 @@ class TestNmrMixed(ParserTestCase):
             set(self.data.keys()),
             {'normal_termination', 'version', 'command', 'charge',
              'multiplicity', 'input_geom', 'scf', 'stoichiometry',
-             'fermi', 'geometry', 'atoms'}
+             'shielding', 'shielding_aniso', 'fermi', 'geometry', 'atoms'}
         )
 
     def test_shielding(self):

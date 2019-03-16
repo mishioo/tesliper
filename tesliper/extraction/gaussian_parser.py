@@ -2,6 +2,8 @@ import re
 import logging as lgg
 import numpy as np
 
+from .base_parser import Parser
+
 # LOGGER
 logger = lgg.getLogger(__name__)
 logger.setLevel(lgg.INFO)
@@ -127,52 +129,27 @@ electr_regs = {
 shielding_reg = re.compile(r'Isotropic =' + number_group +
                            r'\s+Anisotropy =' + number_group)
 fc_sci_not = r'(-?\d\.\d+D[+-]\d\d)'
-fc_reg = re.compile(r'\d+\s+' + fc_sci_not + (r'\s' + fc_sci_not + '?') * 4)
+fc_reg = re.compile(r'\d+\s+' + fc_sci_not + (r'\s*' + fc_sci_not + '?') * 4)
 
 
 # CLASSES
-class FSMParser:
+class GaussianParser(Parser):
+    purpose = 'gaussian'
 
-    def __init__(self, initial_state, **states):
-        self.states = {name: state for name, state in states.items()}
-        self.states.update({'initial': initial_state})
-        self.state = self.states['initial']
+    def __init__(self):
+        super().__init__()
         self.iterator = iter([])
         self.data = {}
 
     def parse(self, lines) -> dict:
-        self.state = self.initial
+        self.workhorse = self.initial
         self.data = {}
         self.iterator = iter(lines)
         for line in self.iterator:
-            self.state(line)
+            self.workhorse(line)
         return self.data
 
-    def initial(self, line: str) -> None:
-        pass
-
-
-class GaussianParser(FSMParser):
-
-    def __init__(self):
-        super().__init__(
-            initial_state=self.initial,
-            frequencies=self.frequencies,
-            geometry=self.geometry,
-            optimization=self.optimization,
-            excited=self.excited,
-            shielding=self.shielding,
-            coupling=self.coupling
-        )
-        self.triggers = dict(
-            frequencies=re.compile('^ Harmonic frequencies'),
-            geometry=re.compile(r'^\s+Standard orientation'),
-            optimization=re.compile('^ Berny optimization'),
-            excited=re.compile('^ Excited states from'),
-            shielding=re.compile(r'[\w\s]*Magnetic shielding tensor'),
-            coupling=re.compile('^ Fermi Contact (FC) contribution to J')
-        )
-
+    @Parser.state
     def initial(self, line: str) -> None:
         data, iterator = self.data, self.iterator
         data['normal_termination'] = True
@@ -203,13 +180,14 @@ class GaussianParser(FSMParser):
             input_geom.append((label, *map(float, coordinates)))
             line = next(iterator).strip()
         data['input_geom'] = input_geom
-        self.state = self.wait
+        self.workhorse = self.wait
 
+    @Parser.state
     def wait(self, line: str) -> None:
         for name, reg in self.triggers.items():
             match = reg.match(line)
             if match:
-                self.state = self.states[name]
+                self.workhorse = name
                 return
         if 'Error termination' in line:
             self.data['normal_termination'] = False
@@ -218,6 +196,7 @@ class GaussianParser(FSMParser):
         elif line.startswith(" Stoichiometry"):
             self.data['stoichiometry'] = stoich_.match(line).group(1)
 
+    @Parser.state(trigger=re.compile(r'^\s+Standard orientation'))
     def geometry(self, line: str) -> None:
         data, iterator = self.data, self.iterator
         match = geom_line_.match(line)
@@ -234,12 +213,13 @@ class GaussianParser(FSMParser):
             for _, a, _, x, y, z in geom
         )
         data['atoms'], data['geometry'] = zip(*geom)
-        self.state = self.wait
+        self.workhorse = self.wait
 
+    @Parser.state(trigger=re.compile('^ Berny optimization'))
     def optimization(self, line: str) -> None:
         if self.triggers['geometry'].match(line):
             self.geometry(line)
-            self.state = self.optimization
+            self.workhorse = self.optimization
         elif line.startswith(" Stoichiometry"):
             self.data['stoichiometry'] = stoich_.match(line).group(1)
         elif line.startswith(" SCF Done:"):
@@ -247,8 +227,9 @@ class GaussianParser(FSMParser):
         elif line.startswith(" Optimization completed."):
             self.data['optimization_completed'] = True
         elif line == '\n':
-            self.state = self.wait
+            self.workhorse = self.wait
 
+    @Parser.state(trigger=re.compile('^ Harmonic frequencies'))
     def frequencies(self, line: str) -> None:
         data, iterator = self.data, self.iterator
         while not line == '\n':
@@ -268,7 +249,7 @@ class GaussianParser(FSMParser):
         for genre in 'zpecorr tencorr entcorr gibcorr zpe ten ent gib'.split():
             data[genre] = float(re.search(number, line).group())
             line = next(iterator)
-        self.state = self.wait
+        self.workhorse = self.wait
 
     def _excited_states(self, line: str) -> list:
         iterator = self.iterator
@@ -282,6 +263,7 @@ class GaussianParser(FSMParser):
                 out.append(match.groups())
         return out
 
+    @Parser.state(trigger=re.compile('^ Excited states from'))
     def excited(self, line: str) -> None:
         data, iterator = self.data, self.iterator
         for genres, header in (
@@ -311,8 +293,9 @@ class GaussianParser(FSMParser):
                       in transitions)
             )
             line = next(iterator)
-        self.state = self.wait
+        self.workhorse = self.wait
 
+    @Parser.state(trigger=re.compile(r'[\w\s]*Magnetic shielding tensor'))
     def shielding(self, line: str) -> None:
         match = shielding_reg.search(line)
         if match:
@@ -321,17 +304,19 @@ class GaussianParser(FSMParser):
                 'shielding_aniso', []
             ).append(float(match.group(2)))
         elif line == '\n':
-            self.state = self.wait
+            self.workhorse = self.wait
 
+    @Parser.state(
+        trigger=re.compile('^ Fermi Contact \(FC\) contribution to J'))
     def coupling(self, line: str) -> None:
         match = fc_reg.search(line)
         if match:
             self.data.setdefault('fermi', []).extend(
-                float(num.replace('D', 'e')) for num in match.groups()
+                float(num.replace('D', 'e')) for num in match.groups() if num
             )
         else:
             if re.match(r'^ \w', line):
-                self.state = self.wait
+                self.workhorse = self.wait
 
 
 # FUNCTIONS
