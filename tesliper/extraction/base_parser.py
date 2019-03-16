@@ -10,7 +10,7 @@ class Parser(ABC):
     This base class defines some methods to organize work parsers implemented as
     finite state machines: automates registration of methods and functions
     as parser's states, manages its execution, and registers derived class
-    as parser used for certain type of files (which registry is used by Tesliper
+    as parser used for certain type of files (which registry is used by Soxhlet
     object).
 
     The default parsing flow goes as follow:
@@ -33,10 +33,10 @@ class Parser(ABC):
     methods' documentation for more details. If you wish not to use default
     Parser's protocol, simply override those methods to your liking.
 
-    To register class derived from Parser for use by Tesliper object, simply
+    To register class derived from Parser for use by Soxhlet object, simply
     set 'purpose' class attribute to name, under which class should be
     registered. Setting it to one of names already defined (e.g. 'gaussian')
-    will override the default parser used by tesliper.
+    will override the default parser used by Soxhlet object.
 
     Attributes
     ----------
@@ -56,7 +56,7 @@ class Parser(ABC):
         class attribute, which is a registry, implemented as dictionary,
         of classes subclassing Parser and defining 'purpose' class attribute
     purpose: str
-        attribute, that helps tesliper to identify Parser's subclass purpose"""
+        attribute, that helps Soxhlet to identify Parser's subclass purpose"""
     parsers = {}
     purpose = ''
 
