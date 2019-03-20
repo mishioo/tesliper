@@ -7,7 +7,7 @@ from collections import (
 from contextlib import contextmanager
 
 import numpy as np
-from .arrays import BaseArray, DataArray
+from .arrays import ArrayBase, DataArray
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -228,7 +228,7 @@ class Molecules(OrderedDict):
         Move DataArray.make to this class
         Add some type checking and error handling."""
         try:
-            cls = BaseArray.constructors[genre]
+            cls = ArrayBase.constructors[genre]
         except KeyError:
             raise ValueError(f"Unknown genre '{genre}'.")
         if not (self.kept or self.items()):
