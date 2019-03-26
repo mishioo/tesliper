@@ -1,3 +1,4 @@
+import math
 import numpy as np
 from collections.abc import Iterable
 from ..exceptions import InvalidElementError
@@ -158,3 +159,36 @@ def drop_atoms(values, atoms, discarded):
         except np.AxisError:
             output = np.take(values, indices, 0)
     return output
+
+
+def is_triangular(number):
+    """Checks if number is triangular.
+
+    Notes
+    -----
+    If n is the mth triangular number, then n = m*(m+1)/2.
+    Solving for m using the quadratic formula: m = (sqrt(8n+1) - 1) / 2,
+    so n is triangular if and only if 8n+1 is a perfect square.
+
+    Parameters
+    ----------
+    number: int
+        number to check
+
+    Returns
+    -------
+    bool
+        True is number is triangular, else False
+    """
+    check = math.sqrt(8 * number + 1)
+    return check == int(check)
+
+
+def get_triangular_base(n):
+    """Find which mth triangular number 'n' is."""
+    return int((math.sqrt(8 * n + 1) - 1) / 2)
+
+
+def get_triangular(m):
+    """Find mth triangular number."""
+    return int(m * (m + 1) / 2)

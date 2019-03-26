@@ -55,8 +55,9 @@ class TestTakeAtoms(TestCase):
     def test_two_dimensions_atoms(self):
         pass
 
-    def test_atom_symbol(self):
-        pass
+    def test_atoms_keeping(self):
+        out = helpers.take_atoms(self.atoms, self.atoms, 1).tolist()
+        self.assertSequenceEqual(out, [1, 1])
 
     def test_(self):
         pass
@@ -124,8 +125,9 @@ class TestDropAtoms(TestCase):
     def test_two_dimensions_atoms(self):
         pass
 
-    def test_atom_symbol(self):
-        pass
+    def test_atoms_dropping(self):
+        out = helpers.drop_atoms(self.atoms, self.atoms, 1).tolist()
+        self.assertSequenceEqual(out, [3, 2])
 
     def test_(self):
         pass
