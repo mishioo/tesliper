@@ -29,24 +29,30 @@ def unpack(values):
     ------
     ValueError
         if values cannot be transformed into symmetric matrix"""
-    if not is_triangular(len(values[0])):
+    try:
+        length = len(values[0])
+    except TypeError:
+        length = len(values)
+        values = [values]
+    if not is_triangular(length):
         raise ValueError(
             'Number of elements should be a triangular number when "unpack"'
-            f' argument is True. {len(values[0])} is not triangular.'
+            f' argument is True. {length} is not triangular.'
         )
-    base = get_triangular_base(len(values[0]))
+    base = get_triangular_base(length)
     shape = len(values), base, base
-    arr = np.zeros(shape)
+    arr = np.zeros(shape, dtype=np.asarray(values[0][0]).dtype)
     it = np.nditer(arr, flags=['multi_index'], op_flags=['writeonly'])
     while not it.finished:
         conf, row, col = it.multi_index
         if col > row:
-            # swap if we are in upper triangle
+            # swap if we are in an upper triangle
             col, row = row, col
         ind = row * (row + 1) // 2 + col
         it[0] = values[conf][ind]
         it.iternext()
-    return arr
+    # remove additional dimension if only one conformer given
+    return arr if len(values) > 1 else arr[0]
 
 
 def drop_diagonals(coupling_constants):
@@ -91,8 +97,10 @@ def drop_diagonals(coupling_constants):
         )
     mask = np.invert(np.eye(x, dtype=bool))
     if not y or not coupling_constants.size:
+        # one-dimensional or empty input
         remaining = np.empty(0, dtype=coupling_constants.dtype)
     elif not confs:
+        # two-dimensional input
         remaining = coupling_constants[mask].reshape(x, x-1)
     else:
         remaining = coupling_constants[:, mask, ...]
@@ -100,8 +108,68 @@ def drop_diagonals(coupling_constants):
     return remaining
 
 
-def couple(shieldings, coupling_constants):
-    # TO DO: check if can be used when diagonal discarded
+def couple(shieldings, coupling_constants, separate_peaks=False):
+    """Creates a list of coupled shieldings values, given a list of base
+    shielding values and a list of coupling constants' lists.
+
+    >>> couple([15, 45, 95], [[0, 2, 6], [2, 0, 4], [6, 4, 0]])
+    array([[19, 17, 19, 17, 13, 11, 13, 11, 48, 48, 46, 46, 44, 44, 42, 42,
+            100, 96, 94, 90, 100, 96, 94, 90]])
+
+    To avoid values duplication and save memory, omit diagonal fo coupling
+    constants' matrix:
+
+    >>> couple([15, 45, 95], [[2, 6], [2, 4], [6, 4]])
+    array([[19, 13, 17, 11, 48, 44, 46, 42, 100, 96, 94, 90]])
+
+    Both parameters can contain information for one or more conformers. If only
+    one of them is one conformer in size, its values are used for all conformers
+    of the other.
+
+    >>> couple([[10, 30, 50], [25, 35, 45]], [[1, 4], [1, 3], [4, 3]])
+    array([[12.5,  8.5, 11.5,  7.5, 32. , 29. , 31. , 28. , 53.5, 50.5, 49.5,
+            46.5],
+           [27.5, 23.5, 26.5, 22.5, 37. , 34. , 36. , 33. , 48.5, 45.5, 44.5,
+            41.5]])
+
+    Parameters
+    ----------
+    shieldings: Iterable or numpy.ndarray
+        list of shielding values for each atom; should be an one-dimensional
+        array of values for each atom or two-dimensional array of shape
+        (conformers, atoms)
+    coupling_constants: Iterable or numpy.ndarray
+        matrix of coupling constants' values for each atom; should be
+        a two-dimensional array of shape (atoms, constants) or
+        a tree-dimensional array of shape (conformers, atoms, constants);
+        should have the same number of values for conformer as 'shieldings'
+    separate_peaks: bool, optional
+        if evaluates to True, output array is tree-dimensional with each peaks'
+        coupled shielding values separated; if evaluates to False, then
+        a two-dimensional array is returned, with all values for conformer
+        in one dimension; defaults to False
+
+    Returns
+    -------
+    numpy.ndarray
+        list of coupled shieldings' values for each conformer
+
+    Raises
+    ------
+    ValueError
+        if arrays of inappropriate shape given"""
+    shieldings = np.asarray(shieldings)
+    coupling_constants = np.asarray(coupling_constants)
+    if len(shieldings.shape) > 2:
+        raise ValueError(
+            f'Shieldings should be at most two-dimensional, got array with '
+            f'{len(shieldings.shape)} dimensions.'
+        )
+    if not 1 < len(coupling_constants.shape) <= 3:
+        raise ValueError(
+            f'Coupling constants should be two- or tree-dimensional, got '
+            f'array with {len(shieldings.shape)} dimensions.'
+        )
     n = coupling_constants.shape[1]
     base = [[1, -1]] * n
     # create a cartesian product of n [1, -1] arrays, to form a framework
@@ -111,11 +179,16 @@ def couple(shieldings, coupling_constants):
     # transpose it to make it usable in np.dot with coupling values
     frame = frame.T
     halved = coupling_constants / 2
-    # calculate list of actual distances of coupled peaks' from base value
-    # and add it to base value to find actual coupled peak values
-    # transposes needed to use numpy's brodcasting
-    coup = np.dot(halved, frame).T
-    return (shieldings + coup).T
-    # if 3d-array:
-    # coup = np.dot(halved, frame).transpose(0, 2, 1)
-    # return (shield + coup).transpose(0, 2, 1)
+    # calculate list of actual of coupled peaks' from base peak value
+    # and add it to base value to find actual coupled peaks' values
+    coup = np.matmul(halved, frame)
+    # ensure proper shapes
+    if len(shieldings.shape) == 1:
+        shieldings = shieldings[np.newaxis, ...]
+    if len(shieldings.shape) == len(coup.shape):
+        coup = coup[np.newaxis, ...]
+    # transposes are needed to use numpy's brodcasting
+    out = (shieldings.T + coup.T).T
+    if not separate_peaks:
+        out = out.reshape(out.shape[0], -1)
+    return out

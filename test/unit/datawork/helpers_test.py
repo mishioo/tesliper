@@ -2,6 +2,54 @@ from unittest import TestCase
 from tesliper.datawork import helpers
 
 
+class TestSymbolOfElement(TestCase):
+    def test_atomic_number_int(self):
+        self.assertEqual(helpers.symbol_of_element(1), 'H')
+
+    def test_atomic_number_float(self):
+        self.assertEqual(helpers.symbol_of_element(1.0), 'H')
+
+    def test_atomic_number_str(self):
+        self.assertEqual(helpers.symbol_of_element('1'), 'H')
+
+    def test_not_atomic_number_int(self):
+        self.assertRaises(
+            helpers.InvalidElementError, helpers.symbol_of_element, 0
+        )
+
+    def test_not_atomic_number_float(self):
+        self.assertRaises(ValueError, helpers.symbol_of_element, 0.5)
+
+    def test_not_atomic_number_str(self):
+        self.assertRaises(
+            helpers.InvalidElementError, helpers.symbol_of_element, '0'
+        )
+
+    def test_element_symbol(self):
+        self.assertEqual(helpers.symbol_of_element('H'), 'H')
+
+    def test_not_element_symbol(self):
+        self.assertRaises(ValueError, helpers.symbol_of_element, 'bla')
+
+
+class TestAtomicNumber(TestCase):
+    def test_valid_symbol(self):
+        self.assertEqual(helpers.atomic_number('H'), 1)
+
+    def test_invalid_symbol(self):
+        self.assertRaises(
+            helpers.InvalidElementError, helpers.atomic_number, 'bla'
+        )
+
+    def test_atomic_number(self):
+        self.assertEqual(helpers.atomic_number(1), 1)
+
+    def test_not_atomic_number(self):
+        self.assertRaises(
+            helpers.InvalidElementError, helpers.atomic_number, 0
+        )
+
+
 class TestTakeAtoms(TestCase):
 
     def setUp(self):
@@ -58,18 +106,6 @@ class TestTakeAtoms(TestCase):
     def test_atoms_keeping(self):
         out = helpers.take_atoms(self.atoms, self.atoms, 1).tolist()
         self.assertSequenceEqual(out, [1, 1])
-
-    def test_(self):
-        pass
-
-    def test_(self):
-        pass
-
-    def test_(self):
-        pass
-
-    def test_(self):
-        pass
 
 
 class TestDropAtoms(TestCase):
@@ -129,14 +165,69 @@ class TestDropAtoms(TestCase):
         out = helpers.drop_atoms(self.atoms, self.atoms, 1).tolist()
         self.assertSequenceEqual(out, [3, 2])
 
-    def test_(self):
-        pass
 
-    def test_(self):
-        pass
+class TestIsTriangular(TestCase):
+    def test_zero(self):
+        self.assertTrue(helpers.is_triangular(0))
 
-    def test_(self):
-        pass
+    def test_one(self):
+        self.assertTrue(helpers.is_triangular(1))
 
-    def test_(self):
-        pass
+    def test_float(self):
+        self.assertFalse(helpers.is_triangular(0.5))
+
+    def test_inf(self):
+        self.assertFalse(helpers.is_triangular(float('inf')))
+
+    def test_negative(self):
+        self.assertFalse(helpers.is_triangular(-3))
+
+    def test_triangular(self):
+        self.assertTrue(helpers.is_triangular(10))
+
+    def test_non_triangular(self):
+        self.assertFalse(helpers.is_triangular(7))
+
+
+class TestGetTriangular(TestCase):
+    def test_zero(self):
+        self.assertEqual(helpers.get_triangular(0), 0)
+
+    def test_one(self):
+        self.assertEqual(helpers.get_triangular(1), 1)
+
+    def test_triangular(self):
+        self.assertEqual(helpers.get_triangular(4), 10)
+
+    def test_negative(self):
+        self.assertRaises(ValueError, helpers.get_triangular, -3)
+
+    def test_float(self):
+        self.assertRaises(ValueError, helpers.get_triangular, 0.5)
+
+    def test_inf(self):
+        self.assertRaises(ValueError, helpers.get_triangular, float('inf'))
+
+
+class TestGetTriangularBase(TestCase):
+    def test_zero(self):
+        self.assertEqual(helpers.get_triangular_base(0), 0)
+
+    def test_one(self):
+        self.assertEqual(helpers.get_triangular_base(1), 1)
+
+    def test_float(self):
+        self.assertRaises(ValueError, helpers.get_triangular_base, 0.5)
+
+    def test_inf(self):
+        self.assertRaises(ValueError, helpers.get_triangular_base, float('inf'))
+
+    def test_negative(self):
+        self.assertRaises(ValueError, helpers.get_triangular_base, -3)
+
+    def test_triangular(self):
+        self.assertEqual(helpers.get_triangular_base(10), 4)
+
+    def test_non_triangular(self):
+        self.assertRaises(ValueError, helpers.get_triangular_base, 7)
+

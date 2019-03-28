@@ -28,7 +28,7 @@ _symbol = {v: k for k, v in _atomicnum.items()}
 
 def symbol_of_element(element):
     """Returns symbol of given element. If element is a symbol of an element
-    already, it is returned without change.
+    already, it is returned without change (letters case matters).
 
     Parameters
     ----------
@@ -42,14 +42,21 @@ def symbol_of_element(element):
 
     Raises
     ------
+    ValueError
+        when 'element' is not a whole number or cannot be interpreted as integer
     InvalidElementError
-        when 'element' cannot be converted to element's symbol"""
+        if 'element' is not an atomic number of any known element"""
+    if element in _atomicnum:
+        return element
     try:
         _element = int(element)
     except ValueError:
-        _element = element
-    if _element in _atomicnum:
-        return _element
+        raise ValueError(f'Cannot convert element {element} to integer.')
+    if isinstance(element, float) and not element == _element:
+        raise ValueError(
+            f"Element's atomic number should be a whole number, "
+            f"{element} given."
+        )
     elif _element in _symbol:
         return _symbol[_element]
     else:
@@ -63,7 +70,7 @@ def atomic_number(element):
     Parameters
     ----------
     element: str or int
-        element's symbol
+        element's symbol; letters case matters
 
     Returns
     -------
@@ -161,8 +168,8 @@ def drop_atoms(values, atoms, discarded):
     return output
 
 
-def is_triangular(number):
-    """Checks if number is triangular.
+def is_triangular(n: int) -> bool:
+    """Checks if number 'n' is triangular.
 
     Notes
     -----
@@ -172,23 +179,37 @@ def is_triangular(number):
 
     Parameters
     ----------
-    number: int
+    n: int
         number to check
 
     Returns
     -------
     bool
-        True is number is triangular, else False
+        True is number 'n' is triangular, else False
     """
-    check = math.sqrt(8 * number + 1)
-    return check == int(check)
+    if n < 0:
+        return False
+    check = math.sqrt(8 * n + 1)
+    try:
+        return check == int(check)
+    except OverflowError:
+        # check is float('inf')
+        return False
 
 
-def get_triangular_base(n):
+def get_triangular_base(n: int) -> int:
     """Find which mth triangular number 'n' is."""
+    if not is_triangular(n):
+        raise ValueError(
+            f'"n" should be a triangular number. {n} is not triangular.'
+        )
     return int((math.sqrt(8 * n + 1) - 1) / 2)
 
 
-def get_triangular(m):
+def get_triangular(m: int) -> int:
     """Find mth triangular number."""
-    return int(m * (m + 1) / 2)
+    if m < 0:
+        raise ValueError('"m" should be non-negative number.')
+    if not m // 1 == m:
+        raise ValueError(f'"m" should be a whole number, {m} given.')
+    return m * (m + 1) // 2
