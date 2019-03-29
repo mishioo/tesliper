@@ -174,7 +174,7 @@ class TestCouple(TestCase):
                                           [0, 4, 0, 8, 10, 0]]))
         out = couple(shield, coupling).tolist()
         expected = [[19, 13, 17, 11, 48, 44, 46, 42, 100, 96, 94, 90],
-                    [21, 17, 13, 9, 52, 48, 42, 38, 104, 94, 96, 86]]
+                    [21, 13, 17, 9, 52, 42, 48, 38, 104, 94, 96, 86]]
         self.assertSequenceEqual(out, expected)
 
     def test_couplings_broadcasting_with_dropped_diagonal(self):

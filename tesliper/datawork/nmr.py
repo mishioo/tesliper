@@ -170,13 +170,13 @@ def couple(shieldings, coupling_constants, separate_peaks=False):
             f'Coupling constants should be two- or tree-dimensional, got '
             f'array with {len(shieldings.shape)} dimensions.'
         )
-    n = coupling_constants.shape[1]
+    n = coupling_constants.shape[-1]  # number of coupling constants per atom
     base = [[1, -1]] * n
     # create a cartesian product of n [1, -1] arrays, to form a framework
     # for evaluation of values of coupled peaks' distances from base value
     # i.e. all 2**n n-element ordered subsets of list [1, -1] * n
     frame = np.array(np.meshgrid(*base, copy=False)).T.reshape(-1, n)
-    # transpose it to make it usable in np.dot with coupling values
+    # transpose it to work properly with coupling values in np.matmul
     frame = frame.T
     halved = coupling_constants / 2
     # calculate list of actual of coupled peaks' from base peak value
