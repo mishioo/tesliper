@@ -24,10 +24,8 @@ mainhandler.setLevel(lgg.DEBUG)
 mainhandler.setFormatter(lgg.Formatter(
             '%(levelname)s:%(name)s:%(funcName)s - %(message)s'))
 
-loggers = [logger, dw.logger, ex.logger, wr.logger, gw.logger, gp.logger]
-for lgr in loggers:
-    lgr.setLevel(lgg.DEBUG if _DEVELOPMENT else lgg.WARNING)
-    lgr.addHandler(mainhandler)
+logger.setLevel(lgg.DEBUG if _DEVELOPMENT else lgg.WARNING)
+logger.addHandler(mainhandler)
 
 
 # CLASSES

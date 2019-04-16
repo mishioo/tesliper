@@ -1,5 +1,5 @@
 from .array_base import ArrayBase, ArrayProperty
-from .spectrum import SingleSpectrum
+from .heplers import SingleSpectrum
 from .arrays import (
     DataArray, InfoArray, BooleanArray, Energies, Bars, GroundStateBars,
     ExcitedStateBars, Spectra

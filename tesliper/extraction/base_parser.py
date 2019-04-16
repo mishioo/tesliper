@@ -179,6 +179,7 @@ class Parser(ABC):
             if match:
                 self.workhorse = self.states[name]
                 return {}
+        return {}
 
     @abstractmethod
     def parse(self, lines: Iterable) -> dict:

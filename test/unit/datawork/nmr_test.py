@@ -185,3 +185,19 @@ class TestCouple(TestCase):
                     [29, 23, 27, 21, 58, 54, 56, 52, 90, 86, 84, 80]]
         self.assertSequenceEqual(out, expected)
 
+    def test_one_coupling_value_for_atom(self):
+        shield = [[15, 45, 95], [25, 55, 85]]
+        coupling = [[[4], [6], [10]], [[2], [6], [8]]]
+        out = couple(shield, coupling).tolist()
+        expected = [[17, 13, 48, 42, 100, 90],
+                    [26, 24, 58, 52, 89, 81]]
+        self.assertSequenceEqual(out, expected)
+
+    def test_more_coupling_than_atoms(self):
+        shield = [[15, 45]]
+        coupling = [[[2, 4, 6, 8], [4, 6, 8, 10]]]
+        out = couple(shield, coupling).tolist()
+        expected = [[25, 21, 23, 19, 19, 15, 17, 13, 17, 13, 15, 11, 11,
+                     7,  9,  5, 59, 53, 55, 49, 51, 45, 47, 41, 49, 43,
+                    45, 39, 41, 35, 37, 31]]
+        self.assertSequenceEqual(out, expected)

@@ -26,9 +26,9 @@ class Soxhlet:
     
     Attributes
     ----------
-    path : str
+    path: str
         Path of directory bounded to Soxhlet instance.
-    files : list
+    files: list
         List of files present in directory bounded to Soxhlet instance.
     output_files
     bar_files
@@ -43,13 +43,13 @@ class Soxhlet:
         
         Parameters
         ----------
-        path : str
+        path: str
             String representing absolute path to directory containing files,
             which will be the subject of data extraction.
-        wanted_files : list, optional
+        wanted_files: list, optional
             List of files, that should be loaded for further extraction. If
             omitted, all files present in directory will be taken.
-        ext : str
+        extension: str
             String representing file extension of output files, that are to be
             parsed. If omitted, Soxhlet will try to resolve it based on
             contents of directory pointed by path.
@@ -63,7 +63,7 @@ class Soxhlet:
         self.files = os.listdir(path)
         self.wanted_files = wanted_files
         self.extension = extension
-        self.parser = gaussian_parser
+        self.parser = gaussian_parser.GaussianParser()
         self.spectra_parser = spectra_parser.SpectraParser()
 
     @property

@@ -116,7 +116,7 @@ def couple(shieldings, coupling_constants, separate_peaks=False):
     array([[19, 17, 19, 17, 13, 11, 13, 11, 48, 48, 46, 46, 44, 44, 42, 42,
             100, 96, 94, 90, 100, 96, 94, 90]])
 
-    To avoid values duplication and save memory, omit diagonal fo coupling
+    To avoid values duplication and save memory, omit diagonal of coupling
     constants' matrix:
 
     >>> couple([15, 45, 95], [[2, 6], [2, 4], [6, 4]])
@@ -168,7 +168,7 @@ def couple(shieldings, coupling_constants, separate_peaks=False):
     if not 1 < len(coupling_constants.shape) <= 3:
         raise ValueError(
             f'Coupling constants should be two- or tree-dimensional, got '
-            f'array with {len(shieldings.shape)} dimensions.'
+            f'array with {len(coupling_constants.shape)} dimensions.'
         )
     n = coupling_constants.shape[-1]  # number of coupling constants per atom
     base = [[1, -1]] * n

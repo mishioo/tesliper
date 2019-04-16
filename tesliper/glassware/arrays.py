@@ -4,7 +4,8 @@ import logging as lgg
 import numpy as np
 from .. import datawork as dw
 from .array_base import ArrayBase, ArrayProperty
-from .spectrum import SingleSpectrum
+from .heplers import SingleSpectrum
+from ..exceptions import InconsistentDataError
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -403,6 +404,10 @@ class ExcitedStateBars(Bars):
             spectra_name, self.filenames, values, abscissa, width, fitting_name
         )
         return spectra
+
+
+class Geometry(DataArray):
+    pass
 
 
 class Spectra(DataArray, SingleSpectrum):
