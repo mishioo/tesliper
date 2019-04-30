@@ -11,7 +11,7 @@ from ..datawork.nmr import unpack, couple, drop_diagonals
 from ..datawork.spectra import calculate_spectra
 
 
-class _Atoms:
+class Atoms:
 
     atoms = ArrayProperty(dtype=int, check_against=None)
 
@@ -47,10 +47,10 @@ class _Atoms:
         return new_inst
 
     @staticmethod
-    def _validate_atoms(atoms):
+    def validate_atoms(atoms):
         if isinstance(atoms, str):
             atoms = atoms.split()
-        elif isinstance(atoms, int):
+        elif isinstance(atoms, (int, float)):
             atoms = [atoms]
         return [atomic_number(a) for a in atoms]
 
@@ -71,11 +71,15 @@ class Shieldings(DataArray):
         self.slope = slope
 
     @property
+    def spectra_name(self):
+        return f"{self.nucleus.lower()}_nmr"
+
+    @property
     def nucleus(self):
         return self.genre.split('_')[0].capitalize()
 
     @property
-    def atoms(self):
+    def atomic_number(self):
         return atomic_number(self.nucleus)
 
     @property
@@ -83,50 +87,72 @@ class Shieldings(DataArray):
         values = self.values.reshape(self.values.shape[0], -1)
         return (values - self.intercept) / -self.slope
 
-    def couple(self, couplings, frequency, couple_with=None):
-        couple_with = couple_with if couple_with else couplings.atoms_coupled
-        couplings.take_atoms(self.atoms)
-        couplings = Couplings(
-            couplings.genre, couplings.filenames, couplings.values / frequency,
-            couplings.atoms, couplings.atoms_coupled,
-            couplings.allow_data_inconsistency, unpack_values=False
-        )  # use constants scaled to requested frequency
-        if self.atoms in couple_with:
-            couplings_ = couplings.take_atoms(couple_with=self.atoms)
-            couplings_ = couplings_.drop_diagonals()
-            values = couple(self.shielding_values, couplings_)
-            couple_with = couple_with[couple_with != self.atoms]
-        else:
-            values = self.shielding_values
-        if couple_with.size:
-            couplings_ = couplings.take_atoms(couple_with=couple_with).values
-            values = couple(values, couplings_)
-        return values
+    validate_atoms = Atoms.validate_atoms
 
-    def calculate_spectrum(self, start, stop, step, width, fitting):
+    def couple(self, couplings, couple_with=None, exclude_self_couplings=True):
+        """Returns new Shieldings instance, representing peaks coupled with
+        given coupling constants values.
+
+        This function will exclude atoms' self-coupling constants if given
+        Couplings instance include those with the same nuclei, that Shieldings
+        instance deal with. This can be suppressed by setting
+        `exclude_self_couplings` parameter to False.
+
+        Parameters
+        ----------
+        couplings : Couplings
+            coupling constants used to couple shielding values
+        couple_with : int, str iterable of int, or iterable of str, optional
+            atom's symbol, atomic number or list of those; specifies by which
+            coupling constants should shielding values be coupled; all coupling
+            constants contained in given Couplings instance are used, if
+            `couple_with` is not specified
+        exclude_self_couplings : bool, optional
+            specifies if self-coupling constants should be discarded, if there
+            are any; defaults to True
+
+        Returns
+        -------
+        Shieldings
+            new instance with coupled peaks as values"""
+        couple_with = couple_with if couple_with else couplings.atoms_coupled
+        couple_with = np.array(self.validate_atoms(couple_with))
+        couplings = couplings.take_atoms(self.atomic_number, couple_with)
+        if self.atomic_number in couple_with and exclude_self_couplings:
+            cc_values = couplings.exclude_self_couplings()
+        else:
+            cc_values = couplings.coupling_constants
+        values = couple(self.values, cc_values, separate_peaks=True)
+        return type(self)(self.genre, self.filenames, values, self.intercept,
+                          self.slope, self.allow_data_inconsistency)
+
+    def calculate_spectra(self, start, stop, step, width, fitting):
         abscissa = np.arange(start, stop, step)
         values = calculate_spectra(
             self.shielding_values, np.ones_like(self.shielding_values),
             abscissa, width, fitting
         )
-        spectra_name = self.spectra_name  # implement this
-        fitting_name = fitting.__name__
         spectra = Spectra(
-            spectra_name, self.filenames, values, abscissa, width, fitting_name
+            self.spectra_name, self.filenames, values, abscissa, width,
+            fitting.__name__
         )
         return spectra
 
 
-class Couplings(DataArray, _Atoms):
+class Couplings(DataArray, Atoms):
+
+    associated_genres = ['fermi']
 
     def __init__(
-            self, genre, filenames, values, atoms, atoms_coupled=None,
-            allow_data_inconsistency=False, unpack_values=True
+            self, genre, filenames, values, frequency, atoms,
+            atoms_coupled=None, allow_data_inconsistency=False
     ):
-        values = unpack(values) if unpack_values else values
+        values = np.asarray(values)
+        values = unpack(values) if len(values.size) == 2 else values
         super().__init__(genre, filenames, values, allow_data_inconsistency)
         self.atoms = atoms
-        self.atoms_coupled = atoms_coupled if not unpack_values else atoms
+        self.atoms_coupled = atoms_coupled
+        self.frequency = frequency
 
     atoms_coupled = ArrayProperty(dtype=int, check_against=None)
 
@@ -136,7 +162,16 @@ class Couplings(DataArray, _Atoms):
 
     @atoms_coupled.setter
     def atoms_coupled(self, atoms):
-        if not len(atoms) == len(self.values[1]) \
+        if atoms is None and (len(self.atoms) == len(self.values[1])
+                              or self.allow_data_inconsistency):
+            atoms = self.atoms
+        elif atoms is None:
+            raise ValueError(
+                f"'atoms_coupled' parameter must be specified when creating a "
+                f"{type(self)} instance with values as list of unsymmetric "
+                f"matrices."
+            )
+        elif not len(atoms) == len(self.values[1]) \
                 and not self.allow_data_inconsistency:
             raise InconsistentDataError(
                 f"Number of atoms_coupled ({len(atoms)}) does not match number "
@@ -144,39 +179,74 @@ class Couplings(DataArray, _Atoms):
             )
         vars(self)['atoms_coupled'] = atoms  # as np.ndarray via ArrayProperty
 
+    @property
+    def coupling_constants(self):
+        return self.values / self.frequency
+
     def take_atoms(self, atoms=None, couple_with=None):
-        atoms = self._validate_atoms(atoms) if atoms else self.atoms
+        atoms = self.validate_atoms(atoms) if atoms else self.atoms
         couple_with = \
-            self._validate_atoms(couple_with) if couple_with else atoms
+            self.validate_atoms(couple_with) if couple_with else atoms
         temp = take_atoms(self.values, self.atoms, atoms)
         new_values = take_atoms(temp.T, self.atoms, couple_with)
         new_atoms = take_atoms(self.atoms, self.atoms, atoms)
         new_coupled = take_atoms(self.atoms, self.atoms_coupled, couple_with)
         new_inst = type(self)(
-            self.genre, self.filenames, new_values, new_atoms, new_coupled,
-            self.allow_data_inconsistency, unpack_values=False
+            self.genre, self.filenames, new_values, self.frequency, new_atoms,
+            new_coupled, self.allow_data_inconsistency
         )
         return new_inst
 
     def drop_atoms(self, atoms=None, couple_with=None):
-        atoms = self._validate_atoms(atoms) if atoms else self.atoms
+        atoms = self.validate_atoms(atoms) if atoms else self.atoms
         new_atoms = drop_atoms(self.atoms, self.atoms, atoms)
         couple_with = \
-            self._validate_atoms(couple_with) if couple_with else new_atoms
+            self.validate_atoms(couple_with) if couple_with else new_atoms
         temp = drop_atoms(self.values, self.atoms, atoms)
         new_values = take_atoms(temp.T, self.atoms_coupled, couple_with)
         new_coupled = take_atoms(self.atoms, self.atoms_coupled, couple_with)
         new_inst = type(self)(
-            self.genre, self.filenames, new_values, new_atoms, new_coupled,
-            self.allow_data_inconsistency, unpack_values=False)
+            self.genre, self.filenames, new_values, self.frequency, new_atoms,
+            new_coupled, self.allow_data_inconsistency
+        )
         return new_inst
 
-    def drop_diagonals(self):
-        if not self.atoms.shape == self.atoms_coupled.shape:
-            raise InconsistentDataError(
-                'Cannot drop a diagonal of a non-symmetric matrix.'
+    def exclude_self_couplings(self):
+        """Returns list of each atom's coupling constants values, excluding this
+        atom's self-coupling constant.
+
+        Output is an array of shape (Conformers, Atoms, Coupling Constants - 1),
+        but coupling constants' values for each atom may be in different order
+        than originally.
+
+        Returns
+        -------
+        numpy.ndarray
+            array of coupling constants' values scaled to instance's frequency,
+            byt with atom's self-coupling constants' values removed
+
+        Raises
+        ------
+        ValueError
+            if self-coupling constants are not included for all atoms
+        """
+        atoms = set(self.atoms)
+        atoms_coupled = set(self.atoms_coupled)
+        if atoms - atoms_coupled:
+            raise ValueError(
+                f"Cannot exclude self-coupling constants if they are not "
+                f"included for all atoms. No such constants for these atoms "
+                f"found: "
+                f"{', '.join(atoms_symbols(a) for a in atoms - atoms_coupled)}."
             )
-        return drop_diagonals(self.values)
+        excessive = atoms_coupled - atoms
+        cc = self.take_atoms(couple_with=atoms) if excessive else self
+        values = drop_diagonals(cc.coupling_constants)
+        if excessive:
+            values = np.concatenate(
+                (values, self.take_atoms(couple_with=excessive)), 2
+            )
+        return values
 
 # To convert from index 'n' of 1d storage of symmetric array to 2d array indices
 # row = get_triangular_base(n)
