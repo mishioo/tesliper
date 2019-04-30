@@ -96,7 +96,8 @@ class Shieldings(DataArray):
         This function will exclude atoms' self-coupling constants if given
         Couplings instance include those with the same nuclei, that Shieldings
         instance deal with. This can be suppressed by setting
-        `exclude_self_couplings` parameter to False.
+        `exclude_self_couplings` parameter to False. Parameter `couple_with` is
+        always validated with self.validate_atoms method.
 
         Parameters
         ----------
@@ -148,7 +149,7 @@ class Couplings(DataArray, Atoms):
             atoms_coupled=None, allow_data_inconsistency=False
     ):
         values = np.asarray(values)
-        values = unpack(values) if len(values.size) == 2 else values
+        values = unpack(values) if len(values.shape) == 2 else values
         super().__init__(genre, filenames, values, allow_data_inconsistency)
         self.atoms = atoms
         self.atoms_coupled = atoms_coupled
