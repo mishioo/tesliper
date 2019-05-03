@@ -1,8 +1,8 @@
-from unittest import TestCase
+import unittest as ut
 from tesliper.datawork import helpers
 
 
-class TestSymbolOfElement(TestCase):
+class TestSymbolOfElement(ut.TestCase):
     def test_atomic_number_int(self):
         self.assertEqual(helpers.symbol_of_element(1), 'H')
 
@@ -28,13 +28,19 @@ class TestSymbolOfElement(TestCase):
     def test_element_symbol(self):
         self.assertEqual(helpers.symbol_of_element('H'), 'H')
 
+    def test_element_symbol_lowercase(self):
+        self.assertEqual(helpers.symbol_of_element('he'), 'He')
+
     def test_not_element_symbol(self):
         self.assertRaises(ValueError, helpers.symbol_of_element, 'bla')
 
 
-class TestAtomicNumber(TestCase):
+class TestAtomicNumber(ut.TestCase):
     def test_valid_symbol(self):
         self.assertEqual(helpers.atomic_number('H'), 1)
+
+    def test_lowercase_symbol(self):
+        self.assertEqual(helpers.atomic_number('he'), 2)
 
     def test_invalid_symbol(self):
         self.assertRaises(
@@ -50,7 +56,30 @@ class TestAtomicNumber(TestCase):
         )
 
 
-class TestTakeAtoms(TestCase):
+class TestValidateAtoms(ut.TestCase):
+    def test_integer(self):
+        self.assertSequenceEqual(helpers.validate_atoms(1), [1])
+
+    def test_float(self):
+        self.assertSequenceEqual(helpers.validate_atoms(2.0), [2])
+
+    def test_string(self):
+        self.assertSequenceEqual(helpers.validate_atoms("B"), [5])
+
+    def test_string_with_spaces(self):
+        self.assertSequenceEqual(helpers.validate_atoms("H H C"), [1, 1, 6])
+
+    def test_list_of_integers(self):
+        self.assertSequenceEqual(helpers.validate_atoms([1, 1, 6]), [1, 1, 6])
+
+    def test_list_of_floats(self):
+        self.assertSequenceEqual(helpers.validate_atoms([1., 6.]), [1, 6])
+
+    def test_list_of_strings(self):
+        self.assertSequenceEqual(helpers.validate_atoms(["H", "H"]), [1, 1])
+
+
+class TestTakeAtoms(ut.TestCase):
 
     def setUp(self):
         self.atoms = [1, 2, 1, 3]
@@ -63,6 +92,7 @@ class TestTakeAtoms(TestCase):
               for z in range(3)] for x in range(4)] for y in range(2)
         ]
 
+    @ut.skip("To be created.")
     def test_invalid_atom(self):
         pass
 
@@ -74,6 +104,7 @@ class TestTakeAtoms(TestCase):
         out = helpers.take_atoms(self.two_dim, self.atoms, [1, 2, 3]).tolist()
         self.assertSequenceEqual(out, self.two_dim)
 
+    @ut.skip("To be created.")
     def test_non_matching_sizes(self):
         pass
 
@@ -100,6 +131,7 @@ class TestTakeAtoms(TestCase):
                    [[1200, 1201], [1210, 1211], [1220, 1221]]]]
         )
 
+    @ut.skip("To be created.")
     def test_two_dimensions_atoms(self):
         pass
 
@@ -108,7 +140,7 @@ class TestTakeAtoms(TestCase):
         self.assertSequenceEqual(out, [1, 1])
 
 
-class TestDropAtoms(TestCase):
+class TestDropAtoms(ut.TestCase):
 
     def setUp(self):
         self.atoms = [3, 1, 2, 1]
@@ -121,6 +153,7 @@ class TestDropAtoms(TestCase):
               for z in range(3)] for x in range(4)] for y in range(2)
         ]
 
+    @ut.skip("To be created.")
     def test_invalid_atom(self):
         pass
 
@@ -158,6 +191,7 @@ class TestDropAtoms(TestCase):
                    [[1200, 1201], [1210, 1211], [1220, 1221]]]]
         )
 
+    @ut.skip("To be created.")
     def test_two_dimensions_atoms(self):
         pass
 
@@ -166,7 +200,7 @@ class TestDropAtoms(TestCase):
         self.assertSequenceEqual(out, [3, 2])
 
 
-class TestIsTriangular(TestCase):
+class TestIsTriangular(ut.TestCase):
     def test_zero(self):
         self.assertTrue(helpers.is_triangular(0))
 
@@ -189,7 +223,7 @@ class TestIsTriangular(TestCase):
         self.assertFalse(helpers.is_triangular(7))
 
 
-class TestGetTriangular(TestCase):
+class TestGetTriangular(ut.TestCase):
     def test_zero(self):
         self.assertEqual(helpers.get_triangular(0), 0)
 
@@ -209,7 +243,7 @@ class TestGetTriangular(TestCase):
         self.assertRaises(ValueError, helpers.get_triangular, float('inf'))
 
 
-class TestGetTriangularBase(TestCase):
+class TestGetTriangularBase(ut.TestCase):
     def test_zero(self):
         self.assertEqual(helpers.get_triangular_base(0), 0)
 

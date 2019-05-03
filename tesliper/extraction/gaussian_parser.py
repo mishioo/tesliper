@@ -302,7 +302,7 @@ class GaussianParser(Parser):
             atom, iso, aniso = match.groups()
             self.data.setdefault(f'{atom.lower()}_mst', []).append(float(iso))
             self.data.setdefault(
-                f'{atom.lower()}_mst_aniso', []
+                f'{atom.lower()}_amst', []
             ).append(float(aniso))
         elif line == '\n':
             self.workhorse = self.wait

@@ -3,7 +3,7 @@ import numpy as np
 from collections.abc import Iterable
 from ..exceptions import InvalidElementError
 
-_atomicnum = {
+atomicnums = {
     'H': 1, 'He': 2, 'Li': 3, 'Be': 4, 'B': 5, 'C': 6, 'N': 7, 'O': 8,
     'F': 9, 'Ne': 10, 'Na': 11, 'Mg': 12, 'Al': 13, 'Si': 14, 'P': 15,
     'S': 16, 'Cl': 17, 'Ar': 18, 'K': 19, 'Ca': 20, 'Sc': 21, 'Ti': 22,
@@ -23,12 +23,13 @@ _atomicnum = {
     'Cn': 112, 'Uut': 113, 'Fl': 114, 'Uup': 115, 'Lv': 116, 'Uus': 117,
     'Uuo': 118
 }
-_symbol = {v: k for k, v in _atomicnum.items()}
+atoms_symbols = {v: k for k, v in atomicnums.items()}
 
 
 def symbol_of_element(element):
-    """Returns symbol of given element. If element is a symbol of an element
-    already, it is returned without change (letters case matters).
+    """Returns symbol of given element. If `element` is a symbol of an element
+    already, it is capitalized and returned (so input's letters case doesn't
+    matter).
 
     Parameters
     ----------
@@ -43,34 +44,42 @@ def symbol_of_element(element):
     Raises
     ------
     ValueError
-        when 'element' is not a whole number or cannot be interpreted as integer
+        when `element` is not a whole number or cannot be converted to integer
+    TypeError
+        if `element` cannot be interpreted as integer
     InvalidElementError
-        if 'element' is not an atomic number of any known element"""
-    if element in _atomicnum:
-        return element
+        if `element` is not an atomic number of any known element"""
+    stringified = str(element).capitalize()
+    if stringified in atomicnums:
+        return stringified
     try:
-        _element = int(element)
+        integerized = int(element)
     except ValueError:
-        raise ValueError(f'Cannot convert element {element} to integer.')
-    if isinstance(element, float) and not element == _element:
+        if isinstance(element, str):
+            raise ValueError(f'Cannot convert element {element} to integer.')
+        raise TypeError(
+            f'Type "{type(element)}" cannot be interpreted as integer.'
+        )
+    if isinstance(element, float) and not element == integerized:
         raise ValueError(
             f"Element's atomic number should be a whole number, "
             f"{element} given."
         )
-    elif _element in _symbol:
-        return _symbol[_element]
+    elif integerized in atoms_symbols:
+        return atoms_symbols[integerized]
     else:
         raise InvalidElementError(f'Unknown element: {element}')
 
 
 def atomic_number(element):
-    """Returns atomic number of given element. If element is an atomic number
+    """Returns atomic number of given element. If `element` is an atomic number
     already, it is returned without change.
 
     Parameters
     ----------
     element: str or int
-        element's symbol; letters case matters
+        element's symbol or atomic number (letters case doesn't matter if
+        string given)
 
     Returns
     -------
@@ -80,21 +89,57 @@ def atomic_number(element):
     Raises
     ------
     InvalidElementError
-        when 'element' cannot be converted to element's atomic number"""
-    if element in _atomicnum:
-        return _atomicnum[element]
-    elif element in _symbol:
+        when `element` cannot be converted to element's atomic number
+    TypeError
+        if `element` cannot be interpreted as integer or string"""
+    stringified = str(element).capitalize()
+    if stringified in atomicnums:
+        return atomicnums[stringified]
+    elif element in atoms_symbols:
         return element
-    else:
+    elif isinstance(element, (str, int, float)):
         raise InvalidElementError(f'Unknown element: {element}')
+    else:
+        raise TypeError(f"Expected str or int, got '{type(element)}'.")
+
+
+def validate_atoms(atoms):
+    """Checks if given `atoms` represent a list of valid atom identifiers
+    (symbols or atomic numbers). Returns list of atomic numbers of those atoms
+    if it does or rises an exception if it doesn't.
+
+    Parameters
+    ----------
+    atoms: int, float, string or iterable
+
+    Returns
+    -------
+    list of integers
+        list of given atoms' atomic numbers
+
+    Rises
+    -----
+    InvalidElementError
+        if `atoms` cannot be interpreted as list of atoms' identifiers"""
+    if isinstance(atoms, str):
+        atoms = atoms.split()
+    elif isinstance(atoms, (int, float)):
+        atoms = [atoms]
+    try:
+        return [atomic_number(a) for a in atoms]
+    except (InvalidElementError, TypeError) as exc:
+        raise InvalidElementError(
+            f"Cannot interpret {atoms} as list of atoms' identifiers. "
+            f"{exc.args[0]}"
+        )
 
 
 def take_atoms(values, atoms, wanted) -> np.ndarray:
     """Filters given values, returning those corresponding to atoms specified
     as wanted. Roughly equivalent to:
     >>> numpy.take(values, numpy.where(numpy.equal(atoms, wanted))[0], 1)
-    but returns empty array, if no atom in 'atoms' matches 'wanted' atom.
-    If wanted is list of elements, numpy.isin is used instead of numpy.equal.
+    but returns empty array, if no atom in `atoms` matches `wanted` atom.
+    If `wanted` is list of elements, numpy.isin is used instead of numpy.equal.
 
     Parameters
     ----------
@@ -133,7 +178,7 @@ def drop_atoms(values, atoms, discarded):
     """Filters given values, returning those corresponding to atoms not
     specified as discarded. Roughly equivalent to:
     >>> numpy.take(values, numpy.where(~numpy.equal(atoms, discarded))[0], 1)
-    If wanted is list of elements, numpy.isin is used instead of numpy.equal.
+    If `wanted` is list of elements, numpy.isin is used instead of numpy.equal.
 
     Parameters
     ----------
@@ -169,13 +214,13 @@ def drop_atoms(values, atoms, discarded):
 
 
 def is_triangular(n: int) -> bool:
-    """Checks if number 'n' is triangular.
+    """Checks if number `n` is triangular.
 
     Notes
     -----
-    If n is the mth triangular number, then n = m*(m+1)/2.
+    If `n` is the mth triangular number, then n = m*(m+1)/2.
     Solving for m using the quadratic formula: m = (sqrt(8n+1) - 1) / 2,
-    so n is triangular if and only if 8n+1 is a perfect square.
+    so `n` is triangular if and only if 8n+1 is a perfect square.
 
     Parameters
     ----------
@@ -185,7 +230,7 @@ def is_triangular(n: int) -> bool:
     Returns
     -------
     bool
-        True is number 'n' is triangular, else False
+        True is number `n` is triangular, else False
     """
     if n < 0:
         return False
@@ -198,7 +243,7 @@ def is_triangular(n: int) -> bool:
 
 
 def get_triangular_base(n: int) -> int:
-    """Find which mth triangular number 'n' is."""
+    """Find which mth triangular number `n` is."""
     if not is_triangular(n):
         raise ValueError(
             f'"n" should be a triangular number. {n} is not triangular.'
@@ -207,7 +252,7 @@ def get_triangular_base(n: int) -> int:
 
 
 def get_triangular(m: int) -> int:
-    """Find mth triangular number."""
+    """Find `m`th triangular number."""
     if m < 0:
         raise ValueError('"m" should be non-negative number.')
     if not m // 1 == m:

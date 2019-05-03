@@ -67,7 +67,7 @@ class ArrayProperty(property):
             length = len(getattr(instance, self.check_against))
             if not len(values) == length:
                 raise ValueError(
-                    f"Values and {self.check_against} must be the same length."
+                    f"Values and {self.check_against} must be the same length. "
                     f"Arrays of length {len(values)} and {length} were given."
                 )
         try:
