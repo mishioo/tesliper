@@ -126,7 +126,7 @@ electr_regs = {
         r')+'  # find all consecutive lines with numbers and terminate
     ) for k, v in electr_dict.items()
 }
-shielding_reg = re.compile(r'(\w+)+\sIsotropic =' + number_group +
+shielding_reg = re.compile(r'(\w+)\s+Isotropic =' + number_group +
                            r'\s+Anisotropy =' + number_group)
 fc_sci_not = r'(-?\d\.\d+D[+-]\d\d)'
 fc_reg = re.compile(r'\d+\s+' + fc_sci_not + (r'\s*' + fc_sci_not + '?') * 4)

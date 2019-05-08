@@ -1,6 +1,6 @@
 import unittest as ut
 from unittest.mock import Mock
-from tesliper.glassware.nmr import Shieldings, Couplings
+from tesliper.glassware.nmr import Shieldings, Couplings, InconsistentDataError
 import numpy as np
 
 
@@ -175,6 +175,7 @@ class TestCouplings(ut.TestCase):
     def setUp(self):
         self.std = dict(
             genre='fermi', filenames=['file1.out', 'file2.out'],
+            atoms=[1, 1, 1, 9],
             values=[[[0, 2, 4, 20],
                      [2, 0, 6, 0],
                      [4, 6, 0, 0],
@@ -182,16 +183,27 @@ class TestCouplings(ut.TestCase):
                     [[0, 2, 6, 24],
                      [2, 0, 8, 0],
                      [6, 8, 0, 0],
-                     [24, 0, 0, 0]]],
-            atoms=[1, 1, 1, 9], atoms_coupled=[1, 1, 1, 9]
+                     [24, 0, 0, 0]]]
         )
         self.cpl = Couplings(**self.std)
+
+    def test_atoms(self):
+        self.assertTrue(self.cpl.atoms.dtype, int)
+        self.assertSequenceEqual(self.cpl.atoms.tolist(), [1, 1, 1, 9])
+
+    def test_atoms_coupled(self):
+        self.assertTrue(self.cpl.atoms_coupled.dtype, int)
+        self.assertSequenceEqual(self.cpl.atoms_coupled.tolist(), [1, 1, 1, 9])
+
+    def test_inconsistent_atoms(self):
+        params = self.std.copy()
+        params['atoms_coupled'] = [1, 1, 1]
+        self.assertRaises(InconsistentDataError, Couplings, **params)
 
     def test_inst_with_unpack(self):
         params = self.std.copy()
         params['values'] = [[0, 2, 0, 4, 6, 0], [0, 2, 0, 6, 8, 0]]
         params['atoms'] = [1, 1, 1]
-        params['atoms_coupled'] = None
         cpl = Couplings(**params)
         self.assertSequenceEqual(
              cpl.values.tolist(),
@@ -223,6 +235,7 @@ class TestCouplings(ut.TestCase):
                              [2, 0, 8, 0],
                              [6, 8, 0, 0]]]
         params['atoms'] = [1, 1, 1]
+        params['atoms_coupled'] = [1, 1, 1, 9]
         cpl = Couplings(**params)
         out = cpl.exclude_self_couplings().tolist()
         self.assertSequenceEqual(
@@ -284,7 +297,7 @@ class TestCouplings(ut.TestCase):
         )
 
     def test_take_atoms_h_couple_h(self):
-        new = self.cpl.take_atoms(atoms=1, couple_with=1)
+        new = self.cpl.take_atoms(atoms=1, coupled_with=1)
         self.assertSequenceEqual(new.atoms.tolist(), [1, 1, 1])
         self.assertSequenceEqual(new.atoms_coupled.tolist(), [1, 1, 1])
         self.assertSequenceEqual(new.values.shape, (2, 3, 3))
@@ -295,7 +308,7 @@ class TestCouplings(ut.TestCase):
         )
 
     def test_take_couple_h(self):
-        new = self.cpl.take_atoms(couple_with=1)
+        new = self.cpl.take_atoms(coupled_with=1)
         self.assertSequenceEqual(new.atoms.tolist(), [1, 1, 1, 9])
         self.assertSequenceEqual(new.atoms_coupled.tolist(), [1, 1, 1])
         self.assertSequenceEqual(new.values.shape, (2, 4, 3))
@@ -306,7 +319,7 @@ class TestCouplings(ut.TestCase):
         )
 
     def test_take_atoms_couple_f(self):
-        new = self.cpl.take_atoms(couple_with=9)
+        new = self.cpl.take_atoms(coupled_with=9)
         self.assertSequenceEqual(new.atoms.tolist(), [1, 1, 1, 9])
         self.assertSequenceEqual(new.atoms_coupled.tolist(), [9])
         self.assertSequenceEqual(new.values.shape, (2, 4, 1))
@@ -315,10 +328,39 @@ class TestCouplings(ut.TestCase):
         )
 
     def test_take_atoms_h_couple_f(self):
-        new = self.cpl.take_atoms(atoms=1, couple_with=9)
+        new = self.cpl.take_atoms(atoms=1, coupled_with=9)
         self.assertSequenceEqual(new.atoms.tolist(), [1, 1, 1])
         self.assertSequenceEqual(new.atoms_coupled.tolist(), [9])
         self.assertSequenceEqual(new.values.shape, (2, 3, 1))
         self.assertSequenceEqual(
             new.values.tolist(), [[[20], [0], [0]], [[24], [0], [0]]]
         )
+
+    def test_drop_atoms_no_parameters(self):
+        new = self.cpl.drop_atoms()
+        self.assertSequenceEqual(new.values.tolist(), self.cpl.values.tolist())
+
+    def test_drop_atoms_h(self):
+        new = self.cpl.drop_atoms(atoms=1)
+        self.assertSequenceEqual(
+            new.values.tolist(), [[[20, 0, 0, 0]], [[24, 0, 0, 0]]]
+        )
+
+    def test_drop_atoms_h_coupled_h(self):
+        new = self.cpl.drop_atoms(atoms=1, coupled_with=1)
+        self.assertSequenceEqual(
+            new.values.tolist(), [[[0]], [[0]]]
+        )
+
+    def test_drop_atoms_h_coupled_f(self):
+        new = self.cpl.drop_atoms(atoms=1, coupled_with=9)
+        self.assertSequenceEqual(
+            new.values.tolist(), [[[20, 0, 0]], [[24, 0, 0]]]
+        )
+
+    def test_drop_atoms_coupled_h(self):
+        new = self.cpl.drop_atoms(coupled_with=1)
+        self.assertSequenceEqual(
+            new.values.tolist(), [[[20], [0], [0], [0]], [[24], [0], [0], [0]]]
+        )
+

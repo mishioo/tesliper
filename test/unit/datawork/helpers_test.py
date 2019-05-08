@@ -157,6 +157,10 @@ class TestDropAtoms(ut.TestCase):
     def test_invalid_atom(self):
         pass
 
+    def test_empty_discarded(self):
+        out = helpers.drop_atoms(self.two_dim, self.atoms, []).tolist()
+        self.assertSequenceEqual(out, self.two_dim)
+
     def test_absent_atom(self):
         out = helpers.drop_atoms(self.two_dim, self.atoms, 4).tolist()
         self.assertSequenceEqual(out, self.two_dim)
@@ -165,6 +169,7 @@ class TestDropAtoms(ut.TestCase):
         out = helpers.drop_atoms(self.two_dim, self.atoms, [1, 2, 3]).tolist()
         self.assertSequenceEqual(out, [])
 
+    @ut.skip("To be created.")
     def test_non_matching_sizes(self):
         pass
 

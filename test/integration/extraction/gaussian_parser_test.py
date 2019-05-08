@@ -433,19 +433,36 @@ class TestNmr(ParserTestCase):
             set(self.data.keys()),
             {'normal_termination', 'version', 'command', 'charge',
              'multiplicity', 'input_geom', 'scf', 'stoichiometry',
-             'shielding', 'shielding_aniso', 'geometry', 'atoms'}
+             'h_mst', 'h_amst', 'c_mst', 'o_amst', 'o_mst', 'c_amst',
+             'geometry', 'atoms'}
         )
 
     def test_shielding(self):
         self.assertSequenceEqual(
-            self.data['shielding'],
-            [6.5510, 21.8561, 21.8602, -602.8143]
+            self.data['h_mst'],
+            [21.8561, 21.8602]
+        )
+        self.assertSequenceEqual(
+            self.data['c_mst'],
+            [6.5510]
+        )
+        self.assertSequenceEqual(
+            self.data['o_mst'],
+            [-602.8143]
         )
 
     def test_shielding_aniso(self):
         self.assertSequenceEqual(
-            self.data['shielding_aniso'],
-            [218.4892, 5.9560, 5.8977, 1580.7327]
+            self.data['h_amst'],
+            [5.9560, 5.8977]
+        )
+        self.assertSequenceEqual(
+            self.data['c_amst'],
+            [218.4892]
+        )
+        self.assertSequenceEqual(
+            self.data['o_amst'],
+            [1580.7327]
         )
 
 
@@ -477,19 +494,36 @@ class TestNmrMixed(ParserTestCase):
             set(self.data.keys()),
             {'normal_termination', 'version', 'command', 'charge',
              'multiplicity', 'input_geom', 'scf', 'stoichiometry',
-             'shielding', 'shielding_aniso', 'fermi', 'geometry', 'atoms'}
+             'h_mst', 'h_amst', 'c_mst', 'o_amst', 'o_mst', 'c_amst',
+             'fermi', 'geometry', 'atoms'}
         )
 
     def test_shielding(self):
         self.assertSequenceEqual(
-            self.data['shielding'],
-            [6.5509, 21.8561, 21.8602, -602.8143]
+            self.data['h_mst'],
+            [21.8561, 21.8602]
+        )
+        self.assertSequenceEqual(
+            self.data['c_mst'],
+            [6.5509]
+        )
+        self.assertSequenceEqual(
+            self.data['o_mst'],
+            [-602.8143]
         )
 
     def test_shielding_aniso(self):
         self.assertSequenceEqual(
-            self.data['shielding_aniso'],
-            [218.4892, 5.9560, 5.8977, 1580.7327]
+            self.data['h_amst'],
+            [5.9560, 5.8977]
+        )
+        self.assertSequenceEqual(
+            self.data['c_amst'],
+            [218.4892]
+        )
+        self.assertSequenceEqual(
+            self.data['o_amst'],
+            [1580.7327]
         )
 
     def test_fermi(self):
