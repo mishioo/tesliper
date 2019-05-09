@@ -129,7 +129,7 @@ electr_regs = {
 shielding_reg = re.compile(r'(\w+)\s+Isotropic =' + number_group +
                            r'\s+Anisotropy =' + number_group)
 fc_sci_not = r'(-?\d\.\d+D[+-]\d\d)'
-fc_reg = re.compile(r'\d+\s+' + fc_sci_not + (r'\s*' + fc_sci_not + '?') * 4)
+fc_reg = re.compile(r'(\d+)\s+' + fc_sci_not + (r'\s*' + fc_sci_not + '?') * 4)
 
 
 # CLASSES
@@ -308,15 +308,18 @@ class GaussianParser(Parser):
             self.workhorse = self.wait
 
     @Parser.state(
-        trigger=re.compile('^ Fermi Contact \(FC\) contribution to J'))
+        trigger=re.compile(r'^ Fermi Contact \(FC\) contribution to J'))
     def coupling(self, line: str) -> None:
+        data = self.data.setdefault('fermi', [[] for _ in self.data['atoms']])
         match = fc_reg.search(line)
         if match:
-            self.data.setdefault('fermi', []).extend(
-                float(num.replace('D', 'e')) for num in match.groups() if num
+            atom, *values = match.groups()
+            data[int(atom)-1].extend(
+                float(num.replace('D', 'e')) for num in values if num
             )
         else:
             if re.match(r'^ \w', line):
+                self.data['fermi'] = [num for nums in data for num in nums]
                 self.workhorse = self.wait
 
 
