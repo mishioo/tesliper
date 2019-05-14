@@ -174,6 +174,25 @@ class Shieldings(DataArray):
         )
         return spectra
 
+    def average_positions(self, positions):
+        """Average signals of atoms on given positions. Returns new instance
+        of Shieldings object with new values.
+
+        Parameters
+        ----------
+        positions : iterable of iterables of int
+            List of lists of positions of signals, that should be averaged
+
+        Returns
+        -------
+        Shieldings
+            new Shieldings instance with desired signals averaged averaged."""
+        values = self.values.copy()
+        for pos in positions:
+            values[:, pos] = values[:, pos].mean(1)
+        return type(self)(self.genre, self.filenames, values, self.intercept,
+                          self.slope, self.allow_data_inconsistency)
+
 
 class Couplings(DataArray):
     """Container for list of coupling constants' values matrices for each
@@ -233,7 +252,7 @@ class Couplings(DataArray):
             frequency=100, allow_data_inconsistency=False
     ):
         values = np.asarray(values)
-        values = unpack(values) if len(values.shape) == 2 else values
+        values = unpack(values) if values.ndim == 2 else values
         super().__init__(genre, filenames, values, allow_data_inconsistency)
         self.atoms = atoms
         self.atoms_coupled = atoms_coupled if atoms_coupled is not None else []
@@ -424,6 +443,25 @@ class Couplings(DataArray):
                 self.take_atoms(coupled_with=excessive).coupling_constants
             values = np.concatenate((values, other_values), 2)
         return values
+
+    def average_positions(self, positions):
+        """Average signals of atoms on given positions. Returns new instance
+        of Shieldings object with new values.
+
+        Parameters
+        ----------
+        positions : iterable of iterables of int
+            List of lists of positions of signals, that should be averaged
+
+        Returns
+        -------
+        Shieldings
+            new Shieldings instance with desired signals averaged averaged."""
+        values = self.values.copy()
+        for pos in positions:
+            values[:, pos] = values[:, pos].mean(1)
+        return type(self)(self.genre, self.filenames, values, self.intercept,
+                          self.slope, self.allow_data_inconsistency)
 
 # To convert from index 'n' of 1d storage of symmetric array to 2d array indices
 # row = get_triangular_base(n)

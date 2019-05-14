@@ -100,7 +100,7 @@ def drop_diagonals(coupling_constants):
     ------
     ValueError
         if input array cannot be interpreted as symmetric"""
-    coupling_constants = np.asarray(coupling_constants)
+    coupling_constants = np.asanyarray(coupling_constants)
     shape = coupling_constants.shape
     try:
         confs, x, y, *other = shape
@@ -254,3 +254,33 @@ def couple(shieldings, coupling_constants, separate_peaks=False):
     out = shieldings[..., np.newaxis] + coup[..., np.newaxis, :]
     new_shape = (*out.shape[:2], -1) if separate_peaks else (out.shape[0], -1)
     return out.reshape(*new_shape)
+
+
+def average_positions(values, positions, copy=True, symmetric=False):
+    """Averages values on given positions."""
+    # is one dim and symm two dim really needed?
+    v = np.array(values, copy=copy)
+    if v.ndim == 1 and not symmetric:
+        v[positions, ] = v[positions, ].mean()
+    elif not symmetric:
+        confs, _, *other = v.shape
+        v[:, positions] = v[:, positions].mean(1).reshape(confs, 1, *other)
+    elif v.ndim > 2 and symmetric:
+        slc = v[:, positions, np.expand_dims(positions, -1)]
+        confs, x, y, *other = slc.shape
+        dropped = drop_diagonals(slc)
+        means = dropped.reshape(confs, -1).mean(1)
+        means = means.repeat(x**2).reshape(confs, x, y, *other)
+        means = means * np.invert(np.eye(x, dtype=bool))
+        v[:, positions, np.expand_dims(positions, -1)] = means
+    elif v.ndim == 2 and symmetric:
+        slc = v[positions, np.expand_dims(positions, -1)]
+        x, y = slc.shape
+        dropped = drop_diagonals(slc)
+        means = dropped.flatten().mean()
+        means = np.repeat(means, x**2).reshape(x, y)
+        means = means * np.invert(np.eye(x, dtype=bool))
+        v[positions, np.expand_dims(positions, -1)] = means
+    else:
+        raise ValueError("Cannot average.")
+    return v

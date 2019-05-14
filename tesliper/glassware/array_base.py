@@ -73,6 +73,8 @@ class ArrayProperty(property):
         try:
             return np.array(values, dtype=self.dtype)
         except ValueError:
+            # TODO: mabye add checking if
+            #       hasattr(instance, 'allow_data_inconsistency')
             if not instance.allow_data_inconsistency:
                 error_msg = f"{instance.__class__.__name__} of genre " \
                             f"{instance.genre} with unequal number of values " \

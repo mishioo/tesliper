@@ -137,15 +137,15 @@ def calculate_spectra(frequencies, intensities, abscissa, width, fitting):
     return spectra
 
 
-def calculate_average(spectra, populations):
+def calculate_average(values, populations):
     """Calculates weighted average of spectra, where populations are used as
     weights.
 
     Parameters
     ----------
-    spectra : numpy.ndarray
-        List of conformers' spectra, should be of shape (N, M), where N is
-        number of conformers and M is number of spectral points.
+    values : numpy.ndarray
+        List of values for each conformer, should be of shape (N, M), where N is
+        number of conformers and M is number of values.
     populations : numpy.ndarray
         List of conformers' populations, should be of shape (N,) where N is
         number of conformers. Should add up to 1.
@@ -153,7 +153,7 @@ def calculate_average(spectra, populations):
     Returns
     -------
     numpy.ndarray
-        Averaged spectrum.
+        weighted arithmetic mean of values given.
 
     Raises
     ------
@@ -163,14 +163,15 @@ def calculate_average(spectra, populations):
     TO DO
     -----
     Add checking if populations add up to 1"""
-    # populations must be of same shape as spectra
-    # so we expand populations with np.newaxis
-    popul = populations[:, np.newaxis]
+    # populations must be of same shape as values array
+    # so we expand populations with appropriate number of dimensions
+    shape = values.shape + (1,) * (values.ndim - 1)
+    popul = populations.reshape(*shape)
     try:
-        return (spectra * popul).sum(0)
+        return (values * popul).sum(0)
     except ValueError:
         raise ValueError(
             f"Cannot broadcast populations of shape {populations.shape} with "
-            f"spectra of shape {spectra.shape}."
+            f"values array of shape {values.shape}."
         )
 

@@ -1,5 +1,6 @@
 # IMPORTS
 import logging as lgg
+import inspect as insp
 
 import numpy as np
 from .. import datawork as dw
@@ -77,6 +78,57 @@ class DataArray(ArrayBase):
     @property
     def full_name(self):
         return self.full_name_ref[self.genre]
+
+
+class FloatArray(DataArray):
+
+    values = ArrayProperty(dtype=float, check_against='filenames')
+
+    def average(self, energies):
+        """A method for averaging values by population of conformers.
+
+        Parameters
+        ----------
+        energies : Energies object instance or iterable
+            Object with `populations` and `genre` attributes, containing
+            respectively: list of populations values as numpy.ndarray and
+            string specifying energy type. Alternatively, list of weights
+            for each conformer.
+
+        Returns
+        -------
+        DataArray
+            New instance of DataArray's subclass, on which `average` method was
+            called, containing averaged values.
+
+        Raises
+        ------
+            If creation of an instance based on its' __init__ signature is
+            impossible.
+        """
+        try:
+            populations = energies.populations
+            energy_type = energies.genre
+        except AttributeError:
+            populations = np.asanyarray(energies)
+            energy_type = 'unknown'
+        averaged = dw.calculate_average(self.values, populations)
+        sig = insp.signature(type(self))
+        args = {
+            name: getattr(self, name) if hasattr(self, name) else param.default
+            for name, param in sig.parameters.items()
+        }
+        args['values'] = averaged
+        args['allow_data_inconsistency'] = True
+        try:
+            averaged = type(self)(**args)
+            logger.debug(f'{self.genre} averaged by {energy_type}.')
+        except (TypeError, ValueError) as err:
+            raise TypeError(
+                f'Could not create an instance of {type(self)} from its'
+                f'signature. Use tesliper.datawork.calculate_average instead.'
+            ) from err
+        return averaged
 
 
 class InfoArray(DataArray):
@@ -353,7 +405,6 @@ class ExcitedStateBars(Bars):
     ):
         super().__init__(genre, filenames, values, t, allow_data_inconsistency)
         self.wavelengths = wavelengths  # in nm
-        self.t = t  # temperature in K
 
     wavelengths = ArrayProperty(check_against='filenames')
 
