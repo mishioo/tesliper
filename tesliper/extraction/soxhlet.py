@@ -165,23 +165,33 @@ class Soxhlet:
         else:
             return '.log' if logs else '.out'
 
-    def extract(self):
+    def extract_iter(self):
         """Extracts data from gaussian files associated with Soxhlet instance.
         Implemented as generator.
                 
         Yields
         ------
         tuple
-            Two item tuple with name of parsed file as first and  extracted
+            Two item tuple with name of parsed file as first and extracted
             data as second item, for each file associated with Soxhlet instance.
         """
         for num, file in enumerate(self.output_files):
-            with open(os.path.join(self.path, file)) as handle:
-                cont = handle.read()
             logger.debug(f'Starting extraction from file: {file}')
-            data = self.parser.parse(cont)
+            with open(os.path.join(self.path, file)) as handle:
+                data = self.parser.parse(handle)
             logger.debug('file done.\n')
             yield file, data
+
+    def extract(self):
+        """Extracts data from gaussian files associated with Soxhlet instance.
+
+        Returns
+        ------
+        dict of dicts
+            dictionary of extracted data, with name of parsed file as key and
+            data as value, for each file associated with Soxhlet instance.
+        """
+        return {f: d for f, d in self.extract_iter()}
 
     def load_bars(self, spectra_type=None):
         """Parses *.bar files associated with object and loads spectral data

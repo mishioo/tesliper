@@ -1,5 +1,7 @@
 # IMPORTS
 import logging as lgg
+from collections import Sequence, Iterable
+
 import numpy as np
 from .array_base import ArrayProperty
 from .arrays import DataArray, Spectra
@@ -32,10 +34,13 @@ class Shieldings(DataArray):
         List of magnetic shielding tensor values for each conformer. There
         should be the same number of values for each conformer, unless
         `allow_data_inconsistency` parameter is set to True.
+    molecule : iterable of int
+        List of atomic numbers representing atoms in molecule.
     intercept : int or float
-        intercept value for linear regression scaling of shielding tensor values
+        Intercept value for linear regression scaling of shielding tensor
+        values.
     slope : int or float
-        slope value for linear regression scaling of shielding tensor values
+        Slope value for linear regression scaling of shielding tensor values.
     allow_data_inconsistency : bool, optional
         Allows suppression of DataArray's mechanisms of checking data
         consistency (proper shapes of related data arrays); defaults to False.
@@ -51,9 +56,10 @@ class Shieldings(DataArray):
         Coupling Constants), consisting of coupling constants' values for each
         atom for each conformer.
     intercept : int or float
-        intercept value for linear regression scaling of shielding tensor values
+        Intercept value for linear regression scaling of shielding tensor
+        values.
     slope : int or float
-        slope value for linear regression scaling of shielding tensor values
+        Slope value for linear regression scaling of shielding tensor values.
     allow_data_inconsistency : bool
         Specifies if DataArray's mechanisms of checking data should be
         suppressed."""
@@ -64,12 +70,37 @@ class Shieldings(DataArray):
     ]
 
     def __init__(
-            self, genre, filenames, values, intercept=0, slope=-1,
+            self, genre, filenames, values, molecule, intercept=0, slope=-1,
             allow_data_inconsistency=False
     ):
         super().__init__(genre, filenames, values, allow_data_inconsistency)
+        self.molecule = molecule
         self.intercept = intercept
         self.slope = slope
+
+    validate_atoms = staticmethod(validate_atoms)
+    molecule = ArrayProperty(dtype=int, check_against=None)
+
+    @molecule.getter
+    def molecule(self):
+        """numpy.ndarray of int: List of atomic numbers representing atoms in
+        molecule. Given atoms' list is always validated using `validate_atoms`
+        method of this class when assigning new value."""
+        return vars(self)['molecule']
+
+    molecule.__doc__ = molecule.getter.__doc__
+
+    @molecule.setter
+    def molecule(self, molecule):
+        molecule = self.validate_atoms(molecule)
+        if len(molecule) < self.values.shape[1]:
+            raise ValueError(
+                "Molecule must have at least same number of atoms, as number "
+                "of values provided."
+            )
+        vars(self)['molecule'] = np.array(
+            molecule, dtype=type(self).molecule.dtype
+        )
 
     @property
     def spectra_name(self):
@@ -87,6 +118,10 @@ class Shieldings(DataArray):
         return atomic_number(self.nucleus)
 
     @property
+    def atoms(self):
+        return np.where(self.molecule == self.nucleus)
+
+    @property
     def shielding_values(self):
         """numpy.ndarray: Magnetic shielding tensor values scaled by `intercept`
         and `slope` values associated with Shieldings instance, as
@@ -94,8 +129,6 @@ class Shieldings(DataArray):
         is: (values - intercept) / -slope."""
         values = self.values.reshape(self.values.shape[0], -1)
         return (values - self.intercept) / -self.slope
-
-    validate_atoms = staticmethod(validate_atoms)
 
     def couple(self, coupling_constants, couple_with=None,
                exclude_self_couplings=True):
@@ -180,7 +213,7 @@ class Shieldings(DataArray):
 
         Parameters
         ----------
-        positions : iterable of iterables of int
+        positions : iterable of int or iterable of iterables of int
             List of lists of positions of signals, that should be averaged
 
         Returns
@@ -188,10 +221,17 @@ class Shieldings(DataArray):
         Shieldings
             new Shieldings instance with desired signals averaged averaged."""
         values = self.values.copy()
+        positions = list(positions)
+        if not isinstance(positions[0], (Sequence, Iterable)):
+            positions = [positions]  # make sure it's list of lists
         for pos in positions:
+            pos = np.where(np.isin(self.atoms, pos))
+            confs, _, *other = values.shape
             values[:, pos] = values[:, pos].mean(1)
-        return type(self)(self.genre, self.filenames, values, self.intercept,
-                          self.slope, self.allow_data_inconsistency)
+            values = values.reshape(confs, 1, *other)
+        return type(self)(self.genre, self.filenames, values, self.molecule,
+                          self.intercept, self.slope,
+                          self.allow_data_inconsistency)
 
 
 class Couplings(DataArray):
@@ -215,12 +255,15 @@ class Couplings(DataArray):
         Nevertheless, there should be the same number of values for each atom
         and the same number of atoms for each conformer, unless
         `allow_data_inconsistency` parameter is set to True.
-    atoms : iterable of (int or str)
-        List of atoms' identifiers (atom symbols or atomic numbers); should be
-        of the same length as number of given atoms for conformer, unless
-        `allow_data_inconsistency` parameter is set to True.
+    molecule : iterable of int
+        List of atomic numbers representing atoms in molecule.
+    atoms : iterable of int, optional
+        List of atoms' positions in `molecule`; should be of the same length
+        as number of given atoms for conformer, unless
+        `allow_data_inconsistency` parameter is set to True. If not specified,
+        all atoms listed as `molecule` are used.
     atoms_coupled : iterable of int or iterable of str, optional
-        List of atoms' identifiers (atom symbols or atomic numbers); should be
+        List of atoms' positions in `molecule`; should be
         of the same length as number of given coupling constants' values for
         atom, unless `allow_data_inconsistency` parameter is set to True. If
         not specified, `atoms` value is used.
@@ -248,77 +291,102 @@ class Couplings(DataArray):
     associated_genres = ['fermi']
 
     def __init__(
-            self, genre, filenames, values, atoms, atoms_coupled=None,
-            frequency=100, allow_data_inconsistency=False
+            self, genre, filenames, values, molecule, atoms=None,
+            atoms_coupled=None, frequency=100, allow_data_inconsistency=False
     ):
         values = np.asarray(values)
         values = unpack(values) if values.ndim == 2 else values
         super().__init__(genre, filenames, values, allow_data_inconsistency)
-        self.atoms = atoms
+        self.molecule = molecule
+        self.atoms = atoms if atoms is not None else []
         self.atoms_coupled = atoms_coupled if atoms_coupled is not None else []
         self.frequency = frequency
 
+    molecule = ArrayProperty(dtype=int, check_against=None)
     atoms = ArrayProperty(dtype=int, check_against=None)
     atoms_coupled = ArrayProperty(dtype=int, check_against=None)
     validate_atoms = staticmethod(validate_atoms)
 
+    @molecule.getter
+    def molecule(self):
+        """numpy.ndarray of int: List of atomic numbers representing atoms in
+        molecule. Given atoms' list is always validated using `validate_atoms`
+        method of this class when assigning new value."""
+        return vars(self)['molecule']
+
+    molecule.__doc__ = molecule.getter.__doc__
+
+    @molecule.setter
+    def molecule(self, molecule):
+        molecule = self.validate_atoms(molecule)
+        if len(molecule) < self.values.shape[1]:
+            raise ValueError(
+                "Molecule must have at least same number of atoms, as number "
+                "of values provided."
+            )
+        vars(self)['molecule'] = np.array(
+            molecule, dtype=type(self).molecule.dtype
+        )
+
     @atoms.getter
     def atoms(self) -> np.ndarray:
-        """numpy.ndarray of int: List of atomic numbers representing atoms in
-        molecule; should be of the same
-        length as number of given atoms for conformer (i.e. size of the first
-        dimension of `values` array), unless `allow_data_inconsistency`
-        attribute is set to True. Given atoms' list is always validated using
-        `validate_atoms` method of this class when assigning new value."""
+        """numpy.ndarray of int: List of atom's positions in molecule;
+        should be of the same length as number of given atoms for conformer
+        (i.e. size of the first dimension of `values` array), unless
+        `allow_data_inconsistency` attribute is set to True."""
         return vars(self)['atoms']
 
     atoms.__doc__ = atoms.getter.__doc__
 
     @atoms.setter
     def atoms(self, atoms):
-        atoms = self.validate_atoms(atoms)
-        if not len(atoms) == len(self.values[0]) \
+        if not atoms.size:
+            atoms = np.arange(self.molecule.size)
+        if not atoms.size == len(self.values[0]) \
                 and not self.allow_data_inconsistency:
             raise InconsistentDataError(
-                f'Number of atoms ({len(atoms)}) does not match number of '
+                f'Number of atoms ({atoms.size}) does not match number of '
                 f'coupling constants\' lists ({len(self.values[0])}).'
             )
-        vars(self)['atoms'] = np.array(atoms, dtype=type(self).atoms.dtype)
+        vars(self)['atoms'] = atoms
 
     @atoms_coupled.getter
     def atoms_coupled(self) -> np.ndarray:
-        """numpy.ndarray of int: List of atomic numbers. If empty list given,
-        `atoms` attribute value will be assigned. Should be of the same
-        length as number of given coupling constants' values for atom (i.e.
+        """numpy.ndarray of int: List of atom's positions in molecule. If empty
+        list given, `atoms` attribute value will be assigned. Should be of the
+        same length as number of given coupling constants' values for atom (i.e.
         size of the second dimension of `values` array), unless
-        `allow_data_inconsistency` attribute is set to True. Given atoms' list
-        is always validated using `validate_atoms` method of this class when
-        assigning new value."""
+        `allow_data_inconsistency` attribute is set to True."""
         return vars(self)['atoms_coupled']
 
     atoms_coupled.__doc__ = atoms_coupled.getter.__doc__
 
     @atoms_coupled.setter
     def atoms_coupled(self, atoms):
-        atoms = self.validate_atoms(atoms)
-        if not atoms and (len(self.atoms) == len(self.values[0][0])
-                          or self.allow_data_inconsistency):
+        if not atoms.size and (len(self.atoms) == len(self.values[0][0])
+                               or self.allow_data_inconsistency):
             atoms = self.atoms
-        elif not atoms:
+        elif not atoms.size:
             raise ValueError(
                 f"'atoms_coupled' parameter must be specified when creating a "
                 f"{type(self)} instance with values as list of unsymmetric "
                 f"matrices."
             )
-        elif not len(atoms) == len(self.values[0][0]) \
+        elif not atoms.size == len(self.values[0][0]) \
                 and not self.allow_data_inconsistency:
             raise InconsistentDataError(
-                f"Number of atoms_coupled ({len(atoms)}) does not match number "
+                f"Number of atoms_coupled ({atoms.size}) does not match number "
                 f"of coupling constants' values ({len(self.values[0][0])})."
             )
-        vars(self)['atoms_coupled'] = np.array(
-            atoms, dtype=type(self).atoms.dtype
-        )
+        vars(self)['atoms_coupled'] = atoms
+
+    @property
+    def nuclei(self):
+        return self.molecule[self.atoms]
+
+    @property
+    def nuclei_coupled(self):
+        return self.molecule[self.atoms_coupled]
 
     @property
     def coupling_constants(self):
@@ -348,19 +416,19 @@ class Couplings(DataArray):
             new instance of Couplings class containing data for specified
             atoms and coupling constants only; other attributes' values
             (genre, filenames, frequency) are preserved"""
-        atoms = self.validate_atoms(atoms) if atoms is not None else self.atoms
+        atoms = self.validate_atoms(atoms) if atoms is not None else self.nuclei
         coupled_with = self.validate_atoms(coupled_with) \
-            if coupled_with is not None else self.atoms_coupled
-        temp = take_atoms(self.values, self.atoms, atoms).transpose(0, 2, 1)
-        new_values = take_atoms(temp, self.atoms_coupled, coupled_with)
-        new_values = new_values.transpose(0, 2, 1)
-        new_atoms = take_atoms(self.atoms, self.atoms, atoms)
+            if coupled_with is not None else self.nuclei_coupled
+        temp = take_atoms(self.values, self.nuclei, atoms).swapaxes(2, 1)
+        new_values = take_atoms(temp, self.nuclei_coupled, coupled_with)
+        new_values = new_values.swapaxes(2, 1)
+        new_atoms = take_atoms(self.atoms, self.nuclei, atoms)
         new_coupled = take_atoms(
-            self.atoms_coupled, self.atoms_coupled, coupled_with
+            self.atoms_coupled, self.nuclei_coupled, coupled_with
         )
         new_inst = type(self)(
             genre=self.genre, filenames=self.filenames, values=new_values,
-            atoms=new_atoms, atoms_coupled=new_coupled,
+            molecule=self.molecule, atoms=new_atoms, atoms_coupled=new_coupled,
             frequency=self.frequency,
             allow_data_inconsistency=self.allow_data_inconsistency
         )
@@ -392,16 +460,16 @@ class Couplings(DataArray):
         atoms = self.validate_atoms(atoms) if atoms is not None else []
         coupled_with = self.validate_atoms(coupled_with) \
             if coupled_with is not None else []
-        temp = drop_atoms(self.values, self.atoms, atoms).transpose(0, 2, 1)
-        new_values = drop_atoms(temp, self.atoms_coupled, coupled_with)
-        new_values = new_values.transpose(0, 2, 1)
-        new_atoms = drop_atoms(self.atoms, self.atoms, atoms)
+        temp = drop_atoms(self.values, self.nuclei, atoms).swapaxes(2, 1)
+        new_values = drop_atoms(temp, self.nuclei_coupled, coupled_with)
+        new_values = new_values.swapaxes(2, 1)
+        new_atoms = drop_atoms(self.atoms, self.nuclei, atoms)
         new_coupled = drop_atoms(
-            self.atoms_coupled, self.atoms_coupled, coupled_with
+            self.atoms_coupled, self.nuclei_coupled, coupled_with
         )
         new_inst = type(self)(
             genre=self.genre, filenames=self.filenames, values=new_values,
-            atoms=new_atoms, atoms_coupled=new_coupled,
+            molecule=self.molecule, atoms=new_atoms, atoms_coupled=new_coupled,
             frequency=self.frequency,
             allow_data_inconsistency=self.allow_data_inconsistency
         )
@@ -426,8 +494,8 @@ class Couplings(DataArray):
         ValueError
             if self-coupling constants are not included for all atoms
         """
-        atoms = set(self.atoms)
-        atoms_coupled = set(self.atoms_coupled)
+        atoms = set(self.nuclei)
+        atoms_coupled = set(self.nuclei_coupled)
         overload = atoms - atoms_coupled
         if overload:
             raise ValueError(
@@ -444,24 +512,41 @@ class Couplings(DataArray):
             values = np.concatenate((values, other_values), 2)
         return values
 
+    @property
+    def is_symmetric(self):
+        confs, x, y, *other = self.values.shape
+        return x == y
+
     def average_positions(self, positions):
         """Average signals of atoms on given positions. Returns new instance
-        of Shieldings object with new values.
+        of Couplings object with new values.
 
         Parameters
         ----------
-        positions : iterable of iterables of int
-            List of lists of positions of signals, that should be averaged
+        positions : iterable of int or iterable of iterables of int
+            List of positions of signals, that should be averaged
 
         Returns
         -------
-        Shieldings
-            new Shieldings instance with desired signals averaged averaged."""
+        Couplings
+            new Couplings instance with desired signals averaged averaged."""
         values = self.values.copy()
+        positions = list(positions)
+        if not isinstance(positions[0], (Sequence, Iterable)):
+            positions = [positions]  # make sure it's list of lists
         for pos in positions:
-            values[:, pos] = values[:, pos].mean(1)
-        return type(self)(self.genre, self.filenames, values, self.intercept,
-                          self.slope, self.allow_data_inconsistency)
+            pos = np.where(np.isin(self.atoms, pos))[0]
+            pos_cop = np.where(np.isin(self.atoms_coupled, pos))[0]
+            slc = values[:, pos, np.expand_dims(pos_cop, -1)]
+            confs, x, *other = slc.shape
+            dropped = drop_diagonals(slc)
+            means = dropped.reshape(confs, -1).mean(1)
+            means = means.repeat(x ** 2).reshape(confs, x, *other)
+            means = means * np.invert(np.eye(x, dtype=bool))
+            values[:, pos, np.expand_dims(pos_cop, -1)] = means
+        return type(self)(self.genre, self.filenames, values, self.molecule,
+                          self.atoms, self.atoms_coupled, self.frequency,
+                          self.allow_data_inconsistency)
 
 # To convert from index 'n' of 1d storage of symmetric array to 2d array indices
 # row = get_triangular_base(n)

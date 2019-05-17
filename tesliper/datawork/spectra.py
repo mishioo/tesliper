@@ -165,7 +165,7 @@ def calculate_average(values, populations):
     Add checking if populations add up to 1"""
     # populations must be of same shape as values array
     # so we expand populations with appropriate number of dimensions
-    shape = values.shape + (1,) * (values.ndim - 1)
+    shape = values.shape[0] + (1,) * (values.ndim - 1)
     popul = populations.reshape(*shape)
     try:
         return (values * popul).sum(0)

@@ -112,13 +112,13 @@ class FloatArray(DataArray):
         except AttributeError:
             populations = np.asanyarray(energies)
             energy_type = 'unknown'
-        averaged = dw.calculate_average(self.values, populations)
+        averaged_values = dw.calculate_average(self.values, populations)
         sig = insp.signature(type(self))
         args = {
             name: getattr(self, name) if hasattr(self, name) else param.default
             for name, param in sig.parameters.items()
         }
-        args['values'] = averaged
+        args['values'] = averaged_values
         args['allow_data_inconsistency'] = True
         try:
             averaged = type(self)(**args)
