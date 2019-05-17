@@ -270,18 +270,13 @@ class TestAveragePositions(TestCase):
     def test_one_dim(self):
         vals = [1, 2, 3, 4]
         out = average_positions(vals, (0, 1, 2))
-        self.assertSequenceEqual(out.tolist(), [2, 2, 2, 4])
+        self.assertSequenceEqual(out.tolist(), [[2, 2, 2, 4]])
 
     def test_one_dim_sym(self):
         vals = [1, 2, 3, 4]
         self.assertRaises(
             ValueError, average_positions, vals, (1, 2), symmetric=True
         )
-
-    def test_one_dim_no_copy(self):
-        vals = np.arange(4) + 1
-        average_positions(vals, (0, 1, 2), copy=False)
-        self.assertSequenceEqual(vals.tolist(), [2, 2, 2, 4])
 
     def test_dwo_dim(self):
         vals = np.arange(8).reshape(2, -1) + 1
@@ -294,10 +289,10 @@ class TestAveragePositions(TestCase):
                 [2, 3, 0, 6],
                 [4, 5, 6, 0]]
         out = average_positions(vals, (0, 1, 2), symmetric=True)
-        self.assertSequenceEqual(out.tolist(), [[0, 2, 2, 4],
-                                                [2, 0, 2, 5],
-                                                [2, 2, 0, 6],
-                                                [4, 5, 6, 0]])
+        self.assertSequenceEqual(out.tolist(), [[[0, 2, 2, 4],
+                                                 [2, 0, 2, 5],
+                                                 [2, 2, 0, 6],
+                                                 [4, 5, 6, 0]]])
 
     def test_three_dim(self):
         vals = np.arange(12).reshape(2, 3, 2).tolist()

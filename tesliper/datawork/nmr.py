@@ -3,6 +3,7 @@ import logging as lgg
 import numpy as np
 from .helpers import is_triangular, get_triangular, get_triangular_base
 from ..exceptions import InconsistentDataError
+from collections.abc import Sequence, Iterable
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -256,31 +257,25 @@ def couple(shieldings, coupling_constants, separate_peaks=False):
     return out.reshape(*new_shape)
 
 
-def average_positions(values, positions, copy=True, symmetric=False):
+def average_positions(values, positions, symmetric=False):
     """Averages values on given positions."""
-    # is one dim and symm two dim really needed?
-    v = np.array(values, copy=copy)
-    if v.ndim == 1 and not symmetric:
-        v[positions, ] = v[positions, ].mean()
-    elif not symmetric:
-        confs, _, *other = v.shape
-        v[:, positions] = v[:, positions].mean(1).reshape(confs, 1, *other)
-    elif v.ndim > 2 and symmetric:
-        slc = v[:, positions, np.expand_dims(positions, -1)]
-        confs, x, y, *other = slc.shape
+    v = np.array(values, copy=True, subok=True)
+    if (v.ndim == 1 and not symmetric) or (v.ndim == 2 and symmetric):
+        v = np.expand_dims(v, 0)
+    elif v.ndim == 1 and symmetric:
+        raise ValueError(
+            "Array with only one dimension cannot be considered symmetric."
+        )
+    indices = (slice(None), ) + (positions, )
+    indices += (np.expand_dims(positions, -1), ) if symmetric else ()
+    slc = v[indices]
+    confs, x, *other = slc.shape
+    if symmetric:
         dropped = drop_diagonals(slc)
         means = dropped.reshape(confs, -1).mean(1)
-        means = means.repeat(x**2).reshape(confs, x, y, *other)
+        means = means.repeat(x**2).reshape(confs, x, *other)
         means = means * np.invert(np.eye(x, dtype=bool))
-        v[:, positions, np.expand_dims(positions, -1)] = means
-    elif v.ndim == 2 and symmetric:
-        slc = v[positions, np.expand_dims(positions, -1)]
-        x, y = slc.shape
-        dropped = drop_diagonals(slc)
-        means = dropped.flatten().mean()
-        means = np.repeat(means, x**2).reshape(x, y)
-        means = means * np.invert(np.eye(x, dtype=bool))
-        v[positions, np.expand_dims(positions, -1)] = means
     else:
-        raise ValueError("Cannot average.")
+        means = slc.mean(1).reshape(confs, 1, *other)
+    v[indices] = means
     return v
