@@ -119,7 +119,9 @@ class Shieldings(DataArray):
 
     @property
     def atoms(self):
-        return np.where(self.molecule == self.nucleus)
+        """numpy.ndarray of int: positions in the molecule of atoms, to which
+        shielding values refer."""
+        return np.where(self.molecule == self.atomic_number)[0]
 
     @property
     def shielding_values(self):
@@ -163,7 +165,7 @@ class Shieldings(DataArray):
             new instance with coupled peaks as values"""
         try:
             couple_with = couple_with if couple_with else \
-                list(set(coupling_constants.atoms_coupled))
+                list(set(coupling_constants.atomic_numbers_coupled))
             couple_with = np.array(self.validate_atoms(couple_with))
             coupling_constants = coupling_constants.take_atoms(
                 self.atomic_number, couple_with
@@ -192,8 +194,11 @@ class Shieldings(DataArray):
         else:
             cc_values = coupling_constants
         values = couple(self.values, cc_values, separate_peaks=True)
-        return type(self)(self.genre, self.filenames, values, self.intercept,
-                          self.slope, self.allow_data_inconsistency)
+        return type(self)(
+            genre=self.genre, filenames=self.filenames, values=values,
+            molecule=self.molecule, intercept=self.intercept, slope=self.slope,
+            allow_data_inconsistency=self.allow_data_inconsistency
+        )
 
     def calculate_spectra(self, start, stop, step, width, fitting):
         abscissa = np.arange(start, stop, step)
@@ -229,9 +234,11 @@ class Shieldings(DataArray):
             confs, _, *other = values.shape
             values[:, pos] = values[:, pos].mean(1)
             values = values.reshape(confs, 1, *other)
-        return type(self)(self.genre, self.filenames, values, self.molecule,
-                          self.intercept, self.slope,
-                          self.allow_data_inconsistency)
+        return type(self)(
+            genre=self.genre, filenames=self.filenames, values=values,
+            molecule=self.molecule, intercept=self.intercept, slope=self.slope,
+            allow_data_inconsistency=self.allow_data_inconsistency
+        )
 
 
 class Couplings(DataArray):
@@ -381,12 +388,28 @@ class Couplings(DataArray):
         vars(self)['atoms_coupled'] = atoms
 
     @property
-    def nuclei(self):
+    def atomic_numbers(self):
+        """numpy.ndarray of int: list of atomic numbers of `atoms`."""
         return self.molecule[self.atoms]
 
     @property
-    def nuclei_coupled(self):
+    def atomic_numbers_coupled(self):
+        """numpy.ndarray of int: list of atomic numbers of atoms with which
+         `atoms` are coupled."""
         return self.molecule[self.atoms_coupled]
+
+    @property
+    def nuclei(self):
+        """numpy.ndarray of str: list of symbols of `atoms`."""
+        return np.vectorize(symbol_of_element)(self.molecule[self.atoms])
+
+    @property
+    def nuclei_coupled(self):
+        """numpy.ndarray of str: list of symbols of atoms with which
+         `atoms` are coupled."""
+        return np.vectorize(symbol_of_element)(
+            self.molecule[self.atoms_coupled]
+        )
 
     @property
     def coupling_constants(self):
@@ -416,15 +439,15 @@ class Couplings(DataArray):
             new instance of Couplings class containing data for specified
             atoms and coupling constants only; other attributes' values
             (genre, filenames, frequency) are preserved"""
-        atoms = self.validate_atoms(atoms) if atoms is not None else self.nuclei
+        atoms = self.validate_atoms(atoms) if atoms is not None else self.atomic_numbers
         coupled_with = self.validate_atoms(coupled_with) \
-            if coupled_with is not None else self.nuclei_coupled
-        temp = take_atoms(self.values, self.nuclei, atoms).swapaxes(2, 1)
-        new_values = take_atoms(temp, self.nuclei_coupled, coupled_with)
+            if coupled_with is not None else self.atomic_numbers_coupled
+        temp = take_atoms(self.values, self.atomic_numbers, atoms).swapaxes(2, 1)
+        new_values = take_atoms(temp, self.atomic_numbers_coupled, coupled_with)
         new_values = new_values.swapaxes(2, 1)
-        new_atoms = take_atoms(self.atoms, self.nuclei, atoms)
+        new_atoms = take_atoms(self.atoms, self.atomic_numbers, atoms)
         new_coupled = take_atoms(
-            self.atoms_coupled, self.nuclei_coupled, coupled_with
+            self.atoms_coupled, self.atomic_numbers_coupled, coupled_with
         )
         new_inst = type(self)(
             genre=self.genre, filenames=self.filenames, values=new_values,
@@ -460,12 +483,12 @@ class Couplings(DataArray):
         atoms = self.validate_atoms(atoms) if atoms is not None else []
         coupled_with = self.validate_atoms(coupled_with) \
             if coupled_with is not None else []
-        temp = drop_atoms(self.values, self.nuclei, atoms).swapaxes(2, 1)
-        new_values = drop_atoms(temp, self.nuclei_coupled, coupled_with)
+        temp = drop_atoms(self.values, self.atomic_numbers, atoms).swapaxes(2, 1)
+        new_values = drop_atoms(temp, self.atomic_numbers_coupled, coupled_with)
         new_values = new_values.swapaxes(2, 1)
-        new_atoms = drop_atoms(self.atoms, self.nuclei, atoms)
+        new_atoms = drop_atoms(self.atoms, self.atomic_numbers, atoms)
         new_coupled = drop_atoms(
-            self.atoms_coupled, self.nuclei_coupled, coupled_with
+            self.atoms_coupled, self.atomic_numbers_coupled, coupled_with
         )
         new_inst = type(self)(
             genre=self.genre, filenames=self.filenames, values=new_values,
@@ -494,8 +517,8 @@ class Couplings(DataArray):
         ValueError
             if self-coupling constants are not included for all atoms
         """
-        atoms = set(self.nuclei)
-        atoms_coupled = set(self.nuclei_coupled)
+        atoms = set(self.atomic_numbers)
+        atoms_coupled = set(self.atomic_numbers_coupled)
         overload = atoms - atoms_coupled
         if overload:
             raise ValueError(
@@ -529,7 +552,7 @@ class Couplings(DataArray):
         Returns
         -------
         Couplings
-            new Couplings instance with desired signals averaged averaged."""
+            new Couplings instance with desired signals averaged."""
         values = self.values.copy()
         positions = list(positions)
         if not isinstance(positions[0], (Sequence, Iterable)):
@@ -547,6 +570,43 @@ class Couplings(DataArray):
         return type(self)(self.genre, self.filenames, values, self.molecule,
                           self.atoms, self.atoms_coupled, self.frequency,
                           self.allow_data_inconsistency)
+
+    def suppress_coupling(self, positions):
+        """Suppress atoms' coupling by setting their coupling constants to zero.
+        Returns new Couplings instance.
+
+        Parameters
+        ----------
+        positions : iterable of int or iterable of iterables of int
+            List of positions of atoms, which coupling should be suppressed.
+            Multiple iterables can be given.
+
+        Returns
+        -------
+        Couplings
+            new Couplings instance with desired atoms coupling suppressed."""
+        values = self.values.copy()
+        positions = list(positions)
+        if not isinstance(positions[0], (Sequence, Iterable)):
+            positions = [positions]  # make sure it's list of lists
+        for psns in positions:
+            psns = np.asarray(psns)
+            smaller_than_molecule = psns < self.molecule.size
+            if not smaller_than_molecule.all():
+                raise ValueError(
+                    f"Atoms on positions {psns[~smaller_than_molecule]} "
+                    f"requested, but only {self.molecule.size} atoms in "
+                    f"molecule."
+                )
+            pos = np.where(np.isin(self.atoms, psns))[0]
+            pos_cop = np.where(np.isin(self.atoms_coupled, psns))[0]
+            values[:, pos, np.expand_dims(pos_cop, -1)] = 0
+        return type(self)(
+            genre=self.genre, filenames=self.filenames, values=values,
+            molecule=self.molecule, atoms=self.atoms,
+            atoms_coupled=self.atoms_coupled, frequency=self.frequency,
+            allow_data_inconsistency=self.allow_data_inconsistency
+        )
 
 # To convert from index 'n' of 1d storage of symmetric array to 2d array indices
 # row = get_triangular_base(n)

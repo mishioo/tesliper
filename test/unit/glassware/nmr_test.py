@@ -22,8 +22,10 @@ class TestShieldings(ut.TestCase):
               [.6, .8, .0]]]
         )
         self.coupl_h_mock.coupling_constants = self.coupl_h_mock.values
-        self.coupl_h_mock.atoms = np.asarray([1, 1, 1])
-        self.coupl_h_mock.atoms_coupled = np.asarray([1, 1, 1])
+        self.coupl_h_mock.atoms = np.asarray([0, 1, 2])
+        self.coupl_h_mock.atoms_coupled = np.asarray([0, 1, 2])
+        self.coupl_h_mock.atomic_numbers = np.asarray([1, 1, 1])
+        self.coupl_h_mock.atomic_numbers_coupled = np.asarray([1, 1, 1])
         self.coupl_h_mock.exclude_self_couplings.return_value = np.asarray(
             [[[.2, .4], [.2, .6], [.4, .6]],
              [[.2, .6], [.2, .8], [.6, .8]]]
@@ -31,8 +33,10 @@ class TestShieldings(ut.TestCase):
         self.coupl_f_mock = Mock(name="f_couplings_mock")
         self.coupl_f_mock.values = np.asarray([[[2], [0], [0]], [[3], [0], [0]]])
         self.coupl_f_mock.coupling_constants = self.coupl_f_mock.values
-        self.coupl_f_mock.atoms = np.asarray([1, 1, 1])
-        self.coupl_f_mock.atoms_coupled = np.asarray([9])
+        self.coupl_f_mock.atoms = np.asarray([0, 1, 2])
+        self.coupl_f_mock.atoms_coupled = np.asarray([3])
+        self.coupl_f_mock.atomic_numbers = np.asarray([1, 1, 1])
+        self.coupl_f_mock.atomic_numbers_coupled = np.asarray([9])
         self.coupl_f_mock.exclude_self_couplings.side_effect = ValueError
         self.coupl_mock = Mock(name="couplings_mock")
         self.coupl_mock.values = np.asarray(
@@ -44,8 +48,10 @@ class TestShieldings(ut.TestCase):
               [.6, .8, .0, 0]]]
         )
         self.coupl_mock.coupling_constants = self.coupl_mock.values
-        self.coupl_mock.atoms = np.asarray([1, 1, 1])
-        self.coupl_mock.atoms_coupled = np.asarray([1, 1, 1, 9])
+        self.coupl_mock.atoms = np.asarray([0, 1, 2])
+        self.coupl_mock.atoms_coupled = np.asarray([0, 1, 2, 3])
+        self.coupl_mock.atomic_numbers = np.asarray([1, 1, 1])
+        self.coupl_mock.atomic_numbers_coupled = np.asarray([1, 1, 1, 9])
         self.coupl_mock.exclude_self_couplings.return_value = np.asarray(
             [[[.2, .4, 2], [.2, .6, 0], [.4, .6, 0]],
              [[.2, .6, 3], [.2, .8, 0], [.6, .8, 0]]]
@@ -78,6 +84,9 @@ class TestShieldings(ut.TestCase):
             self.shield.shielding_values.tolist(),
             [[2, 3, 5], [3, 5, 6]]
         )
+
+    def test_atoms(self):
+        self.assertSequenceEqual(self.shield.atoms.tolist(), [0, 1, 2])
 
     def test_couple_all_exclude(self):
         out = self.shield.couple(self.coupl_mock)
@@ -197,11 +206,23 @@ class TestCouplings(ut.TestCase):
 
     def test_nuclei(self):
         self.assertTrue(self.cpl.nuclei.dtype, int)
-        self.assertSequenceEqual(self.cpl.nuclei.tolist(), [1, 1, 1, 9])
+        self.assertSequenceEqual(self.cpl.nuclei.tolist(), "H H H F".split())
 
     def test_nuclei_coupled(self):
         self.assertTrue(self.cpl.nuclei_coupled.dtype, int)
-        self.assertSequenceEqual(self.cpl.nuclei_coupled.tolist(), [1, 1, 1, 9])
+        self.assertSequenceEqual(
+            self.cpl.nuclei_coupled.tolist(), "H H H F".split()
+        )
+
+    def test_atomic_numbers(self):
+        self.assertTrue(self.cpl.atomic_numbers.dtype, int)
+        self.assertSequenceEqual(self.cpl.atomic_numbers.tolist(), [1, 1, 1, 9])
+
+    def test_atomic_numbers_coupled(self):
+        self.assertTrue(self.cpl.atomic_numbers_coupled.dtype, int)
+        self.assertSequenceEqual(
+            self.cpl.atomic_numbers_coupled.tolist(), [1, 1, 1, 9]
+        )
 
     def test_inconsistent_atoms(self):
         params = self.std.copy()
@@ -214,9 +235,9 @@ class TestCouplings(ut.TestCase):
         params['molecule'] = [1, 1, 1]
         cpl = Couplings(**params)
         self.assertSequenceEqual(
-             cpl.values.tolist(),
-             [[[0, 2, 4], [2, 0, 6], [4, 6, 0]],
-              [[0, 2, 6], [2, 0, 8], [6, 8, 0]]]
+            cpl.values.tolist(),
+            [[[0, 2, 4], [2, 0, 6], [4, 6, 0]],
+             [[0, 2, 6], [2, 0, 8], [6, 8, 0]]]
         )
 
     def test_exclude_self_couplings_not_enough_values(self):
@@ -399,3 +420,93 @@ class TestCouplings(ut.TestCase):
                                    [16/3, 16/3, 0, 0],
                                    [24, 0, 0, 0]]]
                                  )
+
+    def test_suppress_coupling_pair(self):
+        cpl = self.cpl.suppress_coupling([1, 2])
+        self.assertSequenceEqual(
+            cpl.values.tolist(),
+            [[[0, 2, 4, 20],
+              [2, 0, 0, 0],
+              [4, 0, 0, 0],
+              [20, 0, 0, 0]],
+             [[0, 2, 6, 24],
+              [2, 0, 0, 0],
+              [6, 0, 0, 0],
+              [24, 0, 0, 0]]]
+        )
+
+    def test_suppress_coupling_list_one_pair(self):
+        cpl = self.cpl.suppress_coupling([[1, 2]])
+        self.assertSequenceEqual(
+            cpl.values.tolist(),
+            [[[0, 2, 4, 20],
+              [2, 0, 0, 0],
+              [4, 0, 0, 0],
+              [20, 0, 0, 0]],
+             [[0, 2, 6, 24],
+              [2, 0, 0, 0],
+              [6, 0, 0, 0],
+              [24, 0, 0, 0]]]
+        )
+
+    def test_suppress_coupling_list_two_pairs(self):
+        cpl = self.cpl.suppress_coupling([[0, 1], [0, 3]])
+        self.assertSequenceEqual(
+            cpl.values.tolist(),
+            [[[0, 0, 4, 0],
+              [0, 0, 6, 0],
+              [4, 6, 0, 0],
+              [0, 0, 0, 0]],
+             [[0, 0, 6, 0],
+              [0, 0, 8, 0],
+              [6, 8, 0, 0],
+              [0, 0, 0, 0]]]
+        )
+
+    def test_suppress_coupling_unsymmetrical(self):
+        params = self.std.copy()
+        params['values'] = [[[0, 2, 4, 20],
+                             [2, 0, 6, 0],
+                             [4, 6, 0, 0]],
+                            [[0, 2, 6, 24],
+                             [2, 0, 8, 0],
+                             [6, 8, 0, 0]]]
+        params['atoms'] = [0, 1, 2]
+        params['atoms_coupled'] = [0, 1, 2, 3]
+        cpl = Couplings(**params).suppress_coupling([0, 3])
+        self.assertSequenceEqual(
+            cpl.values.tolist(),
+            [[[0, 2, 4, 0],
+              [2, 0, 6, 0],
+              [4, 6, 0, 0]],
+             [[0, 2, 6, 0],
+              [2, 0, 8, 0],
+              [6, 8, 0, 0]]]
+        )
+
+    def test_suppress_coupling_unsymmetrical_other(self):
+        params = self.std.copy()
+        params['values'] = [[[0, 2, 4],
+                             [2, 0, 6],
+                             [4, 6, 0],
+                             [20, 0, 0]],
+                            [[0, 2, 6],
+                             [2, 0, 8],
+                             [6, 8, 0],
+                             [24, 0, 0]]]
+        params['atoms_coupled'] = [0, 1, 2]
+        cpl = Couplings(**params).suppress_coupling([0, 3])
+        self.assertSequenceEqual(
+            cpl.values.tolist(),
+            [[[0, 2, 4],
+              [2, 0, 6],
+              [4, 6, 0],
+              [0, 0, 0]],
+             [[0, 2, 6],
+              [2, 0, 8],
+              [6, 8, 0],
+              [0, 0, 0]]]
+        )
+
+    def test_suppress_coupling_atom_out_of_range(self):
+        self.assertRaises(ValueError, self.cpl.suppress_coupling, [1, 4])
