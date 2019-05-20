@@ -138,15 +138,15 @@ def calculate_spectra(frequencies, intensities, abscissa, width, fitting):
 
 
 def calculate_average(values, populations):
-    """Calculates weighted average of spectra, where populations are used as
+    """Calculates weighted average of `values`, where `populations` are used as
     weights.
 
     Parameters
     ----------
-    values : numpy.ndarray
+    values : numpy.ndarray or iterable
         List of values for each conformer, should be of shape (N, M), where N is
         number of conformers and M is number of values.
-    populations : numpy.ndarray
+    populations : numpy.ndarray or iterable
         List of conformers' populations, should be of shape (N,) where N is
         number of conformers. Should add up to 1.
 
@@ -158,20 +158,19 @@ def calculate_average(values, populations):
     Raises
     ------
     ValueError
-        If parameters of non-matching shape were passed.
-
-    TO DO
-    -----
-    Add checking if populations add up to 1"""
+        If parameters of non-matching shape were passed."""
+    values = np.asanyarray(values)
+    populations = np.asanyarray(populations)
+    if not populations.size == values.shape[0]:
+        raise ValueError(
+            "Exactly one population value for each conformer must be provided."
+        )
+    popsum = populations.sum()
+    if not np.isclose(popsum, 1):
+        # normalize population data, if needed
+        populations = populations / popsum
     # populations must be of same shape as values array
     # so we expand populations with appropriate number of dimensions
-    shape = values.shape[0] + (1,) * (values.ndim - 1)
+    shape = (-1,) + (1,) * (values.ndim - 1)
     popul = populations.reshape(*shape)
-    try:
-        return (values * popul).sum(0)
-    except ValueError:
-        raise ValueError(
-            f"Cannot broadcast populations of shape {populations.shape} with "
-            f"values array of shape {values.shape}."
-        )
-
+    return (values * popul).sum(0)

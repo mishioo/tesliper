@@ -65,7 +65,8 @@ class ArrayProperty(property):
     def check_input(self, instance, values):
         if self.check_against:
             length = len(getattr(instance, self.check_against))
-            if not len(values) == length:
+            if not len(values) == length and \
+                    not instance.allow_data_inconsistency:
                 raise ValueError(
                     f"Values and {self.check_against} must be the same length. "
                     f"Arrays of length {len(values)} and {length} were given."

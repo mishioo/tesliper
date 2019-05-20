@@ -61,19 +61,10 @@ class DataArray(ArrayBase):
         gib='Thermal Free Energy',
         scf='SCF',
         ex_en='Excitation energy',
-        vfreq='Frequency',
+        freq='Frequency',
         wave='Wavelength',
         energies='Energies'
     )
-
-    associated_genres = 'zpecorr tencorr entcorr gibcorr mass frc emang ' \
-                        'depolarp depolaru depp depu alpha2 beta2 alphag ' \
-                        'gamma2 delta2 cid1 cid2 cid3 rc180 eemang'.split(' ')
-
-    def __init__(
-            self, genre, filenames, values, allow_data_inconsistency=False
-    ):
-        super().__init__(genre, filenames, values, allow_data_inconsistency)
 
     @property
     def full_name(self):
@@ -82,9 +73,12 @@ class DataArray(ArrayBase):
 
 class FloatArray(DataArray):
 
+    associated_genres = 'zpecorr tencorr entcorr gibcorr mass frc emang ' \
+                        'depolarp depolaru depp depu alpha2 beta2 alphag ' \
+                        'gamma2 delta2 cid1 cid2 cid3 rc180 eemang'.split(' ')
     values = ArrayProperty(dtype=float, check_against='filenames')
 
-    def average(self, energies):
+    def average_conformers(self, energies):
         """A method for averaging values by population of conformers.
 
         Parameters
@@ -110,7 +104,7 @@ class FloatArray(DataArray):
             populations = energies.populations
             energy_type = energies.genre
         except AttributeError:
-            populations = np.asanyarray(energies)
+            populations = np.asanyarray(energies, dtype=float)
             energy_type = 'unknown'
         averaged_values = dw.calculate_average(self.values, populations)
         sig = insp.signature(type(self))
@@ -118,16 +112,16 @@ class FloatArray(DataArray):
             name: getattr(self, name) if hasattr(self, name) else param.default
             for name, param in sig.parameters.items()
         }
-        args['values'] = averaged_values
+        args['values'] = [averaged_values]
         args['allow_data_inconsistency'] = True
         try:
             averaged = type(self)(**args)
-            logger.debug(f'{self.genre} averaged by {energy_type}.')
         except (TypeError, ValueError) as err:
             raise TypeError(
-                f'Could not create an instance of {type(self)} from its'
+                f'Could not create an instance of {type(self)} from its '
                 f'signature. Use tesliper.datawork.calculate_average instead.'
             ) from err
+        logger.debug(f'{self.genre} averaged by {energy_type}.')
         return averaged
 
 
@@ -135,24 +129,12 @@ class InfoArray(DataArray):
     associated_genres = [
         'command', 'cpu_time', 'transitions', 'stoichiometry'  # , 'filenames'
     ]
-
     values = ArrayProperty(dtype=str, check_against='filenames')
-
-    def __init__(
-            self, genre, filenames, values, allow_data_inconsistency=False
-    ):
-        super().__init__(genre, filenames, values, allow_data_inconsistency)
 
 
 class BooleanArray(DataArray):
     associated_genres = ['normal_termination', 'optimization_completed']
-
     values = ArrayProperty(dtype=bool, check_against='filenames')
-
-    def __init__(
-            self, genre, filenames, values, allow_data_inconsistency=False
-    ):
-        super().__init__(genre, filenames, values, allow_data_inconsistency)
 
 
 class Energies(DataArray):
