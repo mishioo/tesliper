@@ -1,4 +1,5 @@
 # IMPORTS
+import inspect
 import logging as lgg
 import numpy as np
 from ..exceptions import InconsistentDataError
@@ -63,35 +64,39 @@ class ArrayProperty(property):
         )
 
     def check_input(self, instance, values):
+        allow = getattr(instance, 'allow_data_inconsistency', False)
         if self.check_against:
             length = len(getattr(instance, self.check_against))
-            if not len(values) == length and \
-                    not instance.allow_data_inconsistency:
+            if not len(values) == length and not allow:
                 raise ValueError(
                     f"Values and {self.check_against} must be the same length. "
                     f"Arrays of length {len(values)} and {length} were given."
                 )
         try:
             return np.array(values, dtype=self.dtype)
-        except ValueError:
-            # TODO: mabye add checking if
-            #       hasattr(instance, 'allow_data_inconsistency')
-            if not instance.allow_data_inconsistency:
+        except ValueError as error:
+            genre = getattr(instance, 'genre', 'unknown')
+            if not allow:
                 error_msg = f"{instance.__class__.__name__} of genre " \
-                            f"{instance.genre} with unequal number of values " \
+                            f"{genre} with unequal number of values " \
                             f"for molecule requested."
-                raise InconsistentDataError(error_msg)
-            lengths = [len(v) for v in values]
-            longest = max(lengths)
-            _values = np.array(
-                [np.pad(v, (0, longest-len_), 'constant', constant_values=0)
-                    for v, len_ in zip(values, lengths)], dtype=self.dtype
-            )
-            logger.info(
-                f"{instance.genre} values' lists were appended with zeros to "
-                f"match length of longest entry."
-            )
-            return _values
+                raise InconsistentDataError(error_msg) from error
+            else:
+                values = self._pad(values)
+                logger.info(
+                    f"{genre} values' lists were appended with zeros to "
+                    f"match length of longest entry."
+                )
+                return values
+
+    def _pad(self, values):
+        lengths = [len(v) for v in values]
+        longest = max(lengths)
+        values = np.array(
+            [np.pad(v, (0, longest - len_), 'constant', constant_values=0)
+             for v, len_ in zip(values, lengths)], dtype=self.dtype
+        )
+        return values
 
 
 class ArrayBase:
@@ -127,6 +132,24 @@ class ArrayBase:
         self._filenames = np.array(value, dtype=str)
 
     values = ArrayProperty(check_against='filenames')
+
+    def get_args(self):
+        signature = inspect.signature(type(self))
+        args = {
+            name: getattr(self, name) if hasattr(self, name) else
+            (param.default if param.default is not inspect._empty else None)
+            for name, param in signature.parameters.items()
+        }
+        return args
+
+    def __repr__(self):
+        args = [f"{name}={repr(arg) if isinstance(arg, str) else arg}"
+                for name, arg in self.get_args().items()]
+        return f"{type(self).__name__}({', '.join(args)})"
+
+    def __str__(self):
+        return (f"[{type(self).__name__} of genre '{self.genre}', "
+                f"{self.filenames.size} conformers]")
 
     def __len__(self):
         return len(self.filenames)

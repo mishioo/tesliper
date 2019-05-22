@@ -1,6 +1,5 @@
 # IMPORTS
 import logging as lgg
-import inspect as insp
 
 import numpy as np
 from .. import datawork as dw
@@ -107,11 +106,7 @@ class FloatArray(DataArray):
             populations = np.asanyarray(energies, dtype=float)
             energy_type = 'unknown'
         averaged_values = dw.calculate_average(self.values, populations)
-        sig = insp.signature(type(self))
-        args = {
-            name: getattr(self, name) if hasattr(self, name) else param.default
-            for name, param in sig.parameters.items()
-        }
+        args = self.get_args()
         args['values'] = [averaged_values]
         args['allow_data_inconsistency'] = True
         try:
@@ -137,7 +132,7 @@ class BooleanArray(DataArray):
     values = ArrayProperty(dtype=bool, check_against='filenames')
 
 
-class Energies(DataArray):
+class Energies(FloatArray):
     """
     Parameters
     ----------
@@ -151,7 +146,6 @@ class Energies(DataArray):
     t : int or float
         Temperature of calculated state in K."""
 
-    Boltzmann = 0.0019872041  # kcal/(mol*K)
     associated_genres = 'scf zpe ten ent gib'.split(' ')
 
     def __init__(
@@ -214,7 +208,7 @@ class Energies(DataArray):
         return dw.calculate_populations(self.values, t)
 
 
-class Bars(DataArray):
+class Bars(FloatArray):
 
     spectra_name_ref = dict(
         rot='vcd',

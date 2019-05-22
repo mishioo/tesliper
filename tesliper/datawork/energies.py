@@ -19,15 +19,19 @@ def calculate_deltas(energies):
 
     Parameters
     ----------
-    energies : numpy.ndarray
+    energies : numpy.ndarray or iterable
         List of conformers energies in Hartree units.
 
     Returns
     -------
     numpy.ndarray
         List of energy differences from lowest energy in kcal/mol."""
+    array = np.asanyarray(energies, dtype=float)
+    if not array.shape:
+        raise TypeError(f"Expected iterable, not '{type(energies)}'")
+    # need to reshape if single value given instead of sequence
     try:
-        return (energies - energies.min()) * 627.5095
+        return (array - array.min()) * 627.5095
         # convert hartree to kcal/mol by multiplying by 627.5095
     except ValueError:
         # if no values, return empty array.
@@ -48,7 +52,7 @@ def calculate_min_factors(energies, t=298.15):
 
     Parameters
     ----------
-    energies : numpy.ndarray
+    energies : numpy.ndarray or iterable
         List of conformers energies in Hartree units.
     t : float, optional
         Temperature of the system in K, defaults to 298,15 K.
@@ -67,7 +71,7 @@ def calculate_populations(energies, t=298.15):
 
     Parameters
     ----------
-    energies : numpy.ndarray
+    energies : numpy.ndarray or iterable
         List of conformers energies in Hartree units.
     t : float, optional
         Temperature of the system in K, defaults to 298,15 K.

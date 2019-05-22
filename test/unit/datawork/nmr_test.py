@@ -16,7 +16,7 @@ class TestUnpack(TestCase):
 
     def test_one_dimensional(self):
         out = unpack([1, 2, 3]).tolist()
-        self.assertSequenceEqual(out, [[1, 2], [2, 3]])
+        self.assertSequenceEqual(out, [[[1, 2], [2, 3]]])
 
 
 class TestDropDiagonals(TestCase):

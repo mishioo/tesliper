@@ -4,7 +4,7 @@ from collections import Sequence, Iterable
 
 import numpy as np
 from .array_base import ArrayProperty
-from .arrays import DataArray, Spectra
+from .arrays import FloatArray, Spectra
 from ..exceptions import InconsistentDataError
 from ..datawork.helpers import (
     atomic_number, validate_atoms, take_atoms, drop_atoms, atoms_symbols,
@@ -20,7 +20,7 @@ logger.setLevel(lgg.DEBUG)
 
 
 # CLASSES
-class Shieldings(DataArray):
+class Shieldings(FloatArray):
     """Container for list of lists of magnetic shielding tensor values for each
     conformer.
 
@@ -241,7 +241,7 @@ class Shieldings(DataArray):
         )
 
 
-class Couplings(DataArray):
+class Couplings(FloatArray):
     """Container for list of coupling constants' values matrices for each
     conformer.
 

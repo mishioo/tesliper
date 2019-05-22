@@ -143,6 +143,12 @@ def couple(shieldings, coupling_constants, separate_peaks=False):
              58.,  52.,  52.,  48.,  48.,  94.,  84.,  86.,  76.,  94.,  84.,
              86.,  76.]])  # 2nd conf. signals
 
+    To avoid values duplication and save memory, omit diagonal of coupling
+    constants' matrix:
+
+    >>> couple([[15, 45, 95]], [[[2, 6], [2, 4], [6, 4]]])
+    array([[19., 13., 17., 11., 48., 44., 46., 42., 100., 96., 94., 90.]])
+
     Both or one of the parameters can contain information for only one
     conformer. If only one of them is one conformer in size, its values are
     used for all conformers of the other, using numpy broadcasting.
@@ -150,12 +156,6 @@ def couple(shieldings, coupling_constants, separate_peaks=False):
     >>> couple([[10, 30, 50], [25, 35, 45]], [[[2, 4], [2, 6], [4, 6]]])
     array([[13.,  9., 11.,  7., 34., 28., 32., 26., 55., 49., 51., 45.],
            [28., 24., 26., 22., 39., 33., 37., 31., 50., 44., 46., 40.]])
-
-    To avoid values duplication and save memory, omit diagonal of coupling
-    constants' matrix:
-
-    >>> couple([[15, 45, 95]], [[[2, 6], [2, 4], [6, 4]]])
-    array([[19., 13., 17., 11., 48., 44., 46., 42., 100., 96., 94., 90.]])
 
     If optional parameter 'separate_peaks' is True (defaults to False), output
     array has one more dimension with each peaks' coupled shielding values
