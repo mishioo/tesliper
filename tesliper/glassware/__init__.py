@@ -1,7 +1,8 @@
 from .array_base import ArrayBase, ArrayProperty
-from .heplers import SingleSpectrum
+from .spectra import SingleSpectrum, Spectra
 from .arrays import (
-    DataArray, InfoArray, BooleanArray, Energies, Bars, GroundStateBars,
-    ExcitedStateBars, Spectra
+    DataArray, FloatArray, InfoArray, BooleanArray, Energies,
+    Bars, GroundStateBars, ExcitedStateBars
 )
+from .nmr import Shieldings, Couplings
 from .molecules import Molecules

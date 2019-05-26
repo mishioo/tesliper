@@ -1,4 +1,10 @@
+import logging as lgg
 from .array_base import ArrayProperty
+from .. import datawork as dw
+
+
+# LOGGER
+logger = lgg.getLogger(__name__)
 
 
 class SingleSpectrum:
@@ -47,6 +53,7 @@ class SingleSpectrum:
         self.scaling = scaling
         self.offset = offset
 
+    filenames = ArrayProperty(check_against=None)
     abscissa = ArrayProperty(check_against=None)
     values = ArrayProperty(check_against='abscissa')
 
@@ -85,3 +92,48 @@ class SingleSpectrum:
 
     def __bool__(self):
         return self.abscissa.size != 0
+
+
+class Spectra(SingleSpectrum):
+
+    def __init__(
+            self, genre, filenames, values, abscissa, width=0.0,
+            fitting='n/a', scaling=1.0, offset=0.0,
+            allow_data_inconsistency=False
+    ):
+        SingleSpectrum.__init__(
+            self, genre, values, abscissa, width, fitting, scaling, offset,
+            filenames
+        )
+        self.allow_data_inconsistency = allow_data_inconsistency
+
+    filenames = ArrayProperty(check_against=None)
+    abscissa = ArrayProperty(check_against=None)
+    values = ArrayProperty(check_against='filenames')
+
+    def average(self, energies):
+        """A method for averaging spectra by population of conformers.
+
+        Parameters
+        ----------
+        energies : Energies object instance
+            Object with populations and type attributes containing
+            respectively: list of populations values as numpy.ndarray and
+            string specifying energy type.
+
+        Returns
+        -------
+        numpy.ndarray
+            2d numpy array where arr[0] is list of wavelengths/wave numbers
+            and arr[1] is list of corresponding averaged intensity values.
+        """
+        populations = energies.populations
+        energy_type = energies.genre
+        av_spec = dw.calculate_average(self.values, populations)
+        av_spec = SingleSpectrum(
+            self.genre, av_spec, self.abscissa, self.width, self.fitting,
+            self.scaling, self.offset, filenames=self.filenames,
+            averaged_by=energy_type
+        )
+        logger.debug(f'{self.genre} spectrum averaged by {energy_type}.')
+        return av_spec

@@ -14,7 +14,7 @@ class TestFloatArray(ut.TestCase):
 
 
 @mock.patch(
-    'tesliper.glassware.array_base.ArrayBase.get_args',
+    'tesliper.glassware.array_base.ArrayBase.get_repr_args',
     return_value={
         'genre': 'bla', 'filenames': ['f1', 'f2', 'f3'],
         'values': [3, 12, 15], 'allow_data_inconsistency': False
@@ -94,3 +94,28 @@ class TestEnergies(ut.TestCase):
         vals.assert_called()
         populs.assert_called_with(self.en.values, 20)
 
+
+@mock.patch(
+    'tesliper.glassware.arrays.Bars.frequencies',
+    new_callable=mock.PropertyMock, return_value=[[10, 20], [12, 21]]
+)
+@mock.patch(
+    'tesliper.glassware.arrays.Bars.values',
+    new_callable=mock.PropertyMock, return_value=[[2, 5], [3, 7]]
+)
+@mock.patch(
+    'tesliper.glassware.arrays.Bars.filenames',
+    new_callable=mock.PropertyMock, return_value=['f1', 'f2']
+)
+class TestBars(ut.TestCase):
+
+    def setUp(self):
+        self.bars = ar.Bars('bla', [], [], [])
+
+    @mock.patch('tesliper.glassware.arrays.dw.calculate_intensities')
+    def test_intensieties(self, inten, fnms, vals, freq):
+        intensities = self.bars.intensities
+        inten.assert_called_with(
+            self.bars.genre, self.bars.values, self.bars.frequencies,
+            self.bars.t, self.bars.laser
+        )

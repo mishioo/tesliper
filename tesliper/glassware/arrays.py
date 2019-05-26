@@ -4,8 +4,7 @@ import logging as lgg
 import numpy as np
 from .. import datawork as dw
 from .array_base import ArrayBase, ArrayProperty
-from .heplers import SingleSpectrum
-from ..exceptions import InconsistentDataError
+from .spectra import Spectra
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -106,7 +105,7 @@ class FloatArray(DataArray):
             populations = np.asanyarray(energies, dtype=float)
             energy_type = 'unknown'
         averaged_values = dw.calculate_average(self.values, populations)
-        args = self.get_args()
+        args = self.get_repr_args()
         args['values'] = [averaged_values]
         args['allow_data_inconsistency'] = True
         try:
@@ -210,6 +209,7 @@ class Energies(FloatArray):
 
 class Bars(FloatArray):
 
+    associated_genres = ()
     spectra_name_ref = dict(
         rot='vcd',
         dip='ir',
@@ -252,16 +252,31 @@ class Bars(FloatArray):
     )
 
     def __init__(
-            self, genre, filenames, values, frequencies, t=298.15,
-            laser=532, allow_data_inconsistency=False
+            self, genre, filenames, values, t=298.15, laser=532,
+            allow_data_inconsistency=False
     ):
         super().__init__(genre, filenames, values, allow_data_inconsistency)
-        self.frequencies = frequencies
         self.t = t  # temperature in K
         self.laser = laser  # in nm
         # rename to raman_laser?
 
-    frequencies = ArrayProperty(check_against='filenames')
+    # TODO: at least one, freq or wave, must be defined by subclass;
+    #       include that in docstring
+    @property
+    def freq(self):
+        return 1e7 / self.wave
+
+    @property
+    def wave(self):
+        return 1e7 / self.freq
+
+    @property
+    def frequencies(self):
+        return self.freq
+
+    @property
+    def wavelengths(self):
+        return self.wave
 
     @property
     def spectra_name(self):
@@ -299,9 +314,16 @@ class GroundStateBars(Bars):
     associated_genres = 'freq iri dip rot ramact raman1 roa1 raman2 ' \
                         'roa2 raman3 roa3'.split(' ')
 
-    @property
-    def wavelengths(self):
-        return 1e7 / self.frequencies
+    def __init__(
+            self, genre, filenames, values, freq, t=298.15, laser=532,
+            allow_data_inconsistency=False
+    ):
+        super().__init__(
+            genre, filenames, values, t, laser, allow_data_inconsistency
+        )
+        self.freq = freq
+
+    freq = ArrayProperty(check_against='filenames')
 
     @property
     def imaginary(self):
@@ -376,17 +398,13 @@ class ExcitedStateBars(Bars):
     associated_genres = 'wave ex_en vdip ldip vrot lrot vosc losc'.split(' ')
 
     def __init__(
-            self, genre, filenames, values, wavelengths, t=298.15,
+            self, genre, filenames, values, wave, t=298.15,
             allow_data_inconsistency=False
     ):
         super().__init__(genre, filenames, values, t, allow_data_inconsistency)
-        self.wavelengths = wavelengths  # in nm
+        self.wave = wave  # in nm
 
-    wavelengths = ArrayProperty(check_against='filenames')
-
-    @property
-    def frequencies(self):
-        return 1e7 / self.wavelengths
+    wave = ArrayProperty(check_against='filenames')
 
     def calculate_spectra(self, start, stop, step, width, fitting):
         """Calculates spectrum of desired type for each individual conformer.
@@ -435,47 +453,3 @@ class ExcitedStateBars(Bars):
 
 class Geometry(DataArray):
     pass
-
-
-class Spectra(DataArray, SingleSpectrum):
-    associated_genres = 'ir uv vcd ecd raman roa'.split(' ')
-
-    def __init__(
-            self, genre, filenames, values, abscissa, width=0.0,
-            fitting='n/a', scaling=1.0, offset=0.0,
-            allow_data_inconsistency=False
-    ):
-        SingleSpectrum.__init__(
-            self, genre, values, abscissa, width, fitting, scaling, offset,
-            filenames
-        )
-        super().__init__(
-            genre, filenames, values, allow_data_inconsistency
-        )
-
-    def average(self, energies):
-        """A method for averaging spectra by population of conformers.
-
-        Parameters
-        ----------
-        energies : Energies object instance
-            Object with populations and type attributes containing
-            respectively: list of populations values as numpy.ndarray and
-            string specifying energy type.
-
-        Returns
-        -------
-        numpy.ndarray
-            2d numpy array where arr[0] is list of wavelengths/wave numbers
-            and arr[1] is list of corresponding averaged intensity values.
-        """
-        populations = energies.populations
-        energy_type = energies.genre
-        av_spec = dw.calculate_average(self.values, populations)
-        av_spec = SingleSpectrum(
-            self.genre, av_spec, self.abscissa, self.width, self.fitting,
-            self.scaling, self.offset, filenames=self.filenames,
-            averaged_by=energy_type
-        )
-        logger.debug(f'{self.genre} spectrum averaged by {energy_type}.')
-        return av_spec

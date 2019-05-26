@@ -212,7 +212,7 @@ class GaussianParser(Parser):
             (int(a), (float(x), float(y), float(z)))
             for _, a, _, x, y, z in geom
         )
-        data['atoms'], data['geometry'] = zip(*geom)
+        data['molecule_atoms'], data['geometry'] = zip(*geom)
         self.workhorse = self.wait
 
     @Parser.state(trigger=re.compile('^ Berny optimization'))
@@ -310,7 +310,9 @@ class GaussianParser(Parser):
     @Parser.state(
         trigger=re.compile(r'^ Fermi Contact \(FC\) contribution to J'))
     def coupling(self, line: str) -> None:
-        data = self.data.setdefault('fermi', [[] for _ in self.data['atoms']])
+        data = self.data.setdefault(
+            'fermi', [[] for _ in self.data['molecule_atoms']]
+        )
         match = fc_reg.search(line)
         if match:
             atom, *values = match.groups()

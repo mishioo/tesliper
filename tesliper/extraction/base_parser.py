@@ -56,7 +56,11 @@ class Parser(ABC):
         class attribute, which is a registry, implemented as dictionary,
         of classes subclassing Parser and defining 'purpose' class attribute
     purpose: str
-        attribute, that helps Soxhlet to identify Parser's subclass purpose"""
+        attribute, that helps Soxhlet to identify Parser's subclass purpose
+
+    TO DO
+    -----
+    make states' triggers can be string, regex or callable"""
     parsers = {}
     purpose = ''
 

@@ -38,7 +38,7 @@ class ParserTestCase(unittest.TestCase):
 
     def test_atoms(self):
         self.assertSequenceEqual(
-            self.data['atoms'],
+            self.data['molecule_atoms'],
             [6, 1, 1, 8]
         )
 
@@ -53,7 +53,7 @@ class TestFreq(ParserTestCase):
              'multiplicity', 'input_geom', 'scf', 'stoichiometry',
              'zpecorr', 'tencorr', 'entcorr', 'gibcorr', 'zpe', 'ten', 'ent',
              'gib', 'freq', 'mass', 'frc', 'iri', 'depolarp', 'depolaru',
-             'ramanactiv', 'geometry', 'atoms'}
+             'ramanactiv', 'geometry', 'molecule_atoms'}
         )
 
     def test_scf(self):
@@ -143,11 +143,11 @@ class TestFreqRoa(ParserTestCase):
             set(self.data.keys()),
             {'normal_termination', 'version', 'command', 'charge',
              'multiplicity', 'input_geom', 'scf', 'stoichiometry',
-             'geometry', 'atoms', 'zpecorr', 'tencorr', 'entcorr', 'gibcorr',
-             'zpe', 'ten', 'ent', 'gib', 'freq', 'mass', 'frc', 'iri', 'ramact',
-             'depp', 'depu', 'alpha2', 'beta2', 'alphag', 'gamma2', 'delta2',
-             'raman1', 'roa1', 'cid1', 'raman2', 'roa2', 'cid2', 'raman3',
-             'roa3', 'cid3', 'rc180'}
+             'geometry', 'molecule_atoms', 'zpecorr', 'tencorr', 'entcorr',
+             'gibcorr', 'zpe', 'ten', 'ent', 'gib', 'freq', 'mass', 'frc',
+             'iri', 'ramact', 'depp', 'depu', 'alpha2', 'beta2', 'alphag',
+             'gamma2', 'delta2', 'raman1', 'roa1', 'cid1', 'raman2', 'roa2',
+             'cid2', 'raman3', 'roa3', 'cid3', 'rc180'}
         )
 
     def test_freq(self):
@@ -291,7 +291,7 @@ class TestOpt(ParserTestCase):
             set(self.data.keys()),
             {'normal_termination', 'version', 'command', 'charge',
              'multiplicity', 'input_geom', 'scf', 'stoichiometry',
-             'geometry', 'atoms', 'optimization_completed'}
+             'geometry', 'molecule_atoms', 'optimization_completed'}
         )
 
     def test_optimization_completed(self):
@@ -323,7 +323,8 @@ class TestOptFreq(ParserTestCase):
              'multiplicity', 'input_geom', 'scf', 'stoichiometry',
              'zpecorr', 'tencorr', 'entcorr', 'gibcorr', 'zpe', 'ten', 'ent',
              'gib', 'freq', 'mass', 'frc', 'iri', 'depolarp', 'depolaru',
-             'ramanactiv', 'geometry', 'atoms', 'optimization_completed'}
+             'ramanactiv', 'geometry', 'molecule_atoms',
+             'optimization_completed'}
         )
 
 
@@ -344,7 +345,7 @@ class TestInputError(ParserTestCase):
         self.assertNotIn('stoichiometry', self.data)
 
     def test_atoms(self):
-        self.assertNotIn('atoms', self.data)
+        self.assertNotIn('molecule_atoms', self.data)
 
 
 class TestTd(ParserTestCase):
@@ -356,7 +357,7 @@ class TestTd(ParserTestCase):
             {'normal_termination', 'version', 'command', 'charge',
              'multiplicity', 'input_geom', 'scf', 'stoichiometry',
              'vdip', 'vosc', 'ldip', 'losc', 'vrot', 'lrot', 'eemang',
-             'wave', 'ex_en', 'transitions', 'geometry', 'atoms'}
+             'wave', 'ex_en', 'transitions', 'geometry', 'molecule_atoms'}
         )
 
     def test_vdip(self):
@@ -434,7 +435,7 @@ class TestNmr(ParserTestCase):
             {'normal_termination', 'version', 'command', 'charge',
              'multiplicity', 'input_geom', 'scf', 'stoichiometry',
              'h_mst', 'h_amst', 'c_mst', 'o_amst', 'o_mst', 'c_amst',
-             'geometry', 'atoms'}
+             'geometry', 'molecule_atoms'}
         )
 
     def test_shielding(self):
@@ -474,7 +475,7 @@ class TestNmrFconly(ParserTestCase):
             set(self.data.keys()),
             {'normal_termination', 'version', 'command', 'charge',
              'multiplicity', 'input_geom', 'scf', 'stoichiometry',
-             'fermi', 'geometry', 'atoms'}
+             'fermi', 'geometry', 'molecule_atoms'}
         )
 
     def test_fermi(self):
@@ -495,7 +496,7 @@ class TestNmrMixed(ParserTestCase):
             {'normal_termination', 'version', 'command', 'charge',
              'multiplicity', 'input_geom', 'scf', 'stoichiometry',
              'h_mst', 'h_amst', 'c_mst', 'o_amst', 'o_mst', 'c_amst',
-             'fermi', 'geometry', 'atoms'}
+             'fermi', 'geometry', 'molecule_atoms'}
         )
 
     def test_shielding(self):
@@ -543,7 +544,7 @@ class TestNmrFconlyLong(ParserTestCase):
 
     def test_atoms(self):
         self.assertSequenceEqual(
-            self.data['atoms'],
+            self.data['molecule_atoms'],
             [6, 1, 1, 1, 6, 1, 1, 6, 8, 8, 6, 1, 1, 1]
         )
 
@@ -552,7 +553,7 @@ class TestNmrFconlyLong(ParserTestCase):
             set(self.data.keys()),
             {'normal_termination', 'version', 'command', 'charge',
              'multiplicity', 'input_geom', 'scf', 'stoichiometry',
-             'fermi', 'geometry', 'atoms'}
+             'fermi', 'geometry', 'molecule_atoms'}
         )
 
     def test_fermi(self):

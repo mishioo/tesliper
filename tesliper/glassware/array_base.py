@@ -133,18 +133,23 @@ class ArrayBase:
 
     values = ArrayProperty(check_against='filenames')
 
-    def get_args(self):
+    def get_repr_args(self):
         signature = inspect.signature(type(self))
         args = {
             name: getattr(self, name) if hasattr(self, name) else
-            (param.default if param.default is not inspect._empty else None)
+            (param.default if param.default is not signature.empty else None)
             for name, param in signature.parameters.items()
         }
         return args
 
+    @classmethod
+    def get_init_params(cls):
+        signature = inspect.signature(cls)
+        return signature.parameters.copy()
+
     def __repr__(self):
         args = [f"{name}={repr(arg) if isinstance(arg, str) else arg}"
-                for name, arg in self.get_args().items()]
+                for name, arg in self.get_repr_args().items()]
         return f"{type(self).__name__}({', '.join(args)})"
 
     def __str__(self):

@@ -146,8 +146,8 @@ class TestCouple(TestCase):
         shield = [[15, 45, 95], [25, 55, 85]]
         coupling = [[[2, 6]], [[4, 10]]]
         out = couple(shield, coupling).tolist()
-        expected = [[[19, 13, 17, 11, 49, 43, 47, 41, 99, 93, 97, 91],
-                     [32, 22, 28, 18, 62, 52, 58, 48, 92, 82, 88, 78]]]
+        expected = [[19, 13, 17, 11, 49, 43, 47, 41, 99, 93, 97, 91],
+                    [32, 22, 28, 18, 62, 52, 58, 48, 92, 82, 88, 78]]
         self.assertSequenceEqual(out, expected)
 
     def test_separate_peaks(self):

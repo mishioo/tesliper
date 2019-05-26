@@ -133,7 +133,7 @@ class TestArrayBase(ut.TestCase):
             genre='bla', filenames=['f1', 'f2', 'f3'], values=[1, 2, 3]
         )
         self.assertDictEqual(
-            arr.get_args(),
+            arr.get_repr_args(),
             {'genre': 'bla', 'filenames': ['f1', 'f2', 'f3'],
              'values': [1, 2, 3], 'allow_data_inconsistency': False}
         )
@@ -154,7 +154,7 @@ class TestArrayBase(ut.TestCase):
             other='foo'
         )
         self.assertDictEqual(
-            arr.get_args(),
+            arr.get_repr_args(),
             {'genre': 'bla', 'filenames': ['f1', 'f2', 'f3'],
              'values': [1, 2, 3], 'other': None,
              'allow_data_inconsistency': False}
@@ -176,14 +176,14 @@ class TestArrayBase(ut.TestCase):
             other='foo'
         )
         self.assertDictEqual(
-            arr.get_args(),
+            arr.get_repr_args(),
             {'genre': 'bla', 'filenames': ['f1', 'f2', 'f3'],
              'values': [1, 2, 3], 'other': 'foo',
              'allow_data_inconsistency': False}
         )
 
     @mock.patch(
-        'tesliper.glassware.array_base.ArrayBase.get_args',
+        'tesliper.glassware.array_base.ArrayBase.get_repr_args',
         return_value={'genre': 'bla', 'filenames': ['f1', 'f2', 'f3'],
                       'values': [1, 2, 3], 'allow_data_inconsistency': False}
     )
@@ -200,7 +200,7 @@ class TestArrayBase(ut.TestCase):
         )
 
     @mock.patch(
-        'tesliper.glassware.array_base.ArrayBase.get_args',
+        'tesliper.glassware.array_base.ArrayBase.get_repr_args',
         return_value={'genre': 'bla', 'filenames': ['f1', 'f2', 'f3'],
                       'values': [1, 2, 3], 'allow_data_inconsistency': False}
     )
