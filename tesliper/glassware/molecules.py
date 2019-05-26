@@ -7,6 +7,8 @@ from collections import (
 from contextlib import contextmanager
 
 import numpy as np
+
+from tesliper.exceptions import TesliperError
 from .arrays import ArrayBase, DataArray
 
 # LOGGER
@@ -96,17 +98,6 @@ class Molecules(OrderedDict):
     -----
     Add type checks in update and setting methods."""
 
-    vibrational_keys = (
-        'freq mass frc iri dip rot emang depolarp depolaru '
-        'ramact depp depu alpha2 beta2 alphag gamma2 delta2 raman1 '
-        'roa1 cid1 raman2 roa2 cid2  raman3 roa3 cid3 rc180'.split(' ')
-    )
-    electronic_keys = (
-        'wave ex_en eemang vdip ldip vrot lrot vosc losc '
-        'transitions'.split(' ')
-    )
-    spectra_keys = 'ir uv vcd ecd raman roa'.split(' ')
-
     def __init__(self, *args, allow_data_inconsistency=False, **kwargs):
         self.allow_data_inconsistency = allow_data_inconsistency
         self.kept = []
@@ -130,8 +121,8 @@ class Molecules(OrderedDict):
         self[key]['_index'] = index
 
     def __delitem__(self, key, **kwargs):
-        super().__delitem__(key, **kwargs)
         index = self[key]['_index']
+        super().__delitem__(key, **kwargs)
         del self.filenames[index]
         del self.kept[index]
         for index, mol in enumerate(self.values()):
@@ -224,20 +215,11 @@ class Molecules(OrderedDict):
 
         TO DO
         -----
-        Add support for 'filenames'
-        Move DataArray.make to this class
-        Add some type checking and error handling."""
+        Add support for 'filenames'"""
         try:
-            cls = ArrayBase.constructors[genre]
+            cls = ArrayBase.constructors[genre]  # DataArray subclass
         except KeyError:
             raise ValueError(f"Unknown genre '{genre}'.")
-        if not (self.kept or self.items()):
-            # TO DO: return appropriate subclass of DataArray
-            logger.debug(
-                f'Array of gerne {genre} requested, but self.kept or '
-                f'self.items() are empty. Returning empty array.'
-            )
-            return DataArray(genre, [], [])
         conarr = self.kept if not full else (True for __ in self.kept)
         array = (
             (fname, mol, mol[genre]) for (fname, mol), con
@@ -245,23 +227,34 @@ class Molecules(OrderedDict):
         )
         try:
             filenames, mols, values = zip(*array)
-        except ValueError:  # if no elements in array
+        except ValueError:  # if no elements in `array`
+            logger.debug(
+                f'Array of gerne {genre} requested, but no such data available '
+                f'or conformers providing this data where trimmed off. '
+                f'Returning empty array.'
+            )
             filenames, mols, values = [], [], []
-        if genre in self.vibrational_keys:
-            kwargs = {'frequencies': [mol['freq'] for mol in mols]}
-        elif genre in self.electronic_keys:
-            kwargs = {'wavelengths': [mol['wave'] for mol in mols]}
-        elif genre in self.spectra_keys:
-            abscissa, values = zip(*values) if values else ([], [])
-            kwargs = {'abscissa': abscissa[0] if abscissa else []}
-        else:
-            kwargs = {'unused': [[] for __ in mols]}  # is this needed?
-        arr = cls(
-            genre=genre, filenames=filenames, values=values,
-            allow_data_inconsistency=self.allow_data_inconsistency,
-            **kwargs
-        )
-        return arr
+        params = cls.get_init_params()
+        parameter_type = type(params['genre'])
+        params['genre'] = genre
+        params['filenames'] = filenames
+        params['values'] = values
+        params['allow_data_inconsistency'] = self.allow_data_inconsistency
+        for key in params:
+            if not isinstance(params[key], parameter_type):
+                continue
+            try:
+                params[key] = [mol[key] for mol in mols]
+            except KeyError:
+                if params[key].default is not params[key].empty:
+                    params[key] = params[key].default
+                else:
+                    raise TesliperError(
+                        f"One or more conformers does not provide value for "
+                        f"{key} genre, needed to instantiate {cls.__name__} "
+                        f"object."
+                    )
+        return cls(**params)
 
     def by_index(self, index):
         """Returns data for conformer on desired index."""
@@ -278,20 +271,20 @@ class Molecules(OrderedDict):
         return max(len(m) for m in self.values())
 
     def trim_incomplete(self, wanted=None):
-        # TO DO: don't take optimization_completed and such into consideration
-        # TO DO: when above satisfied, change gui.tab_loader.Loader\
-        # .update_overview_values() and .set_overview_values()
+        # TODO: don't take optimization_completed and such into consideration
+        # TODO: when above satisfied, change gui.tab_loader.Loader\
+        #       .update_overview_values() and .set_overview_values()
+        # TODO: maybe use all as default but keep current `wanted` as Molecules'
+        #       attribute or module level variable
         if wanted is None:
             wanted = 'dip rot vosc vrot losc lrot raman1 roa1 scf zpe ent ' \
-                     'ten gib'.split()
+                     'ten gib h_mst c_mst fermi'.split()
         elif isinstance(wanted, str):
             wanted = wanted.split()
         elif not isinstance(wanted, (list, tuple)):
             raise TypeError(
-                f"Expected list, tuple or string, got {type(wanted)}"
+                f"Expected list, tuple or string, got {type(wanted)}."
             )
-        else:
-            pass
         count = [[g in mol for g in wanted] for mol in self.values()]
         best_match = max(count)
         for index, match in enumerate(count):
@@ -299,9 +292,9 @@ class Molecules(OrderedDict):
                 self.kept[index] = False
 
     def trim_imaginary_frequencies(self):
-        dummy = np.array([1])
+        dummy = [1]
         for index, mol in enumerate(self.values()):
-            freq = mol.get('freq', dummy)
+            freq = np.array(mol.get('freq', dummy))
             if (freq < 0).any():
                 self.kept[index] = False
 
@@ -321,7 +314,7 @@ class Molecules(OrderedDict):
                 self.kept[index] = False
 
     def trim_non_normal_termination(self):
-        # TO DO: ensure its working properly
+        # TODO: ensure its working properly
         for index, mol in enumerate(self.values()):
             if not mol.get('normal_termination', False):
                 self.kept[index] = False
