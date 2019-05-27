@@ -31,7 +31,8 @@ class TestShieldings(ut.TestCase):
              [[.2, .6], [.2, .8], [.6, .8]]]
         )
         self.coupl_f_mock = Mock(name="f_couplings_mock")
-        self.coupl_f_mock.values = np.asarray([[[2], [0], [0]], [[3], [0], [0]]])
+        self.coupl_f_mock.values = np.asarray([[[2], [0], [0]],
+                                               [[3], [0], [0]]])
         self.coupl_f_mock.coupling_constants = self.coupl_f_mock.values
         self.coupl_f_mock.atoms_involved = np.asarray([0, 1, 2])
         self.coupl_f_mock.atoms_coupled = np.asarray([3])
@@ -69,6 +70,25 @@ class TestShieldings(ut.TestCase):
                 raise ValueError("This shouldn't suppose to happen!")
 
         self.coupl_mock.take_atoms.side_effect = take_atoms_side_effect
+
+    def test_molecule_atoms(self):
+        self.assertSequenceEqual(self.shield.molecule_atoms.tolist(), [1, 1, 1])
+
+    def test_molecule_atoms_two_dim(self):
+        self.shield.molecule_atoms = [[2, 2, 2], [2, 2, 2]]
+        self.assertSequenceEqual(self.shield.molecule_atoms.tolist(), [2, 2, 2])
+
+    def test_molecule_atoms_two_dim_different(self):
+        with self.assertRaises(InconsistentDataError):
+            self.shield.molecule_atoms = [[2, 2, 2], [2, 1, 2]]
+
+    def test_molecule_atoms_too_short(self):
+        with self.assertRaises(ValueError):
+            self.shield.molecule_atoms = [2, 2]
+
+    def test_molecule_atoms_not_matching_conformers(self):
+        with self.assertRaises(InconsistentDataError):
+            self.shield.molecule_atoms = [[2, 2, 2]] * 3
 
     def test_nucleus(self):
         self.assertEqual(self.shield.nucleus, 'H')
@@ -180,6 +200,7 @@ class TestShieldings(ut.TestCase):
 
 
 class TestCouplings(ut.TestCase):
+    # TODO: mock functions used by methods tested
 
     def setUp(self):
         self.std = dict(

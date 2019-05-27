@@ -79,28 +79,50 @@ class Shieldings(FloatArray):
         self.slope = slope
 
     validate_atoms = staticmethod(validate_atoms)
-    molecule_atoms = ArrayProperty(dtype=int, check_against=None)
 
-    @molecule_atoms.getter
+    @ArrayProperty(dtype=int, check_against=None)
     def molecule_atoms(self):
         """numpy.ndarray of int: List of atomic numbers representing atoms in
-        molecule_atoms. Given atoms' list is always validated using
-        `validate_atoms` method of this class when assigning new value."""
-        return vars(self)['molecule_atoms']
+        molecule.
 
-    molecule_atoms.__doc__ = molecule_atoms.getter.__doc__
+        Value given to setter should be a list of integers or list of
+        strings, that can be interpreted as integers or symbols of atoms.
+        Setter can be given a list of lists - one list of atoms for each
+        conformer. All those lists should be identical in such case, otherwise
+        InconsistentDataError is raised. Only one list of atoms is stored in
+        either case."""
+        return vars(self)['molecule_atoms']
 
     @molecule_atoms.setter
     def molecule_atoms(self, molecule):
-        molecule = self.validate_atoms(molecule)
-        if len(molecule) < self.values.shape[1]:
+        molecule = np.vectorize(atomic_number)(molecule)
+        molecule = np.asarray(molecule, dtype=type(self).molecule_atoms.dtype)
+        if len(molecule.shape) < 2:
+            # ensure it's lis of lists
+            molecule = molecule.reshape(1, -1)
+        if molecule.shape[1] < self.values.shape[1]:
             raise ValueError(
                 "Molecule must have at least same number of atoms, as number "
                 "of values provided."
             )
-        vars(self)['molecule_atoms'] = np.array(
-            molecule, dtype=type(self).molecule_atoms.dtype
-        )
+        if not molecule.shape[0] == self.values.shape[0] \
+                and not self.allow_data_inconsistency \
+                and not molecule.shape[0] == 1:
+            raise InconsistentDataError(
+                "Length of `molecule_atoms` must be 1 or same as length of "
+                "`values` given."
+            )
+        all_same = (molecule == molecule[0]).all()
+        if not all_same:
+            raise InconsistentDataError(
+                "Not all of given molecules consists of the same atoms. "
+                "Currently only identically constructed molecules are "
+                "supported."
+            )
+        else:
+            # TODO: currently only one list of values can be used by drop_atoms
+            #       and take_atoms function; correct this in future
+            vars(self)['molecule_atoms'] = molecule[0]
 
     @property
     def spectra_name(self):
@@ -313,41 +335,59 @@ class Couplings(FloatArray):
         self.atoms_coupled = atoms_coupled if atoms_coupled is not None else []
         self.frequency = frequency
 
-    molecule_atoms = ArrayProperty(dtype=int, check_against=None)
-    atoms_involved = ArrayProperty(dtype=int, check_against=None)
-    atoms_coupled = ArrayProperty(dtype=int, check_against=None)
     validate_atoms = staticmethod(validate_atoms)
 
-    @molecule_atoms.getter
+    @ArrayProperty(dtype=int, check_against=None)
     def molecule_atoms(self):
         """numpy.ndarray of int: List of atomic numbers representing atoms in
-        molecule. Given atoms' list is always validated using `validate_atoms`
-        method of this class when assigning new value."""
-        return vars(self)['molecule_atoms']
+        molecule.
 
-    molecule_atoms.__doc__ = molecule_atoms.getter.__doc__
+        Value given to setter should be a list of integers or list of
+        strings, that can be interpreted as integers or symbols of atoms.
+        Setter can be given a list of lists - one list of atoms for each
+        conformer. All those lists should be identical in such case, otherwise
+        InconsistentDataError is raised. Only one list of atoms is stored in
+        either case."""
+        return vars(self)['molecule_atoms']
 
     @molecule_atoms.setter
     def molecule_atoms(self, molecule):
-        molecule = self.validate_atoms(molecule)
-        if len(molecule) < self.values.shape[1]:
+        molecule = np.vectorize(atomic_number)(molecule)
+        molecule = np.asarray(molecule, dtype=type(self).molecule_atoms.dtype)
+        if len(molecule.shape) < 2:
+            # ensure it's lis of lists
+            molecule = molecule.reshape(1, -1)
+        if molecule.shape[1] < self.values.shape[1]:
             raise ValueError(
                 "Molecule must have at least same number of atoms, as number "
                 "of values provided."
             )
-        vars(self)['molecule_atoms'] = np.array(
-            molecule, dtype=type(self).molecule_atoms.dtype
-        )
+        if not molecule.shape[0] == self.values.shape[0] \
+                and not self.allow_data_inconsistency \
+                and not molecule.shape[0] == 1:
+            raise InconsistentDataError(
+                "Length of `molecule_atoms` must be 1 or same as length of "
+                "`values` given."
+            )
+        all_same = (molecule == molecule[0]).all()
+        if not all_same:
+            raise InconsistentDataError(
+                "Not all of given molecules consists of the same atoms. "
+                "Currently only identically constructed molecules are "
+                "supported."
+            )
+        else:
+            # TODO: currently only one list of values can be used by drop_atoms
+            #       and take_atoms function; correct this in future
+            vars(self)['molecule_atoms'] = molecule[0]
 
-    @atoms_involved.getter
+    @ArrayProperty(dtype=int, check_against=None)
     def atoms_involved(self) -> np.ndarray:
         """numpy.ndarray of int: List of atom's positions in molecule;
         should be of the same length as number of given atoms for conformer
         (i.e. size of the first dimension of `values` array), unless
         `allow_data_inconsistency` attribute is set to True."""
         return vars(self)['atoms_involved']
-
-    atoms_involved.__doc__ = atoms_involved.getter.__doc__
 
     @atoms_involved.setter
     def atoms_involved(self, atoms):
@@ -361,7 +401,7 @@ class Couplings(FloatArray):
             )
         vars(self)['atoms_involved'] = atoms
 
-    @atoms_coupled.getter
+    @ArrayProperty(dtype=int, check_against=None)
     def atoms_coupled(self) -> np.ndarray:
         """numpy.ndarray of int: List of atom's positions in molecule. If empty
         list given, `atoms_involved` attribute value will be assigned. Should
@@ -369,8 +409,6 @@ class Couplings(FloatArray):
         for atom (i.e. size of the second dimension of `values` array), unless
         `allow_data_inconsistency` attribute is set to True."""
         return vars(self)['atoms_coupled']
-
-    atoms_coupled.__doc__ = atoms_coupled.getter.__doc__
 
     @atoms_coupled.setter
     def atoms_coupled(self, atoms):
