@@ -188,6 +188,7 @@ class TestMolecules(ut.TestCase):
         with self.assertRaises(ValueError):
             self.full.trim_to_range('zpe', attribute='full_name')
 
+    @ut.skip("To be created")
     def test_select_all(self):
         pass
 
@@ -224,3 +225,8 @@ class TestMolecules(ut.TestCase):
         self.assertSequenceEqual(
             [False] * 7, self.full.kept
         )
+
+    def test_inconsistency_allowed(self):
+        with self.mols.inconsistency_allowed:
+            self.assertTrue(self.mols.allow_data_inconsistency)
+        self.assertFalse(self.mols.allow_data_inconsistency)

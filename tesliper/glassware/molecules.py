@@ -88,7 +88,29 @@ class _TrimmedKeysView(_OrderedDictKeysView):
 
 
 class Molecules(OrderedDict):
-    """Ordered mapping of dictionaries.
+    """Container for data extracted from quantum chemical software output files.
+
+    Data for each file is stored in the underlying OrderedDict, under the key of
+    said file's name. Its values are dictionaries with key-value pairs of genre
+    name-appropriate data. Beside this, it's essential functionality is
+    transformation of stored data to corresponding DataArray objects with
+    use of `arrayed` method. It provides some control over this transformation,
+    especially in terms of including/excluding particular molecules' data
+    on creation of new DataArray instance. This type of control is here called
+    'trimming'. Trimming can be achieved by use of 'trim' methods defined in
+    this class or by direct changes to 'kept' attribute. See its' documentation
+    for more information.
+
+    Parameters
+    ----------
+    *args
+        list of arguments for creation of underlying dictionary
+    allow_data_inconsistency : bool, optional
+        specifies if data inconsistency should be allowed in created DataArray
+        object instances, defaults to False
+    **kwargs
+        list of arbitrary keyword arguments for creation of underlying
+        dictionary
 
     Notes
     -----
@@ -213,8 +235,8 @@ class Molecules(OrderedDict):
         DataArray
             Arrayed data of desired genre as appropriate DataArray object.
 
-        TO DO
-        -----
+        TODO
+        ----
         Add support for 'filenames'"""
         try:
             cls = ArrayBase.constructors[genre]  # DataArray subclass
@@ -266,9 +288,43 @@ class Molecules(OrderedDict):
         except KeyError:
             raise ValueError(f"No such molecule: {key}.")
 
-    @property
-    def _max_len(self):
-        return max(len(m) for m in self.values())
+    def has_genre(self, genre):
+        """Checks if any of stored molecules contains data of given genre.
+
+        Parameters
+        ----------
+        genre : str
+            name of genre to test
+
+        Returns
+        -------
+        bool
+            boolean value indicating if any of stored molecules contains data
+            of genre in question."""
+        for molecule in self.values():
+            if genre in molecule:
+                return True
+        return False
+
+    def has_any_genre(self, genres):
+        """Checks if any of stored molecules contains data of any of given
+        genres.
+
+        Parameters
+        ----------
+        genres : list of str
+            list of names of genres to test
+
+        Returns
+        -------
+        bool
+            boolean value indicating if any of stored molecules contains data
+            of any of genres in question."""
+        for molecule in self.values():
+            for genre in genres:
+                if genre in molecule:
+                    return True
+        return False
 
     def trim_incomplete(self, wanted=None):
         # TODO: don't take optimization_completed and such into consideration
@@ -388,22 +444,23 @@ class Molecules(OrderedDict):
         yield self
         self.kept = old_blade
 
-    """# performance test for making arrays
-    >>> from timeit import timeit
-    >>> import random
-    >>> dt = {n: chr(n) for n in range(100)}
-    >>> ls = list(range(100))
-    >>> kpt = random.choices(ls, k=80)
-    >>> skpt = set(kpt)
-    >>> timeit('[(k, v) for k, v in dt.items()]', globals=globals())
-    5.26354954301791
-    >>> timeit('[(n, dt[n]) for n in ls]', globals=globals())
-    6.790710222989297
-    >>> timeit('[(k,v) for k,v in dt.items() if k in skpt]', globals=globals())
-    7.0161151549953615
-    >>> timeit('[(n, dt[n]) for n in kpt]', globals=globals())
-    5.522729124628256
-    >>> timeit('[(n,dt[n]) for n,con in zip(ls,ls) if con]', globals=globals())
-    9.363086626095992
-    >>> timeit('[(k,v) for (k,v),con in zip(dt.items(),ls)]',globals=globals())
-    7.463483778659565"""
+    @property
+    @contextmanager
+    def inconsistency_allowed(self):
+        """Temporally sets Molecules' 'allow_data_inconsistency' attribute
+        to true. Implemented as context manager to use with python 'with'
+        keyword.
+
+        Examples
+        --------
+        >>> m = Molecules()
+        >>> with m.inconsistency_allowed:
+        >>>     # do stuff here while m.allow_data_inconsistency is True
+        >>>     m.allow_data_inconsistency
+        True
+        >>> m.allow_data_inconsistency
+        False"""
+        inconsistency = self.allow_data_inconsistency
+        self.allow_data_inconsistency = True
+        yield self
+        self.allow_data_inconsistency = inconsistency
