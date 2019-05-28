@@ -264,10 +264,10 @@ class Bars(FloatArray):
     #       include that in docstring
     @property
     def freq(self):
-        return 1e7 / self.wave
+        return 1e7 / self.wavelen
 
     @property
-    def wave(self):
+    def wavelen(self):
         return 1e7 / self.freq
 
     @property
@@ -276,7 +276,7 @@ class Bars(FloatArray):
 
     @property
     def wavelengths(self):
-        return self.wave
+        return self.wavelen
 
     @property
     def spectra_name(self):
@@ -398,13 +398,13 @@ class ExcitedStateBars(Bars):
     associated_genres = 'wave ex_en vdip ldip vrot lrot vosc losc'.split(' ')
 
     def __init__(
-            self, genre, filenames, values, wave, t=298.15,
+            self, genre, filenames, values, wavelen, t=298.15,
             allow_data_inconsistency=False
     ):
         super().__init__(genre, filenames, values, t, allow_data_inconsistency)
-        self.wave = wave  # in nm
+        self.wavelen = wavelen  # in nm
 
-    wave = ArrayProperty(check_against='filenames')
+    wavelen = ArrayProperty(check_against='filenames')
 
     def calculate_spectra(self, start, stop, step, width, fitting):
         """Calculates spectrum of desired type for each individual conformer.

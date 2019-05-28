@@ -98,7 +98,7 @@ vibr_regs = {k: re.compile(v + '(?:\s+(?:Fr= \d+)?--\s+)' + 3 * number_group)
 excited_grouped = re.compile(
     r'Excited State\s+(\d+).*\s+'  # beginning of pattern and state's number
     r'(-?\d+\.?\d*) eV\s+'  # state's energy, key = ex_en
-    r'(-?\d+\.?\d*) nm.*\n'  # state's frequency, key = wave
+    r'(-?\d+\.?\d*) nm.*\n'  # state's frequency, key = wavelen
     r'((?:\s*\d+\s*->\s*\d+\s+-?\d+\.\d+)+)'  # state's transitions
     # with use of \s* in the beginning of repeating transitions pattern
     # this regex will match until first blank line
@@ -285,8 +285,8 @@ class GaussianParser(Parser):
                 if genre:
                     data[genre] = values
         while not line.startswith(' **'):
-            (energy, wave), *transitions = self._excited_states(line)
-            data.setdefault('wave', []).append(wave)
+            (energy, wavelen), *transitions = self._excited_states(line)
+            data.setdefault('wavelen', []).append(wavelen)
             data.setdefault('ex_en', []).append(energy)
             data.setdefault('transitions', []).append(
                 tuple((int(low), int(high), float(coef)) for low, high, coef
@@ -416,7 +416,7 @@ def _electr_parse(text):
     if excited:
         n, e, f, t = zip(*excited)
         data['ex_en'] = np.array(e, dtype=float)
-        data['wave'] = np.array(f, dtype=float)
+        data['wavelen'] = np.array(f, dtype=float)
         data['transition'] = [transitions_reg.findall(x) for x in t]
     return data
 
@@ -438,7 +438,7 @@ def parse(text):
         freq, mass, frc, iri, dip, rot, emang, depolarp, depolaru,
         ramact, depp, depu, alpha2, beta2, alphag, gamma2, delta2, raman1,
         roa1, cid1, raman2, roa2, cid2,  raman3, roa3, cid3, rc180,
-        wave, ex_en, eemang, vdip, ldip, vrot, lrot, vosc, losc, transitions,
+        wavelen, ex_en, eemang, vdip, ldip, vrot, lrot, vosc, losc, transitions,
         scf, zpe, ten, ent, gib, zpecorr, tencorr, entcorr, gibcorr, command,
         normal_termination, cpu_time, optimization_completed.
 

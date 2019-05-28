@@ -357,7 +357,7 @@ class TestTd(ParserTestCase):
             {'normal_termination', 'version', 'command', 'charge',
              'multiplicity', 'input_geom', 'scf', 'stoichiometry',
              'vdip', 'vosc', 'ldip', 'losc', 'vrot', 'lrot', 'eemang',
-             'wave', 'ex_en', 'transitions', 'geometry', 'molecule_atoms'}
+             'wavelen', 'ex_en', 'transitions', 'geometry', 'molecule_atoms'}
         )
 
     def test_vdip(self):
@@ -402,9 +402,9 @@ class TestTd(ParserTestCase):
             [90.00, 90.00, 90.00]
         )
 
-    def test_wave(self):
+    def test_wavelen(self):
         self.assertSequenceEqual(
-            self.data['wave'],
+            self.data['wavelen'],
             [326.42, 149.31, 135.60]
         )
 
