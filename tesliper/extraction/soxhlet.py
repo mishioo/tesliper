@@ -76,10 +76,8 @@ class Soxhlet:
             self._path = os.getcwd()
         elif not os.path.isdir(value):
             raise FileNotFoundError(f"Path not found: {value}")
-        elif hasattr(self, '_foo'):
-            self._path = value
-            self.files = os.listdir(value)
         else:
+            self.files = os.listdir(value)
             self._path = value
 
     @property
@@ -88,11 +86,11 @@ class Soxhlet:
         list associated with Soxhlet instance.
         """
         try:
-            ext = self.extension
-            ext = ext if ext is not None else self.guess_extension()
+            ext = self.extension if self.extension is not None \
+                else self.guess_extension()
             gf = sorted(self.filter_files(ext))
         except ValueError:
-            gf = None
+            gf = []
         return gf
 
     @property
@@ -104,7 +102,7 @@ class Soxhlet:
             ext = '.bar'
             bar = sorted(self.filter_files(ext))
         except ValueError:
-            bar = None
+            bar = []
         return bar
 
     def filter_files(self, ext=None):
@@ -124,10 +122,21 @@ class Soxhlet:
         -------
         list
             List of filtered filenames as strings.
+
+        Raises
+        ------
+        ValueError
+            If parameter `ext` is not given and attribute `extension` in None.
         """
         ext = ext if ext is not None else self.extension
         files = self.wanted_files if self.wanted_files else self.files
-        filtered = [f for f in files if f.endswith(ext)]
+        try:
+            filtered = [f for f in files if f.endswith(ext)]
+        except TypeError as error:
+            raise ValueError(
+                "Parameter `ext` must be given if attribute `extension` "
+                "is None."
+            ) from error
         return filtered
 
     def guess_extension(self):
