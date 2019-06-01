@@ -1,5 +1,7 @@
 # IMPORTS
 import logging as lgg
+from functools import lru_cache
+
 import numpy as np
 from .helpers import is_triangular, get_triangular, get_triangular_base
 from ..exceptions import InconsistentDataError
@@ -130,6 +132,38 @@ def couple(shieldings, coupling_constants, separate_peaks=False):
     """Creates a list of coupled shielding values, given a list of base
     shielding values and a list of coupling constants' lists.
 
+    Parameters
+    ----------
+    shieldings: Iterable or numpy.ndarray
+        list of lists of shielding values for each conformer; should be
+        a two-dimensional array of shape (conformers, atoms) or
+        a tre-dimensional array of shape conformers, atoms, signals_for_peak)
+    coupling_constants: Iterable or numpy.ndarray
+        list of matrices of coupling constants' values for each atom, for each
+        conformer; should be a three-dimensional array of shape
+        (conformers, atoms, constants); should have the same number of values
+        for conformer as 'shieldings'
+    separate_peaks: bool, optional
+        if evaluates to True, output array is three-dimensional with each peaks'
+        coupled shielding values separated; if evaluates to False, then
+        a two-dimensional array is returned, with all values for conformer
+        in one dimension; defaults to False
+
+    Returns
+    -------
+    numpy.ndarray
+        list of coupled shieldings' values for each conformer
+
+    Raises
+    ------
+    ValueError
+        if arrays of inappropriate shape given
+    InconsistentDataError
+        if sizes of first (or second) dimensions of both arrays are different
+        and both > 1
+
+    Examples
+    --------
     >>> couple(
     >>>    [[15, 45, 95],  # 1st conformer shielding values
     >>>     [25, 55, 85]],  # 2nd conformer shielding values
@@ -174,37 +208,7 @@ def couple(shieldings, coupling_constants, separate_peaks=False):
              90.,  70.]])
 
      Note, that each peaks' set of values is coupled only by the corresponding
-     coupling constant.
-
-    Parameters
-    ----------
-    shieldings: Iterable or numpy.ndarray
-        list of lists of shielding values for each conformer; should be
-        a two-dimensional array of shape (conformers, atoms) or
-        a tre-dimensional array of shape conformers, atoms, signals_for_peak)
-    coupling_constants: Iterable or numpy.ndarray
-        list of matrices of coupling constants' values for each atom, for each
-        conformer; should be a three-dimensional array of shape
-        (conformers, atoms, constants); should have the same number of values
-        for conformer as 'shieldings'
-    separate_peaks: bool, optional
-        if evaluates to True, output array is three-dimensional with each peaks'
-        coupled shielding values separated; if evaluates to False, then
-        a two-dimensional array is returned, with all values for conformer
-        in one dimension; defaults to False
-
-    Returns
-    -------
-    numpy.ndarray
-        list of coupled shieldings' values for each conformer
-
-    Raises
-    ------
-    ValueError
-        if arrays of inappropriate shape given
-    InconsistentDataError
-        if given arrays of different sizes and both sizes > 1
-        or """
+     coupling constant."""
     shieldings = np.asarray(shieldings)
     coupling_constants = np.asarray(coupling_constants)
 
@@ -240,13 +244,11 @@ def couple(shieldings, coupling_constants, separate_peaks=False):
     # ^ ERROR HANDLING
 
     n = coupling_constants.shape[-1]  # number of coupling constants per atom
-    base = [[1, -1]] * n
     # create a cartesian product of n [1, -1] arrays, to form a framework
     # for evaluation of values of coupled peaks' distances from base value
     # i.e. all 2**n n-element ordered subsets of list [1, -1] * n
-    frame = np.array(np.meshgrid(*base, copy=False)).T.reshape(-1, n)
+    frame = cartesian_split(n).T
     # transpose it to work properly with coupling values in np.matmul
-    frame = frame.T
     halved = coupling_constants / 2
     # calculate list of coupled peaks' distances from base peak value
     # and add it to base value to find actual coupled peaks' values
@@ -255,6 +257,114 @@ def couple(shieldings, coupling_constants, separate_peaks=False):
     out = shieldings[..., np.newaxis] + coup[..., np.newaxis, :]
     new_shape = (*out.shape[:2], -1) if separate_peaks else (out.shape[0], -1)
     return out.reshape(*new_shape)
+
+
+def take_highest(array, keep, axis):
+    """Returns an array of `keep` highest values on specified axis.
+
+    Parameters
+    ----------
+    array : numpy.ndarray or iterable
+        array, from which to take
+    keep : int
+        number of highest values to take
+    axis : int
+        axis along which to search for highest values
+
+    Returns
+    -------
+    numpy.ndarray
+        array reduced to `keep` highest values along specified axis
+
+    Raises
+    ------
+    ValueError
+        if `keep` is not higher than zero
+
+    Examples
+    --------
+    >>> array = np.arange(12).reshape(4, 3)
+    >>> take_highest(array, 2, 1)
+    array([[ 2,  3],
+           [ 6,  7],
+           [10, 11]])
+   >>> take_highest(array, 2, 0)
+   array([[ 6,  7,  8],
+          [ 9, 10, 11]])
+
+    TODO
+    ----
+        add tests
+        raise value error if keep < array.shape[axis] ?"""
+    if keep <= 0:
+        raise ValueError("`keep` parameter should be higher than zero")
+    array = np.asanyarray(array)
+    axis = axis if axis >= 0 else array.ndim + axis
+    if keep < array.shape[axis]:
+        array = np.partition(array, -keep, axis=axis)
+        indices = (slice(None),) * (axis-1) + (slice(-keep, None), Ellipsis)
+        array = array[indices]
+    return array
+
+
+@lru_cache(maxsize=32)
+def cartesian_split(n):
+    """Create a cartesian product of `n` [1, -1] arrays, to form a framework
+    for evaluation of values of coupled peaks' distances from its base value,
+    i.e. all 2**n n-element ordered subsets of list [1, -1] * n.
+
+    Parameters
+    ----------
+    n : int
+        Number of peak's splits.
+
+    Returns
+    -------
+    numpy.ndarray
+        Array of shape (2**n, n) with different combination of 1's and -1's
+        for each row.
+
+    Raises
+    ------
+    ValueError
+        If given `n` is less than zero.
+
+    Notes
+    -----
+    This function is cached, so calling it again is not expensive.
+    It stores up to 32 different calls.
+    If the result of this function is not obvious, think of it as a sequence of
+    "splits", to which we assign a positive and negative value:
+          _  +1, +1
+       __|
+      |  |_  -1, +1
+    __|
+      |   _  +1, -1
+      |__|
+         |_  -1, -1
+
+    Examples
+    --------
+    >>> cartesian_split(2)
+    array([[ 1,  1],
+           [ 1, -1],
+           [-1,  1],
+           [-1, -1]])
+
+    >>> cartesian_split(5).shape
+    (32, 5)
+
+    TODO
+    ----
+        add tests"""
+    if n < 0:
+        raise ValueError("`n` must be grater than zero.")
+    elif n == 0:
+        return np.array([1])
+    base = [[1, -1]] * n
+    frame = np.asarray(np.meshgrid(*base, copy=False))
+    frame = frame.T.reshape(-1, n)
+    return frame
 
 
 def average_positions(values, positions, symmetric=False):

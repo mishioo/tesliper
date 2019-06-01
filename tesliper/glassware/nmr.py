@@ -10,7 +10,7 @@ from ..datawork.helpers import (
     atomic_number, validate_atoms, take_atoms, drop_atoms, atoms_symbols,
     symbol_of_element
 )
-from ..datawork.nmr import unpack, couple, drop_diagonals
+from ..datawork.nmr import unpack, couple, drop_diagonals, take_highest
 from ..datawork.spectra import calculate_spectra
 
 
@@ -68,6 +68,7 @@ class Shieldings(FloatArray):
         genre for atom in atoms_symbols.values()
         for genre in (f'{atom.lower()}_mst', f'{atom.lower()}_amst')
     ]
+    _max_cc_num = 9
 
     def __init__(
             self, genre, filenames, values, molecule_atoms, intercept=0,
@@ -216,6 +217,7 @@ class Shieldings(FloatArray):
                 ) from err
         else:
             cc_values = coupling_constants
+        cc_values = take_highest(cc_values, keep=self._max_cc_num, axis=2)
         values = couple(self.values, cc_values, separate_peaks=True)
         return type(self)(
             genre=self.genre, filenames=self.filenames, values=values,
