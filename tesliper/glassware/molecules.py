@@ -268,6 +268,7 @@ class Molecules(OrderedDict):
             try:
                 params[key] = [mol[key] for mol in mols]
             except KeyError:
+                # TODO: invoke this when mols is empty as well
                 if params[key].default is not params[key].empty:
                     params[key] = params[key].default
                 else:
