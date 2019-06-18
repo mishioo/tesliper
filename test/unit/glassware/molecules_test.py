@@ -98,6 +98,16 @@ class TestMolecules(ut.TestCase):
         with self.assertRaises(TypeError):
             self.mols.update({'foo': 7})
 
+    def test_arrayd_default(self):
+        zpe = self.full.arrayed('zpe')
+        self.assertEqual(298.15, zpe.t)
+
+    def test_arrayd_empty(self):
+        gib = self.full.arrayed('gib')
+        self.assertSequenceEqual([], gib.filenames.tolist())
+        self.assertSequenceEqual([], gib.values.tolist())
+        self.assertEqual(298.15, gib.t)
+
     def test_arrayed_types(self):
         zpe = self.full.arrayed('zpe')
         self.assertIs(gw.Energies, type(zpe))

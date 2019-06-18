@@ -108,6 +108,11 @@ class TestShieldings(ut.TestCase):
     def test_atoms(self):
         self.assertSequenceEqual(self.shield.atoms_involved.tolist(), [0, 1, 2])
 
+    @ut.skip("to be created.")
+    def test_couple_over_max_cc_num(self):
+        out = self.shield.couple(self.coupl_mock)
+        self.assertTrue(self.coupl_mock.take_atoms.called)
+
     def test_couple_all_exclude(self):
         out = self.shield.couple(self.coupl_mock)
         self.assertTrue(self.coupl_mock.take_atoms.called)

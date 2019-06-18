@@ -20,7 +20,7 @@ class TestParser(TestCase):
     def test_state_no_arguments(self):
         self.assertRaises(TypeError, Parser.state)
 
-    def test_state_no_arguments(self):
+    def test_state_not_callable(self):
         func = NonCallableMock()
         self.assertRaises(InvalidStateError, Parser.state, func)
 
