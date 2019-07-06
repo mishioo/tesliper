@@ -91,15 +91,15 @@ class Molecules(OrderedDict):
     """Container for data extracted from quantum chemical software output files.
 
     Data for each file is stored in the underlying OrderedDict, under the key of
-    said file's name. Its values are dictionaries with key-value pairs of genre
-    name-appropriate data. Beside this, it's essential functionality is
+    said file's name. Its values are dictionaries with genres name (as key)
+    and appropriate data pairs. Beside this, its essential functionality is
     transformation of stored data to corresponding DataArray objects with
     use of `arrayed` method. It provides some control over this transformation,
     especially in terms of including/excluding particular molecules' data
     on creation of new DataArray instance. This type of control is here called
-    'trimming'. Trimming can be achieved by use of 'trim' methods defined in
-    this class or by direct changes to 'kept' attribute. See its' documentation
-    for more information.
+    trimming. Trimming can be achieved by use of various `trim` methods defined
+    in this class or by direct changes to `kept` attribute. See its
+    documentation for more information.
 
     Parameters
     ----------
@@ -116,8 +116,8 @@ class Molecules(OrderedDict):
     -----
     Inherits from collections.OrderedDict.
 
-    TO DO
-    -----
+    TODO
+    ----
     Add type checks in update and setting methods."""
 
     def __init__(self, *args, allow_data_inconsistency=False, **kwargs):
@@ -152,6 +152,92 @@ class Molecules(OrderedDict):
 
     @property
     def kept(self):
+        """List of booleans, one for each molecule stored, defining if
+        particular molecules data should be included in corresponding DataArray
+        instance, created by `arrayed` method. It may be changed by use of trim
+        methods, by setting its value directly, or by modification of the
+        underlying list. For the first option refer to those methods
+        documentation, for rest see Examples section.
+
+        Returns
+        -------
+        list of bool
+            List of booleans, one for each molecule stored, defining if
+            particular molecules data should be included in corresponding
+            DataArray instance.
+
+        Raises
+        ------
+        TypeError
+            If assigned values is not a sequence.
+            If elements of given sequence are not one of types: bool, int, str.
+        ValuesError
+            If number of given boolean values doesn't match number of contained
+            molecules.
+        KeyError
+            If any of given string values is not in underlying dictionary keys.
+        IndexError
+            If any of given integer values is not in range
+            0 <= i < number of molecules.
+
+        Examples
+        --------
+
+        New list of values can be set in a few ways. Firstly, it is the
+        most straightforward to just assign a new list of boolean values to
+        the `kept` attribute. This list should have the same number of elements
+        as the number of molecules contained. A ValueError is raised if it
+        doesn't.
+
+        >>> m = Molecules(one={}, two={}, tree={})
+        >>> m.kept
+        [True, True, True]
+        >>> m.kept = [False, True, False]
+        >>> m.kept
+        [False, True, False]
+        >>> m.kept = [False, True, False, True]
+        Traceback (most recent call last):
+        ...
+        ValueError: Must provide boolean value for each known conformer.
+        4 values provided, 3 excepted.
+
+        Secondly, list of filenames of molecules intended to be kept may be
+        given. Only these molecules will be kept. If given filename is not in
+        the underlying Molecules dictionary, KeyError is raised.
+
+        >>> m.kept = ['one']
+        >>> m.kept
+        [True, False, False]
+        >>>  m.kept = ['two', 'other']
+        Traceback (most recent call last):
+        ...
+        KeyError: Unknown conformers: other.
+
+        Thirdly, list of integers representing molecules indices may br given.
+        Only specified molecules with specified indices will be kept. If index
+        out of bounds is in the list, IndexError is raised. Indexing with
+        negative values is not supported currently.
+
+        >>> m.kept = [1, 2]
+        >>> m.kept
+        [False, True, True]
+        >>> m.kept = [2, 3]
+        Traceback (most recent call last):
+        ...
+        IndexError: Indexes out of bounds: 3.
+
+        Fourthly, assigning an empty list to this attribute will mark all
+        molecules as not kept.
+
+        >>> m.kept = []
+        >>> m.kept
+        [False, False, False]
+
+        Lastly, list of kept values may be modified by setting its elements
+        to True or False. It is advised against, however, as mistake such as
+        `m.kept[:2] = [True, False, False]` will break some functionality by
+        forcibly changing size of `kept` list.
+        """
         return self.__kept
 
     @kept.setter
@@ -177,9 +263,8 @@ class Molecules(OrderedDict):
         elif isinstance(first, (bool, np.bool_)):
             if not len(blade) == len(self):
                 raise ValueError(
-                    f"When setting molecules.kept directly, must provide "
-                    f"boolean value for each known conformer. {len(blade)} "
-                    f"values provided, {len(self)} excepted."
+                    f"Must provide boolean value for each known conformer. "
+                    f"{len(blade)} values provided, {len(self)} excepted."
                 )
             else:
                 self.__kept = [bool(b) for b in blade]  # convert from np.bool_
@@ -266,9 +351,14 @@ class Molecules(OrderedDict):
             if not isinstance(params[key], parameter_type):
                 continue
             try:
+                if not mols:
+                    raise KeyError
+                    # this is a hack to invoke except clause
+                    # also when mol is an empty sequence
                 params[key] = [mol[key] for mol in mols]
             except KeyError:
-                # TODO: invoke this when mols is empty as well
+                # set param to its default value
+                # or raise an error if it don't have one
                 if params[key].default is not params[key].empty:
                     params[key] = params[key].default
                 else:
@@ -283,7 +373,12 @@ class Molecules(OrderedDict):
         """Returns data for conformer on desired index."""
         return self[self.filenames[index]]
 
-    def index(self, key):
+    def key_of(self, index):
+        """Returns name of molecule associated with given index."""
+        return self.filenames[index]
+
+    def index_of(self, key):
+        """Return index of given """
         try:
             return self[key]['_index']
         except KeyError:

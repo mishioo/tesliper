@@ -26,7 +26,7 @@ class TestMolecules(ut.TestCase):
             'mass': [2, 1, 3, 2, 1],
             'iri': [27, 8, 569, 1, 3],
             'emang': [1.9, 1.4, 4.4, 1.1, 1.3],
-            'wave': [231, 144, 137],
+            'wavelen': [231, 144, 137],
             'vdip': [0.0003, 0.008, 0.0022],
             'transitions': [((20, 25, 0.1),), ((21, 25, -0.2), (23, 25, 0.6)),
                             ((13, 25, -0.1), (15, 25, 0.3), (18, 25, -0.4))],
@@ -98,7 +98,7 @@ class TestMolecules(ut.TestCase):
         with self.assertRaises(TypeError):
             self.mols.update({'foo': 7})
 
-    def test_arrayd_default(self):
+    def test_arrayd_default_parameter(self):
         zpe = self.full.arrayed('zpe')
         self.assertEqual(298.15, zpe.t)
 
@@ -198,9 +198,11 @@ class TestMolecules(ut.TestCase):
         with self.assertRaises(ValueError):
             self.full.trim_to_range('zpe', attribute='full_name')
 
-    @ut.skip("To be created")
     def test_select_all(self):
-        pass
+        self.full.kept = [True, False, True, False, True, False, False]
+        self.assertFalse(all(self.full.kept))
+        self.full.select_all()
+        self.assertTrue(all(self.full.kept))
 
     def test_kept_raises(self):
         with self.assertRaises(TypeError):
