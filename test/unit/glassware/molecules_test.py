@@ -65,11 +65,22 @@ class TestMolecules(ut.TestCase):
         with self.assertRaises(TypeError):
             self.mols['ham'] = (1, 2)
 
-    def test_delitem(self):
+    def test_delitem_single(self):
         del self.mols['bla']
         self.assertEqual(self.mols.kept, [])
         self.assertEqual(self.mols.filenames, [])
-        # TODO: add test for Molecules with more comformers
+
+    def test_delitem_many(self):
+        del self.full['imag']
+        self.assertSequenceEqual(self.full.kept, [True]*6)
+        self.assertSequenceEqual(
+            self.full.filenames,
+            ['base', 'noopt', 'stoich', 'term', 'size', 'incom']
+        )
+        self.assertSequenceEqual(
+            [m['_index'] for m in self.full.values()],
+            list(range(6))
+        )
 
     def test_update_with_dict(self):
         self.mols.update({'bla2': {'data': [1, 2, 3, 4]}})
@@ -91,6 +102,14 @@ class TestMolecules(ut.TestCase):
         self.assertEqual(self.mols.kept, [True])
         self.assertEqual(self.mols.filenames, ['bla'])
         self.assertEqual(self.mols['bla']['data'], 'new')
+
+    def test_update_repeated(self):
+        self.mols.update({'bla': {'data': 'new'}}, bla={'other': 'foo'})
+        self.assertEqual(len(self.mols), 1)
+        self.assertEqual(self.mols.kept, [True])
+        self.assertEqual(self.mols.filenames, ['bla'])
+        self.assertEqual(self.mols['bla']['data'], 'new')
+        self.assertEqual(self.mols['bla']['other'], 'foo')
 
     def test_update_banned(self):
         with self.assertRaises(TypeError):

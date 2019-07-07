@@ -5,6 +5,7 @@ from collections import (
     _OrderedDictKeysView, _OrderedDictItemsView, _OrderedDictValuesView
 )
 from contextlib import contextmanager
+from itertools import chain
 
 import numpy as np
 
@@ -198,7 +199,7 @@ class Molecules(OrderedDict):
         >>> m.kept = [False, True, False, True]
         Traceback (most recent call last):
         ...
-        ValueError: Must provide boolean value for each known conformer.
+        ValueError: Must provide boolean value for each known molecule.
         4 values provided, 3 excepted.
 
         Secondly, list of filenames of molecules intended to be kept may be
@@ -211,7 +212,7 @@ class Molecules(OrderedDict):
         >>>  m.kept = ['two', 'other']
         Traceback (most recent call last):
         ...
-        KeyError: Unknown conformers: other.
+        KeyError: Unknown molecules: other.
 
         Thirdly, list of integers representing molecules indices may br given.
         Only specified molecules with specified indices will be kept. If index
@@ -237,7 +238,15 @@ class Molecules(OrderedDict):
         to True or False. It is advised against, however, as mistake such as
         `m.kept[:2] = [True, False, False]` will break some functionality by
         forcibly changing size of `kept` list.
-        """
+
+        Notes
+        -----
+        Type of the first element of given sequence is used for dynamic
+        dispatch.
+
+        TODO
+        ----
+        Consider making return value immutable."""
         return self.__kept
 
     @kept.setter
@@ -247,30 +256,27 @@ class Molecules(OrderedDict):
         except (TypeError, KeyError):
             raise TypeError(f"Excepted sequence, got: {type(blade)}.")
         except IndexError:
-            try:
-                self.__kept = [False for __ in self.kept]
-            except AttributeError:
-                self.__kept = []
+            self.__kept = [False for __ in self.keys()]
             return
         if isinstance(first, str):
             blade = set(blade)
             if not blade.issubset(set(self.keys())):
                 raise KeyError(
-                    f"Unknown conformers: {', '.join(blade-set(self.keys()))}"
+                    f"Unknown molecules: {', '.join(blade-set(self.keys()))}"
                 )
             else:
                 self.__kept = [fnm in blade for fnm in self.keys()]
         elif isinstance(first, (bool, np.bool_)):
             if not len(blade) == len(self):
                 raise ValueError(
-                    f"Must provide boolean value for each known conformer. "
+                    f"Must provide boolean value for each known molecule. "
                     f"{len(blade)} values provided, {len(self)} excepted."
                 )
             else:
                 self.__kept = [bool(b) for b in blade]  # convert from np.bool_
         elif isinstance(first, int):
-            length = len(self.kept)
-            out_of_bounds = [b for b in blade if not -length <= b < length]
+            length = len(self)
+            out_of_bounds = [b for b in blade if not 0 <= b < length]
             if out_of_bounds:
                 raise IndexError(
                     f"Indexes out of bounds: "
@@ -278,7 +284,7 @@ class Molecules(OrderedDict):
                 )
             else:
                 blade = set(blade)
-                self.__kept = [num in blade for num in range(len(self.kept))]
+                self.__kept = [num in blade for num in range(len(self))]
         else:
             raise TypeError(
                 f"Expected sequence of strings, integers or booleans, got: "
@@ -297,8 +303,8 @@ class Molecules(OrderedDict):
         molecules = dict()
         if other is not None:
             molecules.update(other)
-        molecules.update(**kwargs)
-        for key, value in molecules.items():
+        items = chain(molecules.items(), kwargs.items())
+        for key, value in items:
             if key in self:
                 self[key].update(value)
             else:
