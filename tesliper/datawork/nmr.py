@@ -236,7 +236,7 @@ def couple(shieldings, coupling_constants, separate_peaks=False):
         )
     if not (s_atoms == 1 or c_atoms == 1 or s_atoms == c_atoms):
         raise InconsistentDataError(
-            f"Shielding values' and coupling constants' arrays should contain"
+            f"Shielding values' and coupling constants' arrays should contain "
             f"data for the same number of atoms for each conformer or only one "
             f"set of values for conformer. Sets with data for {s_atoms} and "
             f"{c_atoms} atoms given."
@@ -260,7 +260,10 @@ def couple(shieldings, coupling_constants, separate_peaks=False):
 
 
 def take_highest(array, keep, axis):
-    """Returns an array of `keep` highest values on specified axis.
+    """Returns an array of `keep` highest values on specified axis. Values
+    along specified axis are sorted in the output. If `keep` is greater than
+    or equal to the number of elements along the axis, array is returned
+    unchanged.
 
     Parameters
     ----------
@@ -288,21 +291,18 @@ def take_highest(array, keep, axis):
     array([[ 2,  3],
            [ 6,  7],
            [10, 11]])
-   >>> take_highest(array, 2, 0)
-   array([[ 6,  7,  8],
-          [ 9, 10, 11]])
-
-    TODO
-    ----
-        add tests
-        raise value error if keep < array.shape[axis] ?"""
+    >>> take_highest(array, 2, 0)
+    array([[ 6,  7,  8],
+           [ 9, 10, 11]])"""
     if keep <= 0:
         raise ValueError("`keep` parameter should be higher than zero")
     array = np.asanyarray(array)
-    axis = axis if axis >= 0 else array.ndim + axis
+    if axis >= array.ndim or axis < -array.ndim:
+        raise IndexError("axis index out of range")
+    axis = axis if axis >= 0 else array.ndim + axis  # enable negative indexing
     if keep < array.shape[axis]:
         array = np.partition(array, -keep, axis=axis)
-        indices = (slice(None),) * (axis-1) + (slice(-keep, None), Ellipsis)
+        indices = (slice(None),) * axis + (slice(-keep, None), Ellipsis)
         array = array[indices]
     return array
 
@@ -352,11 +352,7 @@ def cartesian_split(n):
            [-1, -1]])
 
     >>> cartesian_split(5).shape
-    (32, 5)
-
-    TODO
-    ----
-        add tests"""
+    (32, 5)"""
     if n < 0:
         raise ValueError("`n` must be grater than zero.")
     elif n == 0:
