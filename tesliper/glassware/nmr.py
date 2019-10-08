@@ -234,7 +234,8 @@ class Shieldings(FloatArray):
         )
         spectra = Spectra(
             self.spectra_name, self.filenames, values, abscissa, width,
-            fitting.__name__
+            fitting.__name__,
+            allow_data_inconsistency=self.allow_data_inconsistency
         )
         return spectra
 

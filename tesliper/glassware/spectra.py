@@ -53,7 +53,7 @@ class SingleSpectrum:
         self.scaling = scaling
         self.offset = offset
 
-    filenames = ArrayProperty(check_against=None)
+    filenames = ArrayProperty(check_against=None, dtype=str)
     abscissa = ArrayProperty(check_against=None)
     values = ArrayProperty(check_against='abscissa')
 
@@ -96,20 +96,20 @@ class SingleSpectrum:
 
 class Spectra(SingleSpectrum):
 
+    filenames = ArrayProperty(check_against=None, dtype=str)
+    abscissa = ArrayProperty(check_against=None)
+    values = ArrayProperty(check_against='filenames')
+
     def __init__(
             self, genre, filenames, values, abscissa, width=0.0,
             fitting='n/a', scaling=1.0, offset=0.0,
             allow_data_inconsistency=False
     ):
+        self.allow_data_inconsistency = allow_data_inconsistency
         SingleSpectrum.__init__(
             self, genre, values, abscissa, width, fitting, scaling, offset,
             filenames
         )
-        self.allow_data_inconsistency = allow_data_inconsistency
-
-    filenames = ArrayProperty(check_against=None)
-    abscissa = ArrayProperty(check_against=None)
-    values = ArrayProperty(check_against='filenames')
 
     def average(self, energies):
         """A method for averaging spectra by population of conformers.
