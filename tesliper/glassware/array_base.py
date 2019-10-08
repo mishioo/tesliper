@@ -69,14 +69,17 @@ class ArrayProperty(property):
             length = len(getattr(instance, self.check_against))
             if not len(values) == length and not allow:
                 raise ValueError(
-                    f"Values and {self.check_against} must be the same length. "
-                    f"Arrays of length {len(values)} and {length} were given."
+                    f"{self.name} and {self.check_against} must be the same "
+                    f"length. Arrays of length {len(values)} and {length} "
+                    f"were given."
                 )
         try:
             return np.array(values, dtype=self.dtype)
         except ValueError as error:
-            genre = getattr(instance, 'genre', 'unknown')
-            if not allow:
+            genre = getattr(instance, 'genre', '<unknown>')
+            if 'convert' in error.args[0]:
+                raise
+            elif not allow:
                 error_msg = f"{instance.__class__.__name__} of genre " \
                             f"{genre} with unequal number of values " \
                             f"for molecule requested."
