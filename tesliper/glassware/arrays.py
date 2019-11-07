@@ -3,8 +3,8 @@ import logging as lgg
 
 import numpy as np
 from .. import datawork as dw
-from ..exceptions import InconsistentDataError
-
+from .array_base import ArrayBase, ArrayProperty
+from .spectra import Spectra
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -23,24 +23,7 @@ default_spectra_bars = {
 
 
 # CLASSES
-class BaseArray:
-    """Base class for data holding objects."""
-
-    associated_genres = ()
-    constructors = {}
-
-    def __init_subclass__(cls, **kwargs):
-        if not cls.associated_genres or not hasattr(cls, 'associated_genres'):
-            raise AttributeError(
-                'Class derived from BaseArray should provide associated_genres'
-                ' attribute.'
-            )
-        BaseArray.constructors.update(
-            (genre, cls) for genre in cls.associated_genres
-        )
-
-
-class DataArray(BaseArray):
+class DataArray(ArrayBase):
     """Base class for data holding objects. It provides trimming functionality
     for filtering data based on other objects content or arbitrary choice.
     ↑ this is no longer true, TO DO: correct this
@@ -76,90 +59,79 @@ class DataArray(BaseArray):
         gib='Thermal Free Energy',
         scf='SCF',
         ex_en='Excitation energy',
-        vfreq='Frequency',
+        freq='Frequency',
         wave='Wavelength',
         energies='Energies'
     )
-
-    associated_genres = 'zpecorr tencorr entcorr gibcorr mass frc emang ' \
-                        'depolarp depolaru depp depu alpha2 beta2 alphag ' \
-                        'gamma2 delta2 cid1 cid2 cid3 rc180 eemang'.split(' ')
-
-    def __init__(self, genre, filenames, values, dtype=float, check_sizes=True,
-                 allow_data_inconsistency=False, **kwargs):
-        self.genre = genre
-        self.dtype = dtype
-        self.check_sizes = check_sizes
-        self.allow_data_inconsistency = allow_data_inconsistency
-        self.filenames = filenames
-        self.values = values
 
     @property
     def full_name(self):
         return self.full_name_ref[self.genre]
 
-    @property
-    def filenames(self):
-        return self.__filenames
 
-    @filenames.setter
-    def filenames(self, value):
-        self.__filenames = np.array(value, dtype=str)
+class FloatArray(DataArray):
 
-    @property
-    def values(self):
-        return self.__values
+    associated_genres = 'zpecorr tencorr entcorr gibcorr mass frc emang ' \
+                        'depolarp depolaru depp depu alpha2 beta2 alphag ' \
+                        'gamma2 delta2 cid1 cid2 cid3 rc180 eemang'.split(' ')
+    values = ArrayProperty(dtype=float, check_against='filenames')
 
-    @values.setter
-    def values(self, values):
-        if self.check_sizes and not len(values) == len(self.filenames):
-            raise ValueError(
-                f"Values and filenames must be the same length. Arrays of"
-                f"length {len(values)} and {len(self.filenames)} were given."
-            )
+    def average_conformers(self, energies):
+        """A method for averaging values by population of conformers.
+
+        Parameters
+        ----------
+        energies : Energies object instance or iterable
+            Object with `populations` and `genre` attributes, containing
+            respectively: list of populations values as numpy.ndarray and
+            string specifying energy type. Alternatively, list of weights
+            for each conformer.
+
+        Returns
+        -------
+        DataArray
+            New instance of DataArray's subclass, on which `average` method was
+            called, containing averaged values.
+
+        Raises
+        ------
+            If creation of an instance based on its' __init__ signature is
+            impossible.
+        """
         try:
-            self.__values = np.array(values, dtype=self.dtype)
-        except ValueError:
-            if not self.allow_data_inconsistency:
-                error_msg = f"{self.__class__.__name__} of genre " \
-                            f"{self.genre} with unequal number of values for " \
-                            f"molecule requested."
-                raise InconsistentDataError(error_msg)
-            lengths = [len(v) for v in values]
-            longest = max(lengths)
-            self.__values = np.array(
-                [np.pad(v, (0, longest-len_), 'constant', constant_values=0)
-                    for v, len_ in zip(values, lengths)], dtype=self.dtype
-            )
-            logger.info(
-                f"{self.genre} values' lists were appended with zeros to match "
-                f"length of longest entry."
-            )
-
-    def __len__(self):
-        return len(self.filenames)
-
-    def __bool__(self):
-        return self.filenames.size != 0
+            populations = energies.populations
+            energy_type = energies.genre
+        except AttributeError:
+            populations = np.asanyarray(energies, dtype=float)
+            energy_type = 'unknown'
+        averaged_values = dw.calculate_average(self.values, populations)
+        args = self.get_repr_args()
+        args['values'] = [averaged_values]
+        args['allow_data_inconsistency'] = True
+        try:
+            averaged = type(self)(**args)
+        except (TypeError, ValueError) as err:
+            raise TypeError(
+                f'Could not create an instance of {type(self)} from its '
+                f'signature. Use tesliper.datawork.calculate_average instead.'
+            ) from err
+        logger.debug(f'{self.genre} averaged by {energy_type}.')
+        return averaged
 
 
 class InfoArray(DataArray):
     associated_genres = [
         'command', 'cpu_time', 'transitions', 'stoichiometry'  # , 'filenames'
     ]
-
-    def __init__(self, genre, filenames, values, dtype=str, **kwargs):
-        super().__init__(genre, filenames, values, dtype=dtype)
+    values = ArrayProperty(dtype=str, check_against='filenames')
 
 
 class BooleanArray(DataArray):
     associated_genres = ['normal_termination', 'optimization_completed']
-
-    def __init__(self, genre, filenames, values, dtype=bool, **kwargs):
-        super().__init__(genre, filenames, values, dtype=dtype)
+    values = ArrayProperty(dtype=bool, check_against='filenames')
 
 
-class Energies(DataArray):
+class Energies(FloatArray):
     """
     Parameters
     ----------
@@ -173,11 +145,13 @@ class Energies(DataArray):
     t : int or float
         Temperature of calculated state in K."""
 
-    Boltzmann = 0.0019872041  # kcal/(mol*K)
     associated_genres = 'scf zpe ten ent gib'.split(' ')
 
-    def __init__(self, genre, filenames, values, t=298.15, **kwargs):
-        super().__init__(genre, filenames, values, **kwargs)
+    def __init__(
+            self, genre, filenames, values, t=298.15,
+            allow_data_inconsistency=False
+    ):
+        super().__init__(genre, filenames, values, allow_data_inconsistency)
         self.t = t  # temperature in K
 
     @property
@@ -233,11 +207,9 @@ class Energies(DataArray):
         return dw.calculate_populations(self.values, t)
 
 
-class Bars(DataArray):
-    associated_genres = 'freq iri dip rot ramact raman1 roa1 raman2 ' \
-                        'roa2 raman3 roa3 wave ex_en vdip ldip vrot '\
-                        'lrot vosc losc'.split(' ')
+class Bars(FloatArray):
 
+    associated_genres = ()
     spectra_name_ref = dict(
         rot='vcd',
         dip='ir',
@@ -279,92 +251,32 @@ class Bars(DataArray):
         ldip='D / 10^(-44) esu^2 cm^2'
     )
 
-    def __init__(self, genre, filenames, values, frequencies=None,
-                 wavelengths=None, t=298.15, laser=532, **kwargs):
-        super().__init__(genre, filenames, values, **kwargs)
-        self.frequencies = frequencies  # in cm-1
-        self.wavelengths = wavelengths  # in nm
+    def __init__(
+            self, genre, filenames, values, t=298.15, laser=532,
+            allow_data_inconsistency=False
+    ):
+        super().__init__(genre, filenames, values, allow_data_inconsistency)
         self.t = t  # temperature in K
         self.laser = laser  # in nm
         # rename to raman_laser?
 
+    # TODO: at least one, freq or wave, must be defined by subclass;
+    #       include that in docstring
+    @property
+    def freq(self):
+        return 1e7 / self.wavelen
+
+    @property
+    def wavelen(self):
+        return 1e7 / self.freq
+
     @property
     def frequencies(self):
-        if self.__frequencies is None:
-            return 1e7 / self.wavelengths
-        else:
-            return self.__frequencies
-
-    @frequencies.setter
-    def frequencies(self, frequencies):
-        if frequencies is None:
-            self.__frequencies = None
-            return
-        if self.check_sizes and not len(frequencies) == len(self.values):
-            raise ValueError(
-                f"Frequencies and values must be the same length. Arrays of"
-                f"length {len(frequencies)} and {len(self.values)} "
-                f"were given."
-            )
-        try:
-            self.__frequencies = np.array(frequencies, dtype=float)
-        except ValueError:
-            if not self.allow_data_inconsistency:
-                error_msg = f"{self.__class__.__name__} of genre " \
-                            f"{self.genre} with unequal number of frequencies" \
-                            f" for molecule requested."
-                raise InconsistentDataError(error_msg)
-            lengths = [len(v) for v in frequencies]
-            longest = max(lengths)
-            self.__frequencies = np.array(
-                [np.pad(v, (0, longest-len_), 'constant', constant_values=0)
-                    for v, len_ in zip(frequencies, lengths)], dtype=self.dtype
-            )
-            logger.info(
-                f"{self.genre} frequencies' lists were appended with zeros to "
-                f"match length of longest entry."
-            )
+        return self.freq
 
     @property
     def wavelengths(self):
-        if self.__wavelengths is None:
-            return 1e7 / self.frequencies
-        else:
-            return self.__wavelengths
-
-    @wavelengths.setter
-    def wavelengths(self, wavelengths):
-        if wavelengths is None:
-            if self.frequencies is None:
-                raise TypeError(
-                    "At least one: frequencies or wavelengths must not be None."
-                )
-            self.__wavelengths = None
-            return
-        if self.check_sizes and not len(wavelengths) == len(self.values):
-            raise ValueError(
-                f"Wavelengths and values must be the same length. Arrays of"
-                f"length {len(wavelengths)} and {len(self.values)} "
-                f"were given."
-            )
-        try:
-            self.__wavelengths = np.array(wavelengths, dtype=float)
-        except ValueError:
-            if not self.allow_data_inconsistency:
-                error_msg = f"{self.__class__.__name__} of genre " \
-                            f"{self.genre} with unequal number of wavelengths" \
-                            f" for molecule requested."
-                raise InconsistentDataError(error_msg)
-            lengths = [len(v) for v in wavelengths]
-            longest = max(lengths)
-            self.__wavelengths = np.array(
-                [np.pad(v, (0, longest-len_), 'constant', constant_values=0)
-                    for v, len_ in zip(wavelengths, lengths)], dtype=self.dtype
-            )
-            logger.info(
-                f"{self.genre} wavelengths' lists were appended with zeros to "
-                f"match length of longest entry."
-            )
+        return self.wavelen
 
     @property
     def spectra_name(self):
@@ -396,6 +308,22 @@ class Bars(DataArray):
             self.genre, self.values, self.frequencies, self.t, self.laser
         )
         return intensities
+
+
+class GroundStateBars(Bars):
+    associated_genres = 'freq iri dip rot ramact raman1 roa1 raman2 ' \
+                        'roa2 raman3 roa3'.split(' ')
+
+    def __init__(
+            self, genre, filenames, values, freq, t=298.15, laser=532,
+            allow_data_inconsistency=False
+    ):
+        super().__init__(
+            genre, filenames, values, t, laser, allow_data_inconsistency
+        )
+        self.freq = freq
+
+    freq = ArrayProperty(check_against='filenames')
 
     @property
     def imaginary(self):
@@ -448,12 +376,63 @@ class Bars(DataArray):
             intensity values).
         """
         abscissa = np.arange(start, stop, step)
-        if self.spectra_type == 'electr':
-            _width = width / 1.23984e-4  # from eV to cm-1
-            _abscissa = 1e7 / abscissa  # from nm to cm-1
-        else:
-            _width = width
-            _abscissa = abscissa
+        freqs = self.frequencies
+        inten = self.intensities
+        values = dw.calculate_spectra(
+            freqs, inten, abscissa, width, fitting
+        )
+        spectra_name = self.spectra_name
+        fitting_name = fitting.__name__
+        if values.size:
+            logger.debug(
+                f"Bar {self.genre}: {spectra_name} spectra calculated with "
+                f"width = {width} and {fitting_name} fitting."
+            )
+        spectra = Spectra(
+            spectra_name, self.filenames, values, abscissa, width, fitting_name
+        )
+        return spectra
+
+
+class ExcitedStateBars(Bars):
+    associated_genres = 'wave ex_en vdip ldip vrot lrot vosc losc'.split(' ')
+
+    def __init__(
+            self, genre, filenames, values, wavelen, t=298.15,
+            allow_data_inconsistency=False
+    ):
+        super().__init__(genre, filenames, values, t, allow_data_inconsistency)
+        self.wavelen = wavelen  # in nm
+
+    wavelen = ArrayProperty(check_against='filenames')
+
+    def calculate_spectra(self, start, stop, step, width, fitting):
+        """Calculates spectrum of desired type for each individual conformer.
+
+        Parameters
+        ----------
+        start : int or float
+            Number representing start of spectral range in relevant units.
+        stop : int or float
+            Number representing end of spectral range in relevant units.
+        step : int or float
+            Number representing step of spectral range in relevant units.
+        width : int or float
+            Number representing half width of maximum peak hight.
+        fitting : function
+            Function, which takes bars, freqs, abscissa, width as parameters and
+            returns numpy.array of calculated, non-corrected spectrum points.
+
+        Returns
+        -------
+        numpy.ndarray
+            Array of 2d arrays containing spectrum (arr[0] is list of
+            wavelengths/wave numbers, arr[1] is list of corresponding
+            intensity values).
+        """
+        abscissa = np.arange(start, stop, step)
+        _width = width / 1.23984e-4  # from eV to cm-1
+        _abscissa = 1e7 / abscissa  # from nm to cm-1
         freqs = self.frequencies
         inten = self.intensities
         values = dw.calculate_spectra(
@@ -472,132 +451,5 @@ class Bars(DataArray):
         return spectra
 
 
-class Spectra(DataArray):
-    associated_genres = 'ir uv vcd ecd raman roa'.split(' ')
-    _vibra_units = {
-        'width': 'cm-1',
-        'start': 'cm-1',
-        'stop': 'cm-1',
-        'step': 'cm-1',
-        'x': 'Frequency / cm^(-1)'
-    }
-    _electr_units = {
-        'width': 'eV',
-        'start': 'nm',
-        'stop': 'nm',
-        'step': 'nm',
-        'x': 'Wavelength / nm'
-    }
-    _units = {
-        'ir': {'y': 'Epsilon'},
-        'uv': {'y': 'Epsilon'},
-        'vcd': {'y': 'Delta Epsilon'},
-        'ecd': {'y': 'Delta Epsilon'},
-        'raman': {'y': 'I(R)+I(L)'},
-        'roa': {'y': 'I(R)-I(L)'}
-    }
-    for u in 'ir vcd raman roa'.split(' '):
-        _units[u].update(_vibra_units)
-    for u in ('uv', 'ecd'):
-        _units[u].update(_electr_units)
-
-    def __init__(self, genre, filenames, values, abscissa, width=0.0,
-                 fitting='n/a', scaling=1.0, offset=0.0, **kwargs):
-        super().__init__(genre, filenames, values=values, **kwargs)
-        self.abscissa = abscissa
-        self.start = abscissa[0]
-        self.stop = abscissa[-1]
-        self.step = abs(abscissa[0] - abscissa[1])
-        self.width = width
-        self.fitting = fitting
-        self.scaling = scaling
-        self.offset = offset
-
-    @property
-    def units(self):
-        return Spectra._units[self.genre]
-
-    @property
-    def scaling(self):
-        return self.__scaling
-
-    @scaling.setter
-    def scaling(self, factor):
-        self.__scaling = factor
-        self.__y = self.values * factor
-
-    @property
-    def offset(self):
-        return self.__offset
-
-    @offset.setter
-    def offset(self, offset):
-        self.__offset = offset
-        self.__x = self.abscissa + offset
-
-    @property
-    def x(self):
-        return self.__x
-
-    @property
-    def y(self):
-        return self.__y
-
-    def average(self, energies):
-        """A method for averaging spectra by population of conformers.
-
-        Parameters
-        ----------
-        energies : Energies object instance
-            Object with populations and type attributes containing
-            respectively: list of populations values as numpy.ndarray and
-            string specifying energy type.
-
-        Returns
-        -------
-        numpy.ndarray
-            2d numpy array where arr[0] is list of wavelengths/wave numbers
-            and arr[1] is list of corresponding averaged intensity values.
-        """
-        populations = energies.populations
-        energy_type = energies.genre
-        av_spec = dw.calculate_average(self.values, populations)
-        av_spec = SingleSpectrum(
-            self.genre, av_spec, self.abscissa, self.width, self.fitting,
-            self.scaling, self.offset, filenames=self.filenames,
-            averaged_by=energy_type
-        )
-        logger.debug(f'{self.genre} spectrum averaged by {energy_type}.')
-        return av_spec
-
-
-class SingleSpectrum(Spectra):
-
-    def __init__(self, genre, values, abscissa, width=0.0, fitting='n/a',
-                 scaling=1.0, offset=0.0, filenames=None, averaged_by=None):
-        filenames = [] if filenames is None else filenames
-        super().__init__(genre, filenames, values=values, abscissa=abscissa,
-                         width=width, fitting=fitting, scaling=scaling,
-                         offset=offset, check_sizes=False)
-        self.averaged_by = averaged_by
-
-
-"""# performance test for making arrays
->>> from timeit import timeit
->>> import random
->>> dt = {n: chr(n) for n in range(100)}
->>> ls = list(range(100))
->>> kpt = random.choices(ls, k=80)
->>> skpt = set(kpt)
->>> timeit('[(k, v) for k, v in dt.items()]', globals=globals())
-5.26354954301791
->>> timeit('[(n, dt[n]) for n in ls]', globals=globals())
-6.790710222989297
->>> timeit('[(k,v) for k,v in dt.items() if k in skpt]', globals=globals())
-7.0161151549953615
->>> timeit('[(n, dt[n]) for n in kpt]', globals=globals())
-5.522729124628256
->>> timeit('[(n,dt[n]) for n,con in zip(ls,ls) if con]', globals=globals())
-9.363086626095992
->>> timeit('[(k,v) for (k,v),con in zip(dt.items(),ls)]',globals=globals())
-7.463483778659565"""
+class Geometry(DataArray):
+    pass

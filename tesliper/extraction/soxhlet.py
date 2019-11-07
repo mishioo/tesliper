@@ -26,9 +26,9 @@ class Soxhlet:
     
     Attributes
     ----------
-    path : str
+    path: str
         Path of directory bounded to Soxhlet instance.
-    files : list
+    files: list
         List of files present in directory bounded to Soxhlet instance.
     output_files
     bar_files
@@ -43,13 +43,13 @@ class Soxhlet:
         
         Parameters
         ----------
-        path : str
+        path: str
             String representing absolute path to directory containing files,
             which will be the subject of data extraction.
-        wanted_files : list, optional
+        wanted_files: list, optional
             List of files, that should be loaded for further extraction. If
             omitted, all files present in directory will be taken.
-        ext : str
+        extension: str
             String representing file extension of output files, that are to be
             parsed. If omitted, Soxhlet will try to resolve it based on
             contents of directory pointed by path.
@@ -63,7 +63,7 @@ class Soxhlet:
         self.files = os.listdir(path)
         self.wanted_files = wanted_files
         self.extension = extension
-        self.parser = gaussian_parser
+        self.parser = gaussian_parser.GaussianParser()
         self.spectra_parser = spectra_parser.SpectraParser()
 
     @property
@@ -76,10 +76,8 @@ class Soxhlet:
             self._path = os.getcwd()
         elif not os.path.isdir(value):
             raise FileNotFoundError(f"Path not found: {value}")
-        elif hasattr(self, '_foo'):
-            self._path = value
-            self.files = os.listdir(value)
         else:
+            self.files = os.listdir(value)
             self._path = value
 
     @property
@@ -88,11 +86,11 @@ class Soxhlet:
         list associated with Soxhlet instance.
         """
         try:
-            ext = self.extension
-            ext = ext if ext is not None else self.guess_extension()
+            ext = self.extension if self.extension is not None \
+                else self.guess_extension()
             gf = sorted(self.filter_files(ext))
         except ValueError:
-            gf = None
+            gf = []
         return gf
 
     @property
@@ -104,7 +102,7 @@ class Soxhlet:
             ext = '.bar'
             bar = sorted(self.filter_files(ext))
         except ValueError:
-            bar = None
+            bar = []
         return bar
 
     def filter_files(self, ext=None):
@@ -124,10 +122,21 @@ class Soxhlet:
         -------
         list
             List of filtered filenames as strings.
+
+        Raises
+        ------
+        ValueError
+            If parameter `ext` is not given and attribute `extension` in None.
         """
         ext = ext if ext is not None else self.extension
         files = self.wanted_files if self.wanted_files else self.files
-        filtered = [f for f in files if f.endswith(ext)]
+        try:
+            filtered = [f for f in files if f.endswith(ext)]
+        except TypeError as error:
+            raise ValueError(
+                "Parameter `ext` must be given if attribute `extension` "
+                "is None."
+            ) from error
         return filtered
 
     def guess_extension(self):
@@ -165,23 +174,33 @@ class Soxhlet:
         else:
             return '.log' if logs else '.out'
 
-    def extract(self):
+    def extract_iter(self):
         """Extracts data from gaussian files associated with Soxhlet instance.
         Implemented as generator.
                 
         Yields
         ------
         tuple
-            Two item tuple with name of parsed file as first and  extracted
+            Two item tuple with name of parsed file as first and extracted
             data as second item, for each file associated with Soxhlet instance.
         """
         for num, file in enumerate(self.output_files):
-            with open(os.path.join(self.path, file)) as handle:
-                cont = handle.read()
             logger.debug(f'Starting extraction from file: {file}')
-            data = self.parser.parse(cont)
+            with open(os.path.join(self.path, file)) as handle:
+                data = self.parser.parse(handle)
             logger.debug('file done.\n')
             yield file, data
+
+    def extract(self):
+        """Extracts data from gaussian files associated with Soxhlet instance.
+
+        Returns
+        ------
+        dict of dicts
+            dictionary of extracted data, with name of parsed file as key and
+            data as value, for each file associated with Soxhlet instance.
+        """
+        return {f: d for f, d in self.extract_iter()}
 
     def load_bars(self, spectra_type=None):
         """Parses *.bar files associated with object and loads spectral data

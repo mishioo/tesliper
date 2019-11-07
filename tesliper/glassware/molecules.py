@@ -5,9 +5,12 @@ from collections import (
     _OrderedDictKeysView, _OrderedDictItemsView, _OrderedDictValuesView
 )
 from contextlib import contextmanager
+from itertools import chain
 
 import numpy as np
-from .arrays import BaseArray, DataArray
+
+from tesliper.exceptions import TesliperError
+from .arrays import ArrayBase, DataArray
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -86,26 +89,37 @@ class _TrimmedKeysView(_OrderedDictKeysView):
 
 
 class Molecules(OrderedDict):
-    """Ordered mapping of dictionaries.
+    """Container for data extracted from quantum chemical software output files.
+
+    Data for each file is stored in the underlying OrderedDict, under the key of
+    said file's name. Its values are dictionaries with genres name (as key)
+    and appropriate data pairs. Beside this, its essential functionality is
+    transformation of stored data to corresponding DataArray objects with
+    use of `arrayed` method. It provides some control over this transformation,
+    especially in terms of including/excluding particular molecules' data
+    on creation of new DataArray instance. This type of control is here called
+    trimming. Trimming can be achieved by use of various `trim` methods defined
+    in this class or by direct changes to `kept` attribute. See its
+    documentation for more information.
+
+    Parameters
+    ----------
+    *args
+        list of arguments for creation of underlying dictionary
+    allow_data_inconsistency : bool, optional
+        specifies if data inconsistency should be allowed in created DataArray
+        object instances, defaults to False
+    **kwargs
+        list of arbitrary keyword arguments for creation of underlying
+        dictionary
 
     Notes
     -----
     Inherits from collections.OrderedDict.
 
-    TO DO
-    -----
+    TODO
+    ----
     Add type checks in update and setting methods."""
-
-    vibrational_keys = (
-        'freq mass frc iri dip rot emang depolarp depolaru '
-        'ramact depp depu alpha2 beta2 alphag gamma2 delta2 raman1 '
-        'roa1 cid1 raman2 roa2 cid2  raman3 roa3 cid3 rc180'.split(' ')
-    )
-    electronic_keys = (
-        'wave ex_en eemang vdip ldip vrot lrot vosc losc '
-        'transitions'.split(' ')
-    )
-    spectra_keys = 'ir uv vcd ecd raman roa'.split(' ')
 
     def __init__(self, *args, allow_data_inconsistency=False, **kwargs):
         self.allow_data_inconsistency = allow_data_inconsistency
@@ -130,8 +144,8 @@ class Molecules(OrderedDict):
         self[key]['_index'] = index
 
     def __delitem__(self, key, **kwargs):
-        super().__delitem__(key, **kwargs)
         index = self[key]['_index']
+        super().__delitem__(key, **kwargs)
         del self.filenames[index]
         del self.kept[index]
         for index, mol in enumerate(self.values()):
@@ -139,6 +153,100 @@ class Molecules(OrderedDict):
 
     @property
     def kept(self):
+        """List of booleans, one for each molecule stored, defining if
+        particular molecules data should be included in corresponding DataArray
+        instance, created by `arrayed` method. It may be changed by use of trim
+        methods, by setting its value directly, or by modification of the
+        underlying list. For the first option refer to those methods
+        documentation, for rest see Examples section.
+
+        Returns
+        -------
+        list of bool
+            List of booleans, one for each molecule stored, defining if
+            particular molecules data should be included in corresponding
+            DataArray instance.
+
+        Raises
+        ------
+        TypeError
+            If assigned values is not a sequence.
+            If elements of given sequence are not one of types: bool, int, str.
+        ValuesError
+            If number of given boolean values doesn't match number of contained
+            molecules.
+        KeyError
+            If any of given string values is not in underlying dictionary keys.
+        IndexError
+            If any of given integer values is not in range
+            0 <= i < number of molecules.
+
+        Examples
+        --------
+
+        New list of values can be set in a few ways. Firstly, it is the
+        most straightforward to just assign a new list of boolean values to
+        the `kept` attribute. This list should have the same number of elements
+        as the number of molecules contained. A ValueError is raised if it
+        doesn't.
+
+        >>> m = Molecules(one={}, two={}, tree={})
+        >>> m.kept
+        [True, True, True]
+        >>> m.kept = [False, True, False]
+        >>> m.kept
+        [False, True, False]
+        >>> m.kept = [False, True, False, True]
+        Traceback (most recent call last):
+        ...
+        ValueError: Must provide boolean value for each known molecule.
+        4 values provided, 3 excepted.
+
+        Secondly, list of filenames of molecules intended to be kept may be
+        given. Only these molecules will be kept. If given filename is not in
+        the underlying Molecules dictionary, KeyError is raised.
+
+        >>> m.kept = ['one']
+        >>> m.kept
+        [True, False, False]
+        >>>  m.kept = ['two', 'other']
+        Traceback (most recent call last):
+        ...
+        KeyError: Unknown molecules: other.
+
+        Thirdly, list of integers representing molecules indices may br given.
+        Only specified molecules with specified indices will be kept. If index
+        out of bounds is in the list, IndexError is raised. Indexing with
+        negative values is not supported currently.
+
+        >>> m.kept = [1, 2]
+        >>> m.kept
+        [False, True, True]
+        >>> m.kept = [2, 3]
+        Traceback (most recent call last):
+        ...
+        IndexError: Indexes out of bounds: 3.
+
+        Fourthly, assigning an empty list to this attribute will mark all
+        molecules as not kept.
+
+        >>> m.kept = []
+        >>> m.kept
+        [False, False, False]
+
+        Lastly, list of kept values may be modified by setting its elements
+        to True or False. It is advised against, however, as mistake such as
+        `m.kept[:2] = [True, False, False]` will break some functionality by
+        forcibly changing size of `kept` list.
+
+        Notes
+        -----
+        Type of the first element of given sequence is used for dynamic
+        dispatch.
+
+        TODO
+        ----
+        Consider making return value immutable."""
         return self.__kept
 
     @kept.setter
@@ -148,31 +256,27 @@ class Molecules(OrderedDict):
         except (TypeError, KeyError):
             raise TypeError(f"Excepted sequence, got: {type(blade)}.")
         except IndexError:
-            try:
-                self.__kept = [False for __ in self.kept]
-            except AttributeError:
-                self.__kept = []
+            self.__kept = [False for __ in self.keys()]
             return
         if isinstance(first, str):
             blade = set(blade)
             if not blade.issubset(set(self.keys())):
                 raise KeyError(
-                    f"Unknown conformers: {', '.join(blade-set(self.keys()))}"
+                    f"Unknown molecules: {', '.join(blade-set(self.keys()))}"
                 )
             else:
                 self.__kept = [fnm in blade for fnm in self.keys()]
         elif isinstance(first, (bool, np.bool_)):
             if not len(blade) == len(self):
                 raise ValueError(
-                    f"When setting molecules.kept directly, must provide "
-                    f"boolean value for each known conformer. {len(blade)} "
-                    f"values provided, {len(self)} excepted."
+                    f"Must provide boolean value for each known molecule. "
+                    f"{len(blade)} values provided, {len(self)} excepted."
                 )
             else:
                 self.__kept = [bool(b) for b in blade]  # convert from np.bool_
         elif isinstance(first, int):
-            length = len(self.kept)
-            out_of_bounds = [b for b in blade if not -length <= b < length]
+            length = len(self)
+            out_of_bounds = [b for b in blade if not 0 <= b < length]
             if out_of_bounds:
                 raise IndexError(
                     f"Indexes out of bounds: "
@@ -180,7 +284,7 @@ class Molecules(OrderedDict):
                 )
             else:
                 blade = set(blade)
-                self.__kept = [num in blade for num in range(len(self.kept))]
+                self.__kept = [num in blade for num in range(len(self))]
         else:
             raise TypeError(
                 f"Expected sequence of strings, integers or booleans, got: "
@@ -199,8 +303,8 @@ class Molecules(OrderedDict):
         molecules = dict()
         if other is not None:
             molecules.update(other)
-        molecules.update(**kwargs)
-        for key, value in molecules.items():
+        items = chain(molecules.items(), kwargs.items())
+        for key, value in items:
             if key in self:
                 self[key].update(value)
             else:
@@ -222,22 +326,13 @@ class Molecules(OrderedDict):
         DataArray
             Arrayed data of desired genre as appropriate DataArray object.
 
-        TO DO
-        -----
-        Add support for 'filenames'
-        Move DataArray.make to this class
-        Add some type checking and error handling."""
+        TODO
+        ----
+        Add support for 'filenames'"""
         try:
-            cls = BaseArray.constructors[genre]
+            cls = ArrayBase.constructors[genre]  # DataArray subclass
         except KeyError:
             raise ValueError(f"Unknown genre '{genre}'.")
-        if not (self.kept or self.items()):
-            # TO DO: return appropriate subclass of DataArray
-            logger.debug(
-                f'Array of gerne {genre} requested, but self.kept or '
-                f'self.items() are empty. Returning empty array.'
-            )
-            return DataArray(genre, [], [])
         conarr = self.kept if not full else (True for __ in self.kept)
         array = (
             (fname, mol, mol[genre]) for (fname, mol), con
@@ -245,53 +340,109 @@ class Molecules(OrderedDict):
         )
         try:
             filenames, mols, values = zip(*array)
-        except ValueError:  # if no elements in array
+        except ValueError:  # if no elements in `array`
+            logger.debug(
+                f'Array of gerne {genre} requested, but no such data available '
+                f'or conformers providing this data where trimmed off. '
+                f'Returning empty array.'
+            )
             filenames, mols, values = [], [], []
-        if genre in self.vibrational_keys:
-            kwargs = {'frequencies': [mol['freq'] for mol in mols]}
-        elif genre in self.electronic_keys:
-            kwargs = {'wavelengths': [mol['wave'] for mol in mols]}
-        elif genre in self.spectra_keys:
-            abscissa, values = zip(*values) if values else ([], [])
-            kwargs = {'abscissa': abscissa[0] if abscissa else []}
-        else:
-            kwargs = {'unused': [[] for __ in mols]}  # is this needed?
-        arr = cls(
-            genre=genre, filenames=filenames, values=values,
-            allow_data_inconsistency=self.allow_data_inconsistency,
-            **kwargs
-        )
-        return arr
+        params = cls.get_init_params()
+        parameter_type = type(params['genre'])
+        params['genre'] = genre
+        params['filenames'] = filenames
+        params['values'] = values
+        params['allow_data_inconsistency'] = self.allow_data_inconsistency
+        for key in params:
+            if not isinstance(params[key], parameter_type):
+                continue
+            try:
+                if not mols:
+                    raise KeyError
+                    # this is a hack to invoke except clause
+                    # also when mol is an empty sequence
+                params[key] = [mol[key] for mol in mols]
+            except KeyError:
+                # set param to its default value
+                # or raise an error if it don't have one
+                if params[key].default is not params[key].empty:
+                    params[key] = params[key].default
+                else:
+                    raise TesliperError(
+                        f"One or more conformers does not provide value for "
+                        f"{key} genre, needed to instantiate {cls.__name__} "
+                        f"object."
+                    )
+        return cls(**params)
 
     def by_index(self, index):
         """Returns data for conformer on desired index."""
         return self[self.filenames[index]]
 
-    def index(self, key):
+    def key_of(self, index):
+        """Returns name of molecule associated with given index."""
+        return self.filenames[index]
+
+    def index_of(self, key):
+        """Return index of given """
         try:
             return self[key]['_index']
         except KeyError:
             raise ValueError(f"No such molecule: {key}.")
 
-    @property
-    def _max_len(self):
-        return max(len(m) for m in self.values())
+    def has_genre(self, genre):
+        """Checks if any of stored molecules contains data of given genre.
+
+        Parameters
+        ----------
+        genre : str
+            name of genre to test
+
+        Returns
+        -------
+        bool
+            boolean value indicating if any of stored molecules contains data
+            of genre in question."""
+        for molecule in self.values():
+            if genre in molecule:
+                return True
+        return False
+
+    def has_any_genre(self, genres):
+        """Checks if any of stored molecules contains data of any of given
+        genres.
+
+        Parameters
+        ----------
+        genres : list of str
+            list of names of genres to test
+
+        Returns
+        -------
+        bool
+            boolean value indicating if any of stored molecules contains data
+            of any of genres in question."""
+        for molecule in self.values():
+            for genre in genres:
+                if genre in molecule:
+                    return True
+        return False
 
     def trim_incomplete(self, wanted=None):
-        # TO DO: don't take optimization_completed and such into consideration
-        # TO DO: when above satisfied, change gui.tab_loader.Loader\
-        # .update_overview_values() and .set_overview_values()
+        # TODO: don't take optimization_completed and such into consideration
+        # TODO: when above satisfied, change gui.tab_loader.Loader\
+        #       .update_overview_values() and .set_overview_values()
+        # TODO: maybe use all as default but keep current `wanted` as Molecules'
+        #       attribute or module level variable
         if wanted is None:
             wanted = 'dip rot vosc vrot losc lrot raman1 roa1 scf zpe ent ' \
-                     'ten gib'.split()
+                     'ten gib h_mst c_mst fermi'.split()
         elif isinstance(wanted, str):
             wanted = wanted.split()
         elif not isinstance(wanted, (list, tuple)):
             raise TypeError(
-                f"Expected list, tuple or string, got {type(wanted)}"
+                f"Expected list, tuple or string, got {type(wanted)}."
             )
-        else:
-            pass
         count = [[g in mol for g in wanted] for mol in self.values()]
         best_match = max(count)
         for index, match in enumerate(count):
@@ -299,9 +450,9 @@ class Molecules(OrderedDict):
                 self.kept[index] = False
 
     def trim_imaginary_frequencies(self):
-        dummy = np.array([1])
+        dummy = [1]
         for index, mol in enumerate(self.values()):
-            freq = mol.get('freq', dummy)
+            freq = np.array(mol.get('freq', dummy))
             if (freq < 0).any():
                 self.kept[index] = False
 
@@ -321,7 +472,7 @@ class Molecules(OrderedDict):
                 self.kept[index] = False
 
     def trim_non_normal_termination(self):
-        # TO DO: ensure its working properly
+        # TODO: ensure its working properly
         for index, mol in enumerate(self.values()):
             if not mol.get('normal_termination', False):
                 self.kept[index] = False
@@ -395,22 +546,23 @@ class Molecules(OrderedDict):
         yield self
         self.kept = old_blade
 
-    """# performance test for making arrays
-    >>> from timeit import timeit
-    >>> import random
-    >>> dt = {n: chr(n) for n in range(100)}
-    >>> ls = list(range(100))
-    >>> kpt = random.choices(ls, k=80)
-    >>> skpt = set(kpt)
-    >>> timeit('[(k, v) for k, v in dt.items()]', globals=globals())
-    5.26354954301791
-    >>> timeit('[(n, dt[n]) for n in ls]', globals=globals())
-    6.790710222989297
-    >>> timeit('[(k,v) for k,v in dt.items() if k in skpt]', globals=globals())
-    7.0161151549953615
-    >>> timeit('[(n, dt[n]) for n in kpt]', globals=globals())
-    5.522729124628256
-    >>> timeit('[(n,dt[n]) for n,con in zip(ls,ls) if con]', globals=globals())
-    9.363086626095992
-    >>> timeit('[(k,v) for (k,v),con in zip(dt.items(),ls)]',globals=globals())
-    7.463483778659565"""
+    @property
+    @contextmanager
+    def inconsistency_allowed(self):
+        """Temporally sets Molecules' 'allow_data_inconsistency' attribute
+        to true. Implemented as context manager to use with python 'with'
+        keyword.
+
+        Examples
+        --------
+        >>> m = Molecules()
+        >>> with m.inconsistency_allowed:
+        >>>     # do stuff here while m.allow_data_inconsistency is True
+        >>>     m.allow_data_inconsistency
+        True
+        >>> m.allow_data_inconsistency
+        False"""
+        inconsistency = self.allow_data_inconsistency
+        self.allow_data_inconsistency = True
+        yield self
+        self.allow_data_inconsistency = inconsistency

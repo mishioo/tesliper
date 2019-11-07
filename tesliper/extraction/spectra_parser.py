@@ -1,12 +1,19 @@
 import csv
 import numpy as np
 import logging as lgg
+from .base_parser import Parser
 
 
 logger = lgg.getLogger(__name__)
 
 
-class SpectraParser:
+class SpectraParser(Parser):
+
+    def __init__(self):
+        super().__init__()
+        self.delimiter = None
+        self.xcolumn = 0
+        self.ycolumn = 1
 
     def parse(self, filename, delimiter=None, xcolumn=0, ycolumn=1):
         """Loads spectral data from file to numpy.array. Currently supports
@@ -37,15 +44,20 @@ class SpectraParser:
             https://github.com/audreyr/binaryornot
             https://eli.thegreenplace.net/2011/10/19/perls-guess-if-file-is-text-or-binary-implemented-in-python/
         add csv and binary files support"""
-        if filename.endswith(('.txt', '.xy')):
-            spc = self.parse_txt(filename, delimiter, xcolumn, ycolumn)
-        elif filename.endswith('.csv'):
-            spc = self.parse_csv(filename, delimiter, xcolumn, ycolumn)
-        else:
-            spc = self.parse_spc(filename)
+        self.delimiter = delimiter
+        self.xcolumn = xcolumn
+        self.ycolumn = ycolumn
+        self.workhorse(filename)  # figure out which method to use
+        spc = self.workhorse(filename)  # actual parsing
         return spc
 
-    def parse_txt(self, file, delimiter=None, xcolumn=0, ycolumn=1):
+    def initial(self, filename):
+        super().initial(filename)
+        if self.workhorse is self.initial:
+            raise ValueError(f"Don't know how to parse file {filename}")
+
+    @Parser.state(trigger=r'.+\.(?:txt|xy)$')
+    def parse_txt(self, file):
         """Loads spectral data from txt file to numpy.array.
 
         Parameters
@@ -74,6 +86,9 @@ class SpectraParser:
             this includes columns' numbers out of range and usage of
             inappropriate delimiter"""
         with open(file, 'r') as txtfile:
+            delimiter = self.delimiter
+            xcolumn = self.xcolumn
+            ycolumn = self.ycolumn
             line = txtfile.readline()
             lineno = 1
             search = True
@@ -99,7 +114,8 @@ class SpectraParser:
                 )
         return np.array(list(zip(*arr)))
 
-    def parse_csv(self, file, delimiter=',', xcolumn=0, ycolumn=1):
+    @Parser.state(trigger=r'.+\.csv$')
+    def parse_csv(self, file):
         """Loads spectral data from csv file to numpy.array.
 
         Parameters
@@ -120,6 +136,9 @@ class SpectraParser:
         numpy.array
             two-dimensional numpy array ([[x-values], [y-values]])
             of data type 'float'"""
+        delimiter = self.delimiter
+        xcolumn = self.xcolumn
+        ycolumn = self.ycolumn
         arr = []
         with open(file, newline='') as csvfile:
             dialect = csv.Sniffer().sniff(

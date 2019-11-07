@@ -24,10 +24,8 @@ mainhandler.setLevel(lgg.DEBUG)
 mainhandler.setFormatter(lgg.Formatter(
             '%(levelname)s:%(name)s:%(funcName)s - %(message)s'))
 
-loggers = [logger, dw.logger, ex.logger, wr.logger, gw.logger, gp.logger]
-for lgr in loggers:
-    lgr.setLevel(lgg.DEBUG if _DEVELOPMENT else lgg.WARNING)
-    lgr.addHandler(mainhandler)
+logger.setLevel(lgg.DEBUG if _DEVELOPMENT else lgg.WARNING)
+logger.addHandler(mainhandler)
 
 
 # CLASSES
@@ -154,14 +152,14 @@ class Tesliper:
     def extract_iterate(self, path=None, wanted_files=None):
         files = wanted_files or self.wanted_files
         soxhlet = ex.Soxhlet(path, files) if path else self.soxhlet
-        for file, data in soxhlet.extract():
+        for file, data in soxhlet.extract_iter():
             self.update(((file, data),))
             yield file, data
 
     def extract(self, path=None, wanted_files=None):
         files = wanted_files or self.wanted_files
         soxhlet = ex.Soxhlet(path, files) if path else self.soxhlet
-        for file, data in soxhlet.extract():
+        for file, data in soxhlet.extract_iter():
             self.update(((file, data),))
     
     def smart_extract(self, deep_search=True, with_load=True):
