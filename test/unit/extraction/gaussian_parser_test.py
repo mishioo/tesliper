@@ -18,39 +18,39 @@ class TestRegexs(unittest.TestCase):
         self.assertRegex('-.42', gp.number)
 
     # def test_number_not_matches(self):
-        # self.assertNotRegex('-', gp.number)
-        # self.assertNotRegex('.', gp.number)
-        # self.assertNotRegex('- 1', gp.number)  # matches :(
-        # self.assertNotRegex('12-', gp.number)
-        # self.assertNotRegex('42.', gp.number)
+    # self.assertNotRegex('-', gp.number)
+    # self.assertNotRegex('.', gp.number)
+    # self.assertNotRegex('- 1', gp.number)  # matches :(
+    # self.assertNotRegex('12-', gp.number)
+    # self.assertNotRegex('42.', gp.number)
 
     # def test_number_sci_matches(self):
-        # self.assertRegex('3e24', gp.number)
-        # self.assertRegex('3e-656', gp.number)
-        # self.assertRegex('3E24', gp.number)
-        # self.assertRegex('3E-24', gp.number)
-        # self.assertRegex('-3e24', gp.number)
-        # self.assertRegex('-3e-656', gp.number)
-        # self.assertRegex('-3E24', gp.number)
-        # self.assertRegex('-3E-24', gp.number)
-        # self.assertRegex('3.23e24', gp.number)
-        # self.assertRegex('3.23e-656', gp.number)
-        # self.assertRegex('3.23E24', gp.number)
-        # self.assertRegex('3.23E-24', gp.number)
-        # self.assertRegex('-3.23e24', gp.number)
-        # self.assertRegex('-3.23e-656', gp.number)
-        # self.assertRegex('-3.23E24', gp.number)
-        # self.assertRegex('-3.23E-24', gp.number)
+    # self.assertRegex('3e24', gp.number)
+    # self.assertRegex('3e-656', gp.number)
+    # self.assertRegex('3E24', gp.number)
+    # self.assertRegex('3E-24', gp.number)
+    # self.assertRegex('-3e24', gp.number)
+    # self.assertRegex('-3e-656', gp.number)
+    # self.assertRegex('-3E24', gp.number)
+    # self.assertRegex('-3E-24', gp.number)
+    # self.assertRegex('3.23e24', gp.number)
+    # self.assertRegex('3.23e-656', gp.number)
+    # self.assertRegex('3.23E24', gp.number)
+    # self.assertRegex('3.23E-24', gp.number)
+    # self.assertRegex('-3.23e24', gp.number)
+    # self.assertRegex('-3.23e-656', gp.number)
+    # self.assertRegex('-3.23E24', gp.number)
+    # self.assertRegex('-3.23E-24', gp.number)
 
     # def test_number_sci_not_matches(self):
-        # self.assertNotRegex('42e', gp.number)
-        # self.assertNotRegex('42e-', gp.number)
-        # self.assertNotRegex('42.e', gp.number)
-        # self.assertNotRegex('42.e-', gp.number)
-        # self.assertNotRegex('42E', gp.number)
-        # self.assertNotRegex('42E-', gp.number)
-        # self.assertNotRegex('42.E', gp.number)
-        # self.assertNotRegex('42.E-', gp.number)
+    # self.assertNotRegex('42e', gp.number)
+    # self.assertNotRegex('42e-', gp.number)
+    # self.assertNotRegex('42.e', gp.number)
+    # self.assertNotRegex('42.e-', gp.number)
+    # self.assertNotRegex('42E', gp.number)
+    # self.assertNotRegex('42E-', gp.number)
+    # self.assertNotRegex('42.E', gp.number)
+    # self.assertNotRegex('42.E-', gp.number)
 
     def test_command(self):
         self.assertRegex(
@@ -65,15 +65,6 @@ class TestRegexs(unittest.TestCase):
             " -------------------------\n",
             gp.command
         )
-
-
-class TestParse(unittest.TestCase):
-
-    def setUp(self):
-        with open(r'..\..\test_files\vibra\Tolbutamid_c1.log') as file:
-            vibr_cont = file.read()
-        with open(r'..\..\test_files\electr\Tolbutamid_c1.log') as file:
-            electr_cont = file.read()
 
 
 if __name__ == '__main__':

@@ -1,1 +1,3 @@
-from .extraction import Soxhlet, logger
+from .soxhlet import Soxhlet, logger
+from .base_parser import Parser
+from .gaussian_parser import GaussianParser
