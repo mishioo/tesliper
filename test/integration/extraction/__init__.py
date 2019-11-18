@@ -1,1 +1,1 @@
-from .gaussian_parser_test import *
+from .test_gaussian_parser import *
