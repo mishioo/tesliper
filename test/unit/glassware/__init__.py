@@ -1,3 +1,3 @@
-from .array_base_test import *
-from .arrays_test import *
-from .molecules_test import *
+from .test_array_base import *
+from .test_arrays import *
+from .test_molecules import *
