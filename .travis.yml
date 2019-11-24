@@ -70,7 +70,7 @@ before_install:
 install:
   - pip3 install -r requirements.txt
 script:
-  - python3 -m unittest test
+  - python -m unittest test
 after_success:
   - coverage run --source=tesliper --omit=*/gui/* -m unittest test
   - coveralls # submit coverage
