@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/mishioo/tesliper.svg?branch=dev)](https://travis-ci.org/mishioo/tesliper)
+[![Build Status](https://travis-ci.com/mishioo/tesliper.svg?branch=dev)](https://travis-ci.com/mishioo/tesliper)
 [![Coverage Status](https://coveralls.io/repos/github/mishioo/tesliper/badge.svg?branch=dev)](https://coveralls.io/github/mishioo/tesliper?branch=dev)
 <img align="right" width="100" height="100" src="https://raw.githubusercontent.com/Mishioo/tesliper/master/tesliper/tesliper.ico">
 
@@ -19,7 +19,7 @@ numpy
 openpyxl
 matplotlib (needed only for gui)
 ```
-This package is written in Python 3.6.4. and was not tested on previous relases. It will not work with Python 2.
+This package is written in Python 3.6. and will not work with any previous release.
 
 ### Installing to your Python distribution
 

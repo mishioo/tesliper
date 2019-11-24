@@ -16,16 +16,29 @@ def count_imaginary(frequencies):
     Parameters
     ----------
     frequencies : numpy.ndarray
-        List of conformers' frequencies.
+        List of conformers' frequencies. Array with one dimension is interpreted
+        as list of frequencies for single conformer.
 
     Returns
     -------
     numpy.ndarray
-        Number of imaginary frequencies of each conformer."""
-    if frequencies.size > 0:
+        Number of imaginary frequencies of each conformer.
+
+    Raises
+    ------
+    ValueError
+        If input array has more than 2 dimensions."""
+    if frequencies.size == 0:
+        return np.array([])
+    elif frequencies.ndim < 2:
+        return np.asarray((frequencies < 0).sum())
+    elif frequencies.ndim == 2:
         return (frequencies < 0).sum(1)
     else:
-        return np.array([])
+        raise ValueError(
+            f'Array with {frequencies.ndim} dimensions can\'t be interpreted '
+            f'as a list of conformers\' frequencies.'
+        )
 
 
 def find_imaginary(frequencies):
@@ -39,9 +52,17 @@ def find_imaginary(frequencies):
     Returns
     -------
     numpy.ndarray
-        List of the indices of conformers with imaginary frequency values."""
-    imag = count_imaginary(frequencies)
-    return np.nonzero(imag)
+        List of the indices of conformers with imaginary frequency values.
+
+    Raises
+    ------
+    ValueError
+        If input array has more than 2 dimensions."""
+    try:
+        imag = count_imaginary(frequencies)
+    except ValueError as err:
+        raise ValueError(err) from err
+    return np.nonzero(imag)[0]
 
 
 def gaussian(intensities, frequencies, abscissa, width):
@@ -61,9 +82,23 @@ def gaussian(intensities, frequencies, abscissa, width):
     Returns
     -------
     numpy.ndarray
-        List of calculated intensity values."""
-    sigm = width / 1.4142  # math.sqrt(2), half width at 1/e peak height
-    denominator = sigm * 2.5066  # (2 * math.pi) ** 0.5
+        List of calculated intensity values.
+
+    Raises
+    ------
+    ValueError
+        If given width is not greater than zero.
+        If `intensities` and `frequencies` are not of the sane shape."""
+    if width <= 0:
+        raise ValueError('Peak width must be a positive value!')
+    if intensities.shape != frequencies.shape:
+        raise ValueError(
+            '`intensities` and `frequencies` must be of same shape!'
+        )
+    if abscissa.size == 0:
+        return np.array([])
+    sigm = width / 1.4142135623730951  # math.sqrt(2)
+    denominator = sigm * 2.5066282746310002  # (2 * math.pi) ** 0.5
     it = np.nditer(
         [abscissa, None], flags=['buffered'],
         op_flags=[['readonly'], ['writeonly', 'allocate', 'no_broadcast']],
@@ -92,7 +127,21 @@ def lorentzian(intensities, frequencies, abscissa, width):
     Returns
     -------
     numpy.ndarray
-        List of calculated intensity values."""
+        List of calculated intensity values.
+
+    Raises
+    ------
+    ValueError
+        If given width is not greater than zero.
+        If `intensities` and `frequencies` are not of the same shape."""
+    if width <= 0:
+        raise ValueError('Peak width must be a positive value!')
+    if intensities.shape != frequencies.shape:
+        raise ValueError(
+            '`intensities` and `frequencies` must be of same shape!'
+        )
+    if abscissa.size == 0:
+        return np.array([])
     hwhmsqrd = width ** 2
     hwhmoverpi = width / math.pi
     it = np.nditer(
@@ -129,8 +178,17 @@ def calculate_spectra(frequencies, intensities, abscissa, width, fitting):
     Returns
     -------
     numpy.ndarray
-        Array of intensity values for each conformer."""
-    # spectrum abscissa, 1d numpy.array of wavenumbers
+        Array of intensity values for each conformer.
+
+    Raises
+    ------
+    ValueError
+        If given width is not greater than zero.
+        If `intensities` and `frequencies` are not of the same shape."""
+    if intensities.shape != frequencies.shape:
+        raise ValueError(
+            '`intensities` and `frequencies` must be of same shape!'
+        )
     spectra = np.zeros([len(frequencies), abscissa.shape[0]])  # template
     for inten, freq, spr in zip(intensities, frequencies, spectra):
         spr[...] = fitting(inten, freq, abscissa, width)
@@ -158,7 +216,7 @@ def calculate_average(values, populations):
     Raises
     ------
     ValueError
-        If parameters of non-matching shape were passed."""
+        If parameters of non-matching shape were given."""
     values = np.asanyarray(values)
     populations = np.asanyarray(populations)
     if not populations.size == values.shape[0]:
