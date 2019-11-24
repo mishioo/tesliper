@@ -1,5 +1,6 @@
 from unittest import TestCase
 from unittest.mock import Mock, NonCallableMock, patch
+import re
 from tesliper.extraction import Parser
 from tesliper.exceptions import InvalidStateError
 
@@ -81,8 +82,42 @@ class TestParser(TestCase):
             {'initial': Mock(spec=[]), 'parse': Mock(spec=[]), 'mystate': func}
         )
         obj = cls()
+        self.assertIn('mystate', obj.states)
         obj.remove_state('mystate')
         self.assertNotIn('mystate', obj.states)
+
+    def test_add_state_with_trigger_as_string(self):
+        func = self.method
+        func.__name__ = 'mystate'
+        func.trigger = 'regex'
+        self.prs.add_state(func)
+        self.assertIn('mystate', self.prs.states)
+        self.assertIn('mystate', self.prs.triggers)
+        self.assertEqual(self.prs.triggers['mystate'], re.compile('regex'))
+
+    def test_add_state_with_trigger_as_regex(self):
+        func = self.method
+        func.__name__ = 'mystate'
+        func.trigger = re.compile('regex')
+        self.prs.add_state(func)
+        self.assertIn('mystate', self.prs.states)
+        self.assertIn('mystate', self.prs.triggers)
+        self.assertEqual(self.prs.triggers['mystate'], re.compile('regex'))
+
+    def test_remove_state_with_trigger(self):
+        func = self.method
+        func.is_state = True
+        func.trigger = 'regex'
+        cls = type(
+            'Prsr', (Parser,),
+            {'initial': Mock(spec=[]), 'parse': Mock(spec=[]), 'mystate': func}
+        )
+        obj = cls()
+        self.assertIn('mystate', obj.states)
+        self.assertIn('mystate', obj.triggers)
+        obj.remove_state('mystate')
+        self.assertNotIn('mystate', obj.states)
+        self.assertNotIn('mystate', obj.triggers)
 
     def test_remove_invalid(self):
         self.assertRaises(InvalidStateError, self.prs.remove_state, 'invalid')
@@ -107,3 +142,56 @@ class TestParser(TestCase):
         def func():
             self.prs.workhorse = 'invalid'
         self.assertRaises(InvalidStateError, func)
+
+    def test_initial_matching(self):
+        self.prs.initial.side_effect = \
+            lambda line: super(type(self.prs), self.prs).initial(line)
+        self.prs.states['mystate'] = self.method
+        self.prs.triggers['mystate'] = re.compile('yes')
+        out = self.prs.initial('yes, this line will match')
+        self.prs.initial.assert_called()
+        self.assertEqual(out, {})
+        self.assertIs(self.prs.workhorse, self.method)
+
+    def test_initial_not_matching(self):
+        self.prs.initial.side_effect = \
+            lambda line: super(type(self.prs), self.prs).initial(line)
+        self.prs.states['mystate'] = self.method
+        self.prs.triggers['mystate'] = re.compile('yes')
+        out = self.prs.initial('this line will not match')
+        self.prs.initial.assert_called()
+        self.assertDictEqual(out, {})
+        self.assertIs(self.prs.workhorse, self.prs.initial)
+
+    def test_parse(self):
+        self.prs.initial.return_value = {'example': 'data'}
+        self.prs.parse.side_effect = \
+            lambda lines: super(type(self.prs), self.prs).parse(lines)
+        out = self.prs.parse(['some line'])
+        self.prs.initial.assert_called()
+        self.assertDictEqual(out, {'example': 'data'})
+
+    def test_parse_initial_resetting(self):
+        self.method.return_value = {}
+        self.prs.workhorse = self.method
+        self.prs.parse.side_effect = \
+            lambda lines: super(type(self.prs), self.prs).parse(lines)
+        out = self.prs.parse(['some line'])
+        self.method.assert_called()
+        self.assertIs(self.prs.workhorse, self.prs.initial)
+
+    def test_parse_raises_not_iterable(self):
+        self.method.return_value = 1
+        self.prs.workhorse = self.method
+        self.prs.parse.side_effect = \
+            lambda lines: super(type(self.prs), self.prs).parse(lines)
+        self.assertRaises(InvalidStateError, self.prs.parse, ['some line'])
+        self.assertIs(self.prs.workhorse, self.prs.initial)
+
+    def test_parse_raises_cant_convert_value(self):
+        self.method.return_value = 'wrong sequence'
+        self.prs.workhorse = self.method
+        self.prs.parse.side_effect = \
+            lambda lines: super(type(self.prs), self.prs).parse(lines)
+        self.assertRaises(InvalidStateError, self.prs.parse, ['some line'])
+        self.assertIs(self.prs.workhorse, self.prs.initial)
