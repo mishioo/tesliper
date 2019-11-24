@@ -47,8 +47,8 @@ matrix:
       language: shell       # 'language: python' is an error on Travis CI Windows
       before_install:
         - choco install python --version 3.6.8
-        - python --version
-        - python -m pip install --upgrade pip
+        - python3 --version
+        - python3 -m pip install --upgrade pip
         - pip3 install --upgrade pytest
         - pip3 install python-coveralls
       env: PATH=/c/Python36:/c/Python36/Scripts:$PATH
@@ -64,13 +64,13 @@ matrix:
       env: PATH=/c/Python37:/c/Python37/Scripts:$PATH
 before_install:
   - python --version
-  - pip install -U pip
-  - pip install -U pytest
-  - pip install python-coveralls
+  - pip3 install -U pip
+  - pip3 install -U pytest
+  - pip3 install python-coveralls
 install:
-  - pip install -r requirements.txt
+  - pip3 install -r requirements.txt
 script:
-  - python -m unittest test
+  - python3 -m unittest test
 after_success:
   - coverage run --source=tesliper --omit=*/gui/* -m unittest test
   - coveralls # submit coverage
