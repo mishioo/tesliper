@@ -196,6 +196,11 @@ class Parser(ABC):
         Its default implementation can be used, however, by calling
         'data = super().parse(lines)' in subclass's method.
 
+        Notes
+        -----
+        After execution - either successful or interrupted by exception -
+        `workhorse` is set back to `initial` method.
+
         Parameters
         ----------
         lines: Iterable
@@ -210,17 +215,26 @@ class Parser(ABC):
         ------
         InvalidStateError
             if dictionary can't be updated with state's return value"""
-        self.workhorse = self.initial
         data = {}
-        for line in lines:
-            output = self.workhorse(line)
-            try:
-                data.update(output)
-            except TypeError:
-                raise InvalidStateError(
-                    f'State {self.workhorse} should return value convertible '
-                    f'to a dictionary, not "{type(output)}".'
-                )
+        try:
+            for line in lines:
+                output = self.workhorse(line)
+                try:
+                    data.update(output)
+                except TypeError as error:
+                    raise InvalidStateError(
+                        f'State {self.workhorse} should return value '
+                        f'convertible to a dictionary, not "{type(output)}".'
+                    ) from error
+                except ValueError as error:
+                    raise InvalidStateError(
+                        f'Value returned by state {self.workhorse} could not '
+                        f'be converted to dictionary.'
+                    ) from error
+        except Exception:
+            raise
+        finally:
+            self.workhorse = self.initial
         return data
 
     @staticmethod
