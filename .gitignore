@@ -55,6 +55,7 @@ coverage.xml
 docs/_build/
 
 # Environments
+devenv
 .env
 .venv
 env/

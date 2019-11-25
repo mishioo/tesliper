@@ -1,6 +1,5 @@
 [![Build Status](https://travis-ci.com/mishioo/tesliper.svg?branch=dev)](https://travis-ci.com/mishioo/tesliper)
-[![Coverage Status](https://coveralls.io/repos/github/mishioo/tesliper/badge.svg?branch=dev)](https://coveralls.io/github/mishioo/tesliper?branch=dev)
-<img align="right" width="100" height="100" src="https://raw.githubusercontent.com/Mishioo/tesliper/master/tesliper/tesliper.ico">
+[![Coverage Status](https://coveralls.io/repos/github/Mishioo/tesliper/badge.svg?branch=dev)](https://coveralls.io/github/Mishioo/tesliper?branch=dev)<img align="right" width="100" height="100" src="https://raw.githubusercontent.com/Mishioo/tesliper/master/tesliper/tesliper.ico">
 
 # Tesliper
 
