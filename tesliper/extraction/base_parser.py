@@ -61,25 +61,28 @@ class Parser(ABC):
     TO DO
     -----
     make states' triggers can be string, regex or callable"""
+
     parsers = {}
-    purpose = ''
+    purpose = ""
 
     def __init__(self):
         self.states = {}
         self.triggers = {}
         states = (
-            (name, method) for name, method in
-            ((n, getattr(self, n)) for n in dir(self) if n != 'workhorse')
-            if hasattr(method, 'is_state') and method.is_state
+            (name, method)
+            for name, method in (
+                (n, getattr(self, n)) for n in dir(self) if n != "workhorse"
+            )
+            if hasattr(method, "is_state") and method.is_state
         )
         for name, method in states:
-            self.add_state(method, name, getattr(method, 'trigger', None))
+            self.add_state(method, name, getattr(method, "trigger", None))
         self.workhorse = self.initial
 
     def __init_subclass__(cls, **kwargs):
         if cls.purpose:
             Parser.parsers[cls.purpose] = cls
-        if not hasattr(cls.initial, 'is_state'):
+        if not hasattr(cls.initial, "is_state"):
             cls.initial.is_state = True
 
     @property
@@ -105,7 +108,7 @@ class Parser(ABC):
                     f"{state} is not callable nor registered state name"
                 )
 
-    def add_state(self, state: Callable, name: str = '', trigger: str = ''):
+    def add_state(self, state: Callable, name: str = "", trigger: str = ""):
         """Register callable as parser's state.
 
         This method registers a callable under 'name' key in parser.states
@@ -132,7 +135,7 @@ class Parser(ABC):
         self.states[name] = state
         if trigger:
             self.triggers[name] = re.compile(trigger)
-        elif hasattr(state, 'trigger'):
+        elif hasattr(state, "trigger"):
             self.triggers[name] = re.compile(state.trigger)
         return state
 
@@ -150,7 +153,7 @@ class Parser(ABC):
             if no callable was registered under the name 'name'
         """
         if name not in self.states:
-            raise InvalidStateError(f'No state registered under name: {name}.')
+            raise InvalidStateError(f"No state registered under name: {name}.")
         del self.states[name]
         if name in self.triggers:
             del self.triggers[name]
@@ -223,13 +226,13 @@ class Parser(ABC):
                     data.update(output)
                 except TypeError as error:
                     raise InvalidStateError(
-                        f'State {self.workhorse} should return value '
+                        f"State {self.workhorse} should return value "
                         f'convertible to a dictionary, not "{type(output)}".'
                     ) from error
                 except ValueError as error:
                     raise InvalidStateError(
-                        f'Value returned by state {self.workhorse} could not '
-                        f'be converted to dictionary.'
+                        f"Value returned by state {self.workhorse} could not "
+                        f"be converted to dictionary."
                     ) from error
         except Exception:
             raise

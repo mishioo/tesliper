@@ -4,6 +4,5 @@ import tesliper as ts
 
 
 class TestSoxhlet(ut.TestCase):
-
     def setUp(self):
         self.tslr = ts.Tesliper()

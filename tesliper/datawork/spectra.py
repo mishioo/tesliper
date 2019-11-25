@@ -36,8 +36,8 @@ def count_imaginary(frequencies):
         return (frequencies < 0).sum(1)
     else:
         raise ValueError(
-            f'Array with {frequencies.ndim} dimensions can\'t be interpreted '
-            f'as a list of conformers\' frequencies.'
+            f"Array with {frequencies.ndim} dimensions can't be interpreted "
+            f"as a list of conformers' frequencies."
         )
 
 
@@ -90,19 +90,18 @@ def gaussian(intensities, frequencies, abscissa, width):
         If given width is not greater than zero.
         If `intensities` and `frequencies` are not of the sane shape."""
     if width <= 0:
-        raise ValueError('Peak width must be a positive value!')
+        raise ValueError("Peak width must be a positive value!")
     if intensities.shape != frequencies.shape:
-        raise ValueError(
-            '`intensities` and `frequencies` must be of same shape!'
-        )
+        raise ValueError("`intensities` and `frequencies` must be of same shape!")
     if abscissa.size == 0:
         return np.array([])
     sigm = width / 1.4142135623730951  # math.sqrt(2)
     denominator = sigm * 2.5066282746310002  # (2 * math.pi) ** 0.5
     it = np.nditer(
-        [abscissa, None], flags=['buffered'],
-        op_flags=[['readonly'], ['writeonly', 'allocate', 'no_broadcast']],
-        op_dtypes=[np.float64, np.float64]
+        [abscissa, None],
+        flags=["buffered"],
+        op_flags=[["readonly"], ["writeonly", "allocate", "no_broadcast"]],
+        op_dtypes=[np.float64, np.float64],
     )
     for x, peaks in it:
         e = intensities * np.exp(-0.5 * ((x - frequencies) / sigm) ** 2)
@@ -135,19 +134,18 @@ def lorentzian(intensities, frequencies, abscissa, width):
         If given width is not greater than zero.
         If `intensities` and `frequencies` are not of the same shape."""
     if width <= 0:
-        raise ValueError('Peak width must be a positive value!')
+        raise ValueError("Peak width must be a positive value!")
     if intensities.shape != frequencies.shape:
-        raise ValueError(
-            '`intensities` and `frequencies` must be of same shape!'
-        )
+        raise ValueError("`intensities` and `frequencies` must be of same shape!")
     if abscissa.size == 0:
         return np.array([])
     hwhmsqrd = width ** 2
     hwhmoverpi = width / math.pi
     it = np.nditer(
-        [abscissa, None], flags=['buffered'],
-        op_flags=[['readonly'], ['writeonly', 'allocate', 'no_broadcast']],
-        op_dtypes=[np.float64, np.float64]
+        [abscissa, None],
+        flags=["buffered"],
+        op_flags=[["readonly"], ["writeonly", "allocate", "no_broadcast"]],
+        op_dtypes=[np.float64, np.float64],
     )
     for x, val in it:
         s = intensities / ((frequencies - x) ** 2 + hwhmsqrd)
@@ -186,9 +184,7 @@ def calculate_spectra(frequencies, intensities, abscissa, width, fitting):
         If given width is not greater than zero.
         If `intensities` and `frequencies` are not of the same shape."""
     if intensities.shape != frequencies.shape:
-        raise ValueError(
-            '`intensities` and `frequencies` must be of same shape!'
-        )
+        raise ValueError("`intensities` and `frequencies` must be of same shape!")
     spectra = np.zeros([len(frequencies), abscissa.shape[0]])  # template
     for inten, freq, spr in zip(intensities, frequencies, spectra):
         spr[...] = fitting(inten, freq, abscissa, width)
