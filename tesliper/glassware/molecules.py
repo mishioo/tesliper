@@ -1,8 +1,11 @@
 # IMPORTS
 import logging as lgg
 from collections import (
-    OrderedDict, Counter,
-    _OrderedDictKeysView, _OrderedDictItemsView, _OrderedDictValuesView
+    OrderedDict,
+    Counter,
+    _OrderedDictKeysView,
+    _OrderedDictItemsView,
+    _OrderedDictValuesView,
 )
 from contextlib import contextmanager
 from itertools import chain
@@ -26,7 +29,7 @@ class _TrimmedItemsView(_OrderedDictItemsView):
     def __contains__(self, item):
         key, value = item
         try:
-            kept = self._mapping.kept[self._mapping[key]['_index']]
+            kept = self._mapping.kept[self._mapping[key]["_index"]]
         except KeyError:
             return False
         else:
@@ -38,9 +41,7 @@ class _TrimmedItemsView(_OrderedDictItemsView):
 
     def __iter__(self):
         indices = self.indices
-        for idx, (key, kept) in enumerate(
-                zip(self._mapping, self._mapping.kept)
-        ):
+        for idx, (key, kept) in enumerate(zip(self._mapping, self._mapping.kept)):
             if kept:
                 value = self._mapping[key]
                 yield key, value if not indices else (idx, key, value)
@@ -60,9 +61,7 @@ class _TrimmedValuesView(_OrderedDictValuesView):
 
     def __iter__(self):
         indices = self.indices
-        for idx, (key, kept) in enumerate(
-                zip(self._mapping, self._mapping.kept)
-        ):
+        for idx, (key, kept) in enumerate(zip(self._mapping, self._mapping.kept)):
             if kept:
                 value = self._mapping[key]
                 yield value if not indices else (idx, value)
@@ -75,15 +74,13 @@ class _TrimmedKeysView(_OrderedDictKeysView):
 
     def __contains__(self, key):
         try:
-            return self._mapping.kept[self._mapping[key]['_index']]
+            return self._mapping.kept[self._mapping[key]["_index"]]
         except KeyError:
             return False
 
     def __iter__(self):
         indices = self.indices
-        for idx, (key, kept) in enumerate(
-                zip(self._mapping, self._mapping.kept)
-        ):
+        for idx, (key, kept) in enumerate(zip(self._mapping, self._mapping.kept)):
             if kept:
                 yield key if not indices else (idx, key)
 
@@ -131,25 +128,24 @@ class Molecules(OrderedDict):
         # TO DO: enable other, convertible to dict, structures
         # TO DO: make sure setting same key does not append kept and filenames
         if not isinstance(value, dict):
-            raise TypeError(f'Value should be dict-like object, '
-                            f'not {type(value)}')
+            raise TypeError(f"Value should be dict-like object, " f"not {type(value)}")
         if key in self:
-            index = self[key]['_index']
+            index = self[key]["_index"]
             self.kept[index] = True
         else:
             index = len(self.filenames)
             self.filenames.append(key)
             self.kept.append(True)
         super().__setitem__(key, value, **kwargs)
-        self[key]['_index'] = index
+        self[key]["_index"] = index
 
     def __delitem__(self, key, **kwargs):
-        index = self[key]['_index']
+        index = self[key]["_index"]
         super().__delitem__(key, **kwargs)
         del self.filenames[index]
         del self.kept[index]
         for index, mol in enumerate(self.values()):
-            mol['_index'] = index
+            mol["_index"] = index
 
     @property
     def kept(self):
@@ -335,24 +331,25 @@ class Molecules(OrderedDict):
             raise ValueError(f"Unknown genre '{genre}'.")
         conarr = self.kept if not full else (True for __ in self.kept)
         array = (
-            (fname, mol, mol[genre]) for (fname, mol), con
-            in zip(self.items(), conarr) if con and genre in mol
+            (fname, mol, mol[genre])
+            for (fname, mol), con in zip(self.items(), conarr)
+            if con and genre in mol
         )
         try:
             filenames, mols, values = zip(*array)
         except ValueError:  # if no elements in `array`
             logger.debug(
-                f'Array of gerne {genre} requested, but no such data available '
-                f'or conformers providing this data where trimmed off. '
-                f'Returning empty array.'
+                f"Array of gerne {genre} requested, but no such data available "
+                f"or conformers providing this data where trimmed off. "
+                f"Returning empty array."
             )
             filenames, mols, values = [], [], []
         params = cls.get_init_params()
-        parameter_type = type(params['genre'])
-        params['genre'] = genre
-        params['filenames'] = filenames
-        params['values'] = values
-        params['allow_data_inconsistency'] = self.allow_data_inconsistency
+        parameter_type = type(params["genre"])
+        params["genre"] = genre
+        params["filenames"] = filenames
+        params["values"] = values
+        params["allow_data_inconsistency"] = self.allow_data_inconsistency
         for key in params:
             if not isinstance(params[key], parameter_type):
                 continue
@@ -386,7 +383,7 @@ class Molecules(OrderedDict):
     def index_of(self, key):
         """Return index of given """
         try:
-            return self[key]['_index']
+            return self[key]["_index"]
         except KeyError:
             raise ValueError(f"No such molecule: {key}.")
 
@@ -435,14 +432,13 @@ class Molecules(OrderedDict):
         # TODO: maybe use all as default but keep current `wanted` as Molecules'
         #       attribute or module level variable
         if wanted is None:
-            wanted = 'dip rot vosc vrot losc lrot raman1 roa1 scf zpe ent ' \
-                     'ten gib'.split()
+            wanted = (
+                "dip rot vosc vrot losc lrot raman1 roa1 scf zpe ent ten gib".split()
+            )
         elif isinstance(wanted, str):
             wanted = wanted.split()
         elif not isinstance(wanted, (list, tuple)):
-            raise TypeError(
-                f"Expected list, tuple or string, got {type(wanted)}."
-            )
+            raise TypeError(f"Expected list, tuple or string, got {type(wanted)}.")
         count = [[g in mol for g in wanted] for mol in self.values()]
         best_match = max(count)
         for index, match in enumerate(count):
@@ -452,29 +448,28 @@ class Molecules(OrderedDict):
     def trim_imaginary_frequencies(self):
         dummy = [1]
         for index, mol in enumerate(self.values()):
-            freq = np.array(mol.get('freq', dummy))
+            freq = np.array(mol.get("freq", dummy))
             if (freq < 0).any():
                 self.kept[index] = False
 
     def trim_non_matching_stoichiometry(self):
         counter = Counter(
-            mol['stoichiometry'] for mol in self.values()
-            if 'stoichiometry' in mol
+            mol["stoichiometry"] for mol in self.values() if "stoichiometry" in mol
         )
         stoich = counter.most_common()[0][0]
         for index, mol in enumerate(self.values()):
-            if 'stoichiometry' not in mol or not mol['stoichiometry'] == stoich:
+            if "stoichiometry" not in mol or not mol["stoichiometry"] == stoich:
                 self.kept[index] = False
 
     def trim_not_optimized(self):
         for index, mol in enumerate(self.values()):
-            if not mol.get('optimization_completed', True):
+            if not mol.get("optimization_completed", True):
                 self.kept[index] = False
 
     def trim_non_normal_termination(self):
         # TODO: ensure its working properly
         for index, mol in enumerate(self.values()):
-            if not mol.get('normal_termination', False):
+            if not mol.get("normal_termination", False):
                 self.kept[index] = False
 
     def trim_inconsistent_sizes(self):
@@ -493,8 +488,9 @@ class Molecules(OrderedDict):
                 if fname in confs and not confs[fname] == most_common:
                     self.kept[index] = False
 
-    def trim_to_range(self, genre, minimum=float("-inf"), maximum=float("inf"),
-                      attribute='values'):
+    def trim_to_range(
+        self, genre, minimum=float("-inf"), maximum=float("inf"), attribute="values"
+    ):
         try:
             arr = self.arrayed(genre)
             atr = getattr(arr, attribute)
@@ -514,9 +510,7 @@ class Molecules(OrderedDict):
                 f"Resulting DataArray must contain objects of type int or "
                 f"float, not {type(atr[0])}"
             )
-        blade = [
-            fnm for v, fnm in zip(atr, arr.filenames) if minimum <= v <= maximum
-        ]
+        blade = [fnm for v, fnm in zip(atr, arr.filenames) if minimum <= v <= maximum]
         self.kept = blade
 
     def select_all(self):

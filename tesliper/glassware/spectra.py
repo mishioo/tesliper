@@ -10,35 +10,43 @@ logger = lgg.getLogger(__name__)
 class SingleSpectrum:
 
     _vibra_units = {
-        'width': 'cm-1',
-        'start': 'cm-1',
-        'stop': 'cm-1',
-        'step': 'cm-1',
-        'x': 'Frequency / cm^(-1)'
+        "width": "cm-1",
+        "start": "cm-1",
+        "stop": "cm-1",
+        "step": "cm-1",
+        "x": "Frequency / cm^(-1)",
     }
     _electr_units = {
-        'width': 'eV',
-        'start': 'nm',
-        'stop': 'nm',
-        'step': 'nm',
-        'x': 'Wavelength / nm'
+        "width": "eV",
+        "start": "nm",
+        "stop": "nm",
+        "step": "nm",
+        "x": "Wavelength / nm",
     }
     _units = {
-        'ir': {'y': 'Epsilon'},
-        'uv': {'y': 'Epsilon'},
-        'vcd': {'y': 'Delta Epsilon'},
-        'ecd': {'y': 'Delta Epsilon'},
-        'raman': {'y': 'I(R)+I(L)'},
-        'roa': {'y': 'I(R)-I(L)'}
+        "ir": {"y": "Epsilon"},
+        "uv": {"y": "Epsilon"},
+        "vcd": {"y": "Delta Epsilon"},
+        "ecd": {"y": "Delta Epsilon"},
+        "raman": {"y": "I(R)+I(L)"},
+        "roa": {"y": "I(R)-I(L)"},
     }
-    for u in 'ir vcd raman roa'.split(' '):
+    for u in "ir vcd raman roa".split(" "):
         _units[u].update(_vibra_units)
-    for u in ('uv', 'ecd'):
+    for u in ("uv", "ecd"):
         _units[u].update(_electr_units)
 
     def __init__(
-            self, genre, values, abscissa, width=0.0, fitting='n/a',
-            scaling=1.0, offset=0.0, filenames=None, averaged_by=None
+        self,
+        genre,
+        values,
+        abscissa,
+        width=0.0,
+        fitting="n/a",
+        scaling=1.0,
+        offset=0.0,
+        filenames=None,
+        averaged_by=None,
     ):
         self.genre = genre
         self.filenames = [] if filenames is None else filenames
@@ -55,7 +63,7 @@ class SingleSpectrum:
 
     filenames = ArrayProperty(check_against=None, dtype=str)
     abscissa = ArrayProperty(check_against=None)
-    values = ArrayProperty(check_against='abscissa')
+    values = ArrayProperty(check_against="abscissa")
 
     @property
     def units(self):
@@ -98,17 +106,23 @@ class Spectra(SingleSpectrum):
 
     filenames = ArrayProperty(check_against=None, dtype=str)
     abscissa = ArrayProperty(check_against=None)
-    values = ArrayProperty(check_against='filenames')
+    values = ArrayProperty(check_against="filenames")
 
     def __init__(
-            self, genre, filenames, values, abscissa, width=0.0,
-            fitting='n/a', scaling=1.0, offset=0.0,
-            allow_data_inconsistency=False
+        self,
+        genre,
+        filenames,
+        values,
+        abscissa,
+        width=0.0,
+        fitting="n/a",
+        scaling=1.0,
+        offset=0.0,
+        allow_data_inconsistency=False,
     ):
         self.allow_data_inconsistency = allow_data_inconsistency
         SingleSpectrum.__init__(
-            self, genre, values, abscissa, width, fitting, scaling, offset,
-            filenames
+            self, genre, values, abscissa, width, fitting, scaling, offset, filenames
         )
 
     def average(self, energies):
@@ -131,9 +145,15 @@ class Spectra(SingleSpectrum):
         energy_type = energies.genre
         av_spec = dw.calculate_average(self.values, populations)
         av_spec = SingleSpectrum(
-            self.genre, av_spec, self.abscissa, self.width, self.fitting,
-            self.scaling, self.offset, filenames=self.filenames,
-            averaged_by=energy_type
+            self.genre,
+            av_spec,
+            self.abscissa,
+            self.width,
+            self.fitting,
+            self.scaling,
+            self.offset,
+            filenames=self.filenames,
+            averaged_by=energy_type,
         )
-        logger.debug(f'{self.genre} spectrum averaged by {energy_type}.')
+        logger.debug(f"{self.genre} spectrum averaged by {energy_type}.")
         return av_spec

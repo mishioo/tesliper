@@ -10,12 +10,12 @@ logger.setLevel(lgg.DEBUG)
 
 # GLOBAL VARIABLES
 default_spectra_bars = {
-    'ir': 'dip',
-    'vcd': 'rot',
-    'uv': 'vosc',
-    'ecd': 'vrot',
-    'raman': 'raman1',
-    'roa': 'roa1'
+    "ir": "dip",
+    "vcd": "rot",
+    "uv": "vosc",
+    "ecd": "vrot",
+    "raman": "raman1",
+    "roa": "roa1",
 }
 
 
@@ -182,12 +182,11 @@ intensities_reference = dict(
     raman3=raman_and_roa,
     roa1=raman_and_roa,
     roa2=raman_and_roa,
-    roa3=raman_and_roa
+    roa3=raman_and_roa,
 )
 
 
-def calculate_intensities(genre, values, frequencies=None, t=289.15,
-                          laser=18797):
+def calculate_intensities(genre, values, frequencies=None, t=289.15, laser=18797):
     """Calculates signal intensity of desired type.
 
     Notes
@@ -223,7 +222,6 @@ def calculate_intensities(genre, values, frequencies=None, t=289.15,
         calculate = intensities_reference[genre]
     except KeyError:
         raise ValueError(
-            f"Invalid genre: '{genre}'. Can't convert genre to signal "
-            f"intensity."
+            f"Invalid genre: '{genre}'. Can't convert genre to signal " f"intensity."
         )
     return calculate(values, frequencies, t, laser)

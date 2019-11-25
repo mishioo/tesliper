@@ -20,10 +20,10 @@ logger.setLevel(lgg.DEBUG)
 class Soxhlet:
     """A tool for data extraction from files in specific directory. Typical
     use:
-    
-    >>> s = Soxhlet('absolute\path_to\working\directory')
+
+    >>> s = Soxhlet('absolute/path_to/working/directory')
     >>> data = s.extract()
-    
+
     Attributes
     ----------
     path: str
@@ -32,7 +32,7 @@ class Soxhlet:
         List of files present in directory bounded to Soxhlet instance.
     output_files
     bar_files
-    
+
     TO DO
     -----
     correct load_bars, load_popul, load_spectrs, load_settings, from_dict methods
@@ -40,7 +40,7 @@ class Soxhlet:
 
     def __init__(self, path=None, wanted_files=None, extension=None):
         """Initialization of Soxhlet object.
-        
+
         Parameters
         ----------
         path: str
@@ -53,7 +53,7 @@ class Soxhlet:
             String representing file extension of output files, that are to be
             parsed. If omitted, Soxhlet will try to resolve it based on
             contents of directory pointed by path.
-            
+
         Raises
         ------
         FileNotFoundError
@@ -86,8 +86,9 @@ class Soxhlet:
         list associated with Soxhlet instance.
         """
         try:
-            ext = self.extension if self.extension is not None \
-                else self.guess_extension()
+            ext = (
+                self.extension if self.extension is not None else self.guess_extension()
+            )
             gf = sorted(self.filter_files(ext))
         except ValueError:
             gf = []
@@ -99,7 +100,7 @@ class Soxhlet:
         associated with Soxhlet instance.
         """
         try:
-            ext = '.bar'
+            ext = ".bar"
             bar = sorted(self.filter_files(ext))
         except ValueError:
             bar = []
@@ -107,17 +108,17 @@ class Soxhlet:
 
     def filter_files(self, ext=None):
         """Filters files from filenames list.
-        
+
         Function filters file names in list associated with Soxhlet object
         instance. It returns list of file names ending with provided ext
         string, representing file extension and starting with any of filenames
         associated with instance as wanted_files if those were provided.
-        
+
         Parameters
         ----------
         ext : str
             Strings representing file extension.
-                
+
         Returns
         -------
         list
@@ -134,14 +135,13 @@ class Soxhlet:
             filtered = [f for f in files if f.endswith(ext)]
         except TypeError as error:
             raise ValueError(
-                "Parameter `ext` must be given if attribute `extension` "
-                "is None."
+                "Parameter `ext` must be given if attribute `extension` is None."
             ) from error
         return filtered
 
     def guess_extension(self):
         """Checks list of file extensions in list of file names.
-        
+
         Function checks for .log and .out files in passed list of file names.
         If both are present, it raises TypeError exception.
         If either is present, it raises ValueError exception.
@@ -152,32 +152,31 @@ class Soxhlet:
         str
             '.log' if *.log files are present in filenames list or '.out' if
             *.out files are present in filenames list.
-            
+
         Raises
         ------
         ValueError
             If both *.log and *.out files are present in list of filenames.
         TypeError
             If neither *.log nor *.out files are present in list of filenames.
-            
+
         TO DO
         -----
         add support for other extensions when new parsers implemented
         """
         files = self.wanted_files if self.wanted_files else self.files
-        logs, outs = (any(f.endswith(ext) for f in files)
-                      for ext in ('.log', '.out'))
+        logs, outs = (any(f.endswith(ext) for f in files) for ext in (".log", ".out"))
         if outs and logs:
             raise ValueError(".log and .out files mixed in directory.")
         elif not outs and not logs:
             raise TypeError("Didn't found any .log or .out files.")
         else:
-            return '.log' if logs else '.out'
+            return ".log" if logs else ".out"
 
     def extract_iter(self):
         """Extracts data from gaussian files associated with Soxhlet instance.
         Implemented as generator.
-                
+
         Yields
         ------
         tuple
@@ -185,10 +184,10 @@ class Soxhlet:
             data as second item, for each file associated with Soxhlet instance.
         """
         for num, file in enumerate(self.output_files):
-            logger.debug(f'Starting extraction from file: {file}')
+            logger.debug(f"Starting extraction from file: {file}")
             with open(os.path.join(self.path, file)) as handle:
                 data = self.parser.parse(handle)
-            logger.debug('file done.\n')
+            logger.debug("file done.\n")
             yield file, data
 
     def extract(self):
@@ -205,7 +204,7 @@ class Soxhlet:
     def load_bars(self, spectra_type=None):
         """Parses *.bar files associated with object and loads spectral data
         previously extracted from gaussian output files.
-        
+
         Parameters
         ----------
         spectra_type : str, optional
@@ -213,12 +212,12 @@ class Soxhlet:
             'vibra', 'electr' or '' (if spectrum is not present
             in gaussian output files); if omitted, spectra_type
             associated with object is used.
-                
+
         Returns
         -------
         dict
             Dictionary with extracted spectral data.
-            
+
         TO DO
         -----
         Make sure Transitions not needed.
@@ -229,15 +228,19 @@ class Soxhlet:
         no = len(self.bar_files)
         # Create empty dict with list of empty lists as default value.
         output = defaultdict(lambda: [[] for _ in range(no)])
-        keys = 'freq dip rot vemang'.split(' ') if spectra_type == 'vibra' else\
-            'wave vosc srot losc lrot energy eemang'.split(' ')
+        keys = (
+            "freq dip rot vemang".split(" ")
+            if spectra_type == "vibra"
+            else "wave vosc srot losc lrot energy eemang".split(" ")
+        )
         for num, bar in enumerate(self.bar_files):
-            with open(os.path.join(self.path, bar), newline='') as handle:
+            with open(os.path.join(self.path, bar), newline="") as handle:
                 header = handle.readline()
+                del header
                 col_names = handle.readline()
-                if 'Transition' in col_names and 'eemang' in keys:
+                if "Transition" in col_names and "eemang" in keys:
                     keys = keys[:-1]
-                reader = csv.reader(handle, delimiter='\t')
+                reader = csv.reader(handle, delimiter="\t")
                 for row in reader:
                     # For each row in *.bar file copy value to corresponding
                     # position in prepared output dict
@@ -250,24 +253,27 @@ class Soxhlet:
         """Parses BoltzmanDistribution.txt file associated with object and
         loads conformers' energies previously extracted from gaussian output
         files and calculated populations.
-                
+
         Returns
         -------
         dict
             Dictionary with extracted data.
         """
-        keys = 'filenames scfp entp gibp scfd entd gibd scf ent gib imag ' \
-               'stoich'.split(' ')
+        keys = (
+            "filenames scfp entp gibp scfd entd gibd scf ent gib imag "
+            "stoich".split(" ")
+        )
         output = defaultdict(list)
-        with open(os.path.join(self.path, 'BoltzmanDistribution.txt')) as blz:
+        with open(os.path.join(self.path, "BoltzmanDistribution.txt")) as blz:
             header1 = blz.readline()
             header2 = blz.readline()
+            del header1, header2
             for row in blz.readlines():
-                for k, v in zip(keys, self.extractor['popul'](row)):
+                for k, v in zip(keys, self.extractor["popul"](row)):
                     try:
                         v = float(v)
                     except ValueError:
-                        if '%' in v:
+                        if "%" in v:
                             v = float(v[:-1]) / 100
                     output[k].append(v)
         return self.from_dict(output)
@@ -275,12 +281,12 @@ class Soxhlet:
     def load_settings(self):
         """Parses Setup.txt file associated with object and returns dict with
         extracted values. Prefers Setup.txt file over *Setup.txt files.
-        
+
         Returns
         -------
         dict
             Dictionary eith extracted settings data.
-            
+
         Raises
         ------
         FileNotFoundError
@@ -289,11 +295,9 @@ class Soxhlet:
         try:
             f = open("Setup.txt", "r")
         except FileNotFoundError:
-            fls = [file.endswith('Setup.txt') for file in self.files]
+            fls = [file.endswith("Setup.txt") for file in self.files]
             if len(fls) != 1:
-                raise FileNotFoundError(
-                    "No or multiple setup files in directory."
-                )
+                raise FileNotFoundError("No or multiple setup files in directory.")
             else:
                 f = open(fls[0], "r")
         sett = self.extractor["settings"](f)

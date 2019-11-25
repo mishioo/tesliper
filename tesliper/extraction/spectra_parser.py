@@ -8,7 +8,6 @@ logger = lgg.getLogger(__name__)
 
 
 class SpectraParser(Parser):
-
     def __init__(self):
         super().__init__()
         self.delimiter = None
@@ -56,7 +55,7 @@ class SpectraParser(Parser):
         if self.workhorse is self.initial:
             raise ValueError(f"Don't know how to parse file {filename}")
 
-    @Parser.state(trigger=r'.+\.(?:txt|xy)$')
+    @Parser.state(trigger=r".+\.(?:txt|xy)$")
     def parse_txt(self, file):
         """Loads spectral data from txt file to numpy.array.
 
@@ -85,7 +84,7 @@ class SpectraParser(Parser):
             if file passed was read to end, but no spectral data was found;
             this includes columns' numbers out of range and usage of
             inappropriate delimiter"""
-        with open(file, 'r') as txtfile:
+        with open(file, "r") as txtfile:
             delimiter = self.delimiter
             xcolumn = self.xcolumn
             ycolumn = self.ycolumn
@@ -107,14 +106,12 @@ class SpectraParser(Parser):
                     f"and {ycolumn}."
                 )
             arr = [(x, y)]
-            for lineno, line in enumerate(txtfile, start=lineno+1):
+            for lineno, line in enumerate(txtfile, start=lineno + 1):
                 values = [v.strip() for v in line.split(delimiter) if v]
-                arr.append(
-                    tuple(map(float, (values[xcolumn], values[ycolumn])))
-                )
+                arr.append(tuple(map(float, (values[xcolumn], values[ycolumn]))))
         return np.array(list(zip(*arr)))
 
-    @Parser.state(trigger=r'.+\.csv$')
+    @Parser.state(trigger=r".+\.csv$")
     def parse_csv(self, file):
         """Loads spectral data from csv file to numpy.array.
 
@@ -140,10 +137,8 @@ class SpectraParser(Parser):
         xcolumn = self.xcolumn
         ycolumn = self.ycolumn
         arr = []
-        with open(file, newline='') as csvfile:
-            dialect = csv.Sniffer().sniff(
-                csvfile.read(1024), delimiters=delimiter
-            )
+        with open(file, newline="") as csvfile:
+            dialect = csv.Sniffer().sniff(csvfile.read(1024), delimiters=delimiter)
             csvfile.seek(0)
             reader = csv.reader(csvfile, dialect)
             for line in reader:

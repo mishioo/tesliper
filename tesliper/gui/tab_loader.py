@@ -20,7 +20,6 @@ logger = lgg.getLogger(__name__)
 
 # CLASSES
 class Loader(ttk.Frame):
-
     def __init__(self, parent):
         """
         TO DO
@@ -29,52 +28,52 @@ class Loader(ttk.Frame):
         """
         super().__init__(parent)
         self.parent = parent
-        self.grid(column=0, row=0, sticky='nwse')
+        self.grid(column=0, row=0, sticky="nwse")
         tk.Grid.columnconfigure(self, 2, weight=1)
         tk.Grid.rowconfigure(self, 5, weight=1)
-        self.bind('<FocusIn>', lambda e: self.update_overview_values())
+        self.bind("<FocusIn>", lambda e: self.update_overview_values())
 
         # Extract data
-        extract_frame = ttk.LabelFrame(self, text='Extract data...')
-        extract_frame.grid(column=0, row=0, columnspan=2, sticky='nwe')
+        extract_frame = ttk.LabelFrame(self, text="Extract data...")
+        extract_frame.grid(column=0, row=0, columnspan=2, sticky="nwe")
         tk.Grid.columnconfigure(extract_frame, 0, weight=1)
         self.b_auto_extract = ttk.Button(
-            extract_frame, text='Choose folder', command=self.from_dir
+            extract_frame, text="Choose folder", command=self.from_dir
         )
-        self.b_auto_extract.grid(column=0, row=0, sticky='nwe')
+        self.b_auto_extract.grid(column=0, row=0, sticky="nwe")
         self.b_man_extract = ttk.Button(
-            extract_frame, text='Choose files', command=self.man_extract
+            extract_frame, text="Choose files", command=self.man_extract
         )
-        self.b_man_extract.grid(column=0, row=1, sticky='nwe')
+        self.b_man_extract.grid(column=0, row=1, sticky="nwe")
 
         # Session control
         buttons_frame = ttk.LabelFrame(self, text="Session control", width=90)
-        buttons_frame.grid(column=0, row=1, columnspan=2, sticky='nwe')
+        buttons_frame.grid(column=0, row=1, columnspan=2, sticky="nwe")
         tk.Grid.columnconfigure(buttons_frame, (0, 1), weight=1)
         self.b_clear_session = ttk.Button(
-            buttons_frame, text='Clear session', command=self.parent.new_session
+            buttons_frame, text="Clear session", command=self.parent.new_session
         )
-        self.b_clear_session.grid(column=0, row=2, sticky='nwe')
+        self.b_clear_session.grid(column=0, row=2, sticky="nwe")
         guicom.WgtStateChanger.either.append(self.b_clear_session)
 
         self.b_calc = ttk.Button(
-            buttons_frame, text='Auto calculate', command=self.not_impl
+            buttons_frame, text="Auto calculate", command=self.not_impl
         )
-        self.b_calc.grid(column=0, row=0, sticky='nwe')
+        self.b_calc.grid(column=0, row=0, sticky="nwe")
         guicom.WgtStateChanger.bars.append(self.b_calc)
 
         self.b_text_export = ttk.Button(
-            buttons_frame, text='Export as .txt', command=self.save_text
+            buttons_frame, text="Export as .txt", command=self.save_text
         )
-        self.b_text_export.grid(column=1, row=0, sticky='nwe')
+        self.b_text_export.grid(column=1, row=0, sticky="nwe")
         self.b_excel_export = ttk.Button(
-            buttons_frame, text='Export as .xls', command=self.save_excel
+            buttons_frame, text="Export as .xls", command=self.save_excel
         )
-        self.b_excel_export.grid(column=1, row=1, sticky='nwe')
+        self.b_excel_export.grid(column=1, row=1, sticky="nwe")
         self.b_csv_export = ttk.Button(
-            buttons_frame, text='Export as .csv', command=self.save_csv
+            buttons_frame, text="Export as .csv", command=self.save_csv
         )
-        self.b_csv_export.grid(column=1, row=2, sticky='nwe')
+        self.b_csv_export.grid(column=1, row=2, sticky="nwe")
         guicom.WgtStateChanger.either.extend(
             [self.b_text_export, self.b_excel_export, self.b_csv_export]
         )
@@ -85,89 +84,91 @@ class Loader(ttk.Frame):
         self.overview_control_frame = ttk.Labelframe(
             self, text="Overview control", width=90
         )
-        self.overview_control_frame.grid(
-            column=0, row=2, columnspan=2, sticky='nswe'
-        )
+        self.overview_control_frame.grid(column=0, row=2, columnspan=2, sticky="nswe")
         tk.Grid.columnconfigure(self.overview_control_frame, 4, weight=1)
-        overview_vars = namedtuple(
-            'overview', ['kept', 'all', 'check', 'uncheck']
-        )
+        overview_vars = namedtuple("overview", ["kept", "all", "check", "uncheck"])
         self.overview_control_ref = {
-            k: v for k, v in zip(
-                'file en ir vcd uv ecd ram roa incompl term opt '
-                'imag'.split(' '),
-                'command gib dip rot vosc vrot raman1 roa1 command '
-                'normal_termination optimization_completed freq'.split(' ')
+            k: v
+            for k, v in zip(
+                "file en ir vcd uv ecd ram roa incompl term opt " "imag".split(" "),
+                "command gib dip rot vosc vrot raman1 roa1 command "
+                "normal_termination optimization_completed freq".split(" "),
             )
         }
         self.overview_control = dict()
-        for i, (name, key) in enumerate(zip(
-                'Files Energy IR VCD UV ECD Raman ROA Incompl. Errors '
-                'Unopt. Imag.Freq. Incons.'.split(),
-                'file en ir vcd uv ecd ram roa incompl term '
-                'opt imag incons'.split()
-        )):
-            tk.Label(
-                self.overview_control_frame, text=name, anchor='w'
-            ).grid(column=0, row=i)
+        for i, (name, key) in enumerate(
+            zip(
+                "Files Energy IR VCD UV ECD Raman ROA Incompl. Errors "
+                "Unopt. Imag.Freq. Incons.".split(),
+                "file en ir vcd uv ecd ram roa incompl term " "opt imag incons".split(),
+            )
+        ):
+            tk.Label(self.overview_control_frame, text=name, anchor="w").grid(
+                column=0, row=i
+            )
             var_checked = tk.IntVar(value=0)
             tk.Label(
-                self.overview_control_frame, textvariable=var_checked,
-                bd=0, width=3
+                self.overview_control_frame, textvariable=var_checked, bd=0, width=3
             ).grid(column=1, row=i)
-            tk.Label(
-                self.overview_control_frame, text='/', bd=0
-            ).grid(column=2, row=i)
+            tk.Label(self.overview_control_frame, text="/", bd=0).grid(column=2, row=i)
             var_all = tk.IntVar(value=0)
             tk.Label(
                 self.overview_control_frame, textvariable=var_all, bd=0, width=3
             ).grid(column=3, row=i)
             check_butt = ttk.Button(
-                self.overview_control_frame, text='check', width=6,
-                command=lambda key=key: self.un_check(key, True)
+                self.overview_control_frame,
+                text="check",
+                width=6,
+                command=lambda key=key: self.un_check(key, True),
             )
-            check_butt.grid(column=4, row=i, sticky='ne')
+            check_butt.grid(column=4, row=i, sticky="ne")
             guicom.WgtStateChanger.tslr.append(check_butt)
             uncheck_butt = ttk.Button(
-                self.overview_control_frame, text='uncheck', width=8,
-                command=lambda key=key: self.un_check(key, False)
+                self.overview_control_frame,
+                text="uncheck",
+                width=8,
+                command=lambda key=key: self.un_check(key, False),
             )
-            uncheck_butt.grid(column=5, row=i, sticky='ne')
+            uncheck_butt.grid(column=5, row=i, sticky="ne")
             guicom.WgtStateChanger.tslr.append(uncheck_butt)
             self.overview_control[key] = overview_vars(
                 var_checked, var_all, check_butt, uncheck_butt
             )
 
         # keep unchecked
-        self.keep_unchecked_frame = ttk.LabelFrame(
-            self, text='Keep unchecked?'
-        )
-        self.keep_unchecked_frame.grid(
-            column=0, row=3, columnspan=2, sticky='nswe'
-        )
+        self.keep_unchecked_frame = ttk.LabelFrame(self, text="Keep unchecked?")
+        self.keep_unchecked_frame.grid(column=0, row=3, columnspan=2, sticky="nswe")
         self.kept_vars = {
-            k: tk.BooleanVar() for k
-            in 'error unopt imag stoich incompl incons'.split(' ')
+            k: tk.BooleanVar()
+            for k in "error unopt imag stoich incompl incons".split(" ")
         }
         self.kept_buttons = {
             k: ttk.Checkbutton(
-                self.keep_unchecked_frame, text=text, variable=var,
-                command=lambda k=k: self.discard(k)
-            ) for (k, var), text in zip(
+                self.keep_unchecked_frame,
+                text=text,
+                variable=var,
+                command=lambda k=k: self.discard(k),
+            )
+            for (k, var), text in zip(
                 self.kept_vars.items(),
-                ['Error termination', 'Unoptimised', 'Imaginary frequencies',
-                 'Non-matching stoichiometry', 'Incomplete entries',
-                 'Inconsistent data sizes']
+                [
+                    "Error termination",
+                    "Unoptimised",
+                    "Imaginary frequencies",
+                    "Non-matching stoichiometry",
+                    "Incomplete entries",
+                    "Inconsistent data sizes",
+                ],
             )
         }
         for n, (key, var) in enumerate(self.kept_vars.items()):
             var.set(True)
-            self.kept_buttons[key].grid(column=0, row=n, sticky='nw')
+            self.kept_buttons[key].grid(column=0, row=n, sticky="nw")
 
         # Conformers Overview
-        self.label_overview = ttk.LabelFrame(self, text='Conformers Overview')
+        self.label_overview = ttk.LabelFrame(self, text="Conformers Overview")
         self.label_overview.grid(
-            column=2, row=0, columnspan=3, rowspan=6, sticky='nwse'
+            column=2, row=0, columnspan=3, rowspan=6, sticky="nwse"
         )
         self.overview = None
         tk.Grid.rowconfigure(self.label_overview, 0, weight=1)
@@ -176,39 +177,42 @@ class Loader(ttk.Frame):
     def un_check(self, key, keep):
         overview_funcs = dict(
             file=lambda *args: True,
-            en=lambda *args: 'gib' in args[0],
-            ir=lambda *args: 'dip' in args[0],
-            vcd=lambda *args: 'rot' in args[0],
-            uv=lambda *args: 'vosc' in args[0],
-            ecd=lambda *args: 'vrot' in args[0],
-            ram=lambda *args: 'raman1' in args[0],
-            roa=lambda *args: 'roa1' in args[0],
+            en=lambda *args: "gib" in args[0],
+            ir=lambda *args: "dip" in args[0],
+            vcd=lambda *args: "rot" in args[0],
+            uv=lambda *args: "vosc" in args[0],
+            ecd=lambda *args: "vrot" in args[0],
+            ram=lambda *args: "raman1" in args[0],
+            roa=lambda *args: "roa1" in args[0],
             incompl=lambda *args: not all(g in args[0] for g in args[1]),
-            term=lambda *args: args[0]['normal_termination'],
-            opt=lambda *args: 'optimization_completed' in args[0]
-                              and not args[0]['optimization_completed'],
-            imag=lambda *args: 'freq' in args[0] and
-                               any([f < 0 for f in args[0]['freq']]),
-            incons=lambda *args: any(g in args[0] and not len(args[0][g]) == mx
-                                     for g, mx in args[2].items())
+            term=lambda *args: args[0]["normal_termination"],
+            opt=lambda *args: "optimization_completed" in args[0]
+            and not args[0]["optimization_completed"],
+            imag=lambda *args: "freq" in args[0]
+            and any([f < 0 for f in args[0]["freq"]]),
+            incons=lambda *args: any(
+                g in args[0] and not len(args[0][g]) == mx for g, mx in args[2].items()
+            ),
         )
         mols = self.parent.tslr.molecules
         condition = overview_funcs[key]
         overview = self.overview
         best_match = []
         maxes = {}
-        if key == 'incompl':
+        if key == "incompl":
             try:
-                wanted = 'dip rot vosc vrot losc lrot raman1 roa1 scf zpe ent '\
-                         'ten gib'.split()
+                wanted = (
+                    "dip rot vosc vrot losc lrot raman1 roa1 scf zpe ent "
+                    "ten gib".split()
+                )
                 count = [
-                    [g in mol for g in wanted] for mol
-                    in self.parent.tslr.molecules.values()
+                    [g in mol for g in wanted]
+                    for mol in self.parent.tslr.molecules.values()
                 ]
                 best_match = [g for g, k in zip(wanted, max(count)) if k]
             except ValueError:
                 best_match = []
-        elif key == 'incons':
+        elif key == "incons":
             sizes = {}
             for fname, mol in self.parent.tslr.molecules.items():
                 for genre, value in mol.items():
@@ -232,58 +236,57 @@ class Loader(ttk.Frame):
             imag=self.parent.tslr.molecules.trim_imaginary_frequencies,
             stoich=self.parent.tslr.molecules.trim_non_matching_stoichiometry,
             incompl=self.parent.tslr.molecules.trim_incomplete,
-            incons=self.parent.tslr.molecules.trim_inconsistent_sizes
+            incons=self.parent.tslr.molecules.trim_inconsistent_sizes,
         )
 
     def not_impl(self):
         messagebox.showinfo(
-            "Sorry!",
-            "We are sorry, but this function is not implemented yet."
+            "Sorry!", "We are sorry, but this function is not implemented yet."
         )
 
     def get_save_output(self):
-        popup = guicom.ExportPopup(self, width='220', height='130')
+        popup = guicom.ExportPopup(self, width="220", height="130")
         query = popup.get_query()
         return query
 
-    @guicom.Feedback('Saving...')
+    @guicom.Feedback("Saving...")
     def execute_save_command(self, output, dest, fmt):
         savers = {
-            'energies': self.parent.tslr.export_energies,
-            'bars': self.parent.tslr.export_bars,
-            'spectra': self.parent.tslr.export_spectra,
-            'averaged': self.parent.tslr.export_averaged
+            "energies": self.parent.tslr.export_energies,
+            "bars": self.parent.tslr.export_bars,
+            "spectra": self.parent.tslr.export_spectra,
+            "averaged": self.parent.tslr.export_averaged,
         }
-        if 'averaged' in output:
-            self.parent.progtext.set('Averaging spectra...')
+        if "averaged" in output:
+            self.parent.progtext.set("Averaging spectra...")
             self.parent.tslr.average_spectra()
-            self.parent.progtext.set('Saving...')
+            self.parent.progtext.set("Saving...")
         for thing in output:
             savers[thing](dest, fmt)
 
     def save(self, output, fmt):
         dest = askdirectory()
         if dest:
-            logger.debug(f'Export requested: {output}; format: {fmt}')
+            logger.debug(f"Export requested: {output}; format: {fmt}")
             self.execute_save_command(output, dest, fmt)
 
     def save_text(self):
         output = self.get_save_output()
         if not output:
             return
-        self.save(output, fmt='txt')
+        self.save(output, fmt="txt")
 
     def save_excel(self):
         output = self.get_save_output()
         if not output:
             return
-        self.save(output, fmt='xlsx')
+        self.save(output, fmt="xlsx")
 
     def save_csv(self):
         output = self.get_save_output()
         if not output:
             return
-        self.save(output, fmt='csv')
+        self.save(output, fmt="csv")
 
     def from_dir(self):
         work_dir = askdirectory()
@@ -293,10 +296,13 @@ class Loader(ttk.Frame):
 
     def man_extract(self):
         files = askopenfilenames(
-            filetypes=[("gaussian output", ("*.log", "*.out")),
-                       ("log files", "*.log"), ("out files", "*.out"),
-                       ("all files", "*.*")],
-            defaultextension='.log'
+            filetypes=[
+                ("gaussian output", ("*.log", "*.out")),
+                ("log files", "*.log"),
+                ("out files", "*.out"),
+                ("all files", "*.*"),
+            ],
+            defaultextension=".log",
         )
         if not files:
             return
@@ -304,18 +310,16 @@ class Loader(ttk.Frame):
         filenames = list(map(lambda p: os.path.split(p)[1], files))
         self.extract(path, filenames)
 
-    @guicom.Feedback('Extracting...')
+    @guicom.Feedback("Extracting...")
     def extract(self, path, wanted_files=None):
         # TO DO: handle extraction errors
         tslr = self.parent.tslr
         overview = self.overview
         try:
             for file, data in tslr.extract_iterate(path, wanted_files):
-                overview.insert('', tk.END, text=file)
+                overview.insert("", tk.END, text=file)
         except TypeError as err:
-            logger.warning(
-                "Cannot extract from specified directory: " + err.args[0]
-            )
+            logger.warning("Cannot extract from specified directory: " + err.args[0])
             return
         # self.parent.conf_tab.conf_list.refresh()
         self.set_overview_values()
@@ -325,11 +329,12 @@ class Loader(ttk.Frame):
     def set_overview_values(self):
         values = {k: 0 for k in self.overview_control.keys()}
         try:
-            wanted = 'dip rot vosc vrot losc lrot raman1 roa1 scf zpe ent ' \
-                     'ten gib'.split()
+            wanted = (
+                "dip rot vosc vrot losc lrot raman1 roa1 scf zpe ent " "ten gib".split()
+            )
             count = [
-                [g in mol for g in wanted] for mol
-                in self.parent.tslr.molecules.values()
+                [g in mol for g in wanted]
+                for mol in self.parent.tslr.molecules.values()
             ]
             best_match = [g for g, k in zip(wanted, max(count)) if k]
         except ValueError:
@@ -344,21 +349,21 @@ class Loader(ttk.Frame):
             for genre, values in sizes.items()
         }
         for num, mol in enumerate(self.parent.tslr.molecules.values()):
-            values['file'] += 1
-            values['term'] += not mol['normal_termination']
-            values['incompl'] += not all(g in mol for g in best_match)
-            values['opt'] += 'optimization_completed' in mol and \
-                             not mol['optimization_completed']
-            values['imag'] += 'freq' in mol and \
-                              sum(v < 0 for v in mol['freq']) > 0
-            values['en'] += 'gib' in mol
-            values['ir'] += 'dip' in mol
-            values['vcd'] += 'rot' in mol
-            values['uv'] += 'vosc' in mol
-            values['ecd'] += 'vrot' in mol
-            values['ram'] += 'raman1' in mol
-            values['roa'] += 'roa1' in mol
-            values['incons'] += any(
+            values["file"] += 1
+            values["term"] += not mol["normal_termination"]
+            values["incompl"] += not all(g in mol for g in best_match)
+            values["opt"] += (
+                "optimization_completed" in mol and not mol["optimization_completed"]
+            )
+            values["imag"] += "freq" in mol and sum(v < 0 for v in mol["freq"]) > 0
+            values["en"] += "gib" in mol
+            values["ir"] += "dip" in mol
+            values["vcd"] += "rot" in mol
+            values["uv"] += "vosc" in mol
+            values["ecd"] += "vrot" in mol
+            values["ram"] += "raman1" in mol
+            values["roa"] += "roa1" in mol
+            values["incons"] += any(
                 g in mol and not len(mol[g]) == mx for g, mx in maxes.items()
             )
         for key, value in values.items():
@@ -367,11 +372,12 @@ class Loader(ttk.Frame):
     def update_overview_values(self):
         values = {k: 0 for k in self.overview_control.keys()}
         try:
-            wanted = 'dip rot vosc vrot losc lrot raman1 roa1 scf zpe ent ' \
-                     'ten gib'.split()
+            wanted = (
+                "dip rot vosc vrot losc lrot raman1 roa1 scf zpe ent " "ten gib".split()
+            )
             count = [
-                [g in mol for g in wanted] for mol
-                in self.parent.tslr.molecules.values()
+                [g in mol for g in wanted]
+                for mol in self.parent.tslr.molecules.values()
             ]
             best_match = [g for g, k in zip(wanted, max(count)) if k]
         except ValueError:
@@ -388,34 +394,36 @@ class Loader(ttk.Frame):
         # if self.parent.tslr.molecules.trimmed_values():
         #     import pdb; pdb.set_trace()
         for mol in self.parent.tslr.molecules.trimmed_values():
-            values['file'] += 1
-            values['term'] += not mol['normal_termination']
-            values['incompl'] += not all(g in mol for g in best_match)
-            values['opt'] += 'optimization_completed' in mol and \
-                             not mol['optimization_completed']
-            values['imag'] += 'freq' in mol and \
-                              sum(v < 0 for v in mol['freq']) > 0
-            values['en'] += 'gib' in mol
-            values['ir'] += 'dip' in mol
-            values['vcd'] += 'rot' in mol
-            values['uv'] += 'vosc' in mol
-            values['ecd'] += 'vrot' in mol
-            values['ram'] += 'raman1' in mol
-            values['roa'] += 'roa1' in mol
-            values['incons'] += any(
+            values["file"] += 1
+            values["term"] += not mol["normal_termination"]
+            values["incompl"] += not all(g in mol for g in best_match)
+            values["opt"] += (
+                "optimization_completed" in mol and not mol["optimization_completed"]
+            )
+            values["imag"] += "freq" in mol and sum(v < 0 for v in mol["freq"]) > 0
+            values["en"] += "gib" in mol
+            values["ir"] += "dip" in mol
+            values["vcd"] += "rot" in mol
+            values["uv"] += "vosc" in mol
+            values["ecd"] += "vrot" in mol
+            values["ram"] += "raman1" in mol
+            values["roa"] += "roa1" in mol
+            values["incons"] += any(
                 g in mol and not len(mol[g]) == mx for g, mx in maxes.items()
             )
         for key, items in self.overview_control.items():
             items[0].set(values[key])
 
     def discard(self, key):
-        if key == 'incons':
-            self.parent.tslr.molecules.allow_data_inconsistency = \
-                not self.kept_vars[key].get()
+        if key == "incons":
+            self.parent.tslr.molecules.allow_data_inconsistency = not self.kept_vars[
+                key
+            ].get()
         if self.kept_vars[key].get():
             self.kept_funcs[key]()
-            for box, kept in zip(self.overview.boxes.values(),
-                                 self.parent.tslr.molecules.kept):
+            for box, kept in zip(
+                self.overview.boxes.values(), self.parent.tslr.molecules.kept
+            ):
                 box.var.set(kept)
         self.update_overview_values()
 
@@ -423,22 +431,25 @@ class Loader(ttk.Frame):
         for key, var in self.kept_vars.items():
             if var.get():
                 self.kept_funcs[key]()
-        for box, kept in zip(self.overview.boxes.values(),
-                             self.parent.tslr.molecules.kept):
+        for box, kept in zip(
+            self.overview.boxes.values(), self.parent.tslr.molecules.kept
+        ):
             box.var.set(kept)
 
-    @guicom.Feedback('Calculating populations...')
+    @guicom.Feedback("Calculating populations...")
     def calc_popul(self):
-        logger.debug('Calculating populations...')
+        logger.debug("Calculating populations...")
         self.parent.tslr.calculate_populations()
 
-    @guicom.Feedback('Calculating spectra...')
+    @guicom.Feedback("Calculating spectra...")
     def calc_spectra(self):
         self.parent.tslr.calculate_spectra()
 
-    @guicom.Feedback('Averaging spectra...')
+    @guicom.Feedback("Averaging spectra...")
     def calc_average(self):
         self.parent.tslr.average_spectra()
 
     def get_wanted_bars(self):
-        popup = guicom.BarsPopup(self, width='250', height='190')
+        # TODO: check if needed, delete if it's not
+        popup = guicom.BarsPopup(self, width="250", height="190")
+        del popup

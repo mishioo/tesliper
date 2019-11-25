@@ -13,12 +13,12 @@ logger.setLevel(lgg.DEBUG)
 
 # GLOBAL VARIABLES
 default_spectra_bars = {
-    'ir': 'dip',
-    'vcd': 'rot',
-    'uv': 'vosc',
-    'ecd': 'vrot',
-    'raman': 'raman1',
-    'roa': 'roa1'
+    "ir": "dip",
+    "vcd": "rot",
+    "uv": "vosc",
+    "ecd": "vrot",
+    "raman": "raman1",
+    "roa": "roa1",
 }
 
 
@@ -42,26 +42,26 @@ class DataArray(ArrayBase):
     """
 
     full_name_ref = dict(
-        rot='Rot. Strength',
-        dip='Dip. Strength',
-        roa1='ROA1',
-        raman1='Raman1',
-        vrot='Rot. (velo)',
-        lrot='Rot. (lenght)',
-        vosc='Osc. (velo)',
-        losc='Osc. (length)',
-        iri='IR Intensity',
-        vemang='E-M Angle',
-        eemang='E-M Angle',
-        zpe='Zero-point Energy',
-        ten='Thermal Energy',
-        ent='Thermal Enthalpy',
-        gib='Thermal Free Energy',
-        scf='SCF',
-        ex_en='Excitation energy',
-        freq='Frequency',
-        wave='Wavelength',
-        energies='Energies'
+        rot="Rot. Strength",
+        dip="Dip. Strength",
+        roa1="ROA1",
+        raman1="Raman1",
+        vrot="Rot. (velo)",
+        lrot="Rot. (lenght)",
+        vosc="Osc. (velo)",
+        losc="Osc. (length)",
+        iri="IR Intensity",
+        vemang="E-M Angle",
+        eemang="E-M Angle",
+        zpe="Zero-point Energy",
+        ten="Thermal Energy",
+        ent="Thermal Enthalpy",
+        gib="Thermal Free Energy",
+        scf="SCF",
+        ex_en="Excitation energy",
+        freq="Frequency",
+        wave="Wavelength",
+        energies="Energies",
     )
 
     @property
@@ -71,10 +71,12 @@ class DataArray(ArrayBase):
 
 class FloatArray(DataArray):
 
-    associated_genres = 'zpecorr tencorr entcorr gibcorr mass frc emang ' \
-                        'depolarp depolaru depp depu alpha2 beta2 alphag ' \
-                        'gamma2 delta2 cid1 cid2 cid3 rc180 eemang'.split(' ')
-    values = ArrayProperty(dtype=float, check_against='filenames')
+    associated_genres = (
+        "zpecorr tencorr entcorr gibcorr mass frc emang "
+        "depolarp depolaru depp depu alpha2 beta2 alphag "
+        "gamma2 delta2 cid1 cid2 cid3 rc180 eemang".split(" ")
+    )
+    values = ArrayProperty(dtype=float, check_against="filenames")
 
     def average_conformers(self, energies):
         """A method for averaging values by population of conformers.
@@ -103,32 +105,35 @@ class FloatArray(DataArray):
             energy_type = energies.genre
         except AttributeError:
             populations = np.asanyarray(energies, dtype=float)
-            energy_type = 'unknown'
+            energy_type = "unknown"
         averaged_values = dw.calculate_average(self.values, populations)
         args = self.get_repr_args()
-        args['values'] = [averaged_values]
-        args['allow_data_inconsistency'] = True
+        args["values"] = [averaged_values]
+        args["allow_data_inconsistency"] = True
         try:
             averaged = type(self)(**args)
         except (TypeError, ValueError) as err:
             raise TypeError(
-                f'Could not create an instance of {type(self)} from its '
-                f'signature. Use tesliper.datawork.calculate_average instead.'
+                f"Could not create an instance of {type(self)} from its "
+                f"signature. Use tesliper.datawork.calculate_average instead."
             ) from err
-        logger.debug(f'{self.genre} averaged by {energy_type}.')
+        logger.debug(f"{self.genre} averaged by {energy_type}.")
         return averaged
 
 
 class InfoArray(DataArray):
     associated_genres = [
-        'command', 'cpu_time', 'transitions', 'stoichiometry'  # , 'filenames'
+        "command",
+        "cpu_time",
+        "transitions",
+        "stoichiometry",  # , 'filenames'
     ]
-    values = ArrayProperty(dtype=str, check_against='filenames')
+    values = ArrayProperty(dtype=str, check_against="filenames")
 
 
 class BooleanArray(DataArray):
-    associated_genres = ['normal_termination', 'optimization_completed']
-    values = ArrayProperty(dtype=bool, check_against='filenames')
+    associated_genres = ["normal_termination", "optimization_completed"]
+    values = ArrayProperty(dtype=bool, check_against="filenames")
 
 
 class Energies(FloatArray):
@@ -145,11 +150,10 @@ class Energies(FloatArray):
     t : int or float
         Temperature of calculated state in K."""
 
-    associated_genres = 'scf zpe ten ent gib'.split(' ')
+    associated_genres = "scf zpe ten ent gib".split(" ")
 
     def __init__(
-            self, genre, filenames, values, t=298.15,
-            allow_data_inconsistency=False
+        self, genre, filenames, values, t=298.15, allow_data_inconsistency=False
     ):
         super().__init__(genre, filenames, values, allow_data_inconsistency)
         self.t = t  # temperature in K
@@ -211,49 +215,49 @@ class Bars(FloatArray):
 
     associated_genres = ()
     spectra_name_ref = dict(
-        rot='vcd',
-        dip='ir',
-        iri='ir',
-        roa1='roa',
-        raman1='raman',
-        vrot='ecd',
-        lrot='ecd',
-        vosc='uv',
-        losc='uv'
+        rot="vcd",
+        dip="ir",
+        iri="ir",
+        roa1="roa",
+        raman1="raman",
+        vrot="ecd",
+        lrot="ecd",
+        vosc="uv",
+        losc="uv",
     )
     spectra_type_ref = dict(
-        vcd='vibra',
-        ir='vibra',
-        roa='vibra',
-        raman='vibra',
-        ecd='electr',
-        uv='electr'
+        vcd="vibra", ir="vibra", roa="vibra", raman="vibra", ecd="electr", uv="electr"
     )
     _units = dict(
-        freq='Frequency / cm^(-1)',
-        wave='Wavenlength / nm',
-        ex_en='Excitation energy / eV',
-        rot='R / 10^(-44) esu^2 cm^2',
-        dip='D / 10^(-40) esu^2 cm^2',
-        iri='KM/Mole',
-        ramact='Raman scattering activities / A^4/AMU',
-        roa1='ROA intensiy / 10^4 K',
-        raman1='Raman intensity / K',
-        roa2='ROA intensiy / 10^4 K',
-        raman2='Raman intensity / K',
-        roa3='ROA intensiy / 10^4 K',
-        raman3='Raman intensity / K',
-        vrot='R / 10^(-40) erg*esu*cm/Gauss',
-        lrot='R / 10^(-40) erg*esu*cm/Gauss',
-        vosc='Oscillator strength',
-        losc='Oscillator strength',
-        vdip='D / 10^(-44) esu^2 cm^2',
-        ldip='D / 10^(-44) esu^2 cm^2'
+        freq="Frequency / cm^(-1)",
+        wave="Wavenlength / nm",
+        ex_en="Excitation energy / eV",
+        rot="R / 10^(-44) esu^2 cm^2",
+        dip="D / 10^(-40) esu^2 cm^2",
+        iri="KM/Mole",
+        ramact="Raman scattering activities / A^4/AMU",
+        roa1="ROA intensiy / 10^4 K",
+        raman1="Raman intensity / K",
+        roa2="ROA intensiy / 10^4 K",
+        raman2="Raman intensity / K",
+        roa3="ROA intensiy / 10^4 K",
+        raman3="Raman intensity / K",
+        vrot="R / 10^(-40) erg*esu*cm/Gauss",
+        lrot="R / 10^(-40) erg*esu*cm/Gauss",
+        vosc="Oscillator strength",
+        losc="Oscillator strength",
+        vdip="D / 10^(-44) esu^2 cm^2",
+        ldip="D / 10^(-44) esu^2 cm^2",
     )
 
     def __init__(
-            self, genre, filenames, values, t=298.15, laser=532,
-            allow_data_inconsistency=False
+        self,
+        genre,
+        filenames,
+        values,
+        t=298.15,
+        laser=532,
+        allow_data_inconsistency=False,
     ):
         super().__init__(genre, filenames, values, allow_data_inconsistency)
         self.t = t  # temperature in K
@@ -293,7 +297,7 @@ class Bars(FloatArray):
         try:
             return self._units[self.genre]
         except KeyError:
-            return ''
+            return ""
 
     @property
     def intensities(self):
@@ -311,19 +315,24 @@ class Bars(FloatArray):
 
 
 class GroundStateBars(Bars):
-    associated_genres = 'freq iri dip rot ramact raman1 roa1 raman2 ' \
-                        'roa2 raman3 roa3'.split(' ')
+    associated_genres = (
+        "freq iri dip rot ramact raman1 roa1 raman2 " "roa2 raman3 roa3".split(" ")
+    )
 
     def __init__(
-            self, genre, filenames, values, freq, t=298.15, laser=532,
-            allow_data_inconsistency=False
+        self,
+        genre,
+        filenames,
+        values,
+        freq,
+        t=298.15,
+        laser=532,
+        allow_data_inconsistency=False,
     ):
-        super().__init__(
-            genre, filenames, values, t, laser, allow_data_inconsistency
-        )
+        super().__init__(genre, filenames, values, t, laser, allow_data_inconsistency)
         self.freq = freq
 
-    freq = ArrayProperty(check_against='filenames')
+    freq = ArrayProperty(check_against="filenames")
 
     @property
     def imaginary(self):
@@ -378,9 +387,7 @@ class GroundStateBars(Bars):
         abscissa = np.arange(start, stop, step)
         freqs = self.frequencies
         inten = self.intensities
-        values = dw.calculate_spectra(
-            freqs, inten, abscissa, width, fitting
-        )
+        values = dw.calculate_spectra(freqs, inten, abscissa, width, fitting)
         spectra_name = self.spectra_name
         fitting_name = fitting.__name__
         if values.size:
@@ -395,16 +402,21 @@ class GroundStateBars(Bars):
 
 
 class ExcitedStateBars(Bars):
-    associated_genres = 'wave ex_en vdip ldip vrot lrot vosc losc'.split(' ')
+    associated_genres = "wave ex_en vdip ldip vrot lrot vosc losc".split(" ")
 
     def __init__(
-            self, genre, filenames, values, wavelen, t=298.15,
-            allow_data_inconsistency=False
+        self,
+        genre,
+        filenames,
+        values,
+        wavelen,
+        t=298.15,
+        allow_data_inconsistency=False,
     ):
         super().__init__(genre, filenames, values, t, allow_data_inconsistency)
         self.wavelen = wavelen  # in nm
 
-    wavelen = ArrayProperty(check_against='filenames')
+    wavelen = ArrayProperty(check_against="filenames")
 
     def calculate_spectra(self, start, stop, step, width, fitting):
         """Calculates spectrum of desired type for each individual conformer.
@@ -435,9 +447,7 @@ class ExcitedStateBars(Bars):
         _abscissa = 1e7 / abscissa  # from nm to cm-1
         freqs = self.frequencies
         inten = self.intensities
-        values = dw.calculate_spectra(
-            freqs, inten, _abscissa, _width, fitting
-        )
+        values = dw.calculate_spectra(freqs, inten, _abscissa, _width, fitting)
         spectra_name = self.spectra_name
         fitting_name = fitting.__name__
         if values.size:
