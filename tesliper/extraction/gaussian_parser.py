@@ -136,6 +136,142 @@ fc_reg = re.compile(r"(\d+)\s+" + fc_sci_not + (r"\s*" + fc_sci_not + "?") * 4)
 
 # CLASSES
 class GaussianParser(Parser):
+    """Parser for extracting data from human-readable output files from Gaussian
+    computational chemistry software (.log and .out files).
+
+    This class implements methods for reading information about conducted calculations'
+    parameters, molecule energy, structure optimization, and calculation of spectral
+    properties. It's use is as straightforward as:
+
+    >>> parser = GaussianParser()
+    >>> with open('path/to/file.out') as file:
+    >>>     data = parser.parse(file)
+
+    Dictionary with data extracted is also stored as `data` attribute of instance used
+    for parsing. Each key in said dictionary is a name of its value data type, called
+    from now on a 'data genre' (to avoid confusion with Python's data type). Below is
+    a full list of data genres recognised by this parser, with their description:
+
+    freq : list of floats, available from freq job
+        harmonic vibrational frequencies (cm^-1)
+    mass : list of floats, available from freq job
+        reduced masses (AMU)
+    frc : list of floats, available from freq job
+        force constants (mDyne/A)
+    iri : list of floats, available from freq job
+        IR intensities (KM/mole)
+    dip : list of floats, available from freq=VCD job
+        dipole strengths (10**-40 esu**2-cm**2)
+    rot : list of floats, available from freq=VCD job
+        rotational strengths (10**-44 esu**2-cm**2)
+    emang : list of floats, available from freq=VCD job
+        E-M angle = Angle between electric and magnetic dipole transition moments (deg)
+    depolarp : list of floats, available from freq=Raman job
+        depolarization ratios for plane incident light
+    depolaru : list of floats, available from freq=Raman job
+        depolarization ratios for unpolarized incident light
+    ramanactiv : list of floats, available from freq=Raman job
+        Raman scattering activities (A**4/AMU)
+    ramact : list of floats, available from freq=ROA job
+        Raman scattering activities (A**4/AMU)
+    depp : list of floats, available from freq=ROA job
+        depolarization ratios for plane incident light
+    depu : list of floats, available from freq=ROA job
+        depolarization ratios for unpolarized incident light
+    alpha2 : list of floats, available from freq=ROA job
+        Raman invariants Alpha2 = alpha**2 (A**4/AMU)
+    beta2 : list of floats, available from freq=ROA job
+        Raman invariants Beta2 = beta(alpha)**2 (A**4/AMU)
+    alphag : list of floats, available from freq=ROA job
+        ROA invariants AlphaG = alphaG'(10**4 A**5/AMU)
+    gamma2 : list of floats, available from freq=ROA job
+        ROA invariants Gamma2 = beta(G')**2 (10**4 A**5/AMU)
+    delta2 : list of floats, available from freq=ROA job
+        ROA invariants Delta2 = beta(A)**2, (10**4 A**5/AMU)
+    raman1 : list of floats, available from freq=ROA job
+        Far-From-Resonance Raman intensities =ICPu/SCPu(180) (K)
+    roa1 : list of floats, available from freq=ROA job
+        ROA intensities =ICPu/SCPu(180) (10**4 K)
+    cid1 : list of floats, available from freq=ROA job
+        CID=(ROA/Raman)*10**4 =ICPu/SCPu(180)
+    raman2 : list of floats, available from freq=ROA job
+        Far-From-Resonance Raman intensities =ICPd/SCPd(90) (K)
+    roa2 : list of floats, available from freq=ROA job
+        ROA intensities =ICPd/SCPd(90) (10**4 K)
+    cid2 : list of floats, available from freq=ROA job
+        CID=(ROA/Raman)*10**4 =ICPd/SCPd(90)
+    raman3 : list of floats, available from freq=ROA job
+        Far-From-Resonance Raman intensities =DCPI(180) (K)
+    roa3 : list of floats, available from freq=ROA job
+        ROA intensities =DCPI(180) (10**4 K)
+    cid3 : list of floats, available from freq=ROA job
+        CID=(ROA/Raman)*10**4 =DCPI(180)
+    rc180 : list of floats, available from freq=ROA job
+        RC180 = degree of circularity
+    wavelen : list of floats, available from td job
+        excitation energies (nm)
+    ex_en : list of floats, available from td job
+        excitation energies (eV)
+    eemang : list of floats, available from td job
+        E-M angle = Angle between electric and magnetic dipole transition moments (deg)
+    vdip : list of floats, available from td job
+        dipole strengths (velocity)
+    ldip : list of floats, available from td job
+        dipole strengths (length)
+    vrot : list of floats, available from td job
+        rotatory strengths (velocity) in cgs (10**-40 erg-esu-cm/Gauss)
+    lrot : list of floats, available from td job
+        rotatory strengths (length) in cgs (10**-40 erg-esu-cm/Gauss)
+    vosc : list of floats, available from td job
+        oscillator strengths
+    losc : list of floats, available from td job
+        oscillator strengths
+    transitions : list of tuples of tuples of (int, int, float), available from td job
+        transitions (first to second) and their coefficients (third)
+    scf : float, always available
+        SCF energy
+    zpe : float, available from freq job
+        Sum of electronic and zero-point Energies (Hartree/Particle)
+    ten : float, available from freq job
+        Sum of electronic and thermal Energies (Hartree/Particle)
+    ent : float, available from freq job
+        Sum of electronic and thermal Enthalpies (Hartree/Particle)
+    gib : float, available from freq job
+        Sum of electronic and thermal Free Energies (Hartree/Particle)
+    zpecorr : float, available from freq job
+        Zero-point correction (Hartree/Particle)
+    tencorr : float, available from freq job
+        Thermal correction to Energy (Hartree/Particle)
+    entcorr : float, available from freq job
+        Thermal correction to Enthalpy (Hartree/Particle)
+    gibcorr : float, available from freq job
+        Thermal correction to Gibbs Free Energy (Hartree/Particle)
+    command : str, always available
+        command used for calculations
+    normal_termination : bool, always available
+        true if Gaussian job seem to exit normally, false otherwise
+    optimization_completed : bool, available from opt job
+        true if structure optimization was performed successfully
+    version : str, always available
+        version of Gaussian software used
+    charge : float, always available
+        molecule's charge
+    multiplicity : float, always available
+        molecule's spin multiplicity
+    input_geom : list of tuples of (str, float, float, float), always available
+        input orientation, starting with atom symbol
+    stoichiometry : str, always available
+        molecule's stoichiometry
+    molecule_atoms : tuple of ints, always available
+        molecule's atoms as atomic numbers
+    geometry : tuple of tuples of floats, always available
+        molecule's geometry (last one found in file) as X, Y, Z coordinates of atoms
+
+    Attributes
+    ----------
+    data : dict
+        Data extracted during last parsing."""
+
     purpose = "gaussian"
 
     def __init__(self):
@@ -144,6 +280,21 @@ class GaussianParser(Parser):
         self.data = {}
 
     def parse(self, lines) -> dict:
+        """Parses content of Gaussian output file and returns dictionary of found
+        data. TODO: elaborate
+
+        Parameters
+        ----------
+        lines : iterator
+            Gaussian output file in a form iterable by lines of text. It may be a file
+            handle, a list of strings, an io.StringIO instance, or similar. Please note
+            that it should not be just a string instance, as it is normally iterated
+            by a character, not by a line.
+
+        Returns
+        -------
+        dict
+            Dictionary of extracted data."""
         self.workhorse = self.initial
         self.data = {}
         self.iterator = iter(lines)
@@ -153,6 +304,15 @@ class GaussianParser(Parser):
 
     @Parser.state
     def initial(self, line: str) -> None:
+        """First step of parsing Gaussian output file. It populates parser.data
+        dictionary with these data genes: 'normal_termination', 'version', 'command',
+        'charge', 'multiplicity', 'input_geom'. Optionally, 'optimization_completed'
+        genre is added if optimization was requested in calculation job.
+
+        Parameters
+        ----------
+        line : str
+            Line of text to parse."""
         data, iterator = self.data, self.iterator
         data["normal_termination"] = True
         while not line == " Cite this work as:\n":
@@ -184,6 +344,14 @@ class GaussianParser(Parser):
 
     @Parser.state
     def wait(self, line: str) -> None:
+        """This function searches for lines of text triggering other parsing states.
+        It also updates a parser.data dictionary with 'normal_termination', 'scf',
+        'stoichiometry' data genres.
+
+        Parameters
+        ----------
+        line : str
+            Line of text to parse."""
         for name, reg in self.triggers.items():
             match = reg.match(line)
             if match:
@@ -198,6 +366,14 @@ class GaussianParser(Parser):
 
     @Parser.state(trigger=re.compile(r"^\s+Standard orientation"))
     def geometry(self, line: str) -> None:
+        """Function for extracting information about molecule standard orientation
+        geometry from Gaussian output files. It updates parser.data dictionary with
+        'molecule_atoms' and 'geometry' data genres.
+
+        Parameters
+        ----------
+        line : str
+            Line of text to parse."""
         data, iterator = self.data, self.iterator
         match = geom_line_.match(line)
         while not match:
@@ -214,6 +390,14 @@ class GaussianParser(Parser):
 
     @Parser.state(trigger=re.compile("^ Berny optimization"))
     def optimization(self, line: str) -> None:
+        """This method scans optimization data in Gaussian output file, updating
+        parser.data dictionary with 'stoichiometry', 'scf', 'optimization_completed',
+        'molecule_atoms', and 'geometry' data genres (last two via `geometry()` method).
+
+        Parameters
+        ----------
+        line : str
+            Line of text to parse."""
         if self.triggers["geometry"].match(line):
             self.geometry(line)
             self.workhorse = self.optimization
@@ -228,6 +412,13 @@ class GaussianParser(Parser):
 
     @Parser.state(trigger=re.compile("^ Harmonic frequencies"))
     def frequencies(self, line: str) -> None:
+        """Responsible for extracting harmonic vibrations-related data and information
+        about molecule's energy.
+
+        Parameters
+        ----------
+        line : str
+            Line of text to parse."""
         data, iterator = self.data, self.iterator
         while not line == "\n":
             # while frequencies section is not over
@@ -249,6 +440,18 @@ class GaussianParser(Parser):
         self.workhorse = self.wait
 
     def _excited_states(self, line: str) -> list:
+        """Helper function for extracting electronic transitions-related data
+        from content of Gaussian output file.
+
+        Parameters
+        ----------
+        line : str
+            Line of text to parse.
+
+        Returns
+        -------
+        list
+            List of floats with data extracted from input string."""
         iterator = self.iterator
         while not line.startswith(" Excited State"):
             line = next(iterator)
@@ -262,6 +465,14 @@ class GaussianParser(Parser):
 
     @Parser.state(trigger=re.compile("^ Excited states from"))
     def excited(self, line: str) -> None:
+        """Responsible for extracting electronic transitions-related data from Gaussian
+        output file. Updates parser.data dictionary with 'ldip', 'losc', 'vdip', 'vosc',
+        'vrot', 'eemang', 'lrot', 'wavelen', 'ex_en', and 'transitions' data genres.
+
+        Parameters
+        ----------
+        line : str
+            Line of text to parse."""
         data, iterator = self.data, self.iterator
         for genres, header in (
             (("ldip", "losc"), "electric dipole"),
