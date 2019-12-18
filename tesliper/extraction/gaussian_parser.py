@@ -1,6 +1,5 @@
 import re
 import logging as lgg
-import numpy as np
 
 from .base_parser import Parser
 
@@ -276,7 +275,7 @@ class GaussianParser(Parser):
 
     def __init__(self):
         super().__init__()
-        self.iterator = iter([])
+        self._iterator = iter([])
         self.data = {}
 
     def parse(self, lines) -> dict:
@@ -297,9 +296,18 @@ class GaussianParser(Parser):
             Dictionary of extracted data."""
         self.workhorse = self.initial
         self.data = {}
-        self.iterator = iter(lines)
-        for line in self.iterator:
-            self.workhorse(line)
+        self._iterator = iter(lines)
+        try:
+            for line in self._iterator:
+                self.workhorse(line)
+        except StopIteration:
+            filename = getattr(self._iterator, "name", None)
+            filename = f'"{filename}" file' if filename else None
+            logger.warning(
+                f"Unexpected stop of iteration occurred while parsing "
+                f"{filename or self._iterator}. Job didn't finish or content may be "
+                f"corrupted."
+            )
         return self.data
 
     @Parser.state
@@ -313,7 +321,7 @@ class GaussianParser(Parser):
         ----------
         line : str
             Line of text to parse."""
-        data, iterator = self.data, self.iterator
+        data, iterator = self.data, self._iterator
         data["normal_termination"] = True
         while not line == " Cite this work as:\n":
             line = next(iterator)
@@ -322,7 +330,7 @@ class GaussianParser(Parser):
             line = next(iterator)
         command = []
         while not line.startswith(" --"):
-            command.append(line.strip())
+            command.append(line.strip("# \n"))
             line = next(iterator)
         command = data["command"] = " ".join(command)
         if "opt" in command:
@@ -374,7 +382,7 @@ class GaussianParser(Parser):
         ----------
         line : str
             Line of text to parse."""
-        data, iterator = self.data, self.iterator
+        data, iterator = self.data, self._iterator
         match = geom_line_.match(line)
         while not match:
             line = next(iterator)
@@ -388,7 +396,7 @@ class GaussianParser(Parser):
         data["molecule_atoms"], data["geometry"] = zip(*geom)
         self.workhorse = self.wait
 
-    @Parser.state(trigger=re.compile("^ Berny optimization"))
+    @Parser.state(trigger=re.compile("^ Search for a local minimum."))
     def optimization(self, line: str) -> None:
         """This method scans optimization data in Gaussian output file, updating
         parser.data dictionary with 'stoichiometry', 'scf', 'optimization_completed',
@@ -397,7 +405,11 @@ class GaussianParser(Parser):
         Parameters
         ----------
         line : str
-            Line of text to parse."""
+            Line of text to parse.
+
+        TO DO
+        -----
+            modify this to only run if optimization requested"""
         if self.triggers["geometry"].match(line):
             self.geometry(line)
             self.workhorse = self.optimization
@@ -407,7 +419,7 @@ class GaussianParser(Parser):
             self.data["scf"] = float(re.search(number, line).group())
         elif line.startswith(" Optimization completed."):
             self.data["optimization_completed"] = True
-        elif line == "\n":
+        elif line.startswith((" Error termination", " Job cpu time"),):
             self.workhorse = self.wait
 
     @Parser.state(trigger=re.compile("^ Harmonic frequencies"))
@@ -419,7 +431,7 @@ class GaussianParser(Parser):
         ----------
         line : str
             Line of text to parse."""
-        data, iterator = self.data, self.iterator
+        data, iterator = self.data, self._iterator
         while not line == "\n":
             # while frequencies section is not over
             match = vibrational_reg.match(line)
@@ -452,7 +464,7 @@ class GaussianParser(Parser):
         -------
         list
             List of floats with data extracted from input string."""
-        iterator = self.iterator
+        iterator = self._iterator
         while not line.startswith(" Excited State"):
             line = next(iterator)
         out = [map(float, excited_reg.match(line).groups())]
@@ -473,7 +485,7 @@ class GaussianParser(Parser):
         ----------
         line : str
             Line of text to parse."""
-        data, iterator = self.data, self.iterator
+        data, iterator = self.data, self._iterator
         for genres, header in (
             (("ldip", "losc"), "electric dipole"),
             (("vdip", "vosc"), "velocity dipole"),
@@ -504,184 +516,3 @@ class GaussianParser(Parser):
             )
             line = next(iterator)
         self.workhorse = self.wait
-
-    @Parser.state(trigger=re.compile(r'[\w\s]*Magnetic shielding tensor'))
-    def shielding(self, line: str) -> None:
-        match = shielding_reg.search(line)
-        if match:
-            atom, iso, aniso = match.groups()
-            self.data.setdefault(f'{atom.lower()}_mst', []).append(float(iso))
-            self.data.setdefault(
-                f'{atom.lower()}_amst', []
-            ).append(float(aniso))
-        elif line == '\n':
-            self.workhorse = self.wait
-
-    @Parser.state(
-        trigger=re.compile(r'^ Fermi Contact \(FC\) contribution to J'))
-    def coupling(self, line: str) -> None:
-        data = self.data.setdefault(
-            'fermi', [[] for _ in self.data['molecule_atoms']]
-        )
-        match = fc_reg.search(line)
-        if match:
-            atom, *values = match.groups()
-            data[int(atom)-1].extend(
-                float(num.replace('D', 'e')) for num in values if num
-            )
-        else:
-            if re.match(r'^ \w', line):
-                self.data['fermi'] = [num for nums in data for num in nums]
-                self.workhorse = self.wait
-
-
-# FUNCTIONS
-def _geom_parse(text):
-    """Function for extracting geometry data from output files.
-    Needs refactoring and is not included in standard parsing procedure."""
-    data = {}
-    geom = text  # geom_part.search(text)  # takes long time if no match
-    if not geom:
-        logger.warning("No expected geom data found.")
-        return {}
-    # geom = geom.group()
-    data["optimization_completed"] = "Optimization completed." in geom
-    data["stoichometries"] = stoich.findall(geom)
-    data["scfs"] = scf.findall(geom)
-    data["scf"] = data["scfs"][-1]
-    sg = geom_std.findall(geom)
-    if sg:
-        data["standard_geometries"] = [geom_line.findall(g) for g in sg]
-        if data["optimization_completed"]:
-            data["optimized"] = data["standard_geometries"][-1]
-    else:
-        data["input_geometries"] = [
-            geom_line.findall(g) for g in geom_inp.findall(geom)
-        ]
-        if data["optimization_completed"]:
-            data["optimized"] = data["input_geometries"][-1]
-    return data
-
-
-def _vibr_parse(text):
-    """Helper function for extracting electronic transitions-related data
-    from content of Gaussian output file.
-
-    Parameters
-    ----------
-    text : str
-        Content of gaussian output file as string.
-
-    Returns
-    -------
-    dict
-        Dictionary of data extracted from input string."""
-
-    logger.debug("entering _vibr_parse")
-    data = {}
-    ens = energies.search(text)
-    if ens:
-        data.update({k: float(v) for k, v in ens.groupdict().items()})
-    else:
-        logger.debug("No energies found!")
-    for key, patt in vibr_regs.items():
-        m = patt.findall(text)
-        if m:
-            data[key] = np.array([i for t in m for i in t], dtype=float)
-    # if not data:
-    #     logger.warning('No expected freq data found.')
-    #     return {}
-    return data
-
-
-def _electr_parse(text):
-    """Helper function for extracting electronic transitions-related data
-    from content of Gaussian output file.
-
-    Parameters
-    ----------
-    text : str
-        Content of gaussian output file as string.
-
-    Returns
-    -------
-    dict
-        Dictionary of data extracted from input string."""
-
-    logger.debug("entering _electr_parse")
-    data = {}
-    for key, patt in electr_regs.items():
-        key1, key2 = key.split("_")
-        found = patt.search(text)
-        if found:
-            nums = numbers_reg.findall(found.group())
-            vals1, vals2 = zip(*nums)
-            data[key1] = np.array(vals1, dtype=float)
-            if key2 and vals2[0]:
-                # key2 is '' when key == 'lrot_'
-                # and eemang is not available in g.09B
-                # in such cases vals2 will be list of empty strings
-                data[key2] = np.array(vals2, dtype=float)
-    excited = excited_grouped.findall(text)
-    if excited:
-        n, e, f, t = zip(*excited)
-        data["ex_en"] = np.array(e, dtype=float)
-        data["wavelen"] = np.array(f, dtype=float)
-        data["transition"] = [transitions_reg.findall(x) for x in t]
-    return data
-
-
-def parse(text):
-    """Parses content of Gaussian output file and returns dictionary of found
-    data.
-
-    Parameters
-    ----------
-    text : str
-        Content of gaussian output file as string.
-
-    Returns
-    -------
-    dict
-        Dictionary of data extracted from input string. Keys present in
-        returned dict depends on data found in input file and may be any from:
-        freq, mass, frc, iri, dip, rot, emang, depolarp, depolaru,
-        ramact, depp, depu, alpha2, beta2, alphag, gamma2, delta2, raman1,
-        roa1, cid1, raman2, roa2, cid2,  raman3, roa3, cid3, rc180,
-        wavelen, ex_en, eemang, vdip, ldip, vrot, lrot, vosc, losc, transitions,
-        scf, zpe, ten, ent, gib, zpecorr, tencorr, entcorr, gibcorr, command,
-        normal_termination, cpu_time, optimization_completed.
-
-    Raises
-    ------
-    ValueError
-        If no command line is found in input string.
-
-    TO DO
-    -----
-    Add parsing of geometry-related data."""
-
-    extr = {}
-    cmd = command.search(text)
-    if not cmd:
-        raise ValueError("No command found in text.")
-    extr["command"] = cmd.group()
-    extr.update(_vibr_parse(text))
-    extr.update(_electr_parse(text))
-    logger.debug("final searches")
-    scf_match = scf.findall(text)
-    if scf_match:
-        extr["scf"] = float(scf_match[-1])
-    trmntn = termination.search(text)
-    extr["normal_termination"] = True if trmntn else False
-    # depreciated, as it is not important for tesliper to know this
-    # and causes problems with Molecules.trim_inconsistent_sizes()
-    # cpu_time = cpu_time_reg.findall(text)
-    # if cpu_time:
-    #     extr['cpu_time'] = cpu_time
-    if "opt" in extr["command"].lower():
-        extr["optimization_completed"] = "Optimization completed." in text
-    stoichiometries = stoich.findall(text)
-    if stoichiometries:
-        extr["stoichiometry"] = stoichiometries[-1]
-    return extr

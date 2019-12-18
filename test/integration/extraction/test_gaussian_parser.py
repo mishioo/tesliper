@@ -1,5 +1,6 @@
 import os
 import unittest
+from unittest.mock import Mock, patch
 from tesliper.extraction import gaussian_parser as gprs
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -15,10 +16,27 @@ class ParserTestCase(unittest.TestCase):
     def setUpClass(cls):
         if cls is ParserTestCase:
             raise unittest.SkipTest("Base class for gaussian files parser test cases.")
+        patchers = []
         parser = gprs.GaussianParser()
-        path = os.path.join(THIS_DIR, os.pardir, "fixtures", cls.file)
-        with open(path, "r") as file:
-            cls.data = parser.parse(file)
+        for name in dir(parser):
+            method = getattr(parser, name)
+            if hasattr(method, "is_state"):
+                patcher = patch.object(parser, name, wraps=method)
+                mock = patcher.start()
+                # need to manually patch the reference in parser.states dictionary
+                parser.states[name] = mock
+                patchers.append(patcher)
+        try:
+            cls.parser = parser
+            path = os.path.join(THIS_DIR, os.pardir, "fixtures", cls.file)
+            with open(path, "r") as file:
+                cls.data = parser.parse(file)
+        except Exception:
+            # import pdb; pdb.set_trace()
+            for patcher in patchers:
+                patcher.stop()
+                parser.states[patcher.attribute] = getattr(parser, patcher.attribute)
+            raise
 
     def test_normal_termination(self):
         self.assertTrue(self.data["normal_termination"])
@@ -41,6 +59,15 @@ class ParserTestCase(unittest.TestCase):
 
 class TestFreq(ParserTestCase):
     file = "fal-freq.out"
+
+    @unittest.skip("Doesn't work as expected, see GaussianParser.optimization")
+    def test_methods_called(self):
+        self.parser.initial.assert_called()
+        self.parser.wait.assert_called()
+        self.parser.frequencies.assert_called()
+        self.parser.excited.assert_not_called()
+        self.parser.optimization.assert_not_called()
+        self.parser.geometry.assert_called()
 
     def test_keys(self):
         self.assertSetEqual(
@@ -73,6 +100,9 @@ class TestFreq(ParserTestCase):
                 "molecule_atoms",
             },
         )
+
+    def test_command(self):
+        self.assertEqual(self.data["command"], "freq hf/3-21g")
 
     def test_scf(self):
         self.assertEqual(self.data["scf"], -113.217409254)
@@ -153,6 +183,15 @@ class TestFreq(ParserTestCase):
 class TestFreqRoa(ParserTestCase):
     file = "fal-freq-roa.out"
 
+    @unittest.skip("Doesn't work as expected, see GaussianParser.optimization")
+    def test_methods_called(self):
+        self.parser.initial.assert_called()
+        self.parser.wait.assert_called()
+        self.parser.frequencies.assert_called()
+        self.parser.excited.assert_not_called()
+        self.parser.optimization.assert_not_called()
+        self.parser.geometry.assert_called()
+
     def test_keys(self):
         self.assertSetEqual(
             set(self.data.keys()),
@@ -199,6 +238,9 @@ class TestFreqRoa(ParserTestCase):
                 "rc180",
             },
         )
+
+    def test_command(self):
+        self.assertEqual(self.data["command"], "freq=roa hf/3-21g")
 
     def test_freq(self):
         self.assertSequenceEqual(
@@ -315,6 +357,14 @@ class TestFreqRoa(ParserTestCase):
 class TestOpt(ParserTestCase):
     file = "fal-opt.out"
 
+    def test_methods_called(self):
+        self.parser.initial.assert_called()
+        self.parser.wait.assert_called()
+        self.parser.frequencies.assert_not_called()
+        self.parser.excited.assert_not_called()
+        self.parser.optimization.assert_called()
+        self.parser.geometry.assert_called()
+
     def test_keys(self):
         self.assertSetEqual(
             set(self.data.keys()),
@@ -337,7 +387,7 @@ class TestOpt(ParserTestCase):
         self.assertTrue(self.data["optimization_completed"])
 
     def test_command(self):
-        self.assertEqual(self.data["command"], "# opt hf/3-21g")
+        self.assertEqual(self.data["command"], "opt hf/3-21g")
 
     def test_scf(self):
         self.assertEqual(self.data["scf"], -113.221819992)
@@ -356,6 +406,14 @@ class TestOpt(ParserTestCase):
 
 class TestOptFreq(ParserTestCase):
     file = "fal-opt-freq.out"
+
+    def test_methods_called(self):
+        self.parser.initial.assert_called()
+        self.parser.wait.assert_called()
+        self.parser.frequencies.assert_called()
+        self.parser.excited.assert_not_called()
+        self.parser.optimization.assert_called()
+        self.parser.geometry.assert_called()
 
     def test_keys(self):
         self.assertSetEqual(
@@ -390,6 +448,9 @@ class TestOptFreq(ParserTestCase):
             },
         )
 
+    def test_command(self):
+        self.assertEqual(self.data["command"], "opt freq hf/3-21g")
+
 
 class TestInputError(ParserTestCase):
     file = "fal-input-error.out"
@@ -420,6 +481,14 @@ class TestInputError(ParserTestCase):
 class TestTd(ParserTestCase):
     file = "fal-td.out"
 
+    def test_methods_called(self):
+        self.parser.initial.assert_called()
+        self.parser.wait.assert_called()
+        self.parser.frequencies.assert_not_called()
+        self.parser.excited.assert_called()
+        self.parser.optimization.assert_not_called()
+        self.parser.geometry.assert_called()
+
     def test_keys(self):
         self.assertSetEqual(
             set(self.data.keys()),
@@ -446,6 +515,9 @@ class TestTd(ParserTestCase):
                 "molecule_atoms",
             },
         )
+
+    def test_command(self):
+        self.assertEqual(self.data["command"], "td hf/3-21g")
 
     def test_vdip(self):
         self.assertSequenceEqual(self.data["vdip"], [0.0000, 0.0100, 0.0360])
@@ -485,168 +557,10 @@ class TestTd(ParserTestCase):
         )
 
 
-class TestNmr(ParserTestCase):
-    file = 'fal-nmr.out'
+@unittest.skip("To be created.")
+class TestUnfinished(ParserTestCase):
+    # TODO: create test suite for interrupted jobs
+    file = ""
 
-    def test_keys(self):
-        self.assertSetEqual(
-            set(self.data.keys()),
-            {'normal_termination', 'version', 'command', 'charge',
-             'multiplicity', 'input_geom', 'scf', 'stoichiometry',
-             'h_mst', 'h_amst', 'c_mst', 'o_amst', 'o_mst', 'c_amst',
-             'geometry', 'molecule_atoms'}
-        )
-
-    def test_shielding(self):
-        self.assertSequenceEqual(
-            self.data['h_mst'],
-            [21.8561, 21.8602]
-        )
-        self.assertSequenceEqual(
-            self.data['c_mst'],
-            [6.5510]
-        )
-        self.assertSequenceEqual(
-            self.data['o_mst'],
-            [-602.8143]
-        )
-
-    def test_shielding_aniso(self):
-        self.assertSequenceEqual(
-            self.data['h_amst'],
-            [5.9560, 5.8977]
-        )
-        self.assertSequenceEqual(
-            self.data['c_amst'],
-            [218.4892]
-        )
-        self.assertSequenceEqual(
-            self.data['o_amst'],
-            [1580.7327]
-        )
-
-
-class TestNmrFconly(ParserTestCase):
-    file = 'fal-nmr-fconly.out'
-
-    def test_keys(self):
-        self.assertSetEqual(
-            set(self.data.keys()),
-            {'normal_termination', 'version', 'command', 'charge',
-             'multiplicity', 'input_geom', 'scf', 'stoichiometry',
-             'fermi', 'geometry', 'molecule_atoms'}
-        )
-
-    def test_fermi(self):
-        self.assertSequenceEqual(
-            self.data['fermi'],
-            [0.243533e+11, 0.108616e+03, 0.385007e+12, 0.108383e+03,
-             0.334431e+02, 0.385007e+12, 0.486052e+02, -0.202081e+02,
-             -0.202455e+02, 0.708114e+10]
-        )
-
-
-class TestNmrMixed(ParserTestCase):
-    file = 'fal-nmr-mixed.out'
-
-    def test_keys(self):
-        self.assertSetEqual(
-            set(self.data.keys()),
-            {'normal_termination', 'version', 'command', 'charge',
-             'multiplicity', 'input_geom', 'scf', 'stoichiometry',
-             'h_mst', 'h_amst', 'c_mst', 'o_amst', 'o_mst', 'c_amst',
-             'fermi', 'geometry', 'molecule_atoms'}
-        )
-
-    def test_shielding(self):
-        self.assertSequenceEqual(
-            self.data['h_mst'],
-            [21.8561, 21.8602]
-        )
-        self.assertSequenceEqual(
-            self.data['c_mst'],
-            [6.5509]
-        )
-        self.assertSequenceEqual(
-            self.data['o_mst'],
-            [-602.8143]
-        )
-
-    def test_shielding_aniso(self):
-        self.assertSequenceEqual(
-            self.data['h_amst'],
-            [5.9560, 5.8977]
-        )
-        self.assertSequenceEqual(
-            self.data['c_amst'],
-            [218.4892]
-        )
-        self.assertSequenceEqual(
-            self.data['o_amst'],
-            [1580.7327]
-        )
-
-    def test_fermi(self):
-        self.assertSequenceEqual(
-            self.data['fermi'],
-            [0.243533e+11, 0.163826e+03, 0.385007e+12, 0.163361e+03,
-             0.468260e+02, 0.385007e+12, 0.513083e+02, -0.203586e+02,
-             -0.204018e+02, 0.708114e+10]
-        )
-
-
-class TestNmrFconlyLong(ParserTestCase):
-    file = 'acoet-nmr-fconly.out'
-
-    def test_stoichiometry(self):
-        self.assertEqual(self.data['stoichiometry'], 'C4H8O2')
-
-    def test_atoms(self):
-        self.assertSequenceEqual(
-            self.data['molecule_atoms'],
-            [6, 1, 1, 1, 6, 1, 1, 6, 8, 8, 6, 1, 1, 1]
-        )
-
-    def test_keys(self):
-        self.assertSetEqual(
-            set(self.data.keys()),
-            {'normal_termination', 'version', 'command', 'charge',
-             'multiplicity', 'input_geom', 'scf', 'stoichiometry',
-             'fermi', 'geometry', 'molecule_atoms'}
-        )
-
-    def test_fermi(self):
-        self.assertSequenceEqual(
-            self.data['fermi'],
-            [0.243533e+11, 0.124911e+03, 0.385007e+12, 0.129874e+03,
-             -0.259110e+02, 0.385007e+12, 0.129856e+03, -0.258933e+02,
-             -0.367805e+02, 0.385007e+12, 0.801574e+00, 0.981134e+00,
-             0.314128e-01, 0.330627e-01, 0.243533e+11, -0.466249e+00,
-             -0.160036e+00, 0.237980e+00, 0.276256e+00, 0.139494e+03,
-             0.385007e+12, -0.466129e+00, -0.159937e+00, 0.277463e+00,
-             0.236629e+00, 0.139493e+03, -0.202141e+02, 0.385007e+12,
-             0.875609e+02, -0.177288e+02, -0.569563e+02, -0.568092e+02,
-             -0.437386e+01, 0.233728e+01, 0.233813e+01, 0.243533e+11,
-             0.148270e+02, -0.369079e+01, -0.240566e+02, -0.239804e+02,
-             0.949709e-01, 0.258197e+00, 0.258548e+00, -0.847205e+02,
-             0.708114e+10, -0.120227e+02, -0.362438e+01, 0.634682e+01,
-             0.632339e+01, 0.937075e+01, -0.135802e+01, -0.135824e+01,
-             0.477172e+02, 0.163775e+02, 0.708114e+10, -0.894187e-01,
-             0.205212e+00, 0.268749e+00, 0.267803e+00, 0.475675e+02,
-             -0.884957e+01, -0.884899e+01, 0.494871e+01, 0.632473e+00,
-             -0.340608e+01, 0.243533e+11, 0.460025e+00, 0.275661e+00,
-             0.835400e-01, 0.835235e-01, -0.686355e+01, 0.316514e+01,
-             0.318820e+01, 0.101578e+01, 0.339583e+00, -0.725144e+01,
-             0.119506e+03, 0.385007e+12, 0.765699e-01, -0.365627e-02,
-             -0.575035e-01, -0.438066e-01, -0.128748e+02, 0.525391e+01,
-             0.121801e+02, -0.848034e+00, -0.112813e+00, -0.433949e+00,
-             0.120836e+03, -0.241150e+02, 0.385007e+12, 0.774075e-01,
-             -0.311395e-02, -0.438096e-01, -0.572374e-01, -0.128830e+02,
-             0.121727e+02, 0.522081e+01, -0.846767e+00, -0.112361e+00,
-             -0.449206e+00, 0.120840e+03, -0.241247e+02, -0.234412e+02,
-             0.385007e+12]
-        )
-
-
-if __name__ == '__main__':
-    unittest.main()
+    def test_normal_termination(self):
+        self.assertTrue(self.data["normal_termination"])
