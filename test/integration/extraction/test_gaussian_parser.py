@@ -1,5 +1,6 @@
 import os
 import unittest
+from unittest.mock import Mock, patch
 from tesliper.extraction import gaussian_parser as gprs
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -15,10 +16,27 @@ class ParserTestCase(unittest.TestCase):
     def setUpClass(cls):
         if cls is ParserTestCase:
             raise unittest.SkipTest("Base class for gaussian files parser test cases.")
+        patchers = []
         parser = gprs.GaussianParser()
-        path = os.path.join(THIS_DIR, os.pardir, "fixtures", cls.file)
-        with open(path, "r") as file:
-            cls.data = parser.parse(file)
+        for name in dir(parser):
+            method = getattr(parser, name)
+            if hasattr(method, "is_state"):
+                patcher = patch.object(parser, name, wraps=method)
+                mock = patcher.start()
+                # need to manually patch the reference in parser.states dictionary
+                parser.states[name] = mock
+                patchers.append(patcher)
+        try:
+            cls.parser = parser
+            path = os.path.join(THIS_DIR, os.pardir, "fixtures", cls.file)
+            with open(path, "r") as file:
+                cls.data = parser.parse(file)
+        except Exception:
+            # import pdb; pdb.set_trace()
+            for patcher in patchers:
+                patcher.stop()
+                parser.states[patcher.attribute] = getattr(parser, patcher.attribute)
+            raise
 
     def test_normal_termination(self):
         self.assertTrue(self.data["normal_termination"])
@@ -41,6 +59,15 @@ class ParserTestCase(unittest.TestCase):
 
 class TestFreq(ParserTestCase):
     file = "fal-freq.out"
+
+    @unittest.skip("Doesn't work as expected, see GaussianParser.optimization")
+    def test_methods_called(self):
+        self.parser.initial.assert_called()
+        self.parser.wait.assert_called()
+        self.parser.frequencies.assert_called()
+        self.parser.excited.assert_not_called()
+        self.parser.optimization.assert_not_called()
+        self.parser.geometry.assert_called()
 
     def test_keys(self):
         self.assertSetEqual(
@@ -73,6 +100,9 @@ class TestFreq(ParserTestCase):
                 "molecule_atoms",
             },
         )
+
+    def test_command(self):
+        self.assertEqual(self.data["command"], "freq hf/3-21g")
 
     def test_scf(self):
         self.assertEqual(self.data["scf"], -113.217409254)
@@ -153,6 +183,15 @@ class TestFreq(ParserTestCase):
 class TestFreqRoa(ParserTestCase):
     file = "fal-freq-roa.out"
 
+    @unittest.skip("Doesn't work as expected, see GaussianParser.optimization")
+    def test_methods_called(self):
+        self.parser.initial.assert_called()
+        self.parser.wait.assert_called()
+        self.parser.frequencies.assert_called()
+        self.parser.excited.assert_not_called()
+        self.parser.optimization.assert_not_called()
+        self.parser.geometry.assert_called()
+
     def test_keys(self):
         self.assertSetEqual(
             set(self.data.keys()),
@@ -199,6 +238,9 @@ class TestFreqRoa(ParserTestCase):
                 "rc180",
             },
         )
+
+    def test_command(self):
+        self.assertEqual(self.data["command"], "freq=roa hf/3-21g")
 
     def test_freq(self):
         self.assertSequenceEqual(
@@ -315,6 +357,14 @@ class TestFreqRoa(ParserTestCase):
 class TestOpt(ParserTestCase):
     file = "fal-opt.out"
 
+    def test_methods_called(self):
+        self.parser.initial.assert_called()
+        self.parser.wait.assert_called()
+        self.parser.frequencies.assert_not_called()
+        self.parser.excited.assert_not_called()
+        self.parser.optimization.assert_called()
+        self.parser.geometry.assert_called()
+
     def test_keys(self):
         self.assertSetEqual(
             set(self.data.keys()),
@@ -337,7 +387,7 @@ class TestOpt(ParserTestCase):
         self.assertTrue(self.data["optimization_completed"])
 
     def test_command(self):
-        self.assertEqual(self.data["command"], "# opt hf/3-21g")
+        self.assertEqual(self.data["command"], "opt hf/3-21g")
 
     def test_scf(self):
         self.assertEqual(self.data["scf"], -113.221819992)
@@ -356,6 +406,14 @@ class TestOpt(ParserTestCase):
 
 class TestOptFreq(ParserTestCase):
     file = "fal-opt-freq.out"
+
+    def test_methods_called(self):
+        self.parser.initial.assert_called()
+        self.parser.wait.assert_called()
+        self.parser.frequencies.assert_called()
+        self.parser.excited.assert_not_called()
+        self.parser.optimization.assert_called()
+        self.parser.geometry.assert_called()
 
     def test_keys(self):
         self.assertSetEqual(
@@ -390,6 +448,9 @@ class TestOptFreq(ParserTestCase):
             },
         )
 
+    def test_command(self):
+        self.assertEqual(self.data["command"], "opt freq hf/3-21g")
+
 
 class TestInputError(ParserTestCase):
     file = "fal-input-error.out"
@@ -420,6 +481,14 @@ class TestInputError(ParserTestCase):
 class TestTd(ParserTestCase):
     file = "fal-td.out"
 
+    def test_methods_called(self):
+        self.parser.initial.assert_called()
+        self.parser.wait.assert_called()
+        self.parser.frequencies.assert_not_called()
+        self.parser.excited.assert_called()
+        self.parser.optimization.assert_not_called()
+        self.parser.geometry.assert_called()
+
     def test_keys(self):
         self.assertSetEqual(
             set(self.data.keys()),
@@ -446,6 +515,9 @@ class TestTd(ParserTestCase):
                 "molecule_atoms",
             },
         )
+
+    def test_command(self):
+        self.assertEqual(self.data["command"], "td hf/3-21g")
 
     def test_vdip(self):
         self.assertSequenceEqual(self.data["vdip"], [0.0000, 0.0100, 0.0360])
@@ -483,3 +555,12 @@ class TestTd(ParserTestCase):
                 ((6, 12, 0.12121), (7, 9, 0.68192), (8, 11, -0.11535)),
             ],
         )
+
+
+@unittest.skip("To be created.")
+class TestUnfinished(ParserTestCase):
+    # TODO: create test suite for interrupted jobs
+    file = ""
+
+    def test_normal_termination(self):
+        self.assertTrue(self.data["normal_termination"])
