@@ -2,6 +2,8 @@
 import csv
 import os
 import logging as lgg
+import multiprocessing as mp
+import queue
 
 from collections import defaultdict
 from . import gaussian_parser
@@ -38,6 +40,9 @@ class Soxhlet:
     correct load_bars, load_popul, load_spectrs, load_settings, from_dict methods
     """
 
+    WORKERS = mp.cpu_count()
+    TIMEOUT = 1
+
     def __init__(self, path=None, wanted_files=None, extension=None):
         """Initialization of Soxhlet object.
 
@@ -65,6 +70,8 @@ class Soxhlet:
         self.extension = extension
         self.parser = gaussian_parser.GaussianParser()
         self.spectra_parser = spectra_parser.SpectraParser()
+        self._queue = mp.Queue()
+        self._pool = None
 
     @property
     def path(self):
@@ -173,9 +180,38 @@ class Soxhlet:
         else:
             return ".log" if logs else ".out"
 
+    def _process_file(self, file):
+        """A worker for files reading and data extraction.
+
+        Parameters
+        ----------
+        file : str
+            Name of the file that should be parsed.
+
+        Returns
+        -------
+        tuple
+            Two item tuple with name of parsed file as first and extracted
+            data as second item, for each file associated with Soxhlet instance.
+        """
+        logger.debug(f"Starting extraction from file {file}")
+        with open(os.path.join(self.path, file)) as handle:
+            data = self.parser.parse(handle)
+        logger.debug(f"File {file} done.")
+        return file, data
+
     def extract_iter(self):
         """Extracts data from gaussian files associated with Soxhlet instance.
         Implemented as generator.
+
+        Notes
+        -----
+        On processors with multiple cores, files will be processed in parallel manner.
+        To enforce sequential processing set `Soxhlet.WORKERS` (or
+        `soxhlet_object.WORKERS`) to 1 (one).
+        It's worth to note that, in case of multiprocess (paralell) execution,
+        extracted data is awaited for maximum of `Soxhlet.TIMEOUT` seconds (one second
+        by default). If parsed files are very big, this time might need to be extended.
 
         Yields
         ------
@@ -183,15 +219,33 @@ class Soxhlet:
             Two item tuple with name of parsed file as first and extracted
             data as second item, for each file associated with Soxhlet instance.
         """
-        for num, file in enumerate(self.output_files):
-            logger.debug(f"Starting extraction from file: {file}")
-            with open(os.path.join(self.path, file)) as handle:
-                data = self.parser.parse(handle)
-            logger.debug("file done.\n")
-            yield file, data
+        if self.WORKERS < 1:
+            raise ValueError("Soxhlet.WORKERS must be greater than zero.")
+        elif self.WORKERS == 1:
+            for file in self.output_files:
+                yield self._process_file(file)
+        else:
+            self._pool = pool = mp.Pool(self.WORKERS)
+            for file in self.output_files:
+                pool.apply_async(self._process_file, (file,), callback=self._queue.put)
+            pool.close()
+            for _ in self.output_files:
+                try:
+                    yield self._queue.get(timeout=self.TIMEOUT)
+                except queue.Empty:
+                    logger.warning(
+                        f"Timeout = {self.TIMEOUT}s for data extraction reached. "
+                        f"Extend maximum waiting time by modifying `Soxhlet.TIMEOUT` "
+                        f"or run extraction in non-parallel manner by setting "
+                        f"`Soxlet.WORKERS` to 1 (one)."
+                    )
+                    break
+            pool.join()
 
     def extract(self):
         """Extracts data from gaussian files associated with Soxhlet instance.
+        This is essentially just a wrapper over `extract_iter`, that returns the whole
+        set of data at once.
 
         Returns
         ------
