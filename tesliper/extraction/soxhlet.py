@@ -18,6 +18,34 @@ logger = lgg.getLogger(__name__)
 logger.setLevel(lgg.DEBUG)
 
 
+# FUNCTIONS
+def _process_file(filename, file_location, parser):
+    """A worker for reading files and data extraction. This functionality is delegated
+    to this function outside of `Soxhlet` class for easier implementation
+    of parallel processing via `multiprocessing` module.
+
+    Parameters
+    ----------
+    filename : str
+        Name of the file that should be parsed.
+    file_location : str
+        Path of the directory containing the file.
+    parser : object
+        Object used for parsing, should implement `parse` method.
+
+    Returns
+    -------
+    tuple
+        Two item tuple with name of parsed file as first and extracted
+        data as second item, for each file associated with Soxhlet instance.
+    """
+    logger.debug(f"Starting file {filename} extraction in process {os.getpid()}")
+    with open(os.path.join(file_location, filename)) as handle:
+        data = parser.parse(handle)
+    logger.debug(f"File {filename} done.")
+    return filename, data
+
+
 # CLASSES
 class Soxhlet:
     """A tool for data extraction from files in specific directory. Typical
@@ -180,58 +208,68 @@ class Soxhlet:
         else:
             return ".log" if logs else ".out"
 
-    def _process_file(self, file):
-        """A worker for files reading and data extraction.
+    def mp_extract_iter(self):
+        """Extracts data from gaussian files associated with Soxhlet instance
+        in parallel manner. Implemented as generator.
 
-        Parameters
-        ----------
-        file : str
-            Name of the file that should be parsed.
-
-        Returns
-        -------
-        tuple
-            Two item tuple with name of parsed file as first and extracted
-            data as second item, for each file associated with Soxhlet instance.
-        """
-        logger.debug(f"Starting extraction from file {file}")
-        with open(os.path.join(self.path, file)) as handle:
-            data = self.parser.parse(handle)
-        logger.debug(f"File {file} done.")
-        return file, data
-
-    def extract_iter(self):
-        """Extracts data from gaussian files associated with Soxhlet instance.
-        Implemented as generator.
+        This method uses `multiprocessing` module to process multiple files at once,
+        allowing for faster execution on machines with multi-core processors. Maximum
+        number of sub-processes spawned is defined by `Soxhlet.WORKERS` and by default
+        is equal to `multiprocessing.cpu_count()`.
 
         Notes
         -----
-        On processors with multiple cores, files will be processed in parallel manner.
-        To enforce sequential processing set `Soxhlet.WORKERS` (or
-        `soxhlet_object.WORKERS`) to 1 (one).
-        It's worth to note that, in case of multiprocess (paralell) execution,
-        extracted data is awaited for maximum of `Soxhlet.TIMEOUT` seconds (one second
+        When `Soxhlet.WORKERS` is set to 1 (one), files are processed sequentially
+        without spawning new processes.
+
+        Extracted data is awaited for maximum of `Soxhlet.TIMEOUT` seconds (5 seconds
         by default). If parsed files are very big, this time might need to be extended.
+
+        `Soxhlet.WORKERS` and `Soxhlet.TIMEOUT` are accessed as an instance attributes,
+        so they may be changed locally - only for specific instance of Soxhlet object -
+        by setting their values on this instance (e.g. `soxhlet_instance.WORKERS`).
+
+        When using this method in your code, please make sure to follow programming
+        guidelines for `multiprocessing` module. Especially make sure to include
+        `if __name__ == '__main__':` ward in your main script.
 
         Yields
         ------
         tuple
             Two item tuple with name of parsed file as first and extracted
             data as second item, for each file associated with Soxhlet instance.
+
+        Raises
+        ------
+        ValueError:
+            If `Soxhlet.WORKERS` is set to less than 1 (one) or is not a whole number.
         """
+        # TODO: optimise this for real-life examples; currently doesn't produce reliable
+        #       or reproducible effects
         if self.WORKERS < 1:
-            raise ValueError("Soxhlet.WORKERS must be greater than zero.")
+            raise ValueError("Number of `Soxhlet.WORKERS` must be greater than zero.")
+        elif self.WORKERS != int(self.WORKERS):
+            raise ValueError("Number of `Soxhlet.WORKERS` must be a whole number.")
         elif self.WORKERS == 1:
-            for file in self.output_files:
-                yield self._process_file(file)
+            yield from self.extract_iter()
         else:
+            logger.debug(
+                f"Starting parallel processing. Main process pid: {os.getpid()}"
+            )
             self._pool = pool = mp.Pool(self.WORKERS)
             for file in self.output_files:
-                pool.apply_async(self._process_file, (file,), callback=self._queue.put)
+                logger.debug(f"Scheduling file '{file}' extraction.")
+                pool.apply_async(
+                    _process_file,
+                    (file, self.path, self.parser),
+                    callback=self._queue.put,
+                )
             pool.close()
             for _ in self.output_files:
                 try:
-                    yield self._queue.get(timeout=self.TIMEOUT)
+                    values = self._queue.get(timeout=self.TIMEOUT)
+                    logger.debug(f"Values from file {values[0]} retrieved.")
+                    yield values
                 except queue.Empty:
                     logger.warning(
                         f"Timeout = {self.TIMEOUT}s for data extraction reached. "
@@ -241,6 +279,24 @@ class Soxhlet:
                     )
                     break
             pool.join()
+
+    def extract_iter(self):
+        """Extracts data from gaussian files associated with Soxhlet instance.
+        Implemented as generator.
+
+        Yields
+        ------
+        tuple
+            Two item tuple with name of parsed file as first and extracted
+            data as second item, for each file associated with Soxhlet instance.
+        """
+        logger.debug("Starting sequential processing.")
+        for file in self.output_files:
+            logger.debug(f"Starting file {file} extraction.")
+            with open(os.path.join(self.path, file)) as handle:
+                data = self.parser.parse(handle)
+            logger.debug(f"File {file} done.")
+            yield file, data
 
     def extract(self):
         """Extracts data from gaussian files associated with Soxhlet instance.
