@@ -3,9 +3,12 @@ import csv
 import os
 import logging as lgg
 import multiprocessing as mp
+import threading as th
 import queue
 
 from collections import defaultdict
+from io import StringIO
+
 from . import gaussian_parser
 from . import spectra_parser
 
@@ -19,17 +22,16 @@ logger.setLevel(lgg.DEBUG)
 
 
 # FUNCTIONS
-def _process_file(filename, file_location, parser):
-    """A worker for reading files and data extraction. This functionality is delegated
+def _process_file(input_queue, parser):
+    """A worker for data extraction. This functionality is delegated
     to this function outside of `Soxhlet` class for easier implementation
     of parallel processing via `multiprocessing` module.
 
     Parameters
     ----------
-    filename : str
-        Name of the file that should be parsed.
-    file_location : str
-        Path of the directory containing the file.
+    input_queue : queue.Queue
+        Its `get` method should return a tuple with file name and file content, that is
+        iterable by lines.
     parser : object
         Object used for parsing, should implement `parse` method.
 
@@ -39,11 +41,32 @@ def _process_file(filename, file_location, parser):
         Two item tuple with name of parsed file as first and extracted
         data as second item, for each file associated with Soxhlet instance.
     """
+    filename, handle = input_queue.get()
     logger.debug(f"Starting file {filename} extraction in process {os.getpid()}")
-    with open(os.path.join(file_location, filename)) as handle:
-        data = parser.parse(handle)
+    data = parser.parse(handle)
     logger.debug(f"File {filename} done.")
     return filename, data
+
+
+def _read_files(input_queue, files, file_location):
+    """Function for reading files from disc sequentially. This functionality is
+    delegated to this function outside of `Soxhlet` class for easier implementation
+    of parallel processing via `multiprocessing` module.
+
+    Parameters
+    ----------
+    input_queue : queue.Queue
+        queue for communication between file reader and parsing processes
+    files : iterable
+        list of filenames
+    file_location : str
+        location of files that should be parsed"""
+    for filename in files:
+        logger.debug(f"Reading from file {filename}.")
+        with open(os.path.join(file_location, filename)) as handle:
+            strio = StringIO(handle.read())
+        input_queue.put((filename, strio))
+        logger.debug(f"Contents of file {filename} was put in queue.")
 
 
 # CLASSES
@@ -256,13 +279,18 @@ class Soxhlet:
             logger.debug(
                 f"Starting parallel processing. Main process pid: {os.getpid()}"
             )
+            input_queue = queue.Queue()
+            reader = th.Thread(
+                target=_read_files,
+                name="file_reader",
+                args=(input_queue, self.output_files, self.path),
+            )
+            reader.start()
             self._pool = pool = mp.Pool(self.WORKERS)
             for file in self.output_files:
                 logger.debug(f"Scheduling file '{file}' extraction.")
                 pool.apply_async(
-                    _process_file,
-                    (file, self.path, self.parser),
-                    callback=self._queue.put,
+                    _process_file, (input_queue, self.parser), callback=self._queue.put,
                 )
             pool.close()
             for _ in self.output_files:
@@ -279,6 +307,7 @@ class Soxhlet:
                     )
                     break
             pool.join()
+            reader.join()
 
     def extract_iter(self):
         """Extracts data from gaussian files associated with Soxhlet instance.
