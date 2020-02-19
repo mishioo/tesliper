@@ -69,6 +69,11 @@ def _read_files(input_queue, files, file_location):
         logger.debug(f"Contents of file {filename} was put in queue.")
 
 
+def _error_callback(error):
+    logger.error(f"One of sub-processes failed. {type(error).__name__}: {error}.")
+    raise error
+
+
 # CLASSES
 class Soxhlet:
     """A tool for data extraction from files in specific directory. Typical
@@ -279,7 +284,8 @@ class Soxhlet:
             logger.debug(
                 f"Starting parallel processing. Main process pid: {os.getpid()}"
             )
-            input_queue = queue.Queue()
+            manager = mp.Manager()
+            input_queue = manager.Queue()
             reader = th.Thread(
                 target=_read_files,
                 name="file_reader",
@@ -290,7 +296,10 @@ class Soxhlet:
             for file in self.output_files:
                 logger.debug(f"Scheduling file '{file}' extraction.")
                 pool.apply_async(
-                    _process_file, (input_queue, self.parser), callback=self._queue.put,
+                    _process_file,
+                    (input_queue, self.parser),
+                    callback=self._queue.put,
+                    error_callback=_error_callback,
                 )
             pool.close()
             for _ in self.output_files:
@@ -308,6 +317,7 @@ class Soxhlet:
                     break
             pool.join()
             reader.join()
+            manager.shutdown()
 
     def extract_iter(self):
         """Extracts data from gaussian files associated with Soxhlet instance.
