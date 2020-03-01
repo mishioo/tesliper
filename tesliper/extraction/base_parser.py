@@ -1,7 +1,34 @@
 from abc import ABC, abstractmethod
-from typing import Callable, Iterable, Union
+from functools import wraps, partial
+from typing import Callable, Iterable, Pattern, Union
 import re
 from ..exceptions import InvalidStateError
+
+
+@wraps
+class State:
+    # TODO: implement parser state as separate object
+    #       allow states for having their own states
+    #       store information about parent state for automatic returning after execution
+    #       distinguish between single match and multiple matches - maybe
+    def __init__(self, trigger: Union[str, Pattern] = None):
+        self.function = None
+        self.trigger = re.compile(trigger)
+
+    def __call__(self, function: Callable):
+        self.function = function
+        return self
+
+    def __get__(self, instance, owner):
+        if instance is None:
+            return self
+        else:
+            return partial(self.wrapper, instance)
+
+    def wrapper(self, instance, line):
+        match = self.trigger.search(line)
+        if match:
+            return self.function(instance, match)
 
 
 class Parser(ABC):
@@ -241,6 +268,7 @@ class Parser(ABC):
         return data
 
     @staticmethod
+    @wraps
     def state(state=None, trigger=None):
         """Convenience decorator for registering a method as parser's state.
         It can be with or without 'trigger' parameter, like this:
