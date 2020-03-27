@@ -9,6 +9,7 @@ from collections import (
 )
 from contextlib import contextmanager
 from itertools import chain
+from typing import Sequence, Union
 
 import numpy as np
 
@@ -154,7 +155,7 @@ class Molecules(OrderedDict):
         instance, created by `arrayed` method. It may be changed by use of trim
         methods, by setting its value directly, or by modification of the
         underlying list. For the first option refer to those methods
-        documentation, for rest see Examples section.
+        documentation, for rest see the Examples section.
 
         Returns
         -------
@@ -211,8 +212,8 @@ class Molecules(OrderedDict):
         KeyError: Unknown molecules: other.
 
         Thirdly, list of integers representing molecules indices may br given.
-        Only specified molecules with specified indices will be kept. If index
-        out of bounds is in the list, IndexError is raised. Indexing with
+        Only molecules with specified indices will be kept. If one of given integers
+        cant be translated to molecule's index, IndexError is raised. Indexing with
         negative values is not supported currently.
 
         >>> m.kept = [1, 2]
@@ -223,12 +224,15 @@ class Molecules(OrderedDict):
         ...
         IndexError: Indexes out of bounds: 3.
 
-        Fourthly, assigning an empty list to this attribute will mark all
-        molecules as not kept.
+        Fourthly, assigning `True` or `False` to this attribute will mark all molecules
+        as kept or not kept respectively.
 
-        >>> m.kept = []
+        >>> m.kept = False
         >>> m.kept
         [False, False, False]
+        >>> m.kept = True
+        >>> m.kept
+        [True, True, True]
 
         Lastly, list of kept values may be modified by setting its elements
         to True or False. It is advised against, however, as mistake such as
@@ -246,14 +250,16 @@ class Molecules(OrderedDict):
         return self.__kept
 
     @kept.setter
-    def kept(self, blade):
+    def kept(self, blade: Union[Sequence[Union[bool, str, int]], bool]):
+        if blade is True or blade is False:
+            self.__kept = [blade for __ in self.keys()]
+            return
         try:
             first = blade[0]
         except (TypeError, KeyError):
-            raise TypeError(f"Excepted sequence, got: {type(blade)}.")
+            raise TypeError(f"Excepted sequence or boolean, got: {type(blade)}.")
         except IndexError:
-            self.__kept = [False for __ in self.keys()]
-            return
+            first = bool()
         if isinstance(first, str):
             blade = set(blade)
             if not blade.issubset(set(self.keys())):
@@ -514,7 +520,12 @@ class Molecules(OrderedDict):
         self.kept = blade
 
     def select_all(self):
+        """Marks all molecules as 'kept'. Equivalent to `molecules.kept = True`."""
         self.kept = [True for __ in self.kept]
+
+    def reject_all(self):
+        """Marks all molecules as 'not kept'. Equivalent to `molecules.kept = False`."""
+        self.kept = [False for __ in self.kept]
 
     def trimmed_keys(self, indices=False):
         return _TrimmedKeysView(self, indices=indices)

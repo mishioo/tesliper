@@ -205,7 +205,11 @@ class TestMolecules(ut.TestCase):
         with self.assertRaises(KeyError):
             self.full.kept = ["zero"]
         with self.assertRaises(ValueError):
+            self.full.kept = []
+        with self.assertRaises(ValueError):
             self.full.kept = [True] * 2
+        with self.assertRaises(ValueError):
+            self.empty.kept = [True] * 2
         with self.assertRaises(ValueError):
             self.full.kept = [True] * 20
         with self.assertRaises(IndexError):
@@ -214,6 +218,7 @@ class TestMolecules(ut.TestCase):
             self.full.kept = [[]]
 
     def test_kept(self):
+        self.assertSequenceEqual([True] * 7, self.full.kept)
         self.full.kept = "imag stoich term".split(" ")
         self.assertSequenceEqual(
             [False, False, True, True, True, False, False], self.full.kept
@@ -226,10 +231,17 @@ class TestMolecules(ut.TestCase):
         self.assertSequenceEqual(
             [True, False, False, True, False, False, True], self.full.kept
         )
-        self.full.kept = []
+        self.full.kept = False
         self.assertSequenceEqual([False] * 7, self.full.kept)
+        self.full.kept = True
+        self.assertSequenceEqual([True] * 7, self.full.kept)
+        self.assertSequenceEqual([], self.empty.kept)
+        self.empty.kept = []
+        self.assertSequenceEqual([], self.empty.kept)
+        self.empty.kept = False
+        self.assertSequenceEqual([], self.empty.kept)
 
-    def test_inconsistency_allowed(self):
+    def test_inconsistency_allowed_context(self):
         with self.mols.inconsistency_allowed:
             self.assertTrue(self.mols.allow_data_inconsistency)
         self.assertFalse(self.mols.allow_data_inconsistency)
