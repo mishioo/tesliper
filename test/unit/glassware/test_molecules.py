@@ -102,26 +102,59 @@ class TestMolecules(ut.TestCase):
             [m["_index"] for m in self.full.values()], list(range(6))
         )
 
+    def test_update_with_kwargs(self):
+        self.mols.update(bla2={"data": [1, 2, 3, 4]})
+        self.assertEqual(len(self.mols), 2)
+        self.assertEqual(self.mols.kept, [True, True])
+        self.assertEqual(self.mols.filenames, ["bla", "bla2"])
+        self.assertEqual(self.mols["bla2"], {"_index": 1, "data": [1, 2, 3, 4]})
+
     def test_update_with_dict(self):
         self.mols.update({"bla2": {"data": [1, 2, 3, 4]}})
         self.assertEqual(len(self.mols), 2)
         self.assertEqual(self.mols.kept, [True, True])
         self.assertEqual(self.mols.filenames, ["bla", "bla2"])
-        self.assertEqual(self.mols["bla"], {"_index": 0, "data": [1, 2, 3, 4]})
+        self.assertEqual(self.mols["bla2"], {"_index": 1, "data": [1, 2, 3, 4]})
 
-    def test_update_new(self):
-        self.mols.update(bla2={"data": [5, 2, 3, 4]})
+    def test_update_with_zip(self):
+        self.mols.update(zip(("bla2",), ({"data": [1, 2, 3, 4]},)))
         self.assertEqual(len(self.mols), 2)
         self.assertEqual(self.mols.kept, [True, True])
         self.assertEqual(self.mols.filenames, ["bla", "bla2"])
-        self.assertEqual(self.mols["bla2"], {"_index": 1, "data": [5, 2, 3, 4]})
+        self.assertEqual(self.mols["bla2"], {"_index": 1, "data": [1, 2, 3, 4]})
 
-    def test_update_same(self):
-        self.mols.update(bla={"data": "new"})
+    def test_update_with_tuple(self):
+        self.mols.update((("bla2", {"data": [1, 2, 3, 4]}),))
+        self.assertEqual(len(self.mols), 2)
+        self.assertEqual(self.mols.kept, [True, True])
+        self.assertEqual(self.mols.filenames, ["bla", "bla2"])
+        self.assertEqual(self.mols["bla2"], {"_index": 1, "data": [1, 2, 3, 4]})
+
+    def test_update_new(self):
+        self.mols.update(bla2={"data": [5, 6, 7, 8]})
+        self.assertEqual(len(self.mols), 2)
+        self.assertEqual(self.mols.kept, [True, True])
+        self.assertEqual(self.mols.filenames, ["bla", "bla2"])
+        self.assertEqual(self.mols["bla2"], {"_index": 1, "data": [5, 6, 7, 8]})
+
+    def test_update_existing_with_new_data(self):
+        self.mols.update(bla={"data_new": "new"})
         self.assertEqual(len(self.mols), 1)
         self.assertEqual(self.mols.kept, [True])
         self.assertEqual(self.mols.filenames, ["bla"])
-        self.assertEqual(self.mols["bla"]["data"], "new")
+        self.assertEqual(
+            self.mols["bla"], {"_index": 0, "data": [1, 2, 3, 4], "data_new": "new"}
+        )
+
+    def test_update_existing_and_new(self):
+        self.mols.update(bla={"data_new": "new"}, bla2={"data": [1, 2, 3, 4]})
+        self.assertEqual(len(self.mols), 2)
+        self.assertEqual(self.mols.kept, [True, True])
+        self.assertEqual(self.mols.filenames, ["bla", "bla2"])
+        self.assertEqual(self.mols["bla2"], {"_index": 1, "data": [1, 2, 3, 4]})
+        self.assertEqual(
+            self.mols["bla"], {"_index": 0, "data": [1, 2, 3, 4], "data_new": "new"}
+        )
 
     def test_update_repeated(self):
         self.mols.update({"bla": {"data": "new"}}, bla={"other": "foo"})

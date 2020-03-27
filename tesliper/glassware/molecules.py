@@ -114,10 +114,7 @@ class Molecules(OrderedDict):
     Notes
     -----
     Inherits from collections.OrderedDict.
-
-    TODO
-    ----
-    Add type checks in update and setting methods."""
+    """
 
     def __init__(self, *args, allow_data_inconsistency=False, **kwargs):
         self.allow_data_inconsistency = allow_data_inconsistency
@@ -297,16 +294,15 @@ class Molecules(OrderedDict):
     def update(self, other=None, **kwargs):
         """Works like dict.update, but if key is already present, it updates
         dictionary associated with given key rather than changing its value.
-
-        TO DO
-        -----
-        Add type checks.
-        Figure out what to do with values like optimization_completed
-        and normal_termination."""
-        molecules = dict()
+        Please note, that values of status genres like 'optimization_completed'
+        and 'normal_termination' will be updated as well for such key,
+        if are present in given new values.
+        """
         if other is not None:
-            molecules.update(other)
-        items = chain(molecules.items(), kwargs.items())
+            other = dict(other)
+        else:
+            other = dict()
+        items = chain(other.items(), kwargs.items())
         for key, value in items:
             if key in self:
                 self[key].update(value)
