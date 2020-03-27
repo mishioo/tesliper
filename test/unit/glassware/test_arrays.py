@@ -4,6 +4,21 @@ import tesliper.glassware.arrays as ar
 import numpy as np
 
 
+class TestFilenamesArray(ut.TestCase):
+    def test_empty(self):
+        arr = ar.FilenamesArray()
+        self.assertEqual(arr.filenames.tolist(), [])
+        self.assertEqual(arr.genre, "filenames")
+
+    def test_filenames(self):
+        arr = ar.FilenamesArray(filenames=["one", "two"])
+        self.assertEqual(arr.filenames.tolist(), ["one", "two"])
+
+    def test_values(self):
+        arr = ar.FilenamesArray(filenames=["one", "two"])
+        self.assertIs(arr.filenames, arr.values)
+
+
 class TestFloatArray(ut.TestCase):
     def test_dtype(self):
         self.arr = ar.FloatArray(

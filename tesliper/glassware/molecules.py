@@ -14,7 +14,16 @@ from typing import Sequence, Union
 import numpy as np
 
 from tesliper.exceptions import TesliperError
-from .arrays import ArrayBase, DataArray
+from .arrays import (
+    ArrayBase,
+    DataArray,
+    BooleanArray,
+    InfoArray,
+    FloatArray,
+    Energies,
+    GroundStateBars,
+    ExcitedStateBars,
+)
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -309,7 +318,7 @@ class Molecules(OrderedDict):
             else:
                 self[key] = value
 
-    def arrayed(self, genre, full=False):
+    def arrayed(self, genre: str, full: bool = False) -> DataArray:
         """Lists requested data and returns as appropriate DataArray instance.
 
         Parameters
@@ -324,27 +333,27 @@ class Molecules(OrderedDict):
         -------
         DataArray
             Arrayed data of desired genre as appropriate DataArray object.
-
-        TODO
-        ----
-        Add support for 'filenames'"""
+        """
         try:
-            cls = ArrayBase.constructors[genre]  # DataArray subclass
+            cls = ArrayBase.constructors[genre]  # ArrayBase subclasses
         except KeyError:
             raise ValueError(f"Unknown genre '{genre}'.")
-        conarr = self.kept if not full else (True for __ in self.kept)
-        array = (
-            (fname, mol, mol[genre])
-            for (fname, mol), con in zip(self.items(), conarr)
-            if con and genre in mol
-        )
+        if genre == "filenames":
+            # return early if filenames requested
+            return cls(
+                genre=genre,
+                filenames=list(self.trimmed_values() if not full else self.values()),
+                allow_data_inconsistency=self.allow_data_inconsistency,
+            )
+        view = self.trimmed_items() if not full else self.items()
+        array = ((fname, mol, mol[genre]) for fname, mol in view if genre in mol)
         try:
             filenames, mols, values = zip(*array)
         except ValueError:  # if no elements in `array`
             logger.debug(
                 f"Array of gerne {genre} requested, but no such data available "
-                f"or conformers providing this data where trimmed off. "
-                f"Returning empty array."
+                f"or conformers providing this data were trimmed off. "
+                f"Returning an empty array."
             )
             filenames, mols, values = [], [], []
         params = cls.get_init_params()
@@ -355,12 +364,13 @@ class Molecules(OrderedDict):
         params["allow_data_inconsistency"] = self.allow_data_inconsistency
         for key in params:
             if not isinstance(params[key], parameter_type):
+                # if value for parameter is already established, move on
                 continue
             try:
                 if not mols:
-                    raise KeyError
                     # this is a hack to invoke except clause
                     # also when mol is an empty sequence
+                    raise KeyError
                 params[key] = [mol[key] for mol in mols]
             except KeyError:
                 # set param to its default value

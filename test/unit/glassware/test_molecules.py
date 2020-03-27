@@ -193,6 +193,8 @@ class TestMolecules(ut.TestCase):
         self.assertIs(gw.ExcitedStateBars, type(vdip))
         emang = self.full.arrayed("emang")
         self.assertIs(gw.FloatArray, type(emang))
+        filenames = self.full.arrayed("filenames")
+        self.assertIs(gw.FilenamesArray, type(filenames))
 
     def test_arrayed_trimmed(self):
         arr = self.full.arrayed("zpe")
