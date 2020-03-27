@@ -1,0 +1,51 @@
+CURRENT:
+create spectra.align_with(experimental)
+create spectra.find_offset(experimental)
+create spectra.move_max_to(x_position)
+tesliper - add 'extract only known files'
+resolve raman and roa spectra calculation
+implement filtering functions in tesliper.py
+supplement docstrings
+add some code commentary
+prevent spectra recalculating if settings not changed
+fix and supplement logging
+gui - update to current tesliper's api
+gui - refresh 'single conformer' list after new data loaded
+gui - put conformers without values always on bottom when sorting
+gui - handle SCF energy in conformers tab separately form other energies
+gui - remove other energies in average spectra by energy when only scf available
+
+CONSIDER:
+soxhlet - exclude path from object creation
+molecules - add typing annotations / split arrayed()
+implement smart calculation and smart export
+energies extraction from spectra outputs
+
+
+DESIGN:
+conformers tab has visual info for each entry
+
+SOON:
+create user guide, build documentation
+add popup information when inconsistency allowed
+add finding optimal spectra range
+gui - correct displaying of checkboxes
+gui - bind <<enter>> to entry widgets
+handle incompatible Gaussian versions
+add jaguar support
+add drag&drop support
+export from spectra tab
+export spectra as image
+create testing suite
+spectra colour by population
+supplement info tab
+solve silent data overriding problem
+
+FUTURE:
+add tooltips
+add spectra comparition feature
+add velo and lenght electronic spectra comparition
+add anharmonic spectra support
+add nmr spectra
+add geometry analysis feature
+add molecule dispay window ?
