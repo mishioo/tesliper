@@ -57,13 +57,35 @@ class TestMolecules(ut.TestCase):
         self.assertEqual(self.mols.filenames, ["bla"])
         self.assertIsInstance(self.mols["bla"], dict)
 
-    def test_setitem(self):
+    def test_setitem_with_dict(self):
         self.mols["foo"] = {"data": [1, 2, 3, 4]}
         self.assertEqual(len(self.mols), 2)
         self.assertEqual(self.mols.kept, [True, True])
         self.assertEqual(self.mols.filenames, ["bla", "foo"])
+
+    def test_setitem_with_zip(self):
+        self.mols["foo"] = zip(("data",), ([1, 2, 3, 4],))
+        self.assertEqual(len(self.mols), 2)
+        self.assertEqual(self.mols.kept, [True, True])
+        self.assertEqual(self.mols.filenames, ["bla", "foo"])
+
+    def test_setitem_with_tuple(self):
+        self.mols["foo"] = (("data", [1, 2, 3, 4]),)
+        self.assertEqual(len(self.mols), 2)
+        self.assertEqual(self.mols.kept, [True, True])
+        self.assertEqual(self.mols.filenames, ["bla", "foo"])
+
+    def test_setitem_with_invalid_type(self):
         with self.assertRaises(TypeError):
             self.mols["ham"] = (1, 2)
+        with self.assertRaises(TypeError):
+            self.mols["ham"] = 1
+
+    def test_setitem_with_invalid_value(self):
+        with self.assertRaises(ValueError):
+            self.mols["ham"] = ((1, 2, 3),)
+        with self.assertRaises(ValueError):
+            self.mols["ham"] = ((1,),)
 
     def test_delitem_single(self):
         del self.mols["bla"]

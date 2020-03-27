@@ -125,24 +125,25 @@ class Molecules(OrderedDict):
         self.filenames = []
         super().__init__(*args, **kwargs)
 
-    def __setitem__(self, key, value, **kwargs):
-        # TO DO: enable other, convertible to dict, structures
-        # TO DO: make sure setting same key does not append kept and filenames
-        if not isinstance(value, dict):
-            raise TypeError(f"Value should be dict-like object, " f"not {type(value)}")
+    def __setitem__(self, key, value):
+        try:
+            value = dict(value)
+        except TypeError as error:
+            raise TypeError(f"Can't convert given value to dictionary.") from error
+        except ValueError as error:
+            raise ValueError(f"Can't convert given value to dictionary.") from error
         if key in self:
             index = self[key]["_index"]
-            self.kept[index] = True
         else:
             index = len(self.filenames)
             self.filenames.append(key)
             self.kept.append(True)
-        super().__setitem__(key, value, **kwargs)
+        super().__setitem__(key, value)
         self[key]["_index"] = index
 
-    def __delitem__(self, key, **kwargs):
+    def __delitem__(self, key):
         index = self[key]["_index"]
-        super().__delitem__(key, **kwargs)
+        super().__delitem__(key)
         del self.filenames[index]
         del self.kept[index]
         for index, mol in enumerate(self.values()):
