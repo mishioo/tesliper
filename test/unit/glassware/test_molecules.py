@@ -57,13 +57,35 @@ class TestMolecules(ut.TestCase):
         self.assertEqual(self.mols.filenames, ["bla"])
         self.assertIsInstance(self.mols["bla"], dict)
 
-    def test_setitem(self):
+    def test_setitem_with_dict(self):
         self.mols["foo"] = {"data": [1, 2, 3, 4]}
         self.assertEqual(len(self.mols), 2)
         self.assertEqual(self.mols.kept, [True, True])
         self.assertEqual(self.mols.filenames, ["bla", "foo"])
+
+    def test_setitem_with_zip(self):
+        self.mols["foo"] = zip(("data",), ([1, 2, 3, 4],))
+        self.assertEqual(len(self.mols), 2)
+        self.assertEqual(self.mols.kept, [True, True])
+        self.assertEqual(self.mols.filenames, ["bla", "foo"])
+
+    def test_setitem_with_tuple(self):
+        self.mols["foo"] = (("data", [1, 2, 3, 4]),)
+        self.assertEqual(len(self.mols), 2)
+        self.assertEqual(self.mols.kept, [True, True])
+        self.assertEqual(self.mols.filenames, ["bla", "foo"])
+
+    def test_setitem_with_invalid_type(self):
         with self.assertRaises(TypeError):
             self.mols["ham"] = (1, 2)
+        with self.assertRaises(TypeError):
+            self.mols["ham"] = 1
+
+    def test_setitem_with_invalid_value(self):
+        with self.assertRaises(ValueError):
+            self.mols["ham"] = ((1, 2, 3),)
+        with self.assertRaises(ValueError):
+            self.mols["ham"] = ((1,),)
 
     def test_delitem_single(self):
         del self.mols["bla"]
@@ -80,26 +102,59 @@ class TestMolecules(ut.TestCase):
             [m["_index"] for m in self.full.values()], list(range(6))
         )
 
+    def test_update_with_kwargs(self):
+        self.mols.update(bla2={"data": [1, 2, 3, 4]})
+        self.assertEqual(len(self.mols), 2)
+        self.assertEqual(self.mols.kept, [True, True])
+        self.assertEqual(self.mols.filenames, ["bla", "bla2"])
+        self.assertEqual(self.mols["bla2"], {"_index": 1, "data": [1, 2, 3, 4]})
+
     def test_update_with_dict(self):
         self.mols.update({"bla2": {"data": [1, 2, 3, 4]}})
         self.assertEqual(len(self.mols), 2)
         self.assertEqual(self.mols.kept, [True, True])
         self.assertEqual(self.mols.filenames, ["bla", "bla2"])
-        self.assertEqual(self.mols["bla"], {"_index": 0, "data": [1, 2, 3, 4]})
+        self.assertEqual(self.mols["bla2"], {"_index": 1, "data": [1, 2, 3, 4]})
 
-    def test_update_new(self):
-        self.mols.update(bla2={"data": [5, 2, 3, 4]})
+    def test_update_with_zip(self):
+        self.mols.update(zip(("bla2",), ({"data": [1, 2, 3, 4]},)))
         self.assertEqual(len(self.mols), 2)
         self.assertEqual(self.mols.kept, [True, True])
         self.assertEqual(self.mols.filenames, ["bla", "bla2"])
-        self.assertEqual(self.mols["bla2"], {"_index": 1, "data": [5, 2, 3, 4]})
+        self.assertEqual(self.mols["bla2"], {"_index": 1, "data": [1, 2, 3, 4]})
 
-    def test_update_same(self):
-        self.mols.update(bla={"data": "new"})
+    def test_update_with_tuple(self):
+        self.mols.update((("bla2", {"data": [1, 2, 3, 4]}),))
+        self.assertEqual(len(self.mols), 2)
+        self.assertEqual(self.mols.kept, [True, True])
+        self.assertEqual(self.mols.filenames, ["bla", "bla2"])
+        self.assertEqual(self.mols["bla2"], {"_index": 1, "data": [1, 2, 3, 4]})
+
+    def test_update_new(self):
+        self.mols.update(bla2={"data": [5, 6, 7, 8]})
+        self.assertEqual(len(self.mols), 2)
+        self.assertEqual(self.mols.kept, [True, True])
+        self.assertEqual(self.mols.filenames, ["bla", "bla2"])
+        self.assertEqual(self.mols["bla2"], {"_index": 1, "data": [5, 6, 7, 8]})
+
+    def test_update_existing_with_new_data(self):
+        self.mols.update(bla={"data_new": "new"})
         self.assertEqual(len(self.mols), 1)
         self.assertEqual(self.mols.kept, [True])
         self.assertEqual(self.mols.filenames, ["bla"])
-        self.assertEqual(self.mols["bla"]["data"], "new")
+        self.assertEqual(
+            self.mols["bla"], {"_index": 0, "data": [1, 2, 3, 4], "data_new": "new"}
+        )
+
+    def test_update_existing_and_new(self):
+        self.mols.update(bla={"data_new": "new"}, bla2={"data": [1, 2, 3, 4]})
+        self.assertEqual(len(self.mols), 2)
+        self.assertEqual(self.mols.kept, [True, True])
+        self.assertEqual(self.mols.filenames, ["bla", "bla2"])
+        self.assertEqual(self.mols["bla2"], {"_index": 1, "data": [1, 2, 3, 4]})
+        self.assertEqual(
+            self.mols["bla"], {"_index": 0, "data": [1, 2, 3, 4], "data_new": "new"}
+        )
 
     def test_update_repeated(self):
         self.mols.update({"bla": {"data": "new"}}, bla={"other": "foo"})
@@ -138,6 +193,8 @@ class TestMolecules(ut.TestCase):
         self.assertIs(gw.ExcitedStateBars, type(vdip))
         emang = self.full.arrayed("emang")
         self.assertIs(gw.FloatArray, type(emang))
+        filenames = self.full.arrayed("filenames")
+        self.assertIs(gw.FilenamesArray, type(filenames))
 
     def test_arrayed_trimmed(self):
         arr = self.full.arrayed("zpe")
@@ -205,7 +262,11 @@ class TestMolecules(ut.TestCase):
         with self.assertRaises(KeyError):
             self.full.kept = ["zero"]
         with self.assertRaises(ValueError):
+            self.full.kept = []
+        with self.assertRaises(ValueError):
             self.full.kept = [True] * 2
+        with self.assertRaises(ValueError):
+            self.empty.kept = [True] * 2
         with self.assertRaises(ValueError):
             self.full.kept = [True] * 20
         with self.assertRaises(IndexError):
@@ -214,6 +275,7 @@ class TestMolecules(ut.TestCase):
             self.full.kept = [[]]
 
     def test_kept(self):
+        self.assertSequenceEqual([True] * 7, self.full.kept)
         self.full.kept = "imag stoich term".split(" ")
         self.assertSequenceEqual(
             [False, False, True, True, True, False, False], self.full.kept
@@ -226,10 +288,17 @@ class TestMolecules(ut.TestCase):
         self.assertSequenceEqual(
             [True, False, False, True, False, False, True], self.full.kept
         )
-        self.full.kept = []
+        self.full.kept = False
         self.assertSequenceEqual([False] * 7, self.full.kept)
+        self.full.kept = True
+        self.assertSequenceEqual([True] * 7, self.full.kept)
+        self.assertSequenceEqual([], self.empty.kept)
+        self.empty.kept = []
+        self.assertSequenceEqual([], self.empty.kept)
+        self.empty.kept = False
+        self.assertSequenceEqual([], self.empty.kept)
 
-    def test_inconsistency_allowed(self):
+    def test_inconsistency_allowed_context(self):
         with self.mols.inconsistency_allowed:
             self.assertTrue(self.mols.allow_data_inconsistency)
         self.assertFalse(self.mols.allow_data_inconsistency)

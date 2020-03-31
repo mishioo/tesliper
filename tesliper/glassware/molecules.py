@@ -9,11 +9,21 @@ from collections import (
 )
 from contextlib import contextmanager
 from itertools import chain
+from typing import Sequence, Union
 
 import numpy as np
 
 from tesliper.exceptions import TesliperError
-from .arrays import ArrayBase, DataArray
+from .arrays import (
+    ArrayBase,
+    DataArray,
+    BooleanArray,
+    InfoArray,
+    FloatArray,
+    Energies,
+    GroundStateBars,
+    ExcitedStateBars,
+)
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -113,10 +123,7 @@ class Molecules(OrderedDict):
     Notes
     -----
     Inherits from collections.OrderedDict.
-
-    TODO
-    ----
-    Add type checks in update and setting methods."""
+    """
 
     def __init__(self, *args, allow_data_inconsistency=False, **kwargs):
         self.allow_data_inconsistency = allow_data_inconsistency
@@ -124,24 +131,25 @@ class Molecules(OrderedDict):
         self.filenames = []
         super().__init__(*args, **kwargs)
 
-    def __setitem__(self, key, value, **kwargs):
-        # TO DO: enable other, convertible to dict, structures
-        # TO DO: make sure setting same key does not append kept and filenames
-        if not isinstance(value, dict):
-            raise TypeError(f"Value should be dict-like object, " f"not {type(value)}")
+    def __setitem__(self, key, value):
+        try:
+            value = dict(value)
+        except TypeError as error:
+            raise TypeError(f"Can't convert given value to dictionary.") from error
+        except ValueError as error:
+            raise ValueError(f"Can't convert given value to dictionary.") from error
         if key in self:
             index = self[key]["_index"]
-            self.kept[index] = True
         else:
             index = len(self.filenames)
             self.filenames.append(key)
             self.kept.append(True)
-        super().__setitem__(key, value, **kwargs)
+        super().__setitem__(key, value)
         self[key]["_index"] = index
 
-    def __delitem__(self, key, **kwargs):
+    def __delitem__(self, key):
         index = self[key]["_index"]
-        super().__delitem__(key, **kwargs)
+        super().__delitem__(key)
         del self.filenames[index]
         del self.kept[index]
         for index, mol in enumerate(self.values()):
@@ -154,7 +162,7 @@ class Molecules(OrderedDict):
         instance, created by `arrayed` method. It may be changed by use of trim
         methods, by setting its value directly, or by modification of the
         underlying list. For the first option refer to those methods
-        documentation, for rest see Examples section.
+        documentation, for rest see the Examples section.
 
         Returns
         -------
@@ -211,8 +219,8 @@ class Molecules(OrderedDict):
         KeyError: Unknown molecules: other.
 
         Thirdly, list of integers representing molecules indices may br given.
-        Only specified molecules with specified indices will be kept. If index
-        out of bounds is in the list, IndexError is raised. Indexing with
+        Only molecules with specified indices will be kept. If one of given integers
+        cant be translated to molecule's index, IndexError is raised. Indexing with
         negative values is not supported currently.
 
         >>> m.kept = [1, 2]
@@ -223,12 +231,15 @@ class Molecules(OrderedDict):
         ...
         IndexError: Indexes out of bounds: 3.
 
-        Fourthly, assigning an empty list to this attribute will mark all
-        molecules as not kept.
+        Fourthly, assigning `True` or `False` to this attribute will mark all molecules
+        as kept or not kept respectively.
 
-        >>> m.kept = []
+        >>> m.kept = False
         >>> m.kept
         [False, False, False]
+        >>> m.kept = True
+        >>> m.kept
+        [True, True, True]
 
         Lastly, list of kept values may be modified by setting its elements
         to True or False. It is advised against, however, as mistake such as
@@ -246,14 +257,16 @@ class Molecules(OrderedDict):
         return self.__kept
 
     @kept.setter
-    def kept(self, blade):
+    def kept(self, blade: Union[Sequence[Union[bool, str, int]], bool]):
+        if blade is True or blade is False:
+            self.__kept = [blade for __ in self.keys()]
+            return
         try:
             first = blade[0]
         except (TypeError, KeyError):
-            raise TypeError(f"Excepted sequence, got: {type(blade)}.")
+            raise TypeError(f"Excepted sequence or boolean, got: {type(blade)}.")
         except IndexError:
-            self.__kept = [False for __ in self.keys()]
-            return
+            first = bool()
         if isinstance(first, str):
             blade = set(blade)
             if not blade.issubset(set(self.keys())):
@@ -290,23 +303,22 @@ class Molecules(OrderedDict):
     def update(self, other=None, **kwargs):
         """Works like dict.update, but if key is already present, it updates
         dictionary associated with given key rather than changing its value.
-
-        TO DO
-        -----
-        Add type checks.
-        Figure out what to do with values like optimization_completed
-        and normal_termination."""
-        molecules = dict()
+        Please note, that values of status genres like 'optimization_completed'
+        and 'normal_termination' will be updated as well for such key,
+        if are present in given new values.
+        """
         if other is not None:
-            molecules.update(other)
-        items = chain(molecules.items(), kwargs.items())
+            other = dict(other)
+        else:
+            other = dict()
+        items = chain(other.items(), kwargs.items())
         for key, value in items:
             if key in self:
                 self[key].update(value)
             else:
                 self[key] = value
 
-    def arrayed(self, genre, full=False):
+    def arrayed(self, genre: str, full: bool = False) -> DataArray:
         """Lists requested data and returns as appropriate DataArray instance.
 
         Parameters
@@ -321,27 +333,27 @@ class Molecules(OrderedDict):
         -------
         DataArray
             Arrayed data of desired genre as appropriate DataArray object.
-
-        TODO
-        ----
-        Add support for 'filenames'"""
+        """
         try:
-            cls = ArrayBase.constructors[genre]  # DataArray subclass
+            cls = ArrayBase.constructors[genre]  # ArrayBase subclasses
         except KeyError:
             raise ValueError(f"Unknown genre '{genre}'.")
-        conarr = self.kept if not full else (True for __ in self.kept)
-        array = (
-            (fname, mol, mol[genre])
-            for (fname, mol), con in zip(self.items(), conarr)
-            if con and genre in mol
-        )
+        if genre == "filenames":
+            # return early if filenames requested
+            return cls(
+                genre=genre,
+                filenames=list(self.trimmed_values() if not full else self.values()),
+                allow_data_inconsistency=self.allow_data_inconsistency,
+            )
+        view = self.trimmed_items() if not full else self.items()
+        array = ((fname, mol, mol[genre]) for fname, mol in view if genre in mol)
         try:
             filenames, mols, values = zip(*array)
         except ValueError:  # if no elements in `array`
             logger.debug(
                 f"Array of gerne {genre} requested, but no such data available "
-                f"or conformers providing this data where trimmed off. "
-                f"Returning empty array."
+                f"or conformers providing this data were trimmed off. "
+                f"Returning an empty array."
             )
             filenames, mols, values = [], [], []
         params = cls.get_init_params()
@@ -352,12 +364,13 @@ class Molecules(OrderedDict):
         params["allow_data_inconsistency"] = self.allow_data_inconsistency
         for key in params:
             if not isinstance(params[key], parameter_type):
+                # if value for parameter is already established, move on
                 continue
             try:
                 if not mols:
-                    raise KeyError
                     # this is a hack to invoke except clause
                     # also when mol is an empty sequence
+                    raise KeyError
                 params[key] = [mol[key] for mol in mols]
             except KeyError:
                 # set param to its default value
@@ -514,7 +527,12 @@ class Molecules(OrderedDict):
         self.kept = blade
 
     def select_all(self):
+        """Marks all molecules as 'kept'. Equivalent to `molecules.kept = True`."""
         self.kept = [True for __ in self.kept]
+
+    def reject_all(self):
+        """Marks all molecules as 'not kept'. Equivalent to `molecules.kept = False`."""
+        self.kept = [False for __ in self.kept]
 
     def trimmed_keys(self, indices=False):
         return _TrimmedKeysView(self, indices=indices)

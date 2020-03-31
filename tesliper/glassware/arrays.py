@@ -1,5 +1,6 @@
 # IMPORTS
 import logging as lgg
+from typing import Sequence, Union, Any
 
 import numpy as np
 from .. import datawork as dw
@@ -126,9 +127,42 @@ class InfoArray(DataArray):
         "command",
         "cpu_time",
         "transitions",
-        "stoichiometry",  # , 'filenames'
+        "stoichiometry",
     ]
     values = ArrayProperty(dtype=str, check_against="filenames")
+
+
+class FilenamesArray(DataArray):
+    associated_genres = ["filenames"]
+    """Special case of DataArray, holds only filenames. `values` property returns
+    same as `filenames` and ignores any value given to its setter.
+
+    Parameters
+    ----------
+    genre : str
+        Name of genre, should be 'filenames'.
+    filenames : numpy.ndarray(dtype=str)
+        List of filenames of gaussian output files, from which data were extracted.
+    values : numpy.ndarray(dtype=str)
+        Always returns same as `filenames`.
+    """
+
+    def __init__(
+        self,
+        genre: str = "filenames",
+        filenames: Union[Sequence, np.ndarray] = (),
+        values: Any = None,
+        allow_data_inconsistency: bool = False,
+    ):
+        super().__init__(genre, filenames, values, allow_data_inconsistency)
+
+    @property
+    def values(self):
+        return self.filenames
+
+    @values.setter
+    def values(self, values):
+        pass
 
 
 class BooleanArray(DataArray):
@@ -143,7 +177,7 @@ class Energies(FloatArray):
     genre : str
         genre of energy.
     filenames : numpy.ndarray(dtype=str)
-        List of filenames of gaussian output files, from whitch data were
+        List of filenames of gaussian output files, from which data were
         extracted.
     values : numpy.ndarray(dtype=float)
         Energy value for each conformer.
