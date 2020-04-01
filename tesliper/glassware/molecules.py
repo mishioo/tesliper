@@ -9,7 +9,7 @@ from collections import (
 )
 from contextlib import contextmanager
 from itertools import chain
-from typing import Sequence, Union
+from typing import Sequence, Union, Iterable, Optional
 
 import numpy as np
 
@@ -120,10 +120,20 @@ class Molecules(OrderedDict):
         list of arbitrary keyword arguments for creation of underlying
         dictionary
 
+    Class Attributes
+    ----------------
+    primary_genres
+        Data genres considered most important, used as default when checking
+        for molecule completeness (see `trim_incomplete` method).
+
     Notes
     -----
     Inherits from collections.OrderedDict.
     """
+
+    primary_genres = tuple(
+        "dip rot vosc vrot losc lrot raman1 roa1 scf zpe ent ten gib".split()
+    )
 
     def __init__(self, *args, allow_data_inconsistency=False, **kwargs):
         self.allow_data_inconsistency = allow_data_inconsistency
@@ -323,9 +333,9 @@ class Molecules(OrderedDict):
 
         Parameters
         ----------
-        genre : str
+        genre
             String representing data genre. Must be one of known genres.
-        full : bool, optional
+        full
             Boolean indicating if full set of data should be taken, ignoring
             any trimming conducted earlier. Defaults to False.
 
@@ -385,27 +395,27 @@ class Molecules(OrderedDict):
                     )
         return cls(**params)
 
-    def by_index(self, index):
+    def by_index(self, index: int) -> dict:
         """Returns data for conformer on desired index."""
         return self[self.filenames[index]]
 
-    def key_of(self, index):
+    def key_of(self, index: int) -> str:
         """Returns name of molecule associated with given index."""
         return self.filenames[index]
 
-    def index_of(self, key):
-        """Return index of given """
+    def index_of(self, key: str) -> int:
+        """Return index of given key."""
         try:
             return self[key]["_index"]
-        except KeyError:
-            raise ValueError(f"No such molecule: {key}.")
+        except KeyError as error:
+            raise KeyError(f"No such molecule: {key}.") from error
 
-    def has_genre(self, genre):
+    def has_genre(self, genre: str) -> bool:
         """Checks if any of stored molecules contains data of given genre.
 
         Parameters
         ----------
-        genre : str
+        genre
             name of genre to test
 
         Returns
@@ -418,13 +428,13 @@ class Molecules(OrderedDict):
                 return True
         return False
 
-    def has_any_genre(self, genres):
+    def has_any_genre(self, genres: Iterable[str]) -> bool:
         """Checks if any of stored molecules contains data of any of given
         genres.
 
         Parameters
         ----------
-        genres : list of str
+        genres
             list of names of genres to test
 
         Returns
@@ -438,54 +448,137 @@ class Molecules(OrderedDict):
                     return True
         return False
 
-    def trim_incomplete(self, wanted=None):
-        # TODO: don't take optimization_completed and such into consideration
+    def trim_incomplete(
+        self, wanted: Optional[Iterable[str]] = None, strict: bool = False
+    ) -> None:
+        """Mark incomplete molecules as "not kept".
+
+        Molecules that does not contain one or more data genres specified as `wanted`
+        will be marked as "not kept". If `wanted` parameter is not given, it evaluates
+        to `molecules.primary_genres`. If no molecule contains all `wanted` genres,
+        molecules that match the specification most closely are kept. The "closeness"
+        is defined by number of molecule's genres matching `wanted` genres in the first
+        place (the more, the better) and the position of particular genre in `wanted`
+        list in the second place (the closer to the beginning, the better). This
+        "match closest" behaviour may be turned off by setting parameter
+        `strict` to `True`. In such case, only molecules containing all `wanted`
+        genres will be kept.
+
+        Parameters
+        ----------
+        wanted
+            List of data genres used as completeness reference.
+            If not given, evaluates to `molecules.primary_genres`.
+        strict
+            Indicates if all `wanted` genres must be present in the kept molecules
+            (`strict=True`) or if "match closest" mechanism should be used
+            as a fallback (`strict=False`, this is the default).
+
+        Notes
+        -----
+        Molecules previously marked as "not kept" will not be affected.
+        """
+        # DONE: don't take optimization_completed and such into consideration
         # TODO: when above satisfied, change gui.tab_loader.Loader\
         #       .update_overview_values() and .set_overview_values()
-        # TODO: maybe use all as default but keep current `wanted` as Molecules'
-        #       attribute or module level variable
-        if wanted is None:
-            wanted = (
-                "dip rot vosc vrot losc lrot raman1 roa1 scf zpe ent ten gib".split()
-            )
-        elif isinstance(wanted, str):
-            wanted = wanted.split()
-        elif not isinstance(wanted, (list, tuple)):
-            raise TypeError(f"Expected list, tuple or string, got {type(wanted)}.")
-        count = [[g in mol for g in wanted] for mol in self.values()]
-        best_match = max(count)
-        for index, match in enumerate(count):
-            if not match == best_match:
-                self.kept[index] = False
+        wanted = wanted if wanted is not None else self.primary_genres
+        if not strict:
+            count = [tuple(g in mol for g in wanted) for mol in self.values()]
+            best_match = max(count)
+            complete = (match == best_match for match in count)
+        else:
+            complete = (all(g in mol for g in wanted) for mol in self.values())
+        blade = [kept and cmpl for kept, cmpl in zip(self.kept, complete)]
+        self.__kept = blade
 
-    def trim_imaginary_frequencies(self):
+    def trim_imaginary_frequencies(self) -> None:
+        """Mark all molecules with imaginary frequencies as "not kept".
+
+        Notes
+        -----
+        Molecules previously marked as "not kept" will not be affected.
+        Molecules that doesn't contain "freq" genre will be treated as not having
+        imaginary frequencies.
+        """
         dummy = [1]
         for index, mol in enumerate(self.values()):
             freq = np.array(mol.get("freq", dummy))
             if (freq < 0).any():
-                self.kept[index] = False
+                self.__kept[index] = False
 
-    def trim_non_matching_stoichiometry(self):
-        counter = Counter(
-            mol["stoichiometry"] for mol in self.values() if "stoichiometry" in mol
-        )
-        stoich = counter.most_common()[0][0]
+    def trim_non_matching_stoichiometry(self, wanted: Optional[str] = None) -> None:
+        """Mark all molecules with stoichiometry other than `wanted` as "not kept".
+        If not given, `wanted` evaluates to the most common stoichiometry.
+
+        Parameters
+        ----------
+        wanted
+            Only molecules with same stoichiometry will be kept. Evaluates to the most
+            common stoichiometry if not given.
+
+        Notes
+        -----
+        Molecules previously marked as "not kept" will not be affected.
+        Molecules that doesn't contain stoichiometry data are always treated
+        as non-matching.
+        """
+        if not wanted:
+            counter = Counter(
+                mol["stoichiometry"] for mol in self.values() if "stoichiometry" in mol
+            )
+            wanted = counter.most_common()[0][0]
         for index, mol in enumerate(self.values()):
-            if "stoichiometry" not in mol or not mol["stoichiometry"] == stoich:
-                self.kept[index] = False
+            if "stoichiometry" not in mol or not mol["stoichiometry"] == wanted:
+                self.__kept[index] = False
 
-    def trim_not_optimized(self):
+    def trim_not_optimized(self) -> None:
+        """Mark all molecules that failed structure optimization as "not kept".
+
+        Notes
+        -----
+        Molecules previously marked as "not kept" will not be affected.
+        Molecules that doesn't contain optimization data are always treated as
+        optimized.
+        """
         for index, mol in enumerate(self.values()):
             if not mol.get("optimization_completed", True):
-                self.kept[index] = False
+                self.__kept[index] = False
 
-    def trim_non_normal_termination(self):
-        # TODO: ensure its working properly
+    def trim_non_normal_termination(self) -> None:
+        """Mark all molecules, which calculation job did not terminate normally,
+         as "not kept".
+
+        Notes
+        -----
+        Molecules previously marked as "not kept" will not be affected.
+        Molecules that doesn't contain data regarding their calculation job's
+        termination are always treated as terminated abnormally.
+        """
         for index, mol in enumerate(self.values()):
             if not mol.get("normal_termination", False):
-                self.kept[index] = False
+                self.__kept[index] = False
 
-    def trim_inconsistent_sizes(self):
+    def trim_inconsistent_sizes(self) -> None:
+        """Mark as "not kept" all molecules that contain any iterable data genre,
+        that is of different length, than in case of majority of molecules.
+
+        Examples
+        --------
+        >>> m = Molecules(
+        ...     one={'a': [1, 2, 3]},
+        ...     two={'a': [1, 2, 3]},
+        ...     three={'a': [1, 2, 3, 4]}
+        ... )
+        >>> m.kept
+        [True, True, True]
+        >>> m.trim_inconsistent_sizes()
+        >>> m.kept
+        [True, True, False]
+
+        Notes
+        -----
+        Molecules previously marked as "not kept" will not be affected.
+        """
         sizes = {}
         for fname, mol in self.items():
             for genre, value in mol.items():
@@ -499,40 +592,80 @@ class Molecules(OrderedDict):
             for genre, most_common in maxes.items():
                 confs = sizes[genre]
                 if fname in confs and not confs[fname] == most_common:
-                    self.kept[index] = False
+                    self.__kept[index] = False
 
     def trim_to_range(
-        self, genre, minimum=float("-inf"), maximum=float("inf"), attribute="values"
-    ):
+        self,
+        genre: str,
+        minimum: Union[int, float] = float("-inf"),
+        maximum: Union[int, float] = float("inf"),
+        attribute: str = "values",
+    ) -> None:
+        """Marks as "not kept" all molecules, which numeric value of data
+        of specified genre is outside of the range specified by `minimum`
+        and `maximum` values.
+
+        Parameters
+        ----------
+        genre
+            Name of genre that should be compared to specified
+            minimum and maximum values.
+        minimum
+            Minimal accepted value - every molecule, which genre value evaluates
+            to less than `minimum` will be marked as "not kept".
+            Defaults to `float(-inf)`.
+        maximum
+            Maximal accepted value - every molecule, which genre value evaluates
+            to more than `maximum` will be marked as "not kept".
+            Defaults to `float(inf)`.
+        attribute
+            Attribute of DataArray of specified `genre` that contains one-dimensional
+            array of numeric values. defaults to `"values"`.
+
+        Raises
+        ------
+        AttributeError
+            If DataArray associated with `genre` genre has no attribute `attribute`.
+        ValueError
+            If data retrieved from specified genre's attribute is not in the form of
+            one-dimensional array.
+        TypeError
+            If comparision cannot be made between elements of specified genre's
+            attribute and `minimum` or `maximum` values.
+
+        Notes
+        -----
+        Molecules previously marked as "not kept" will not be affected.
+        """
         try:
             arr = self.arrayed(genre)
             atr = getattr(arr, attribute)
-        except AttributeError:
-            raise ValueError(
+        except AttributeError as error:
+            raise AttributeError(
                 f"Invalid genre/attribute combination: {genre}/{attribute}. "
                 f"Resulting DataArray object has no attribute {attribute}."
-            )
-        except TypeError:
+            ) from error
+        values = np.asarray(atr)
+        if values.ndim != 1:
             raise ValueError(
                 f"Invalid genre/attribute combination: {genre}/{attribute}. "
-                f"DataArray's attribute must be iterable."
+                f"DataArray's attribute must contain one-dimensional array of values."
             )
-        if not isinstance(atr[0], (int, float)):
-            raise ValueError(
-                f"Invalid genre/attribute combination: {genre}/{attribute}. "
-                f"Resulting DataArray must contain objects of type int or "
-                f"float, not {type(atr[0])}"
-            )
-        blade = [fnm for v, fnm in zip(atr, arr.filenames) if minimum <= v <= maximum]
-        self.kept = blade
+        try:
+            in_range = (minimum <= values) & (values <= maximum)
+        except TypeError as error:
+            raise TypeError(
+                f"Cannot compare {type(minimum)} with {type(values[0])}."
+            ) from error
+        self.kept = arr.filenames[in_range]
 
-    def select_all(self):
+    def select_all(self) -> None:
         """Marks all molecules as 'kept'. Equivalent to `molecules.kept = True`."""
-        self.kept = [True for __ in self.kept]
+        self.__kept = [True for __ in self.__kept]
 
-    def reject_all(self):
+    def reject_all(self) -> None:
         """Marks all molecules as 'not kept'. Equivalent to `molecules.kept = False`."""
-        self.kept = [False for __ in self.kept]
+        self.__kept = [False for __ in self.__kept]
 
     def trimmed_keys(self, indices=False):
         return _TrimmedKeysView(self, indices=indices)
@@ -546,17 +679,17 @@ class Molecules(OrderedDict):
     @property
     @contextmanager
     def untrimmed(self):
-        blade = self.kept
-        self.select_all()
+        blade = self.__kept
+        self.kept = True
         yield self
-        self.kept = blade
+        self.__kept = blade
 
     @contextmanager
     def trimmed_to(self, blade):
-        old_blade = self.kept
+        old_blade = self.__kept
         self.kept = blade
         yield self
-        self.kept = old_blade
+        self.__kept = old_blade
 
     @property
     @contextmanager
