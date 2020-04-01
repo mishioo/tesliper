@@ -258,6 +258,11 @@ class TestMolecules(ut.TestCase):
         self.full.trim_to_range("zpe", minimum=-235)
         self.assertEqual([True, True, True, True, False, False, False], self.full.kept)
 
+    def test_trim_to_range_previously_trimmed(self):
+        self.full.kept = [False, True, True, True, True, True, True]
+        self.full.trim_to_range("zpe", minimum=-235)
+        self.assertEqual([False, True, True, True, False, False, False], self.full.kept)
+
     def test_trim_to_range_max(self):
         self.full.trim_to_range("zpe", maximum=-225)
         self.assertEqual([False, False, False, True, True, True, True], self.full.kept)
@@ -267,12 +272,12 @@ class TestMolecules(ut.TestCase):
         self.assertEqual([False, True, True, True, True, True, False], self.full.kept)
 
     def test_trim_to_range_errors(self):
-        with self.assertRaises(ValueError):
+        with self.assertRaises(TypeError):
             self.full.trim_to_range("command")
-        with self.assertRaises(ValueError):
+        with self.assertRaises(AttributeError):
             self.full.trim_to_range("zpe", attribute="bla")
         with self.assertRaises(ValueError):
-            self.full.trim_to_range("zpe", attribute="full_name")
+            self.full.trim_to_range("freq")
 
     def test_select_all(self):
         self.full.kept = [True, False, True, False, True, False, False]

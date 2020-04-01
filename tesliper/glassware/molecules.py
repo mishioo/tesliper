@@ -535,29 +535,69 @@ class Molecules(OrderedDict):
                     self.kept[index] = False
 
     def trim_to_range(
-        self, genre, minimum=float("-inf"), maximum=float("inf"), attribute="values"
-    ):
+        self,
+        genre: str,
+        minimum: Union[int, float] = float("-inf"),
+        maximum: Union[int, float] = float("inf"),
+        attribute: str = "values",
+    ) -> None:
+        """Marks as "not kept" all molecules, which numeric value of data
+        of specified genre is outside of the range specified by `minimum`
+        and `maximum` values.
+
+        Parameters
+        ----------
+        genre
+            Name of genre that should be compared to specified
+            minimum and maximum values.
+        minimum
+            Minimal accepted value - every molecule, which genre value evaluates
+            to less than `minimum` will be marked as "not kept".
+            Defaults to `float(-inf)`.
+        maximum
+            Maximal accepted value - every molecule, which genre value evaluates
+            to more than `maximum` will be marked as "not kept".
+            Defaults to `float(inf)`.
+        attribute
+            Attribute of DataArray of specified `genre` that contains one-dimensional
+            array of numeric values. defaults to `"values"`.
+
+        Raises
+        ------
+        AttributeError
+            If DataArray associated with `genre` genre has no attribute `attribute`.
+        ValueError
+            If data retrieved from specified genre's attribute is not in the form of
+            one-dimensional array.
+        TypeError
+            If comparision cannot be made between elements of specified genre's
+            attribute and `minimum` or `maximum` values.
+
+        Notes
+        -----
+        Molecules previously marked as "not kept" will not be affected.
+        """
         try:
             arr = self.arrayed(genre)
             atr = getattr(arr, attribute)
-        except AttributeError:
-            raise ValueError(
+        except AttributeError as error:
+            raise AttributeError(
                 f"Invalid genre/attribute combination: {genre}/{attribute}. "
                 f"Resulting DataArray object has no attribute {attribute}."
-            )
-        except TypeError:
+            ) from error
+        values = np.asarray(atr)
+        if values.ndim != 1:
             raise ValueError(
                 f"Invalid genre/attribute combination: {genre}/{attribute}. "
-                f"DataArray's attribute must be iterable."
+                f"DataArray's attribute must contain one-dimensional array of values."
             )
-        if not isinstance(atr[0], (int, float)):
-            raise ValueError(
-                f"Invalid genre/attribute combination: {genre}/{attribute}. "
-                f"Resulting DataArray must contain objects of type int or "
-                f"float, not {type(atr[0])}"
-            )
-        blade = [fnm for v, fnm in zip(atr, arr.filenames) if minimum <= v <= maximum]
-        self.kept = blade
+        try:
+            in_range = (minimum <= values) & (values <= maximum)
+        except TypeError as error:
+            raise TypeError(
+                f"Cannot compare {type(minimum)} with {type(values[0])}."
+            ) from error
+        self.kept = arr.filenames[in_range]
 
     def select_all(self):
         """Marks all molecules as 'kept'. Equivalent to `molecules.kept = True`."""
