@@ -226,7 +226,33 @@ class TestMolecules(ut.TestCase):
 
     def test_trim_incomplete(self):
         self.full.trim_incomplete()
-        self.assertEqual([True, True, True, True, True, True, False], self.full.kept)
+        assert [False, True, True, True, True, True, False] == self.full.kept
+
+    def test_trim_incomplete_default(self):
+        self.full.trim_incomplete()
+        assert [True, True, True, True, True, True, False] == self.full.kept
+        self.full.kept = [True, True, True, True, True, True, True]
+        del self.full["base"]["zpe"]
+        self.full.trim_incomplete()
+        assert [False, True, True, True, True, True, False] == self.full.kept
+
+    def test_trim_incomplete_wanted(self):
+        del self.full["base"]["zpe"]
+        self.full.trim_incomplete(wanted=["zpe"])
+        assert [False, True, True, True, True, True, True] == self.full.kept
+        self.full.kept = [True, True, True, True, True, True, True]
+        self.full.trim_incomplete(wanted=["scf"])
+        assert [True, True, True, True, True, True, False] == self.full.kept
+
+    def test_trim_incomplete_strict(self):
+        m = gw.Molecules(
+            one={"a": 1, "b": 2}, two={"a": 1, "c": 3}, three={"a": 1, "d": 3},
+        )
+        assert [True, True, True] == m.kept
+        m.trim_incomplete(wanted=["a", "b", "c"])
+        assert [True, False, False] == m.kept
+        m.trim_incomplete(wanted=["a", "b", "c"], strict=True)
+        assert [False, False, False] == m.kept
 
     def test_trim_to_range_min(self):
         self.full.trim_to_range("zpe", minimum=-235)

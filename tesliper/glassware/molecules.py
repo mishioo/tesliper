@@ -9,7 +9,7 @@ from collections import (
 )
 from contextlib import contextmanager
 from itertools import chain
-from typing import Sequence, Union
+from typing import Sequence, Union, Iterable, Optional
 
 import numpy as np
 
@@ -120,10 +120,20 @@ class Molecules(OrderedDict):
         list of arbitrary keyword arguments for creation of underlying
         dictionary
 
+    Class Attributes
+    ----------------
+    primary_genres
+        Data genres considered most important, used as default when checking
+        for molecule completeness (see `trim_incomplete` method).
+
     Notes
     -----
     Inherits from collections.OrderedDict.
     """
+
+    primary_genres = tuple(
+        "dip rot vosc vrot losc lrot raman1 roa1 scf zpe ent ten gib".split()
+    )
 
     def __init__(self, *args, allow_data_inconsistency=False, **kwargs):
         self.allow_data_inconsistency = allow_data_inconsistency
@@ -438,25 +448,48 @@ class Molecules(OrderedDict):
                     return True
         return False
 
-    def trim_incomplete(self, wanted=None):
-        # TODO: don't take optimization_completed and such into consideration
+    def trim_incomplete(
+        self, wanted: Optional[Iterable[str]] = None, strict: bool = False
+    ) -> None:
+        """Mark incomplete molecules as "not kept".
+
+        Molecules that does not contain one or more data genres specified as `wanted`
+        will be marked as "not kept". If `wanted` parameter is not given, it evaluates
+        to `molecules.primary_genres`. If no molecule contains all `wanted` genres,
+        molecules that match the specification most closely are kept. The "closeness"
+        is defined by number of molecule's genres matching `wanted` genres in the first
+        place (the more, the better) and the position of particular genre in `wanted`
+        list in the second place (the closer to the beginning, the better). This
+        "match closest" behaviour may be turned off by setting parameter
+        `strict` to `True`. In such case, only molecules containing all `wanted`
+        genres will be kept.
+
+        Parameters
+        ----------
+        wanted
+            List of data genres used as completeness reference.
+            If not given, evaluates to `molecules.primary_genres`.
+        strict
+            Indicates if all `wanted` genres must be present in the kept molecules
+            (`strict=True`) or if "match closest" mechanism should be used
+            as a fallback (`strict=False`, this is the default).
+
+        Notes
+        -----
+        Molecules previously marked as "not kept" will not be affected.
+        """
+        # DONE: don't take optimization_completed and such into consideration
         # TODO: when above satisfied, change gui.tab_loader.Loader\
         #       .update_overview_values() and .set_overview_values()
-        # TODO: maybe use all as default but keep current `wanted` as Molecules'
-        #       attribute or module level variable
-        if wanted is None:
-            wanted = (
-                "dip rot vosc vrot losc lrot raman1 roa1 scf zpe ent ten gib".split()
-            )
-        elif isinstance(wanted, str):
-            wanted = wanted.split()
-        elif not isinstance(wanted, (list, tuple)):
-            raise TypeError(f"Expected list, tuple or string, got {type(wanted)}.")
-        count = [[g in mol for g in wanted] for mol in self.values()]
-        best_match = max(count)
-        for index, match in enumerate(count):
-            if not match == best_match:
-                self.kept[index] = False
+        wanted = wanted if wanted is not None else self.primary_genres
+        if not strict:
+            count = [tuple(g in mol for g in wanted) for mol in self.values()]
+            best_match = max(count)
+            complete = (match == best_match for match in count)
+        else:
+            complete = (all(g in mol for g in wanted) for mol in self.values())
+        blade = [kept and cmpl for kept, cmpl in zip(self.kept, complete)]
+        self.__kept = blade
 
     def trim_imaginary_frequencies(self):
         dummy = [1]
