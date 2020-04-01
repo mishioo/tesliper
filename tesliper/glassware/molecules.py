@@ -333,9 +333,9 @@ class Molecules(OrderedDict):
 
         Parameters
         ----------
-        genre : str
+        genre
             String representing data genre. Must be one of known genres.
-        full : bool, optional
+        full
             Boolean indicating if full set of data should be taken, ignoring
             any trimming conducted earlier. Defaults to False.
 
@@ -395,27 +395,27 @@ class Molecules(OrderedDict):
                     )
         return cls(**params)
 
-    def by_index(self, index):
+    def by_index(self, index: int) -> dict:
         """Returns data for conformer on desired index."""
         return self[self.filenames[index]]
 
-    def key_of(self, index):
+    def key_of(self, index: int) -> str:
         """Returns name of molecule associated with given index."""
         return self.filenames[index]
 
-    def index_of(self, key):
-        """Return index of given """
+    def index_of(self, key: str) -> int:
+        """Return index of given key."""
         try:
             return self[key]["_index"]
-        except KeyError:
-            raise ValueError(f"No such molecule: {key}.")
+        except KeyError as error:
+            raise KeyError(f"No such molecule: {key}.") from error
 
-    def has_genre(self, genre):
+    def has_genre(self, genre: str) -> bool:
         """Checks if any of stored molecules contains data of given genre.
 
         Parameters
         ----------
-        genre : str
+        genre
             name of genre to test
 
         Returns
@@ -428,13 +428,13 @@ class Molecules(OrderedDict):
                 return True
         return False
 
-    def has_any_genre(self, genres):
+    def has_any_genre(self, genres: Iterable[str]) -> bool:
         """Checks if any of stored molecules contains data of any of given
         genres.
 
         Parameters
         ----------
-        genres : list of str
+        genres
             list of names of genres to test
 
         Returns
@@ -491,12 +491,20 @@ class Molecules(OrderedDict):
         blade = [kept and cmpl for kept, cmpl in zip(self.kept, complete)]
         self.__kept = blade
 
-    def trim_imaginary_frequencies(self):
+    def trim_imaginary_frequencies(self) -> None:
+        """Mark all molecules with imaginary frequencies as "not kept".
+
+        Notes
+        -----
+        Molecules previously marked as "not kept" will not be affected.
+        Molecules that doesn't contain "freq" genre will be treated as not having
+        imaginary frequencies.
+        """
         dummy = [1]
         for index, mol in enumerate(self.values()):
             freq = np.array(mol.get("freq", dummy))
             if (freq < 0).any():
-                self.kept[index] = False
+                self.__kept[index] = False
 
     def trim_non_matching_stoichiometry(self, wanted: Optional[str] = None) -> None:
         """Mark all molecules with stoichiometry other than `wanted` as "not kept".
@@ -523,18 +531,54 @@ class Molecules(OrderedDict):
             if "stoichiometry" not in mol or not mol["stoichiometry"] == wanted:
                 self.__kept[index] = False
 
-    def trim_not_optimized(self):
+    def trim_not_optimized(self) -> None:
+        """Mark all molecules that failed structure optimization as "not kept".
+
+        Notes
+        -----
+        Molecules previously marked as "not kept" will not be affected.
+        Molecules that doesn't contain optimization data are always treated as
+        optimized.
+        """
         for index, mol in enumerate(self.values()):
             if not mol.get("optimization_completed", True):
-                self.kept[index] = False
+                self.__kept[index] = False
 
-    def trim_non_normal_termination(self):
-        # TODO: ensure its working properly
+    def trim_non_normal_termination(self) -> None:
+        """Mark all molecules, which calculation job did not terminate normally,
+         as "not kept".
+
+        Notes
+        -----
+        Molecules previously marked as "not kept" will not be affected.
+        Molecules that doesn't contain data regarding their calculation job's
+        termination are always treated as terminated abnormally.
+        """
         for index, mol in enumerate(self.values()):
             if not mol.get("normal_termination", False):
-                self.kept[index] = False
+                self.__kept[index] = False
 
-    def trim_inconsistent_sizes(self):
+    def trim_inconsistent_sizes(self) -> None:
+        """Mark as "not kept" all molecules that contain any iterable data genre,
+        that is of different length, than in case of majority of molecules.
+
+        Examples
+        --------
+        >>> m = Molecules(
+        ...     one={'a': [1, 2, 3]},
+        ...     two={'a': [1, 2, 3]},
+        ...     three={'a': [1, 2, 3, 4]}
+        ... )
+        >>> m.kept
+        [True, True, True]
+        >>> m.trim_inconsistent_sizes()
+        >>> m.kept
+        [True, True, False]
+
+        Notes
+        -----
+        Molecules previously marked as "not kept" will not be affected.
+        """
         sizes = {}
         for fname, mol in self.items():
             for genre, value in mol.items():
@@ -548,7 +592,7 @@ class Molecules(OrderedDict):
             for genre, most_common in maxes.items():
                 confs = sizes[genre]
                 if fname in confs and not confs[fname] == most_common:
-                    self.kept[index] = False
+                    self.__kept[index] = False
 
     def trim_to_range(
         self,
@@ -615,13 +659,13 @@ class Molecules(OrderedDict):
             ) from error
         self.kept = arr.filenames[in_range]
 
-    def select_all(self):
+    def select_all(self) -> None:
         """Marks all molecules as 'kept'. Equivalent to `molecules.kept = True`."""
-        self.kept = [True for __ in self.kept]
+        self.__kept = [True for __ in self.__kept]
 
-    def reject_all(self):
+    def reject_all(self) -> None:
         """Marks all molecules as 'not kept'. Equivalent to `molecules.kept = False`."""
-        self.kept = [False for __ in self.kept]
+        self.__kept = [False for __ in self.__kept]
 
     def trimmed_keys(self, indices=False):
         return _TrimmedKeysView(self, indices=indices)
@@ -635,17 +679,17 @@ class Molecules(OrderedDict):
     @property
     @contextmanager
     def untrimmed(self):
-        blade = self.kept
-        self.select_all()
+        blade = self.__kept
+        self.kept = True
         yield self
-        self.kept = blade
+        self.__kept = blade
 
     @contextmanager
     def trimmed_to(self, blade):
-        old_blade = self.kept
+        old_blade = self.__kept
         self.kept = blade
         yield self
-        self.kept = old_blade
+        self.__kept = old_blade
 
     @property
     @contextmanager

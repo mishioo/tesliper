@@ -208,9 +208,19 @@ class TestMolecules(ut.TestCase):
         self.full.trim_not_optimized()
         self.assertEqual([True, False, True, True, True, True, True], self.full.kept)
 
+    def test_trim_not_optimized_previously_trimmed(self):
+        self.full.kept = [False, True, True, True, True, True, True]
+        self.full.trim_not_optimized()
+        self.assertEqual([False, False, True, True, True, True, True], self.full.kept)
+
     def test_trim_imaginary(self):
         self.full.trim_imaginary_frequencies()
         self.assertEqual([True, True, False, True, True, True, True], self.full.kept)
+
+    def test_trim_imaginary_previously_trimmed(self):
+        self.full.kept = [False, True, True, True, True, True, True]
+        self.full.trim_imaginary_frequencies()
+        self.assertEqual([False, True, False, True, True, True, True], self.full.kept)
 
     def test_trim_stoichiometry(self):
         self.full.trim_non_matching_stoichiometry()
@@ -218,18 +228,34 @@ class TestMolecules(ut.TestCase):
 
     def test_trim_stoichiometry_previously_trimmed(self):
         self.full.kept = [False, True, True, True, True, True, True]
-        self.full.trim_imaginary_frequencies()
+        self.full.trim_non_matching_stoichiometry()
         self.assertEqual([False, True, True, False, True, True, True], self.full.kept)
 
     def test_trim_termination(self):
         self.full.trim_non_normal_termination()
         self.assertEqual([True, True, True, True, False, True, True], self.full.kept)
 
+    def test_trim_termination_previously_trimmed(self):
+        self.full.kept = [False, True, True, True, True, True, True]
+        self.full.trim_non_normal_termination()
+        self.assertEqual([False, True, True, True, False, True, True], self.full.kept)
+
+    def test_trim_termination_missing(self):
+        del self.full["base"]["normal_termination"]
+        self.full.trim_non_normal_termination()
+        self.assertEqual([False, True, True, True, False, True, True], self.full.kept)
+
     def test_trim_inconsistent_sizes(self):
         self.full.trim_inconsistent_sizes()
         self.assertEqual([True, True, True, True, True, False, True], self.full.kept)
 
-    def test_trim_incomplete(self):
+    def test_trim_inconsistent_sizes_previously_trimmed(self):
+        self.full.kept = [False, True, True, True, True, True, True]
+        self.full.trim_inconsistent_sizes()
+        self.assertEqual([False, True, True, True, True, False, True], self.full.kept)
+
+    def test_trim_incomplete_default_previously_trimmed(self):
+        self.full.kept = [False, True, True, True, True, True, True]
         self.full.trim_incomplete()
         assert [False, True, True, True, True, True, False] == self.full.kept
 
@@ -289,6 +315,11 @@ class TestMolecules(ut.TestCase):
         self.assertFalse(all(self.full.kept))
         self.full.select_all()
         self.assertTrue(all(self.full.kept))
+
+    def test_reject_all(self):
+        self.full.kept = [True, False, True, False, True, False, False]
+        self.full.reject_all()
+        self.assertFalse(all(self.full.kept))
 
     def test_kept_raises(self):
         with self.assertRaises(TypeError):
