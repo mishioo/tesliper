@@ -216,6 +216,11 @@ class TestMolecules(ut.TestCase):
         self.full.trim_non_matching_stoichiometry()
         self.assertEqual([True, True, True, False, True, True, True], self.full.kept)
 
+    def test_trim_stoichiometry_previously_trimmed(self):
+        self.full.kept = [False, True, True, True, True, True, True]
+        self.full.trim_imaginary_frequencies()
+        self.assertEqual([False, True, True, False, True, True, True], self.full.kept)
+
     def test_trim_termination(self):
         self.full.trim_non_normal_termination()
         self.assertEqual([True, True, True, True, False, True, True], self.full.kept)

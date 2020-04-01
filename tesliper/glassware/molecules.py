@@ -498,14 +498,30 @@ class Molecules(OrderedDict):
             if (freq < 0).any():
                 self.kept[index] = False
 
-    def trim_non_matching_stoichiometry(self):
-        counter = Counter(
-            mol["stoichiometry"] for mol in self.values() if "stoichiometry" in mol
-        )
-        stoich = counter.most_common()[0][0]
+    def trim_non_matching_stoichiometry(self, wanted: Optional[str] = None) -> None:
+        """Mark all molecules with stoichiometry other than `wanted` as "not kept".
+        If not given, `wanted` evaluates to the most common stoichiometry.
+
+        Parameters
+        ----------
+        wanted
+            Only molecules with same stoichiometry will be kept. Evaluates to the most
+            common stoichiometry if not given.
+
+        Notes
+        -----
+        Molecules previously marked as "not kept" will not be affected.
+        Molecules that doesn't contain stoichiometry data are always treated
+        as non-matching.
+        """
+        if not wanted:
+            counter = Counter(
+                mol["stoichiometry"] for mol in self.values() if "stoichiometry" in mol
+            )
+            wanted = counter.most_common()[0][0]
         for index, mol in enumerate(self.values()):
-            if "stoichiometry" not in mol or not mol["stoichiometry"] == stoich:
-                self.kept[index] = False
+            if "stoichiometry" not in mol or not mol["stoichiometry"] == wanted:
+                self.__kept[index] = False
 
     def trim_not_optimized(self):
         for index, mol in enumerate(self.values()):
