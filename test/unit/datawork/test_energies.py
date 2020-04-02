@@ -5,19 +5,14 @@ from tesliper.datawork import energies as en
 import pytest
 
 
-def test_calculate_deltas_wrong_type():
+def test_calculate_deltas_wrong_type_string():
     with pytest.raises(ValueError):
         en.calculate_deltas("string")
 
 
-def test_calculate_deltas_integer():
+def test_calculate_deltas_wrong_type_integer():
     with pytest.raises(TypeError):
         en.calculate_deltas(1)
-
-
-def test_calculate_deltas_string():
-    with pytest.raises(ValueError):
-        en.calculate_deltas("bla")
 
 
 def test_calculate_deltas_not_iterable():
