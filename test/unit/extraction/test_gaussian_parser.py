@@ -1,70 +1,72 @@
-import unittest
+import re
+import pytest
 from tesliper.extraction import gaussian_parser as gp
 
 
-class TestRegexs(unittest.TestCase):
-    def test_number_matches(self):
-        self.assertRegex("1", gp.number)
-        self.assertRegex(" 1", gp.number)
-        self.assertRegex(" -1", gp.number)
-        self.assertRegex("23", gp.number)
-        self.assertRegex("0.2", gp.number)
-        self.assertRegex("0.243", gp.number)
-        self.assertRegex("123.657", gp.number)
-        self.assertRegex("-0.42", gp.number)
-        self.assertRegex("-3425.42", gp.number)
-        self.assertRegex(".92", gp.number)
-        self.assertRegex("-.42", gp.number)
-
-    # def test_number_not_matches(self):
-    # self.assertNotRegex('-', gp.number)
-    # self.assertNotRegex('.', gp.number)
-    # self.assertNotRegex('- 1', gp.number)  # matches :(
-    # self.assertNotRegex('12-', gp.number)
-    # self.assertNotRegex('42.', gp.number)
-
-    # def test_number_sci_matches(self):
-    # self.assertRegex('3e24', gp.number)
-    # self.assertRegex('3e-656', gp.number)
-    # self.assertRegex('3E24', gp.number)
-    # self.assertRegex('3E-24', gp.number)
-    # self.assertRegex('-3e24', gp.number)
-    # self.assertRegex('-3e-656', gp.number)
-    # self.assertRegex('-3E24', gp.number)
-    # self.assertRegex('-3E-24', gp.number)
-    # self.assertRegex('3.23e24', gp.number)
-    # self.assertRegex('3.23e-656', gp.number)
-    # self.assertRegex('3.23E24', gp.number)
-    # self.assertRegex('3.23E-24', gp.number)
-    # self.assertRegex('-3.23e24', gp.number)
-    # self.assertRegex('-3.23e-656', gp.number)
-    # self.assertRegex('-3.23E24', gp.number)
-    # self.assertRegex('-3.23E-24', gp.number)
-
-    # def test_number_sci_not_matches(self):
-    # self.assertNotRegex('42e', gp.number)
-    # self.assertNotRegex('42e-', gp.number)
-    # self.assertNotRegex('42.e', gp.number)
-    # self.assertNotRegex('42.e-', gp.number)
-    # self.assertNotRegex('42E', gp.number)
-    # self.assertNotRegex('42E-', gp.number)
-    # self.assertNotRegex('42.E', gp.number)
-    # self.assertNotRegex('42.E-', gp.number)
-
-    def test_command(self):
-        self.assertRegex(
-            " ------------------------------------------\n"
-            " #P td=(singlets,nstates=80) B3LYP/Def2TZVP\n"
-            " ------------------------------------------\n",
-            gp.command,
-        )
-        self.assertRegex(
-            " -------------------------\n"
-            " # opt freq wB97xd/6-31G**\n"
-            " -------------------------\n",
-            gp.command,
-        )
+def test_number_matches():
+    assert re.search(gp.number, "1")
+    assert re.search(gp.number, " 1")
+    assert re.search(gp.number, " -1")
+    assert re.search(gp.number, "23")
+    assert re.search(gp.number, "0.2")
+    assert re.search(gp.number, "0.243")
+    assert re.search(gp.number, "123.657")
+    assert re.search(gp.number, "-0.42")
+    assert re.search(gp.number, "-3425.42")
+    assert re.search(gp.number, ".92")
+    assert re.search(gp.number, "-.42")
 
 
-if __name__ == "__main__":
-    unittest.main()
+@pytest.mark.xfail
+def test_number_not_matches():
+    assert not re.search(gp.number, "-")
+    assert not re.search(gp.number, ".")
+    assert not re.search(gp.number, "- 1")  # matches :(
+    assert not re.search(gp.number, "12-")
+    assert not re.search(gp.number, "42.")
+
+
+def test_number_sci_matches():
+    assert re.search(gp.number, "3e24")
+    assert re.search(gp.number, "3e-656")
+    assert re.search(gp.number, "3E24")
+    assert re.search(gp.number, "3E-24")
+    assert re.search(gp.number, "-3e24")
+    assert re.search(gp.number, "-3e-656")
+    assert re.search(gp.number, "-3E24")
+    assert re.search(gp.number, "-3E-24")
+    assert re.search(gp.number, "3.23e24")
+    assert re.search(gp.number, "3.23e-656")
+    assert re.search(gp.number, "3.23E24")
+    assert re.search(gp.number, "3.23E-24")
+    assert re.search(gp.number, "-3.23e24")
+    assert re.search(gp.number, "-3.23e-656")
+    assert re.search(gp.number, "-3.23E24")
+    assert re.search(gp.number, "-3.23E-24")
+
+
+@pytest.mark.xfail
+def test_number_sci_not_matches():
+    assert not re.search(gp.number, "42e")
+    assert not re.search(gp.number, "42e-")
+    assert not re.search(gp.number, "42.e")
+    assert not re.search(gp.number, "42.e-")
+    assert not re.search(gp.number, "42E")
+    assert not re.search(gp.number, "42E-")
+    assert not re.search(gp.number, "42.E")
+    assert not re.search(gp.number, "42.E-")
+
+
+def test_command():
+    assert re.search(
+        gp.command,
+        " ------------------------------------------\n"
+        " #P td=(singlets,nstates=80) B3LYP/Def2TZVP\n"
+        " ------------------------------------------\n",
+    )
+    assert re.search(
+        gp.command,
+        " -------------------------\n"
+        " # opt freq wB97xd/6-31G**\n"
+        " -------------------------\n",
+    )
