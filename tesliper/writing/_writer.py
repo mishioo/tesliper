@@ -1,11 +1,11 @@
 # IMPORTS
 from pathlib import Path
+from string import Template
 from typing import Union
 
 import logging as lgg
 
 from .. import glassware as gw
-
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -14,7 +14,6 @@ logger.setLevel(lgg.DEBUG)
 
 # CLASSES
 class Writer:
-
     _header = dict(
         freq="Frequencies",
         mass="Red. masses",
@@ -188,3 +187,84 @@ class Writer:
             else:
                 distr["other"].append(obj)
         return distr
+
+
+class SerialWriter(Writer):
+    """Base class for writers, that produce multiple files.
+
+    Parameters
+    ----------
+    destination: str or pathlib.Path
+        Directory, to which generated files should be written.
+    filename_template: str or string.Template
+        Template for names of generated files, defaults to  '${filename}.${ext}'.
+
+    Attributes
+    ----------
+    destination
+    filename_template
+
+    Class Attributes
+    ----------------
+    extension: str
+        Default extension of generated files.
+    """
+
+    extension = ""
+
+    def __init__(
+        self,
+        destination: Union[str, Path],
+        filename_template: Union[str, Template] = "${filename}.${ext}",
+    ):
+        super().__init__(destination)
+        self.filename_template = filename_template
+
+    @property
+    def destination(self) -> Path:
+        """pathlib.Path: Directory, to which generated files should be written.
+
+        Raises
+        ------
+        FileNotFoundError
+            If given destination doesn't exist or is not a directory.
+        """
+        return self._destination
+
+    @destination.setter
+    def destination(self, destination: Union[str, Path]) -> None:
+        destination = Path(destination)
+        if not destination.is_dir():
+            raise FileNotFoundError(
+                "Given destination doesn't exist or is not a directory."
+            )
+        self._destination = destination
+
+    @property
+    def filename_template(self) -> Template:
+        """string.Template: Template that will be used for generation of names of files
+        produced by this object. It is stored as a `string.Template` object, if string
+        is given instead, it will be converted. Only predefined identifiers may be used
+        and they are as follows:
+            ${filename} - base name of the file (without extension);
+            ${ext} - appropriate file extension, stored in `extension` class attribute;
+            ${num} - number of file according to internal counter;
+            ${genre} - genre of exported data.
+
+        Raises
+        ------
+        ValueError
+            If given template or string contain any unexpected identifiers.
+        """
+        return self._filename_template
+
+    @filename_template.setter
+    def filename_template(self, filename_template: Union[str, Template]) -> None:
+        if isinstance(filename_template, str):
+            filename_template = Template(filename_template)
+        try:
+            filename_template.substitute(filename="", ext="", num="", genre="")
+        except ValueError as error:
+            # TODO: add list of unexpected identifiers given
+            raise ValueError("Unexpected identifiers given.") from error
+        self._filename_template = filename_template
