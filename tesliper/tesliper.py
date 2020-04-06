@@ -6,7 +6,7 @@ import numpy as np
 from . import glassware as gw
 from . import datawork as dw
 from . import extraction as ex
-from . import writer as wr
+from . import writing as wr
 from .extraction import gaussian_parser as gp
 
 
