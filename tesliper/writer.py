@@ -1,5 +1,8 @@
 # IMPORTS
 import csv
+from pathlib import Path
+from typing import Union
+
 import numpy as np
 import logging as lgg
 import os
@@ -17,19 +20,6 @@ logger.setLevel(lgg.DEBUG)
 
 # CLASSES
 class Writer:
-
-    writers = dict()
-
-    def __init_subclass__(cls, fmt="", **kwargs):
-        if not fmt:
-            raise TypeError('Required keyword argument "fmt" not found.')
-        if not hasattr(cls, "write"):
-            raise AttributeError(
-                "Class derived from Writer should provide write method."
-            )
-        super().__init_subclass__(**kwargs)
-        Writer.writers[fmt] = cls
-        logger.info(f"Writer {cls} registered for export to {fmt} file format.")
 
     _header = dict(
         freq="Frequencies",
@@ -162,6 +152,9 @@ class Writer:
 
     energies_order = "zpe ten ent gib scf".split(" ")
 
+    def __init__(self, destination: Union[str, Path]):
+        self.destination = Path(destination)
+
     def distribute_data(self, data):
         distr = dict(
             energies=[],
@@ -203,11 +196,11 @@ class Writer:
         return distr
 
 
-class TxtWriter(Writer, fmt="txt"):
-    def write(self, dest, data):
+class TxtWriter(Writer):
+    def write(self, data):
         data = self.distribute_data(data)
         if data["energies"]:
-            file = os.path.join(dest, "distribution_overview.txt")
+            file = os.path.join(self.destination, "distribution_overview.txt")
             self.energies_overview(
                 file,
                 data["energies"],
@@ -215,37 +208,45 @@ class TxtWriter(Writer, fmt="txt"):
                 stoichiometry=data["stoichiometry"],
             )
             for ens in data["energies"]:
-                file = os.path.join(dest, f"distribution.{ens.genre}.txt")
+                file = os.path.join(self.destination, f"distribution.{ens.genre}.txt")
                 self.energies(file, ens, corrections=data["corrections"].get(ens.genre))
         if data["vibra"]:
             self.bars(
-                dest, band=data["frequencies"], bars=data["vibra"], interfix="vibra"
+                self.destination,
+                band=data["frequencies"],
+                bars=data["vibra"],
+                interfix="vibra",
             )
         if data["electr"]:
             self.bars(
-                dest, band=data["wavelengths"], bars=data["electr"], interfix="electr"
+                self.destination,
+                band=data["wavelengths"],
+                bars=data["electr"],
+                interfix="electr",
             )
         if data["other_bars"]:
             # TO DO
             pass
         if data["spectra"]:
             for spc in data["spectra"]:
-                self.spectra(dest, spc, interfix=spc.genre)
+                self.spectra(self.destination, spc, interfix=spc.genre)
         if data["single"]:
             for spc in data["single"]:
                 interfix = f".{spc.averaged_by}" if spc.averaged_by else ""
-                file = os.path.join(dest, f"spectrum.{spc.genre+interfix}.txt")
+                file = os.path.join(
+                    self.destination, f"spectrum.{spc.genre+interfix}.txt"
+                )
                 self.single_spectrum(file, spc)
         if data["other"]:
             # TO DO
             pass
 
-    def energies(self, file, energies, corrections=None):
+    def energies(self, filename, energies, corrections=None):
         """Writes Energies object to txt file.
 
         Parameters
         ----------
-        file: string
+        filename: string
             path to file
         energies: glassware.Energies
             Energies object that is to be serialized
@@ -278,7 +279,7 @@ class TxtWriter(Writer, fmt="txt"):
             corrections,
             fillvalue=None,
         )
-        with open(file, "w") as file_:
+        with open(self.destination.joinpath(filename), "w") as file_:
             file_.write(header + "\n")
             file_.write("-" * len(header) + "\n")
             for row in rows:
@@ -290,13 +291,15 @@ class TxtWriter(Writer, fmt="txt"):
                 file_.write(" | ".join(new_row) + "\n")
         logger.info("Energies separate export to text files done.")
 
-    def energies_overview(self, file, energies, frequencies=None, stoichiometry=None):
+    def energies_overview(
+        self, filename, energies, frequencies=None, stoichiometry=None
+    ):
         """Writes essential information from multiple Energies objects to
          single txt file.
 
         Parameters
         ----------
-        file: string
+        filename: string
             path to file
         energies: list of glassware.Energies
             Energies objects that is to be expored
@@ -339,7 +342,7 @@ class TxtWriter(Writer, fmt="txt"):
             f"{f' | {{:<{max_stoich}}}' if max_stoich else '{}'}\n"
         )
         # fname = 'distribution_overview.txt'
-        with open(file, "w") as file_:
+        with open(self.destination.joinpath(filename), "w") as file_:
             file_.write(header + "\n")
             names_line = (
                 " " * max_fnm
@@ -370,7 +373,7 @@ class TxtWriter(Writer, fmt="txt"):
                 file_.write(line)
         logger.info("Energies collective export to text file done.")
 
-    def bars(self, dest, band, bars, interfix=""):
+    def bars(self, band, bars, interfix=""):
         """Writes Bars objects to txt files (one for each conformer).
 
         Notes
@@ -402,7 +405,7 @@ class TxtWriter(Writer, fmt="txt"):
                 f"{'.'.join(fname.split('.')[:-1])}"
                 f"{'.' if interfix else ''}{interfix}.txt"
             )
-            with open(os.path.join(dest, filename), "w") as file:
+            with open(self.destination.joinpath(filename), "w") as file:
                 file.write("\t".join(formatted))
                 file.write("\n")
                 for vals in zip(*values_):
@@ -412,7 +415,7 @@ class TxtWriter(Writer, fmt="txt"):
                     file.write(line + "\n")
         logger.info("Bars export to text files done.")
 
-    def spectra(self, dest, spectra, interfix=""):
+    def spectra(self, spectra, interfix=""):
         """Writes Spectra object to text files (one for each conformer).
 
         Notes
@@ -436,11 +439,11 @@ class TxtWriter(Writer, fmt="txt"):
             f'{spectra.units["y"]}'
         )
         for fnm, values in zip(spectra.filenames, spectra.y):
-            file_name = (
+            filename = (
                 f"{'.'.join(fnm.split('.')[:-1])}"
                 f"{'.' if interfix else ''}{interfix}.txt"
             )
-            file_path = os.path.join(dest, file_name)
+            file_path = self.destination.joinpath(filename)
             with open(file_path, "w") as file:
                 file.write(title + "\n")
                 file.write(
@@ -450,7 +453,7 @@ class TxtWriter(Writer, fmt="txt"):
                 )
         logger.info("Spectra export to text files done.")
 
-    def single_spectrum(self, file, spectrum, include_header=True):
+    def single_spectrum(self, filename, spectrum, include_header=True):
         """Writes SingleSpectrum object to txt file.
 
         Parameters
@@ -469,7 +472,7 @@ class TxtWriter(Writer, fmt="txt"):
             f'{spectrum.fitting} fitting, shown as {spectrum.units["x"]} '
             f'vs. {spectrum.units["y"]}'
         )
-        with open(file, "w") as file_:
+        with open(self.destination.joinpath(filename), "w") as file_:
             if include_header:
                 file_.write(title + "\n")
                 if spectrum.averaged_by:
@@ -479,7 +482,7 @@ class TxtWriter(Writer, fmt="txt"):
                     )
             file_.write(
                 "\n".join(
-                    # TO DO: probably should change when nmr introduced
+                    # TODO: probably should change when nmr introduced
                     f"{int(x):>4d}\t{y: .4f}"
                     for x, y in zip(spectrum.x, spectrum.y)
                 )
@@ -487,11 +490,11 @@ class TxtWriter(Writer, fmt="txt"):
         logger.info("Spectrum export to text files done.")
 
 
-class XlsxWriter(Writer, fmt="xlsx"):
-    def write(self, dest, data):
+class XlsxWriter(Writer):
+    def write(self, data):
         data = self.distribute_data(data)
         if data["energies"]:
-            file = os.path.join(dest, "distribution.xlsx")
+            file = self.destination.joinpath("distribution.xlsx")
             self.energies(
                 file,
                 data["energies"],
@@ -500,33 +503,33 @@ class XlsxWriter(Writer, fmt="xlsx"):
                 corrections=data["corrections"].values(),
             )
         if data["vibra"]:
-            file = os.path.join(dest, "bars.vibra.xlsx")
+            file = self.destination.joinpath("bars.vibra.xlsx")
             self.bars(file, band=data["frequencies"], bars=data["vibra"])
         if data["electr"]:
-            file = os.path.join(dest, "bars.electr.xlsx")
+            file = self.destination.joinpath("bars.electr.xlsx")
             self.bars(file, band=data["wavelengths"], bars=data["electr"])
         if data["other_bars"]:
             # TO DO
             pass
         if data["spectra"]:
-            file = os.path.join(dest, "spectra.xlsx")
+            file = self.destination.joinpath("spectra.xlsx")
             self.spectra(file, data["spectra"])
         if data["single"]:
-            file = os.path.join(dest, "averaged_spectra.xlsx")
+            file = self.destination.joinpath("averaged_spectra.xlsx")
             self.single_spectrum(file, data["single"])
         if data["other"]:
-            # TO DO
+            # TODO
             pass
 
     def energies(
-        self, file, energies, frequencies=None, stoichiometry=None, corrections=None
+        self, filename, energies, frequencies=None, stoichiometry=None, corrections=None
     ):
         """Writes detailed information from multiple Energies objects to
          single xlsx file.
 
         Parameters
         ----------
-        file: string
+        filename: string
             path to file
         energies: list of glassware.Energies
             Energies objects that is to be exported
@@ -628,15 +631,15 @@ class XlsxWriter(Writer, fmt="xlsx"):
                 if not width:
                     width = max(len(str(cell.value)) for cell in column) + 2
                 ws.column_dimensions[column[0].column].width = width
-        wb.save(file)
+        wb.save(self.destination.joinpath(filename))
         logger.info("Energies export to xlsx files done.")
 
-    def bars(self, file, band, bars):
+    def bars(self, filename, band, bars):
         """Writes Bars objects to xlsx file (one sheet for each conformer).
 
         Parameters
         ----------
-        file: string
+        filename: string
             path to file
         band: glassware.Bars
             object containing information about band at which transitions occur;
@@ -645,6 +648,7 @@ class XlsxWriter(Writer, fmt="xlsx"):
         bars: list of glassware.Bars
             Bars objects that are to be serialized; all should contain
             information for the same conformers"""
+        # TODO: sort on sheets by type of DataArray class (GroundState, ExitedState...)
         wb = oxl.Workbook()
         wb.remove(wb.active)
         bars = [band] + bars
@@ -664,10 +668,10 @@ class XlsxWriter(Writer, fmt="xlsx"):
                     cell = ws.cell(row=row_num + 2, column=col_num + 1)
                     cell.value = v
                     cell.number_format = fmt
-        wb.save(file)
+        wb.save(self.destination.joinpath(filename))
         logger.info("Bars export to xlsx files done.")
 
-    def spectra(self, file, spectra):
+    def spectra(self, filename, spectra):
         wb = oxl.Workbook()
         del wb["Sheet"]
         for spectra_ in spectra:
@@ -685,12 +689,12 @@ class XlsxWriter(Writer, fmt="xlsx"):
             ws["A1"].comment = oxl.comments.Comment(title, "Tesliper")
             for line in zip(spectra_.x, *spectra_.y):
                 ws.append(line)
-        wb.save(file)
+        wb.save(self.destination.joinpath(filename))
         logger.info("Spectra export to xlsx file done.")
 
-    def single_spectrum(self, file, spectra):
-        # TO DO: add comment as in txt export
-        # TO DO: think how to do it
+    def single_spectrum(self, filename, spectra):
+        # TODO: add comment as in txt export
+        # TODO: think how to do it
         wb = oxl.Workbook()
         del wb["Sheet"]
         for spc in spectra:
@@ -698,46 +702,45 @@ class XlsxWriter(Writer, fmt="xlsx"):
             ws.title = spc.genre + "_" + spc.averaged_by
             for row in zip(spc.x, spc.y):
                 ws.append(row)
-            wb.save(file)
+            wb.save(self.destination.joinpath(filename))
         logger.info("Spectrum export to xlsx files done.")
 
 
-class CsvWriter(Writer, fmt="csv"):
-    def write(self, dest, data):
+class CsvWriter(Writer):
+    def write(self, data):
         data = self.distribute_data(data)
         if data["energies"]:
             for en in data["energies"]:
-                file = os.path.join(dest, f"distribution.{en.genre}.csv")
-                self.energies(file, en, corrections=data["corrections"].get(en.genre))
+                self.energies(
+                    f"distribution.{en.genre}.csv",
+                    en,
+                    corrections=data["corrections"].get(en.genre),
+                )
         if data["vibra"]:
-            self.bars(
-                dest, band=data["frequencies"], bars=data["vibra"], interfix="vibra"
-            )
+            self.bars(band=data["frequencies"], bars=data["vibra"], interfix="vibra")
         if data["electr"]:
-            self.bars(
-                dest, band=data["wavelengths"], bars=data["electr"], interfix="electr"
-            )
+            self.bars(band=data["wavelengths"], bars=data["electr"], interfix="electr")
         if data["other_bars"]:
             # TO DO
             pass
         if data["spectra"]:
             for spc in data["spectra"]:
-                self.spectra(dest, spc, interfix=spc.genre)
+                self.spectra(spc, interfix=spc.genre)
         if data["single"]:
             for spc in data["single"]:
                 interfix = f".{spc.averaged_by}" if spc.averaged_by else ""
-                file = os.path.join(dest, f"spectrum.{spc.genre+interfix}.csv")
+                file = f"spectrum.{spc.genre+interfix}.csv"
                 self.single_spectrum(file, spc)
         if data["other"]:
             # TO DO
             pass
 
-    def energies(self, file, energies, corrections=None, include_header=True):
+    def energies(self, filename, energies, corrections=None, include_header=True):
         """Writes Energies object to csv file.
 
         Parameters
         ----------
-        file: string
+        filename: string
             path to file
         energies: glassware.Energies
             Energies objects that is to be serialized
@@ -761,7 +764,7 @@ class CsvWriter(Writer, fmt="csv"):
             energies.values,
             corr,
         )
-        with open(file, "w", newline="") as file:
+        with open(self.destination.joinpath(filename), "w", newline="") as file:
             csvwriter = csv.writer(file)
             if include_header:
                 csvwriter.writerow(header)
@@ -769,7 +772,7 @@ class CsvWriter(Writer, fmt="csv"):
                 csvwriter.writerow(v for v in row if v is not None)
         logger.info("Energies export to csv files done.")
 
-    def bars(self, dest, band, bars, include_header=True, interfix=""):
+    def bars(self, band, bars, include_header=True, interfix=""):
         """Writes Bars objects to csv files (one for each conformer).
 
         Notes
@@ -778,8 +781,6 @@ class CsvWriter(Writer, fmt="csv"):
 
         Parameters
         ----------
-        dest: string
-            path to destination directory
         band: glassware.Bars
             object containing information about band at which transitions occur;
             it should be frequencies for vibrational data and wavelengths or
@@ -801,7 +802,7 @@ class CsvWriter(Writer, fmt="csv"):
                 f"{'.'.join(fname.split('.')[:-1])}"
                 f"{'.' if interfix else ''}{interfix}.csv"
             )
-            path = os.path.join(dest, filename)
+            path = self.destination.joinpath(filename)
             with open(path, "w", newline="") as file:
                 csvwriter = csv.writer(file)
                 if include_header:
@@ -810,14 +811,14 @@ class CsvWriter(Writer, fmt="csv"):
                     csvwriter.writerow(row)
         logger.info("Bars export to csv files done.")
 
-    def spectra(self, dest, spectra, interfix="", include_header=True):
+    def spectra(self, spectra, interfix="", include_header=True):
         abscissa = spectra.x
         for fnm, values in zip(spectra.filenames, spectra.y):
-            file_name = (
+            filename = (
                 f"{'.'.join(fnm.split('.')[:-1])}"
                 f"{'.' if interfix else ''}{interfix}.csv"
             )
-            file_path = os.path.join(dest, file_name)
+            file_path = self.destination.joinpath(filename)
             with open(file_path, "w", newline="") as file:
                 csvwriter = csv.writer(file)
                 if include_header:
@@ -827,8 +828,8 @@ class CsvWriter(Writer, fmt="csv"):
                     csvwriter.writerow(row)
         logger.info("Spectra export to csv files done.")
 
-    def single_spectrum(self, file, spectrum):
-        with open(file, "w", newline="") as file_:
+    def single_spectrum(self, filename, spectrum):
+        with open(self.destination.joinpath(filename), "w", newline="") as file_:
             csvwriter = csv.writer(file_)
             for row in zip(spectrum.x, spectrum.y):
                 csvwriter.writerow(row)

@@ -70,7 +70,11 @@ class Tesliper:
             List filenames representing wanted files.
         """
         self.molecules = gw.Molecules()
-        self.writers = {fmt: Wrt() for fmt, Wrt in wr.Writer.writers.items()}
+        self.writers = {
+            "txt": wr.TxtWriter,
+            "xlsx": wr.XlsxWriter,
+            "csv": wr.CsvWriter,
+        }
         self.soxhlet = None if input_dir is not None else ex.Soxhlet()
         self.wanted_files = wanted_files  # setter modifies self.soxhlet
         self.input_dir = input_dir
@@ -335,56 +339,61 @@ class Tesliper:
         if not dest:
             raise ValueError("No destination provided.")
         try:
-            writer = self.writers[fmt]
+            writer_class = self.writers[fmt]
         except KeyError:
             raise ValueError(f"Invalid file format: {fmt}")
+        writer = writer_class(dest)
         data = [self[g] for g in genres]
-        writer.write(dest, data)
+        writer.write(data)
 
     def export_energies(self, dest="", fmt="txt"):
         dest = dest if dest else self.output_dir
         if not dest:
             raise ValueError("No destination provided.")
         try:
-            writer = self.writers[fmt]
+            writer_class = self.writers[fmt]
         except KeyError:
             raise ValueError(f"Invalid file format: {fmt}")
+        writer = writer_class(dest)
         energies = [e for e in self.energies.values() if e]
         corrections = (self[f"{e.genre}corr"] for e in energies if e.genre != "scf")
         frequencies = self["freq"]
         stoichiometry = self["stoichiometry"]
-        writer.write(dest, data=[*energies, frequencies, stoichiometry, *corrections])
+        writer.write(data=[*energies, frequencies, stoichiometry, *corrections])
 
     def export_bars(self, dest="", fmt="txt"):
         dest = dest if dest else self.output_dir
         if not dest:
             raise ValueError("No destination provided.")
         try:
-            writer = self.writers[fmt]
+            writer_class = self.writers[fmt]
         except KeyError:
             raise ValueError(f"Invalid file format: {fmt}")
+        writer = writer_class(dest)
         bands = [self["freq"], self["wave"]]
         data = [b for b in self.spectral.values() if b] + [b for b in bands if b]
-        writer.write(dest, data)
+        writer.write(data)
 
     def export_spectra(self, dest="", fmt="txt"):
         dest = dest if dest else self.output_dir
         if not dest:
             raise ValueError("No destination provided.")
         try:
-            writer = self.writers[fmt]
+            writer_class = self.writers[fmt]
         except KeyError:
             raise ValueError(f"Invalid file format: {fmt}")
+        writer = writer_class(dest)
         data = [s for s in self.spectra.values() if s]
-        writer.write(dest, data)
+        writer.write(data)
 
     def export_averaged(self, dest="", fmt="txt"):
         dest = dest if dest else self.output_dir
         if not dest:
             raise ValueError("No destination provided.")
         try:
-            writer = self.writers[fmt]
+            writer_class = self.writers[fmt]
         except KeyError:
             raise ValueError(f"Invalid file format: {fmt}")
+        writer = writer_class(dest)
         data = [s for s in self.averaged.values() if s]
-        writer.write(dest, data)
+        writer.write(data)
