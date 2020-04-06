@@ -145,8 +145,58 @@ class Writer:
 
     energies_order = "zpe ten ent gib scf".split(" ")
 
-    def __init__(self, destination: Union[str, Path]):
-        self.destination = Path(destination)
+    def __init__(self, destination: Union[str, Path], mode: str = "x"):
+        self.mode = mode
+        self.destination = destination
+
+    @property
+    def mode(self):
+        """Specifies how writing to file should be handled. Should be one of characters:
+         'a', 'x', or 'w'.
+         a - append to existing file
+         x - only write if file does'nt exist yet
+         w - overwrite file if it already exists
+
+         Raises
+         ------
+         ValueError
+            If given anything other than 'a', 'x', or 'w'.
+         """
+        return self._mode
+
+    @mode.setter
+    def mode(self, mode):
+        if mode not in ("a", "x", "w"):
+            raise ValueError("Mode should be 'a', 'x', or 'w'.")
+        self._mode = mode
+
+    @property
+    def destination(self) -> Path:
+        """pathlib.Path: File, to which data should be written.
+
+        Raises
+        ------
+        FileNotFoundError
+            If mode 'a' was specified, but given destination doesn't exist.
+        FileExistsError
+            If mode 'x' was specified, but given destination already exists.
+        """
+        return self._destination
+
+    @destination.setter
+    def destination(self, destination: Union[str, Path]) -> None:
+        destination = Path(destination)
+        if not destination.exists() and self.mode == "a":
+            raise FileNotFoundError(
+                "Mode 'a' was specified, but given destination doesn't exist."
+            )
+        elif destination.exists() and self.mode == "x":
+            raise FileExistsError(
+                "Mode 'x' was specified, but given destination already exists."
+            )
+        elif not destination.parent.exists():
+            raise FileNotFoundError("Parent directory of specified file doesn't exist.")
+        self._destination = destination
 
     def distribute_data(self, data):
         distr = dict(
@@ -202,6 +252,7 @@ class SerialWriter(Writer):
     Attributes
     ----------
     destination
+    mode
     filename_template
 
     Class Attributes
@@ -215,9 +266,10 @@ class SerialWriter(Writer):
     def __init__(
         self,
         destination: Union[str, Path],
+        mode: str = "x",
         filename_template: Union[str, Template] = "${filename}.${ext}",
     ):
-        super().__init__(destination)
+        super().__init__(destination, mode)
         self.filename_template = filename_template
 
     @property
