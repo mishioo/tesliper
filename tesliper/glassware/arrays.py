@@ -498,7 +498,7 @@ class ExcitedStateBars(Bars):
         return spectra
 
 
-class Geopmetry(DataArray):
+class Geometry(DataArray):
     associated_genres = "geometry"
     values = ArrayProperty(dtype=float, check_against="filenames")
 
@@ -506,7 +506,7 @@ class Geopmetry(DataArray):
         self,
         genre: str,
         filenames: Sequence[str],
-        values: Sequence[Sequence[float, float, float]],
+        values: Sequence[Sequence[float]],
         molecule_atoms: Sequence[Union[int, str]],
         charge: Union[int, float, Sequence[Union[int, float]]],
         multiplicity: Union[int, float, Sequence[Union[int, float]]],

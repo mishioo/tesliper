@@ -5,6 +5,8 @@ import pytest
 import tesliper.glassware.arrays as ar
 import numpy as np
 
+from tesliper.exceptions import InconsistentDataError
+
 
 def test_filenames_array_empty():
     arr = ar.FilenamesArray()
@@ -171,3 +173,40 @@ def test_intensieties(bars, inten, fnms, vals, freq):
     inten.assert_called_with(
         bars.genre, bars.values, bars.frequencies, bars.t, bars.laser,
     )
+
+
+# test Geometry
+@pytest.fixture
+def geom():
+    return ar.Geometry(
+        genre="geometry",
+        filenames=["file1.out", "file2.out"],
+        values=[[30, 40, 60], [40, 60, 70]],
+        molecule_atoms=[1, 1, 1],
+        charge=0,
+        multiplicity=1,
+    )
+
+
+def test_molecule_atoms(geom):
+    assert geom.molecule_atoms.tolist() == [1, 1, 1]
+
+
+def test_molecule_atoms_two_dim(geom):
+    geom.molecule_atoms = [[2, 2, 2], [2, 2, 2]]
+    assert geom.molecule_atoms.tolist() == [2, 2, 2]
+
+
+def test_molecule_atoms_two_dim_different(geom):
+    with pytest.raises(InconsistentDataError):
+        geom.molecule_atoms = [[2, 2, 2], [2, 1, 2]]
+
+
+def test_molecule_atoms_too_short(geom):
+    with pytest.raises(ValueError):
+        geom.molecule_atoms = [2, 2]
+
+
+def test_molecule_atoms_not_matching_conformers(geom):
+    with pytest.raises(InconsistentDataError):
+        geom.molecule_atoms = [[2, 2, 2]] * 3
