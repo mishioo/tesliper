@@ -8,7 +8,7 @@ from .array_base import ArrayBase, ArrayProperty
 from .spectra import Spectra
 
 # LOGGER
-from ..datawork.helpers import atomic_number
+from ..datawork.atoms import atomic_number
 from ..exceptions import InconsistentDataError
 
 logger = lgg.getLogger(__name__)
