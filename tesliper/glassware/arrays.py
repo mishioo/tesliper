@@ -8,6 +8,9 @@ from .array_base import ArrayBase, ArrayProperty
 from .spectra import Spectra
 
 # LOGGER
+from ..datawork.helpers import atomic_number
+from ..exceptions import InconsistentDataError
+
 logger = lgg.getLogger(__name__)
 logger.setLevel(lgg.DEBUG)
 
@@ -495,5 +498,83 @@ class ExcitedStateBars(Bars):
         return spectra
 
 
-class Geometry(DataArray):
-    pass
+class Geopmetry(DataArray):
+    associated_genres = "geometry"
+    values = ArrayProperty(dtype=float, check_against="filenames")
+
+    def __init__(
+        self,
+        genre: str,
+        filenames: Sequence[str],
+        values: Sequence[Sequence[float, float, float]],
+        molecule_atoms: Sequence[Union[int, str]],
+        charge: Union[int, float, Sequence[Union[int, float]]],
+        multiplicity: Union[int, float, Sequence[Union[int, float]]],
+        allow_data_inconsistency: bool = False,
+    ):
+        super().__init__(genre, filenames, values, allow_data_inconsistency)
+        self.molecule_atoms = molecule_atoms
+        self.charge = charge
+        self.multiplicity = multiplicity
+
+    @ArrayProperty(dtype=int, check_against=None)
+    def molecule_atoms(self) -> np.ndarray:
+        """numpy.ndarray of int: List of atomic numbers representing atoms in
+        molecule.
+
+        Value given to setter should be a list of integers or list of
+        strings, that can be interpreted as integers or symbols of atoms.
+        Setter can be given a list of lists - one list of atoms for each
+        conformer. All those lists should be identical in such case, otherwise
+        InconsistentDataError is raised. Only one list of atoms is stored in
+        either case."""
+        return vars(self)["molecule_atoms"]
+
+    @molecule_atoms.setter
+    def molecule_atoms(self, molecule: Sequence[Union[int, str]]):
+        molecule = np.vectorize(atomic_number)(molecule)
+        molecule = np.asarray(molecule, dtype=type(self).molecule_atoms.dtype)
+        if len(molecule.shape) < 2:
+            # ensure it's lis of lists
+            molecule = molecule.reshape(1, -1)
+        if molecule.shape[1] < self.values.shape[1]:
+            raise ValueError(
+                "Molecule must have at least same number of atoms, as number "
+                "of values provided."
+            )
+        if (
+            not molecule.shape[0] == self.values.shape[0]
+            and not self.allow_data_inconsistency
+            and not molecule.shape[0] == 1
+        ):
+            raise InconsistentDataError(
+                "Length of `molecule_atoms` must be 1 or same as length of "
+                "`values` given."
+            )
+        all_same = (molecule == molecule[0]).all()
+        if not all_same:
+            raise InconsistentDataError(
+                "Not all of given molecules consists of the same atoms. "
+                "Currently only identically constructed molecules are "
+                "supported."
+            )
+        else:
+            vars(self)["molecule_atoms"] = molecule[0]
+
+    @property
+    def charge(self):
+        return vars(self)["charge"]
+
+    @charge.setter
+    def charge(self, value):
+        # TODO: implement correctly
+        vars(self)["charge"] = value
+
+    @property
+    def multiplicity(self):
+        return vars(self)["multiplicity"]
+
+    @multiplicity.setter
+    def multiplicity(self, value):
+        # TODO: implement correctly
+        vars(self)["multiplicity"] = value
