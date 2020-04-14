@@ -21,6 +21,55 @@ def class_array_check_x():
     return Cls
 
 
+@pytest.fixture
+def class_array_xetters():
+    class Cls:
+        arr = ab.ArrayProperty(fget=mock.Mock(), fset=mock.Mock(), fdel=mock.Mock())
+
+    return Cls
+
+
+def test_getter_called(class_array_xetters):
+    arr = class_array_xetters()
+    _ = arr.arr
+    class_array_xetters.arr.fget.assert_called()
+    class_array_xetters.arr.fget.assert_called_with(arr)
+
+
+def test_setter_called(class_array_xetters):
+    arr = class_array_xetters()
+    arr.arr = 1
+    class_array_xetters.arr.fset.assert_called()
+    class_array_xetters.arr.fset.assert_called_with(arr, 1)
+
+
+def test_deletter_called(class_array_xetters):
+    arr = class_array_xetters()
+    del arr.arr
+    class_array_xetters.arr.fdel.assert_called()
+    class_array_xetters.arr.fdel.assert_called_with(arr)
+
+
+def test_sanitizer_called():
+    class Cls:
+        arr = ab.ArrayProperty(fsan=mock.Mock(return_value=[1, 2, 3]))
+
+    arr = Cls()
+    arr.arr = 1
+    assert arr.arr.tolist() == [1, 2, 3]
+    Cls.arr.fsan.assert_called()
+
+
+def test_docs_from_getter():
+    class Cls:
+        def func(self):
+            """Docstring for testing."""
+
+        arr = ab.ArrayProperty(fget=func)
+
+    assert Cls.arr.__doc__ == """Docstring for testing."""
+
+
 def test_array_property_class_access(class_array):
     assert type(class_array.arr) is ab.ArrayProperty
 

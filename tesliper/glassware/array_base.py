@@ -1,6 +1,9 @@
 # IMPORTS
 import inspect
 import logging as lgg
+
+from typing import Callable, Optional, Any, Sequence
+
 import numpy as np
 from ..exceptions import InconsistentDataError
 
@@ -13,11 +16,21 @@ logger.setLevel(lgg.DEBUG)
 # CLASSES
 class ArrayProperty(property):
     def __init__(
-        self, fget=None, fset=None, fdel=None, doc=None, dtype=float, check_against=None
+        self,
+        fget: Optional[Callable[[Any], np.ndarray]] = None,
+        fset: Optional[Callable[[Any, Sequence], None]] = None,
+        fdel: Optional[Callable[[Any], None]] = None,
+        doc: str = None,
+        dtype: type = float,
+        check_against: Optional[str] = None,
+        pad_value: Any = 0,
+        fsan: Optional[Callable[[Sequence], Sequence]] = None,
     ):
         super().__init__(fget=fget, fset=fset, fdel=fdel, doc=doc)
         self.dtype = dtype
         self.check_against = check_against
+        self.pad_value = pad_value
+        self.fsan = fsan
 
     def __set_name__(self, objtype, name):
         self.name = name
@@ -25,7 +38,7 @@ class ArrayProperty(property):
     def __set__(self, instance, values):
         values = self.check_input(instance, values)
         if self.fset is not None:
-            self.fset(instance, values)
+            super().__set__(instance, values)
         else:
             vars(instance)[self.name] = values
 
@@ -33,7 +46,7 @@ class ArrayProperty(property):
         if instance is None:
             return self
         if self.fget is not None:
-            return self.fget(instance)
+            return super().__get__(instance)
         else:
             return vars(instance)[self.name]
 
@@ -43,23 +56,58 @@ class ArrayProperty(property):
             new.__doc__ = fget.__doc__
         return new
 
-    def getter(self, fget):
+    def getter(self, fget: Optional[Callable[[Any], Sequence]]):
         return type(self)(
-            fget, self.fset, self.fdel, self.__doc__, self.dtype, self.check_against
+            fget,
+            self.fset,
+            self.fdel,
+            self.__doc__,
+            self.dtype,
+            self.check_against,
+            self.pad_value,
+            self.fsan,
         )
 
-    def setter(self, fset):
+    def setter(self, fset: Optional[Callable[[Any, Sequence], None]]):
         return type(self)(
-            self.fget, fset, self.fdel, self.__doc__, self.dtype, self.check_against
+            self.fget,
+            fset,
+            self.fdel,
+            self.__doc__,
+            self.dtype,
+            self.check_against,
+            self.pad_value,
+            self.fsan,
         )
 
-    def deleter(self, fdel):
+    def deleter(self, fdel: Optional[Callable[[Any], None]]):
         return type(self)(
-            self.fget, self.fset, fdel, self.__doc__, self.dtype, self.check_against
+            self.fget,
+            self.fset,
+            fdel,
+            self.__doc__,
+            self.dtype,
+            self.check_against,
+            self.pad_value,
+            self.fsan,
         )
 
-    def check_input(self, instance, values):
+    def sanitizer(self, fsan: Optional[Callable[[Sequence], None]]):
+        return type(self)(
+            self.fget,
+            self.fset,
+            self.fdel,
+            self.__doc__,
+            self.dtype,
+            self.check_against,
+            self.pad_value,
+            fsan,
+        )
+
+    def check_input(self, instance: Any, values: Sequence) -> np.ndarray:
         allow = getattr(instance, "allow_data_inconsistency", False)
+        if self.fsan is not None:
+            values = self.fsan(values)
         if self.check_against:
             length = len(getattr(instance, self.check_against))
             if not len(values) == length and not allow:
@@ -89,17 +137,14 @@ class ArrayProperty(property):
                 )
                 return values
 
-    def _pad(self, values):
+    def _pad(self, values: Sequence) -> np.ndarray:
         lengths = [len(v) for v in values]
         longest = max(lengths)
-        values = np.array(
-            [
-                np.pad(v, (0, longest - len_), "constant", constant_values=0)
-                for v, len_ in zip(values, lengths)
-            ],
-            dtype=self.dtype,
-        )
-        return values
+        values = [
+            np.pad(v, (0, longest - len_), "constant", constant_values=self.pad_value)
+            for v, len_ in zip(values, lengths)
+        ]
+        return np.array(values, dtype=self.dtype)
 
 
 class ArrayBase:
