@@ -5,6 +5,25 @@ import tesliper.glassware.array_base as ab
 import pytest
 
 
+@pytest.mark.parametrize(
+    "values,lengths",
+    [
+        ([], ()),
+        ([1], ()),
+        ([[]], (0,)),
+        ([[1]], (1,)),
+        ([[1, 2], [1]], (2,)),
+        ([[[1], [2]], [[1]]], (2, 1)),
+        ([[[1, 2], [2]], [[1]]], (2, 2)),
+        ([[[1], [2]], [[1, 2]]], (2, 2)),
+        ([[[1], 2], [[1, 2]]], (2,)),
+        ([[[1, 2]], [[1], 2]], (2,)),
+    ],
+)
+def test_longest_subsequences(values, lengths):
+    assert ab.longest_subsequences(values) == lengths
+
+
 @pytest.fixture
 def class_array():
     class Cls:
@@ -108,7 +127,7 @@ def test_array_property_check_input_inconsistent_allowed(
     monkeypatch, class_array_check_x
 ):
     pad_mock = mock.Mock(return_value=[[1, 2], [3, 0]])
-    monkeypatch.setattr(ab.ArrayProperty, "_pad", pad_mock)
+    monkeypatch.setattr(ab.ArrayProperty, "pad", pad_mock)
     arr = class_array_check_x()
     arr.x = [1, 2]
     arr.allow_data_inconsistency = True
@@ -117,25 +136,31 @@ def test_array_property_check_input_inconsistent_allowed(
     assert out == [[1, 2], [3, 0]]
 
 
-def test_array_property_pad(class_array):
-    out = class_array.arr._pad([[1, 2], [3]])
-    assert out.tolist() == [[1, 2], [3, 0]]
+@pytest.mark.parametrize(
+    "values,padded",
+    [
+        ([[1, 2], [3]], [[1, 2], [3, 0]]),
+        ([[1, 2], []], [[1, 2], [0, 0]]),
+        ([[1, 2], [3], [4, 5, 6]], [[1, 2, 0], [3, 0, 0], [4, 5, 6]]),
+    ],
+)
+def test_array_property_pad_two_dim(class_array, values, padded):
+    assert class_array.arr.pad(values).tolist() == padded
 
 
-def test_array_property_pad_one_empty(class_array):
-    out = class_array.arr._pad([[1, 2], []])
-    assert out.tolist() == [[1, 2], [0, 0]]
-
-
-def test_array_property_pad_more_sizes(class_array):
-    out = class_array.arr._pad([[1, 2], [3], [4, 5, 6]])
-    assert out.tolist() == [[1, 2, 0], [3, 0, 0], [4, 5, 6]]
-
-
-@pytest.mark.xfail
-def test_array_property_pad_three_dim(class_array):
-    out = class_array.arr._pad([[[1, 2], [3]]])
-    assert out.tolist() == [[1, 2], [3, 0]]
+@pytest.mark.parametrize(
+    "values,padded",
+    [
+        ([[[1, 2], [3]]], [[[1, 2], [3, 0]]]),
+        ([[[1, 2], []]], [[[1, 2], [0, 0]]]),
+        (
+            [[[1, 2], [3]], [[1, 2, 3]]],
+            [[[1, 2, 0], [3, 0, 0]], [[1, 2, 3], [0, 0, 0]]],
+        ),
+    ],
+)
+def test_array_property_pad_three_dim(class_array, values, padded):
+    assert class_array.arr.pad(values).tolist() == padded
 
 
 def test_array_property_decorator_with_dtype():

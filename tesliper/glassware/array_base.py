@@ -2,7 +2,7 @@
 import inspect
 import logging as lgg
 
-from typing import Callable, Optional, Any, Sequence
+from typing import Callable, Optional, Any, Sequence, Tuple
 
 import numpy as np
 from ..exceptions import InconsistentDataError
@@ -11,6 +11,48 @@ from ..exceptions import InconsistentDataError
 # LOGGER
 logger = lgg.getLogger(__name__)
 logger.setLevel(lgg.DEBUG)
+
+
+# FUNCTIONS
+def longest_subsequences(values: Sequence) -> Tuple[int, ...]:
+    """Finds lengths of longest subsequences on each level of given nested sequence.
+    Each subsequence should have same number of nesting levels.
+
+    Parameters
+    ----------
+    values : sequence [of sequences [of...]]
+        Arbitrarily deep nested sequence of sequences.
+
+    Returns
+    -------
+    tuple of ints
+        Length of the longest subsequence for each nesting level as a tuple.
+
+    Notes
+    -----
+    If nesting level in not identical in all subsequences, lengths are reported
+    up to first level of non-iterable elements.
+
+    >>> longest_subsequences([[[1, 2]], [[1], 2]])
+    (2,)
+
+    Examples
+    --------
+    >>> longest_subsequences([[[1, 2]], [[1]]])
+    (1, 2)
+    >>> longest_subsequences([[[1, 2]], [[1], [1], [1]]])
+    (3, 2)
+    """
+    try:
+        lenghts = [len(v) for v in values]
+        longest = max(lenghts)
+    except (TypeError, ValueError):
+        return ()
+    try:
+        other = longest_subsequences([i for v in values for i in v])
+    except TypeError:
+        return (longest,)
+    return (longest, *other)
 
 
 # CLASSES
@@ -130,20 +172,37 @@ class ArrayProperty(property):
                 )
                 raise InconsistentDataError(error_msg) from error
             else:
-                values = self._pad(values)
+                values = self.pad(values)
                 logger.info(
                     f"{genre} values' lists were appended with zeros to "
                     f"match length of longest entry."
                 )
                 return values
 
-    def _pad(self, values: Sequence) -> np.ndarray:
-        lengths = [len(v) for v in values]
-        longest = max(lengths)
-        values = [
-            np.pad(v, (0, longest - len_), "constant", constant_values=self.pad_value)
-            for v, len_ in zip(values, lengths)
-        ]
+    def pad(self, values: Sequence) -> np.ndarray:
+        """Appends each subsequence of given sequence to match the length
+        of the longest subsequence on given level of nesting depth, using
+        `self.pad_value` as a filler.
+
+        Parameters
+        ----------
+        values : sequence [of sequences [of...]]
+            Arbitrarily deep nested sequence of sequences.
+
+        Returns
+        -------
+        numpy.ndarray
+            Array formed from `values`, with missing values filled.
+        """
+
+        def _pad(vals, lens, padval=self.pad_value):
+            padding = ((0, lens[0] - len(vals)),) + ((0, 0),) * (len(lens) - 1)
+            if len(lens) > 1:
+                vals = [_pad(v, lens[1:]) for v in vals]
+            return np.pad(vals, padding, "constant", constant_values=padval)
+
+        longest = longest_subsequences(values)
+        values = [_pad(v, longest) for v in values]
         return np.array(values, dtype=self.dtype)
 
 
