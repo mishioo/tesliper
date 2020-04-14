@@ -1,8 +1,11 @@
 from unittest import mock
+from math import isnan
 
 from tesliper.exceptions import InconsistentDataError
 import tesliper.glassware.array_base as ab
 import pytest
+
+from hypothesis import given, assume, strategies as st
 
 
 @pytest.mark.parametrize(
@@ -186,6 +189,95 @@ def test_array_property_decorator():
     assert Cls.arr.fset is None
     assert Cls.arr.fdel is None
     assert Cls.arr.check_against is None
+
+
+single_value = st.one_of(st.none(), st.integers(), st.floats(), st.text())
+list_of_unique = st.lists(single_value, min_size=2, unique=True)
+
+
+@pytest.fixture
+def mock_check_input(monkeypatch):
+    monkeypatch.setattr(
+        ab.ArrayProperty,
+        "check_input",
+        mock.Mock(side_effect=lambda i, x: ab.np.array(x)),
+    )
+
+
+@pytest.fixture
+def class_collapsable_array():
+    class Cls:
+        arr = ab.CollapsableArrayProperty()
+
+    return Cls
+
+
+@pytest.fixture
+def instance():
+    return mock.Mock(allow_data_inconsistency=False)
+
+
+@pytest.mark.usefixtures("mock_check_input")
+@given(single_value)
+def test_collapsable_single_value(class_collapsable_array, instance, value):
+    try:
+        assume(not isnan(value))
+    except TypeError:
+        pass
+    assert class_collapsable_array.arr.check_input(instance, value) == value
+    ab.ArrayProperty.check_input.assert_not_called()
+
+
+@pytest.mark.usefixtures("mock_check_input")
+@given(single_value, st.integers(min_value=1, max_value=10))
+def test_collapsable_list_of_identical(
+    class_collapsable_array, instance, value, number
+):
+    try:
+        assume(not isnan(value))
+    except TypeError:
+        pass
+    arr = [value] * number
+    assert class_collapsable_array.arr.check_input(instance, arr) == value
+    ab.ArrayProperty.check_input.assert_called()
+
+
+@pytest.mark.usefixtures("mock_check_input")
+@given(list_of_unique)
+def test_collapsable_list_of_unique(class_collapsable_array, instance, values):
+    with pytest.raises(InconsistentDataError):
+        class_collapsable_array.arr.check_input(instance, values)
+
+
+@pytest.mark.usefixtures("mock_check_input")
+def test_collapsable_empty_list(class_collapsable_array, instance):
+    assert class_collapsable_array.arr.check_input(instance, []) == []
+
+
+@pytest.mark.usefixtures("mock_check_input")
+def test_cllapsable_list_of_unique_lists(class_collapsable_array, instance):
+    pytest.fail("TO be created.")
+
+
+@pytest.mark.usefixtures("mock_check_input")
+def test_cllapsable_list_of_variable_lists(class_collapsable_array, instance):
+    pytest.fail("TO be created.")
+
+
+@pytest.mark.usefixtures("mock_check_input")
+def test_cllapsable_list_of_variable_lists_inconsistency_allowed(
+    class_collapsable_array, instance
+):
+    pytest.fail("TO be created.")
+
+
+@pytest.mark.usefixtures("mock_check_input")
+@given(list_of_unique)
+def test_collapsable_list_of_unique_inconsistency_allowed(
+    class_collapsable_array, instance, values
+):
+    instance.allow_data_inconsistency = True
+    assert class_collapsable_array.arr.check_input(instance, values).tolist() == values
 
 
 @pytest.fixture

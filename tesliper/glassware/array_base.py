@@ -2,7 +2,7 @@
 import inspect
 import logging as lgg
 
-from typing import Callable, Optional, Any, Sequence, Tuple
+from typing import Callable, Optional, Any, Sequence, Tuple, Iterable, Union
 
 import numpy as np
 from ..exceptions import InconsistentDataError
@@ -57,6 +57,11 @@ def longest_subsequences(values: Sequence) -> Tuple[int, ...]:
 
 # CLASSES
 class ArrayProperty(property):
+    """
+    Property, that validates value given to its setter and stores it as a numpy.ndarray.
+    """
+
+    # TODO: supplement documentation with in-depth explanation
     def __init__(
         self,
         fget: Optional[Callable[[Any], np.ndarray]] = None,
@@ -78,6 +83,8 @@ class ArrayProperty(property):
         self.name = name
 
     def __set__(self, instance, values):
+        if self.fsan is not None:
+            values = self.fsan(values)
         values = self.check_input(instance, values)
         if self.fset is not None:
             super().__set__(instance, values)
@@ -99,6 +106,7 @@ class ArrayProperty(property):
         return new
 
     def getter(self, fget: Optional[Callable[[Any], Sequence]]):
+        """Descriptor to change the getter on an ArrayProperty."""
         return type(self)(
             fget,
             self.fset,
@@ -111,6 +119,7 @@ class ArrayProperty(property):
         )
 
     def setter(self, fset: Optional[Callable[[Any, Sequence], None]]):
+        """Descriptor to change the setter on an ArrayProperty."""
         return type(self)(
             self.fget,
             fset,
@@ -123,6 +132,7 @@ class ArrayProperty(property):
         )
 
     def deleter(self, fdel: Optional[Callable[[Any], None]]):
+        """Descriptor to change the deleter on an ArrayProperty."""
         return type(self)(
             self.fget,
             self.fset,
@@ -134,7 +144,12 @@ class ArrayProperty(property):
             self.fsan,
         )
 
-    def sanitizer(self, fsan: Optional[Callable[[Sequence], None]]):
+    def sanitizer(self, fsan: Optional[Callable[[Sequence], Sequence]]):
+        """Descriptor to change the sanitizer on an ArrayProperty. Function given as
+        parameter should take one positional argument and return sanitized values.
+        If any sanitizer is provided, it is always called with `values` given to
+        ArrayProperty setter. Sanitation is performed before `.check_input()`
+        is called."""
         return type(self)(
             self.fget,
             self.fset,
@@ -147,9 +162,33 @@ class ArrayProperty(property):
         )
 
     def check_input(self, instance: Any, values: Sequence) -> np.ndarray:
+        """Checks if `values` given to setter have same length as attribute specified
+        with `check_against`.
+
+        Parameters
+        ----------
+        instance
+            Instance of owner class.
+        values
+            Values to validate.
+
+        Returns
+        -------
+        numpy.ndarray
+            Validated values.
+
+        Raises
+        ------
+        ValueError
+            If `array_property.check_against` is not None and list of given values
+            have different length than getattr(`instance`,
+            `array_property.check_against`).
+            If given list of values cannot be converted to `array_property.dtype` type.
+        InconsistentDataError
+            If `values` is list of lists of varying size and instance doesn't allow
+            data inconsistency.
+        """
         allow = getattr(instance, "allow_data_inconsistency", False)
-        if self.fsan is not None:
-            values = self.fsan(values)
         if self.check_against:
             length = len(getattr(instance, self.check_against))
             if not len(values) == length and not allow:
@@ -204,6 +243,59 @@ class ArrayProperty(property):
         longest = longest_subsequences(values)
         values = [_pad(v, longest) for v in values]
         return np.array(values, dtype=self.dtype)
+
+
+class CollapsableArrayProperty(ArrayProperty):
+    """ArrayProperty, that stores only one value, if all entries are identical.
+    """
+
+    def check_input(
+        self, instance: Any, values: Union[Sequence, Any]
+    ) -> Union[np.ndarray, Any]:
+        """If given `values` is not iterable or is of type `str` it is returned
+        without change. Otherwise it is validated using `ArrayProperty.check_input()`,
+        and collapsed to single value if all values are identical.
+        If values are non-uniform and instance doesn't allow data inconsistency,
+        InconsistentDataError is raised.
+
+        Parameters
+        ----------
+        instance
+        values
+
+        Returns
+        -------
+        numpy.ndarray or any
+            Validated array or single value.
+
+        Raises
+        ------
+        ValueError
+            If `array_property.check_against` is not None and list of given values
+            have different length than getattr(`instance`,
+            `array_property.check_against`).
+            If given list of values cannot be converted to `array_property.dtype` type.
+        InconsistentDataError
+            If `values` is list of lists of varying size and instance doesn't allow
+            data inconsistency.
+            If values are non-uniform and instance doesn't allow data inconsistency.
+        """
+        if not isinstance(values, Iterable) or isinstance(values, str):
+            return values
+        values = super().check_input(instance, values)
+        allow = getattr(instance, "allow_data_inconsistency", False)
+        try:
+            all_same = all(values == values[0])
+        except IndexError:
+            return []
+        if all_same:
+            return values[0]
+        elif not allow:
+            raise InconsistentDataError(
+                "List of non-uniform values given to CollapsableArrayProperty setter."
+            )
+        else:
+            return values
 
 
 class ArrayBase:
