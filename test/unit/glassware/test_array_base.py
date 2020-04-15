@@ -191,8 +191,41 @@ def test_array_property_decorator():
     assert Cls.arr.check_against is None
 
 
-single_value = st.one_of(st.none(), st.integers(), st.floats(), st.text())
-list_of_unique = st.lists(single_value, min_size=2, unique=True)
+text_strategy = st.text(
+    st.characters(blacklist_categories=["Cs"], blacklist_characters=["\x00"])
+)
+single_value = st.one_of(
+    st.none(), st.integers(), st.floats(allow_nan=False), text_strategy,
+)
+list_of_identical = st.builds(
+    lambda v, n: [v] * n, single_value, st.integers(min_value=1, max_value=10)
+)
+list_of_unique = st.one_of(
+    st.lists(st.integers(), min_size=2, unique=True),
+    st.lists(st.floats(allow_nan=False), min_size=2, unique=True),
+    st.lists(text_strategy, min_size=2, unique=True),
+)
+list_of_identical_lists = st.builds(
+    lambda v, n: [v] * n, list_of_unique, st.integers(min_value=1, max_value=10)
+)
+list_of_variable_lists = st.builds(
+    lambda vals: [list(v) for v in vals],
+    st.integers(min_value=1, max_value=10).flatmap(
+        lambda n: st.one_of(
+            st.lists(
+                st.tuples(*[st.integers() for _ in range(n)]), min_size=2, unique=True
+            ),
+            st.lists(
+                st.tuples(*[st.floats(allow_nan=False) for _ in range(n)]),
+                min_size=2,
+                unique=True,
+            ),
+            st.lists(
+                st.tuples(*[text_strategy for _ in range(n)]), min_size=2, unique=True
+            ),
+        ),
+    ),
+)
 
 
 @pytest.fixture
@@ -220,10 +253,6 @@ def instance():
 @pytest.mark.usefixtures("mock_check_input")
 @given(single_value)
 def test_collapsable_single_value(class_collapsable_array, instance, value):
-    try:
-        assume(not isnan(value))
-    except TypeError:
-        pass
     assert class_collapsable_array.arr.check_input(instance, value) == value
     ab.ArrayProperty.check_input.assert_not_called()
 
@@ -233,10 +262,6 @@ def test_collapsable_single_value(class_collapsable_array, instance, value):
 def test_collapsable_list_of_identical(
     class_collapsable_array, instance, value, number
 ):
-    try:
-        assume(not isnan(value))
-    except TypeError:
-        pass
     arr = [value] * number
     assert class_collapsable_array.arr.check_input(instance, arr) == value
     ab.ArrayProperty.check_input.assert_called()
@@ -250,30 +275,37 @@ def test_collapsable_list_of_unique(class_collapsable_array, instance, values):
 
 
 @pytest.mark.usefixtures("mock_check_input")
+@given(list_of_unique)
+def test_collapsable_list_of_unique_inconsistency_allowed(
+    class_collapsable_array, instance, values
+):
+    instance.allow_data_inconsistency = True
+    assert class_collapsable_array.arr.check_input(instance, values).tolist() == values
+
+
+@pytest.mark.usefixtures("mock_check_input")
 def test_collapsable_empty_list(class_collapsable_array, instance):
     assert class_collapsable_array.arr.check_input(instance, []) == []
 
 
 @pytest.mark.usefixtures("mock_check_input")
-def test_cllapsable_list_of_unique_lists(class_collapsable_array, instance):
-    pytest.fail("TO be created.")
+@given(list_of_identical_lists)
+def test_cllapsable_list_of_identical_lists(class_collapsable_array, instance, values):
+    assert (
+        class_collapsable_array.arr.check_input(instance, values).tolist() == values[0]
+    )
 
 
 @pytest.mark.usefixtures("mock_check_input")
-def test_cllapsable_list_of_variable_lists(class_collapsable_array, instance):
-    pytest.fail("TO be created.")
+@given(list_of_variable_lists)
+def test_cllapsable_list_of_variable_lists(class_collapsable_array, instance, values):
+    with pytest.raises(InconsistentDataError):
+        class_collapsable_array.arr.check_input(instance, values)
 
 
 @pytest.mark.usefixtures("mock_check_input")
+@given(list_of_variable_lists)
 def test_cllapsable_list_of_variable_lists_inconsistency_allowed(
-    class_collapsable_array, instance
-):
-    pytest.fail("TO be created.")
-
-
-@pytest.mark.usefixtures("mock_check_input")
-@given(list_of_unique)
-def test_collapsable_list_of_unique_inconsistency_allowed(
     class_collapsable_array, instance, values
 ):
     instance.allow_data_inconsistency = True

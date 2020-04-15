@@ -285,7 +285,7 @@ class CollapsableArrayProperty(ArrayProperty):
         values = super().check_input(instance, values)
         allow = getattr(instance, "allow_data_inconsistency", False)
         try:
-            all_same = all(values == values[0])
+            all_same = (values == values[0]).all()
         except IndexError:
             return []
         if all_same:
