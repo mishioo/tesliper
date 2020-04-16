@@ -47,6 +47,8 @@ def longest_subsequences(sequences: NestedSequence) -> Tuple[int, ...]:
     (3, 2)
     """
     try:
+        if any(isinstance(v, str) for v in sequences):
+            raise TypeError
         lenghts = [len(v) for v in sequences]
         longest = max(lenghts)
     except (TypeError, ValueError):

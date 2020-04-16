@@ -1,11 +1,10 @@
 from unittest import mock
-from math import isnan
 
 from tesliper.exceptions import InconsistentDataError
 import tesliper.glassware.array_base as ab
 import pytest
 
-from hypothesis import given, assume, strategies as st
+from hypothesis import given, strategies as st
 
 
 @pytest.mark.parametrize(
@@ -24,6 +23,13 @@ from hypothesis import given, assume, strategies as st
     ],
 )
 def test_longest_subsequences(values, lengths):
+    assert ab.longest_subsequences(values) == lengths
+
+
+@pytest.mark.parametrize(
+    "values,lengths", [(["a"], ()), ([["a"]], (1,)), ([["aa"]], (1,))],
+)
+def test_longest_subsequences_str(values, lengths):
     assert ab.longest_subsequences(values) == lengths
 
 
