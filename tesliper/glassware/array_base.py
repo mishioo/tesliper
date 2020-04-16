@@ -199,6 +199,28 @@ class ArrayProperty(property):
             fsan,
         )
 
+    def check_shape(self, instance: Any, values: Sequence):
+        """Raises an error if `values` have different shape than attribute specified
+        as`check_against`.
+        """
+        allow = getattr(instance, "allow_data_inconsistency", False)
+        if self.check_against:
+            attr_value = getattr(instance, self.check_against)
+            try:
+                ref_shape = attr_value.shape
+            except AttributeError:
+                ref_shape = find_best_shape(attr_value)
+            best_shape = find_best_shape(values)
+            shapes_same = (
+                ref_shape[: self.check_depth] == best_shape[: self.check_depth]
+            )
+            if not shapes_same and not allow:
+                raise ValueError(
+                    f"{self.name} and {self.check_against} must have the same shape "
+                    f"up to {self.check_depth} dimensions. Arrays of shape "
+                    f"{best_shape} and {ref_shape} were given."
+                )
+
     def check_input(self, instance: Any, values: Sequence) -> np.ndarray:
         """Checks if `values` given to setter have same length as attribute specified
         with `check_against`.
@@ -226,23 +248,8 @@ class ArrayProperty(property):
             If `values` is list of lists of varying size and instance doesn't allow
             data inconsistency.
         """
+        self.check_shape(instance, values)
         allow = getattr(instance, "allow_data_inconsistency", False)
-        if self.check_against:
-            attr_value = getattr(instance, self.check_against)
-            try:
-                ref_shape = attr_value.shape
-            except AttributeError:
-                ref_shape = find_best_shape(attr_value)
-            best_shape = find_best_shape(values)
-            shapes_same = (
-                ref_shape[: self.check_depth] == best_shape[: self.check_depth]
-            )
-            if not shapes_same and not allow:
-                raise ValueError(
-                    f"{self.name} and {self.check_against} must have the same shape "
-                    f"up to {self.check_depth} dimensions. Arrays of shape "
-                    f"{best_shape} and {ref_shape} were given."
-                )
         try:
             return np.array(values, dtype=self.dtype)
         except ValueError as error:
@@ -294,6 +301,31 @@ class ArrayProperty(property):
 class CollapsableArrayProperty(ArrayProperty):
     """ArrayProperty, that stores only one value, if all entries are identical.
     """
+
+    def check_shape(self, instance: Any, values: Sequence):
+        """Raises an error if `values` have different shape than attribute specified
+        as`check_against`. Accepts values with size of first dimension equal to 1, even
+        if it is not identical to the size of the first dimension of said attribute.
+        """
+        allow = getattr(instance, "allow_data_inconsistency", False)
+        if self.check_against:
+            attr_value = getattr(instance, self.check_against)
+            try:
+                ref_shape = attr_value.shape
+            except AttributeError:
+                ref_shape = find_best_shape(attr_value)
+            best_shape = find_best_shape(values)
+            first_important = int(best_shape[0] == 1)
+            shapes_same = (
+                ref_shape[first_important : self.check_depth]
+                == best_shape[first_important : self.check_depth]
+            )
+            if not shapes_same and not allow:
+                raise ValueError(
+                    f"{self.name} and {self.check_against} must have the same shape "
+                    f"up to {self.check_depth} dimensions. Arrays of shape "
+                    f"{best_shape} and {ref_shape} were given."
+                )
 
     def check_input(
         self, instance: Any, values: Union[Sequence, Any]
