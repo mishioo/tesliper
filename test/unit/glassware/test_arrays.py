@@ -1,10 +1,9 @@
 from unittest import mock
 
 import pytest
-
-import tesliper.glassware.arrays as ar
 import numpy as np
 
+import tesliper.glassware.arrays as ar
 from tesliper.exceptions import InconsistentDataError
 
 
@@ -181,15 +180,38 @@ def geom():
     return ar.Geometry(
         genre="geometry",
         filenames=["file1.out", "file2.out"],
-        values=[[30, 40, 60], [40, 60, 70]],
-        molecule_atoms=[1, 1, 1],
-        charge=0,
-        multiplicity=1,
+        values=[
+            [[30, 40, 60], [40, 60, 70], [50, 80, 10]],
+            [[35, 45, 65], [45, 65, 75], [55, 85, 15]],
+        ],
+        molecule_atoms=[[1, 1, 1]],
+    )
+
+
+@pytest.fixture
+def geom_incons():
+    return ar.Geometry(
+        genre="geometry",
+        filenames=["file1.out", "file2.out"],
+        values=[
+            [[30, 40, 60], [40, 60, 70], [50, 80, 10]],
+            [[35, 45, 65], [45, 65, 75]],
+        ],
+        molecule_atoms=[[2, 2, 2], [2, 2]],
+        allow_data_inconsistency=True,
     )
 
 
 def test_molecule_atoms(geom):
     assert geom.molecule_atoms.tolist() == [1, 1, 1]
+
+
+def test_molecule_atoms_as_symbols(geom, monkeypatch):
+    monkeypatch.setattr(
+        type(geom).molecule_atoms, "fsan", mock.Mock(return_value=[[6, 1, 8]])
+    )
+    geom.molecule_atoms = [["C", "H", "O"]]
+    assert geom.molecule_atoms.tolist() == [6, 1, 8]
 
 
 def test_molecule_atoms_two_dim(geom):
@@ -202,11 +224,64 @@ def test_molecule_atoms_two_dim_different(geom):
         geom.molecule_atoms = [[2, 2, 2], [2, 1, 2]]
 
 
+def test_molecule_atoms_two_dim_different_inconsistency_allowed(geom):
+    geom.allow_data_inconsistency = True
+    geom.molecule_atoms = [[2, 2, 2], [2, 1, 2]]
+    assert geom.molecule_atoms.tolist() == [[2, 2, 2], [2, 1, 2]]
+
+
+def test_molecule_values_varying_sizes_inconsistency_allowed(geom):
+    geom.allow_data_inconsistency = True
+    geom.values = [
+        [[30, 40, 60], [40, 60, 70], [50, 80, 10]],
+        [[35, 45, 65], [45, 65, 75]],
+    ]
+    assert geom.values.tolist() == [
+        [[30, 40, 60], [40, 60, 70], [50, 80, 10]],
+        [[35, 45, 65], [45, 65, 75], [0, 0, 0]],
+    ]
+
+
+@pytest.mark.xfail
+def test_molecule_atoms_varying_sizes_inconsistency_allowed(geom):
+    geom.allow_data_inconsistency = True
+    geom.molecule_atoms = [[2, 2, 2], [2, 2]]
+    assert geom.molecule_atoms.tolist() == [[2, 2, 2], [2, 2, 0]]
+
+
 def test_molecule_atoms_too_short(geom):
     with pytest.raises(ValueError):
-        geom.molecule_atoms = [2, 2]
+        geom.molecule_atoms = [[2, 2]]
 
 
-def test_molecule_atoms_not_matching_conformers(geom):
-    with pytest.raises(InconsistentDataError):
+def test_molecule_atoms_not_matching_num_of_conformers(geom):
+    with pytest.raises(ValueError):
         geom.molecule_atoms = [[2, 2, 2]] * 3
+
+
+@pytest.mark.xfail(reason="attributes removed from Geometry class")
+@pytest.mark.parametrize("attr", ["charge", "multiplicity"])
+def test_cm(geom, attr):
+    assert getattr(geom, attr) == 0
+
+
+@pytest.mark.xfail(reason="attributes removed from Geometry class")
+@pytest.mark.parametrize("attr", ["charge", "multiplicity"])
+def test_cm_as_list(geom, attr):
+    setattr(geom, attr, [1, 1])
+    assert getattr(geom, attr) == 1
+
+
+@pytest.mark.xfail(reason="attributes removed from Geometry class")
+@pytest.mark.parametrize("attr", ["charge", "multiplicity"])
+def test_cm_varying_values(geom, attr):
+    with pytest.raises(InconsistentDataError):
+        setattr(geom, attr, [0, 1])
+
+
+@pytest.mark.xfail(reason="attributes removed from Geometry class")
+@pytest.mark.parametrize("attr", ["charge", "multiplicity"])
+def test_cm_varying_values_inconsistency_allowed(geom, attr):
+    geom.allow_data_inconsistency = True
+    setattr(geom, attr, [0, 1])
+    assert getattr(geom, attr) == [0, 1]
