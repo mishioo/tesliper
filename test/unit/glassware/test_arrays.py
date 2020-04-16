@@ -58,14 +58,17 @@ def lggr(monkeypatch):
 
 
 @pytest.fixture
-def arr():
-    return ar.FloatArray(genre="bla", filenames=["f1", "f2", "f3"], values=[3, 12, 15])
+def averagable():
+    class Av(ar.FloatArray, ar.Averagable):
+        associated_genres = ()
+
+    return Av(genre="bla", filenames=["f1", "f2", "f3"], values=[3, 12, 15])
 
 
-def test_average_conformers_energies_object(arr, lggr, clav, get_repr_args_mock):
+def test_average_conformers_energies_object(averagable, lggr, clav, get_repr_args_mock):
     en = mock.Mock(genre="foo", populations=[1, 1, 1])
-    out = arr.average_conformers(en)
-    assert type(out) is ar.FloatArray
+    out = averagable.average_conformers(en)
+    assert type(out) is type(averagable)
     assert out.values.tolist() == [10]
     assert clav.call_args[0][0].tolist() == [3, 12, 15]
     assert clav.call_args[0][1] == [1, 1, 1]
@@ -73,9 +76,9 @@ def test_average_conformers_energies_object(arr, lggr, clav, get_repr_args_mock)
     lggr.debug.assert_called_with("bla averaged by foo.")
 
 
-def test_average_conformers_list(arr, lggr, clav, get_repr_args_mock):
-    out = arr.average_conformers([1, 1, 1])
-    assert type(out) is ar.FloatArray
+def test_average_conformers_list(averagable, lggr, clav, get_repr_args_mock):
+    out = averagable.average_conformers([1, 1, 1])
+    assert type(out) is type(averagable)
     assert out.values.tolist() == [10]
     assert clav.call_args[0][0].tolist() == [3, 12, 15]
     assert clav.call_args[0][1].tolist() == [1, 1, 1]

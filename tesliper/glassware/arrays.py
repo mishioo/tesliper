@@ -73,6 +73,12 @@ class DataArray(ArrayBase):
         return self.full_name_ref[self.genre]
 
 
+class IntArray(DataArray):
+
+    associated_genres = ("charge",)
+    values = ArrayProperty(dtype=int, check_against="filenames")
+
+
 class FloatArray(DataArray):
 
     associated_genres = (
@@ -81,50 +87,6 @@ class FloatArray(DataArray):
         "gamma2 delta2 cid1 cid2 cid3 rc180 eemang".split(" ")
     )
     values = ArrayProperty(dtype=float, check_against="filenames")
-
-    def average_conformers(self, energies):
-        """A method for averaging values by population of conformers.
-
-        Parameters
-        ----------
-        energies : Energies object instance or iterable
-            Object with `populations` and `genre` attributes, containing
-            respectively: list of populations values as numpy.ndarray and
-            string specifying energy type. Alternatively, list of weights
-            for each conformer.
-
-        Returns
-        -------
-        DataArray
-            New instance of DataArray's subclass, on which `average` method was
-            called, containing averaged values.
-
-        Raises
-        ------
-            If creation of an instance based on its' __init__ signature is
-            impossible.
-        """
-        # TODO: make sure returning DataArray is necessary and beneficial
-        #       maybe it should return just averaged value
-        try:
-            populations = energies.populations
-            energy_type = energies.genre
-        except AttributeError:
-            populations = np.asanyarray(energies, dtype=float)
-            energy_type = "unknown"
-        averaged_values = dw.calculate_average(self.values, populations)
-        args = self.get_repr_args()
-        args["values"] = [averaged_values]
-        args["allow_data_inconsistency"] = True
-        try:
-            averaged = type(self)(**args)
-        except (TypeError, ValueError) as err:
-            raise TypeError(
-                f"Could not create an instance of {type(self)} from its "
-                f"signature. Use tesliper.datawork.calculate_average instead."
-            ) from err
-        logger.debug(f"{self.genre} averaged by {energy_type}.")
-        return averaged
 
 
 class InfoArray(DataArray):
@@ -250,7 +212,56 @@ class Energies(FloatArray):
         return dw.calculate_populations(self.values, t)
 
 
-class Bars(FloatArray):
+class Averagable:
+    """Mix-in for DataArrays, that may be averaged based on populations of conformers.
+    """
+
+    def average_conformers(self: DataArray, energies) -> DataArray:
+        """A method for averaging values by population of conformers.
+
+        Parameters
+        ----------
+        energies : Energies object instance or iterable
+            Object with `populations` and `genre` attributes, containing
+            respectively: list of populations values as numpy.ndarray and
+            string specifying energy type. Alternatively, list of weights
+            for each conformer.
+
+        Returns
+        -------
+        DataArray
+            New instance of DataArray's subclass, on which `average` method was
+            called, containing averaged values.
+
+        Raises
+        ------
+            If creation of an instance based on its' __init__ signature is
+            impossible.
+        """
+        # TODO: make sure returning DataArray is necessary and beneficial
+        #       maybe it should return just averaged value
+        try:
+            populations = energies.populations
+            energy_type = energies.genre
+        except AttributeError:
+            populations = np.asanyarray(energies, dtype=float)
+            energy_type = "unknown"
+        averaged_values = dw.calculate_average(self.values, populations)
+        args = self.get_repr_args()
+        args["values"] = [averaged_values]
+        args["allow_data_inconsistency"] = True
+        try:
+            averaged = type(self)(**args)
+        except (TypeError, ValueError) as err:
+            raise TypeError(
+                f"Could not create an instance of {type(self)} from its "
+                f"signature. Use tesliper.datawork.calculate_average instead."
+            ) from err
+        logger.debug(f"{self.genre} averaged by {energy_type}.")
+        return averaged
+
+
+class Bars(FloatArray, Averagable):
 
     associated_genres = ()
     spectra_name_ref = dict(
@@ -500,7 +511,7 @@ class ExcitedStateBars(Bars):
         return spectra
 
 
-class Geometry(DataArray):
+class Geometry(FloatArray):
     """DataArray that stores information about geometry of conformers.
 
     Attributes
