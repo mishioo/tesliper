@@ -5,6 +5,7 @@ import logging as lgg
 from typing import Callable, Optional, Any, Sequence, Tuple, Iterable, Union, List
 
 import numpy as np
+
 from ..exceptions import InconsistentDataError
 
 
@@ -56,7 +57,7 @@ def longest_subsequences(sequences: NestedSequence) -> Tuple[int, ...]:
     try:
         other = longest_subsequences([i for v in sequences for i in v])
     except TypeError:
-        return (longest,)
+        return (longest,)  # tuple
     return (longest, *other)
 
 
@@ -378,19 +379,20 @@ class CollapsableArrayProperty(ArrayProperty):
             return values
 
 
+_ARRAY_CONSTRUCTORS = {}
+
+
 class ArrayBase:
     """Base class for data holding objects."""
 
-    associated_genres = ()
-    constructors = {}
+    # TODO: signalize that this should be overridden in subclass
+    #       consider implementing stronger protection ?
+    associated_genres: Tuple[str, ...] = NotImplemented
 
     def __init_subclass__(cls, **kwargs):
-        if not hasattr(cls, "associated_genres"):
-            raise AttributeError(
-                "Class derived from ArrayBase should provide associated_genres"
-                " attribute."
-            )
-        ArrayBase.constructors.update((genre, cls) for genre in cls.associated_genres)
+        global _ARRAY_CONSTRUCTORS
+        if cls.associated_genres is not NotImplemented:
+            _ARRAY_CONSTRUCTORS.update((genre, cls) for genre in cls.associated_genres)
 
     def __init__(self, genre, filenames, values, allow_data_inconsistency=False):
         self.genre = genre

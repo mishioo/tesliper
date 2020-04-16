@@ -403,14 +403,11 @@ def array_subclass():
     return Sub
 
 
-@pytest.mark.xfail
-def test_array_base_subclass_no_associated_genres(filenames_mock, values_mock):
-    def rising():
-        class Sub(ab.ArrayBase):
-            pass
+def test_array_base_subclass_no_associated_genres():
+    class Sub(ab.ArrayBase):
+        pass
 
-    with pytest.raises(AttributeError):
-        rising()
+    assert Sub.associated_genres is NotImplemented
 
 
 def test_array_base_get_args(filenames_mock, values_mock, array_subclass):

@@ -14,16 +14,9 @@ from typing import Sequence, Union, Iterable, Optional
 import numpy as np
 
 from tesliper.exceptions import TesliperError
-from .arrays import (
-    ArrayBase,
-    DataArray,
-    BooleanArray,
-    InfoArray,
-    FloatArray,
-    Energies,
-    GroundStateBars,
-    ExcitedStateBars,
-)
+from .arrays import DataArray
+from .array_base import _ARRAY_CONSTRUCTORS
+
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -345,7 +338,7 @@ class Molecules(OrderedDict):
             Arrayed data of desired genre as appropriate DataArray object.
         """
         try:
-            cls = ArrayBase.constructors[genre]  # ArrayBase subclasses
+            cls = _ARRAY_CONSTRUCTORS[genre]  # ArrayBase subclasses
         except KeyError:
             raise ValueError(f"Unknown genre '{genre}'.")
         if genre == "filenames":

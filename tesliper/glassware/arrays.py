@@ -30,7 +30,7 @@ default_spectra_bars = {
 class DataArray(ArrayBase):
     """Base class for data holding objects. It provides trimming functionality
     for filtering data based on other objects content or arbitrary choice.
-    ↑ this is no longer true, TO DO: correct this
+    ^ this is no longer true, TODO: correct this
 
     Parameters
     ----------
@@ -39,11 +39,9 @@ class DataArray(ArrayBase):
         extracted.
     values : numpy.ndarray(dtype=float)
         List of appropriate data values.
-
-    TO DO
-    -----
-    Supplement full_name_ref
     """
+
+    # TODO: Supplement full_name_ref
 
     full_name_ref = dict(
         rot="Rot. Strength",
@@ -82,25 +80,44 @@ class IntArray(DataArray):
 class FloatArray(DataArray):
 
     associated_genres = (
-        "zpecorr tencorr entcorr gibcorr mass frc emang "
-        "depolarp depolaru depp depu alpha2 beta2 alphag "
-        "gamma2 delta2 cid1 cid2 cid3 rc180 eemang".split(" ")
+        "zpecorr",
+        "tencorr",
+        "entcorr",
+        "gibcorr",
+        "mass",
+        "frc",
+        "emang",
+        "depolarp",
+        "depolaru",
+        "depp",
+        "depu",
+        "alpha2",
+        "beta2",
+        "alphag ",
+        "gamma2",
+        "delta2",
+        "cid1",
+        "cid2",
+        "cid3",
+        "rc180",
+        "eemang",
+        "multiplicity",
     )
     values = ArrayProperty(dtype=float, check_against="filenames")
 
 
 class InfoArray(DataArray):
-    associated_genres = [
+    associated_genres = (
         "command",
         "cpu_time",
         "transitions",
         "stoichiometry",
-    ]
+    )
     values = ArrayProperty(dtype=str, check_against="filenames")
 
 
 class FilenamesArray(DataArray):
-    associated_genres = ["filenames"]
+    associated_genres = ("filenames",)
     """Special case of DataArray, holds only filenames. `values` property returns
     same as `filenames` and ignores any value given to its setter.
 
@@ -133,7 +150,7 @@ class FilenamesArray(DataArray):
 
 
 class BooleanArray(DataArray):
-    associated_genres = ["normal_termination", "optimization_completed"]
+    associated_genres = ("normal_termination", "optimization_completed")
     values = ArrayProperty(dtype=bool, check_against="filenames")
 
 
@@ -151,7 +168,13 @@ class Energies(FloatArray):
     t : int or float
         Temperature of calculated state in K."""
 
-    associated_genres = "scf zpe ten ent gib".split(" ")
+    associated_genres = (
+        "scf",
+        "zpe",
+        "ten",
+        "ent",
+        "gib",
+    )
 
     def __init__(
         self, genre, filenames, values, t=298.15, allow_data_inconsistency=False
@@ -366,7 +389,17 @@ class Bars(FloatArray, Averagable):
 
 class GroundStateBars(Bars):
     associated_genres = (
-        "freq iri dip rot ramact raman1 roa1 raman2 " "roa2 raman3 roa3".split(" ")
+        "freq",
+        "iri",
+        "dip",
+        "rot",
+        "ramact",
+        "raman1",
+        "roa1",
+        "raman2 ",
+        "roa2",
+        "raman3",
+        "roa3",
     )
 
     def __init__(
@@ -452,7 +485,16 @@ class GroundStateBars(Bars):
 
 
 class ExcitedStateBars(Bars):
-    associated_genres = "wave ex_en vdip ldip vrot lrot vosc losc".split(" ")
+    associated_genres = (
+        "wave",
+        "ex_en",
+        "vdip",
+        "ldip",
+        "vrot",
+        "lrot",
+        "vosc",
+        "losc",
+    )
 
     def __init__(
         self,
