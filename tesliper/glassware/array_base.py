@@ -2,7 +2,7 @@
 import inspect
 import logging as lgg
 
-from typing import Callable, Optional, Any, Sequence, Tuple, Iterable, Union
+from typing import Callable, Optional, Any, Sequence, Tuple, Iterable, Union, List
 
 import numpy as np
 from ..exceptions import InconsistentDataError
@@ -14,14 +14,17 @@ logger.setLevel(lgg.DEBUG)
 
 
 # FUNCTIONS
-def longest_subsequences(values: Sequence) -> Tuple[int, ...]:
+NestedSequence = Sequence[Union[Any, "NestedSequence"]]
+
+
+def longest_subsequences(sequences: NestedSequence) -> Tuple[int, ...]:
     """Finds lengths of longest subsequences on each level of given nested sequence.
     Each subsequence should have same number of nesting levels.
 
     Parameters
     ----------
-    values : sequence [of sequences [of...]]
-        Arbitrarily deep nested sequence of sequences.
+    sequences : sequence [of sequences [of...]]
+        Arbitrarily deep, nested sequence of sequences.
 
     Returns
     -------
@@ -44,15 +47,48 @@ def longest_subsequences(values: Sequence) -> Tuple[int, ...]:
     (3, 2)
     """
     try:
-        lenghts = [len(v) for v in values]
+        lenghts = [len(v) for v in sequences]
         longest = max(lenghts)
     except (TypeError, ValueError):
         return ()
     try:
-        other = longest_subsequences([i for v in values for i in v])
+        other = longest_subsequences([i for v in sequences for i in v])
     except TypeError:
         return (longest,)
     return (longest, *other)
+
+
+def find_best_shape(jagged: NestedSequence) -> Tuple[int, ...]:
+    """Find shape of an array, that could fit arbitrarily deep, jagged, nested sequence
+    of sequences. Reported size for each level of nesting is the length of the longest
+    subsequence on this level.
+
+    Parameters
+    ----------
+    jagged : sequence [of sequences [of...]]
+        Arbitrarily deep, nested sequence of sequences.
+
+    Returns
+    -------
+    tuple of ints
+        Length of the longest subsequence for each nesting level as a tuple.
+
+    Notes
+    -----
+    If nesting level in not identical in all subsequences, size is reported
+    up to first level of non-iterable elements.
+
+    >>> find_best_shape([[[1, 2]], [[1], 2]])
+    (2, 2)
+
+    Examples
+    --------
+    >>> find_best_shape([[[1, 2]], [[1]]])
+    (2, 1, 2)
+    >>> find_best_shape([[[1, 2]], [[1], [1], [1]]])
+    (2, 3, 2)
+    """
+    return (len(jagged), *longest_subsequences(jagged))
 
 
 # CLASSES
@@ -70,12 +106,14 @@ class ArrayProperty(property):
         doc: str = None,
         dtype: type = float,
         check_against: Optional[str] = None,
+        check_depth: int = 1,
         pad_value: Any = 0,
         fsan: Optional[Callable[[Sequence], Sequence]] = None,
     ):
         super().__init__(fget=fget, fset=fset, fdel=fdel, doc=doc)
         self.dtype = dtype
         self.check_against = check_against
+        self.check_depth = check_depth
         self.pad_value = pad_value
         self.fsan = fsan
 
@@ -190,12 +228,20 @@ class ArrayProperty(property):
         """
         allow = getattr(instance, "allow_data_inconsistency", False)
         if self.check_against:
-            length = len(getattr(instance, self.check_against))
-            if not len(values) == length and not allow:
+            attr_value = getattr(instance, self.check_against)
+            try:
+                ref_shape = attr_value.shape
+            except AttributeError:
+                ref_shape = find_best_shape(attr_value)
+            best_shape = find_best_shape(values)
+            shapes_same = (
+                ref_shape[: self.check_depth] == best_shape[: self.check_depth]
+            )
+            if not shapes_same and not allow:
                 raise ValueError(
-                    f"{self.name} and {self.check_against} must be the same "
-                    f"length. Arrays of length {len(values)} and {length} "
-                    f"were given."
+                    f"{self.name} and {self.check_against} must have the same shape "
+                    f"up to {self.check_depth} dimensions. Arrays of shape "
+                    f"{best_shape} and {ref_shape} were given."
                 )
         try:
             return np.array(values, dtype=self.dtype)

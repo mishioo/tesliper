@@ -27,6 +27,25 @@ def test_longest_subsequences(values, lengths):
     assert ab.longest_subsequences(values) == lengths
 
 
+@pytest.mark.parametrize(
+    "values,lengths",
+    [
+        ([], (0,)),
+        ([1], (1,)),
+        ([[]], (1, 0)),
+        ([[1]], (1, 1)),
+        ([[1, 2], [1]], (2, 2)),
+        ([[[1], [2]], [[1]]], (2, 2, 1)),
+        ([[[1, 2], [2]], [[1]]], (2, 2, 2)),
+        ([[[1], [2]], [[1, 2]]], (2, 2, 2)),
+        ([[[1], 2], [[1, 2]]], (2, 2)),
+        ([[[1, 2]], [[1], 2]], (2, 2)),
+    ],
+)
+def test_find_best_shape(values, lengths):
+    assert ab.find_best_shape(values) == lengths
+
+
 @pytest.fixture
 def class_array():
     class Cls:
@@ -103,6 +122,52 @@ def test_array_property_name(class_array):
 def test_array_property_check_input_no_attribute(class_array_check_x):
     with pytest.raises(AttributeError):
         class_array_check_x.arr.check_input(class_array_check_x(), [1, 2, 3])
+
+
+def test_array_property_check_input_against(class_array_check_x):
+    arr = class_array_check_x()
+    arr.x = [1, 2, 3]
+    assert class_array_check_x.arr.check_input(arr, [4, 5, 6]).tolist() == [4, 5, 6]
+
+
+def test_array_property_check_input_against_deep(class_array_check_x):
+    class_array_check_x.arr.check_depth = 2
+    arr = class_array_check_x()
+    arr.x = [[1], [2], [3]]
+    assert class_array_check_x.arr.check_input(arr, [[4], [5], [6]]).tolist() == [
+        [4],
+        [5],
+        [6],
+    ]
+
+
+def test_array_property_check_input_against_deeper(class_array_check_x):
+    class_array_check_x.arr.check_depth = 2
+    arr = class_array_check_x()
+    arr.x = [[[1]], [[2]], [[3]]]
+    assert class_array_check_x.arr.check_input(arr, [[4], [5], [6]]).tolist() == [
+        [4],
+        [5],
+        [6],
+    ]
+
+
+def test_array_property_check_input_against_deep_unmatching(class_array_check_x):
+    class_array_check_x.arr.check_depth = 2
+    arr = class_array_check_x()
+    arr.x = [[1], [2], [3]]
+    with pytest.raises(ValueError):
+        class_array_check_x.arr.check_input(arr, [1, 2, 3])
+
+
+def test_array_property_check_input_against_deep_unmatching_allowed(
+    class_array_check_x,
+):
+    class_array_check_x.arr.check_depth = 2
+    arr = class_array_check_x()
+    arr.allow_data_inconsistency = True
+    arr.x = [[1], [2], [3]]
+    assert class_array_check_x.arr.check_input(arr, [4, 5, 6]).tolist() == [4, 5, 6]
 
 
 def test_array_property_check_input_unmatching(class_array_check_x):
@@ -276,9 +341,7 @@ def test_collapsable_list_of_unique(class_collapsable_array, instance, values):
 
 @pytest.mark.usefixtures("mock_check_input")
 @given(list_of_unique)
-def test_collapsable_list_of_unique_inconsistency_allowed(
-    class_collapsable_array, instance, values
-):
+def test_collapsable_list_of_unique_allowed(class_collapsable_array, instance, values):
     instance.allow_data_inconsistency = True
     assert class_collapsable_array.arr.check_input(instance, values).tolist() == values
 
@@ -305,7 +368,7 @@ def test_cllapsable_list_of_variable_lists(class_collapsable_array, instance, va
 
 @pytest.mark.usefixtures("mock_check_input")
 @given(list_of_variable_lists)
-def test_cllapsable_list_of_variable_lists_inconsistency_allowed(
+def test_cllapsable_list_of_variable_lists_allowed(
     class_collapsable_array, instance, values
 ):
     instance.allow_data_inconsistency = True
