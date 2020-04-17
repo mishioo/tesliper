@@ -301,7 +301,7 @@ class ArrayProperty(property):
         return np.array(values, dtype=self.dtype)
 
 
-class CollapsableArrayProperty(ArrayProperty):
+class CollapsibleArrayProperty(ArrayProperty):
     """ArrayProperty, that stores only one value, if all entries are identical.
     """
 
@@ -372,7 +372,7 @@ class CollapsableArrayProperty(ArrayProperty):
             return values[np.newaxis, 0]
         elif not allow:
             raise InconsistentDataError(
-                "List of non-uniform values given to CollapsableArrayProperty setter."
+                "List of non-uniform values given to CollapsibleArrayProperty setter."
             )
         else:
             return values

@@ -4,7 +4,7 @@ from typing import Sequence, Union, Any
 
 import numpy as np
 from .. import datawork as dw
-from .array_base import ArrayBase, ArrayProperty, CollapsableArrayProperty
+from .array_base import ArrayBase, ArrayProperty, CollapsibleArrayProperty
 from .spectra import Spectra
 
 # LOGGER
@@ -578,7 +578,7 @@ class Geometry(FloatArray):
 
     associated_genres = ("geometry",)
     values = ArrayProperty(dtype=float, check_against="filenames")
-    molecule_atoms = CollapsableArrayProperty(
+    molecule_atoms = CollapsibleArrayProperty(
         dtype=int,
         check_against="values",
         check_depth=2,

@@ -306,7 +306,7 @@ def mock_check_input(monkeypatch):
 @pytest.fixture(params=(int, float, str))
 def class_collapsable_array(request):
     class Cls:
-        arr = ab.CollapsableArrayProperty(dtype=request.param)
+        arr = ab.CollapsibleArrayProperty(dtype=request.param)
 
     return Cls
 
