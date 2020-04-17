@@ -213,6 +213,8 @@ def test_arrayed_types(full):
     assert gw.ExcitedStateBars is type(vdip)
     emang = full.arrayed("emang")
     assert gw.FloatArray is type(emang)
+    charge = full.arrayed("charge")
+    assert gw.IntegerArray is type(charge)
     filenames = full.arrayed("filenames")
     assert gw.FilenamesArray is type(filenames)
 

@@ -245,7 +245,9 @@ def test_molecule_values_varying_sizes_inconsistency_allowed(geom):
     ]
 
 
-@pytest.mark.xfail
+@pytest.mark.xfail(
+    "Geometry.molecule_atoms.sanitizer currently does not support jagged nested lists."
+)
 def test_molecule_atoms_varying_sizes_inconsistency_allowed(geom):
     geom.allow_data_inconsistency = True
     geom.molecule_atoms = [[2, 2, 2], [2, 2]]
@@ -260,31 +262,3 @@ def test_molecule_atoms_too_short(geom):
 def test_molecule_atoms_not_matching_num_of_conformers(geom):
     with pytest.raises(ValueError):
         geom.molecule_atoms = [[2, 2, 2]] * 3
-
-
-@pytest.mark.xfail(reason="attributes removed from Geometry class")
-@pytest.mark.parametrize("attr", ["charge", "multiplicity"])
-def test_cm(geom, attr):
-    assert getattr(geom, attr) == 0
-
-
-@pytest.mark.xfail(reason="attributes removed from Geometry class")
-@pytest.mark.parametrize("attr", ["charge", "multiplicity"])
-def test_cm_as_list(geom, attr):
-    setattr(geom, attr, [1, 1])
-    assert getattr(geom, attr) == 1
-
-
-@pytest.mark.xfail(reason="attributes removed from Geometry class")
-@pytest.mark.parametrize("attr", ["charge", "multiplicity"])
-def test_cm_varying_values(geom, attr):
-    with pytest.raises(InconsistentDataError):
-        setattr(geom, attr, [0, 1])
-
-
-@pytest.mark.xfail(reason="attributes removed from Geometry class")
-@pytest.mark.parametrize("attr", ["charge", "multiplicity"])
-def test_cm_varying_values_inconsistency_allowed(geom, attr):
-    geom.allow_data_inconsistency = True
-    setattr(geom, attr, [0, 1])
-    assert getattr(geom, attr) == [0, 1]

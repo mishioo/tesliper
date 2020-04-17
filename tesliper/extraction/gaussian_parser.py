@@ -253,9 +253,9 @@ class GaussianParser(Parser):
         true if structure optimization was performed successfully
     version : str, always available
         version of Gaussian software used
-    charge : float, always available
+    charge : int, always available
         molecule's charge
-    multiplicity : float, always available
+    multiplicity : int, always available
         molecule's spin multiplicity
     input_geom : list of tuples of (str, float, float, float), always available
         input orientation, starting with atom symbol
@@ -338,7 +338,7 @@ class GaussianParser(Parser):
         while not line == " Symbolic Z-matrix:\n":
             line = next(iterator)
         c_and_m = re.match(r" Charge =\s*(-?\d) Multiplicity = (\d)", next(iterator))
-        data["charge"], data["multiplicity"] = map(float, c_and_m.groups())
+        data["charge"], data["multiplicity"] = map(int, c_and_m.groups())
         line = next(iterator).strip()
         input_geom = []
         pattern = r"(\w+)" + 3 * number_group

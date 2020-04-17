@@ -71,9 +71,9 @@ class DataArray(ArrayBase):
         return self.full_name_ref[self.genre]
 
 
-class IntArray(DataArray):
+class IntegerArray(DataArray):
 
-    associated_genres = ("charge",)
+    associated_genres = ("charge", "multiplicity")
     values = ArrayProperty(dtype=int, check_against="filenames")
 
 
@@ -101,7 +101,6 @@ class FloatArray(DataArray):
         "cid3",
         "rc180",
         "eemang",
-        "multiplicity",
     )
     values = ArrayProperty(dtype=float, check_against="filenames")
 
