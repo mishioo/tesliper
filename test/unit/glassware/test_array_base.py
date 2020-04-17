@@ -1,3 +1,4 @@
+import sys
 from unittest import mock
 
 from tesliper.exceptions import InconsistentDataError
@@ -55,7 +56,7 @@ def test_find_best_shape(values, lengths):
 @pytest.fixture
 def class_array():
     class Cls:
-        arr = ab.ArrayProperty()
+        arr = ab.ArrayProperty(dtype=int)
 
     return Cls
 
@@ -63,7 +64,7 @@ def class_array():
 @pytest.fixture
 def class_array_check_x():
     class Cls:
-        arr = ab.ArrayProperty(check_against="x")
+        arr = ab.ArrayProperty(dtype=int, check_against="x")
 
     return Cls
 
@@ -71,7 +72,9 @@ def class_array_check_x():
 @pytest.fixture
 def class_array_xetters():
     class Cls:
-        arr = ab.ArrayProperty(fget=mock.Mock(), fset=mock.Mock(), fdel=mock.Mock())
+        arr = ab.ArrayProperty(
+            dtype=int, fget=mock.Mock(), fset=mock.Mock(), fdel=mock.Mock()
+        )
 
     return Cls
 
@@ -262,41 +265,33 @@ def test_array_property_decorator():
     assert Cls.arr.check_against is None
 
 
-text_strategy = st.text(
-    st.characters(blacklist_categories=["Cs"], blacklist_characters=["\x00"])
-)
-single_value = st.one_of(
-    st.none(), st.integers(), st.floats(allow_nan=False), text_strategy,
-)
-list_of_identical = st.builds(
-    lambda v, n: [v] * n, single_value, st.integers(min_value=1, max_value=10)
-)
-list_of_unique = st.one_of(
-    st.lists(st.integers(), min_size=2, unique=True),
-    st.lists(st.floats(allow_nan=False), min_size=2, unique=True),
-    st.lists(text_strategy, min_size=2, unique=True),
-)
-list_of_identical_lists = st.builds(
-    lambda v, n: [v] * n, list_of_unique, st.integers(min_value=1, max_value=10)
-)
-list_of_variable_lists = st.builds(
-    lambda vals: [list(v) for v in vals],
-    st.integers(min_value=1, max_value=10).flatmap(
-        lambda n: st.one_of(
-            st.lists(
-                st.tuples(*[st.integers() for _ in range(n)]), min_size=2, unique=True
-            ),
-            st.lists(
-                st.tuples(*[st.floats(allow_nan=False) for _ in range(n)]),
-                min_size=2,
-                unique=True,
-            ),
-            st.lists(
-                st.tuples(*[text_strategy for _ in range(n)]), min_size=2, unique=True
+single_value = {
+    int: st.integers(min_value=-sys.maxsize, max_value=sys.maxsize),
+    float: st.floats(allow_nan=False),
+    str: st.characters(blacklist_categories=["Cs"], blacklist_characters=["\x00"]),
+}
+list_of_identical = {
+    key: st.builds(lambda v, n: [v] * n, strat, st.integers(min_value=1, max_value=10))
+    for key, strat in single_value.items()
+}
+list_of_unique = {
+    key: st.lists(strat, min_size=2, unique=True) for key, strat in single_value.items()
+}
+list_of_identical_lists = {
+    key: st.builds(lambda v, n: [v] * n, strat, st.integers(min_value=1, max_value=10))
+    for key, strat in list_of_unique.items()
+}
+list_of_unique_lists = {
+    key: st.builds(
+        lambda vals: [list(v) for v in vals],
+        st.integers(min_value=1, max_value=10).flatmap(
+            lambda n: st.lists(
+                st.tuples(*[strat for _ in range(n)]), min_size=2, unique=True
             ),
         ),
-    ),
-)
+    )
+    for key, strat in single_value.items()
+}
 
 
 @pytest.fixture
@@ -308,10 +303,10 @@ def mock_check_input(monkeypatch):
     )
 
 
-@pytest.fixture
-def class_collapsable_array():
+@pytest.fixture(params=(int, float, str))
+def class_collapsable_array(request):
     class Cls:
-        arr = ab.CollapsableArrayProperty()
+        arr = ab.CollapsableArrayProperty(dtype=request.param)
 
     return Cls
 
@@ -322,61 +317,66 @@ def instance():
 
 
 @pytest.mark.usefixtures("mock_check_input")
-@given(single_value)
-def test_collapsable_single_value(class_collapsable_array, instance, value):
-    assert class_collapsable_array.arr.check_input(instance, value) == value
+@given(st.data())
+def test_collapsable_single_value(class_collapsable_array, instance, data):
+    value = data.draw(single_value[class_collapsable_array.arr.dtype])
+    assert class_collapsable_array.arr.check_input(instance, value).tolist() == [value]
     ab.ArrayProperty.check_input.assert_not_called()
 
 
 @pytest.mark.usefixtures("mock_check_input")
-@given(single_value, st.integers(min_value=1, max_value=10))
-def test_collapsable_list_of_identical(
-    class_collapsable_array, instance, value, number
-):
+@given(st.data(), st.integers(min_value=1, max_value=10))
+def test_collapsable_list_of_identical(class_collapsable_array, instance, data, number):
+    value = data.draw(single_value[class_collapsable_array.arr.dtype])
     arr = [value] * number
-    assert class_collapsable_array.arr.check_input(instance, arr) == value
+    assert class_collapsable_array.arr.check_input(instance, arr).tolist() == [value]
     ab.ArrayProperty.check_input.assert_called()
 
 
 @pytest.mark.usefixtures("mock_check_input")
-@given(list_of_unique)
-def test_collapsable_list_of_unique(class_collapsable_array, instance, values):
+@given(st.data())
+def test_collapsable_list_of_unique(class_collapsable_array, instance, data):
+    values = data.draw(list_of_unique[class_collapsable_array.arr.dtype])
     with pytest.raises(InconsistentDataError):
         class_collapsable_array.arr.check_input(instance, values)
 
 
 @pytest.mark.usefixtures("mock_check_input")
-@given(list_of_unique)
-def test_collapsable_list_of_unique_allowed(class_collapsable_array, instance, values):
+@given(st.data())
+def test_collapsable_list_of_unique_allowed(class_collapsable_array, instance, data):
+    values = data.draw(list_of_unique[class_collapsable_array.arr.dtype])
     instance.allow_data_inconsistency = True
     assert class_collapsable_array.arr.check_input(instance, values).tolist() == values
 
 
 @pytest.mark.usefixtures("mock_check_input")
 def test_collapsable_empty_list(class_collapsable_array, instance):
-    assert class_collapsable_array.arr.check_input(instance, []) == []
+    assert class_collapsable_array.arr.check_input(instance, []).tolist() == []
 
 
 @pytest.mark.usefixtures("mock_check_input")
-@given(list_of_identical_lists)
-def test_cllapsable_list_of_identical_lists(class_collapsable_array, instance, values):
-    assert (
-        class_collapsable_array.arr.check_input(instance, values).tolist() == values[0]
-    )
+@given(st.data())
+def test_cllapsable_list_of_identical_lists(class_collapsable_array, instance, data):
+    values = data.draw(list_of_identical_lists[class_collapsable_array.arr.dtype])
+    assert class_collapsable_array.arr.check_input(instance, values).tolist() == [
+        values[0]
+    ]
 
 
 @pytest.mark.usefixtures("mock_check_input")
-@given(list_of_variable_lists)
-def test_cllapsable_list_of_variable_lists(class_collapsable_array, instance, values):
+@given(st.data())
+def test_cllapsable_list_of_unique_lists(class_collapsable_array, instance, data):
+    values = data.draw(list_of_unique_lists[class_collapsable_array.arr.dtype])
     with pytest.raises(InconsistentDataError):
         class_collapsable_array.arr.check_input(instance, values)
 
 
 @pytest.mark.usefixtures("mock_check_input")
-@given(list_of_variable_lists)
-def test_cllapsable_list_of_variable_lists_allowed(
-    class_collapsable_array, instance, values
+@given(st.data())
+def test_cllapsable_list_of_unique_lists_allowed(
+    class_collapsable_array, instance, data
 ):
+    values = data.draw(list_of_unique_lists[class_collapsable_array.arr.dtype])
     instance.allow_data_inconsistency = True
     assert class_collapsable_array.arr.check_input(instance, values).tolist() == values
 

@@ -330,9 +330,7 @@ class CollapsableArrayProperty(ArrayProperty):
                     f"{best_shape} and {ref_shape} were given."
                 )
 
-    def check_input(
-        self, instance: Any, values: Union[Sequence, Any]
-    ) -> Union[np.ndarray, Any]:
+    def check_input(self, instance: Any, values: Union[Sequence, Any]) -> np.ndarray:
         """If given `values` is not iterable or is of type `str` it is returned
         without change. Otherwise it is validated using `ArrayProperty.check_input()`,
         and collapsed to single value if all values are identical.
@@ -362,15 +360,16 @@ class CollapsableArrayProperty(ArrayProperty):
             If values are non-uniform and instance doesn't allow data inconsistency.
         """
         if not isinstance(values, Iterable) or isinstance(values, str):
-            return values
+            return np.array([values], dtype=self.dtype)
         values = super().check_input(instance, values)
         allow = getattr(instance, "allow_data_inconsistency", False)
         try:
             all_same = (values == values[0]).all()
         except IndexError:
-            return []
+            return np.array([], dtype=self.dtype)
         if all_same:
-            return values[0]
+            # return only first element, but keep dimensionality
+            return values[np.newaxis, 0]
         elif not allow:
             raise InconsistentDataError(
                 "List of non-uniform values given to CollapsableArrayProperty setter."

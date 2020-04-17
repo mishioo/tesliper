@@ -206,7 +206,7 @@ def geom_incons():
 
 
 def test_molecule_atoms(geom):
-    assert geom.molecule_atoms.tolist() == [1, 1, 1]
+    assert geom.molecule_atoms.tolist() == [[1, 1, 1]]
 
 
 def test_molecule_atoms_as_symbols(geom, monkeypatch):
@@ -214,12 +214,12 @@ def test_molecule_atoms_as_symbols(geom, monkeypatch):
         type(geom).molecule_atoms, "fsan", mock.Mock(return_value=[[6, 1, 8]])
     )
     geom.molecule_atoms = [["C", "H", "O"]]
-    assert geom.molecule_atoms.tolist() == [6, 1, 8]
+    assert geom.molecule_atoms.tolist() == [[6, 1, 8]]
 
 
 def test_molecule_atoms_two_dim(geom):
     geom.molecule_atoms = [[2, 2, 2], [2, 2, 2]]
-    assert geom.molecule_atoms.tolist() == [2, 2, 2]
+    assert geom.molecule_atoms.tolist() == [[2, 2, 2]]
 
 
 def test_molecule_atoms_two_dim_different(geom):
@@ -246,7 +246,10 @@ def test_molecule_values_varying_sizes_inconsistency_allowed(geom):
 
 
 @pytest.mark.xfail(
-    "Geometry.molecule_atoms.sanitizer currently does not support jagged nested lists."
+    reason=(
+        "Geometry.molecule_atoms.sanitizer currently "
+        "does not support jagged nested lists."
+    )
 )
 def test_molecule_atoms_varying_sizes_inconsistency_allowed(geom):
     geom.allow_data_inconsistency = True
