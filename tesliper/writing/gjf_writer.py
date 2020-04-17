@@ -1,12 +1,13 @@
 # IMPORTS
 import logging
+from itertools import cycle
 from pathlib import Path
 from string import Template
-from typing import Iterable, Union, List
+from typing import Iterable, Union, List, Sequence, Optional
 
 from ._writer import SerialWriter
-from ..glassware import Geometry
-
+from ..datawork.atoms import atoms_symbols
+from ..glassware import Geometry, IntegerArray
 
 # LOGGER
 logger = logging.getLogger(__name__)
@@ -14,6 +15,9 @@ logger = logging.getLogger(__name__)
 
 # CLASSES
 class GjfWriter(SerialWriter):
+    """"""
+
+    # TODO: Add per-file parametrization of link0 commands
 
     extension = "gjf"
     _link0_commands = {
@@ -39,7 +43,7 @@ class GjfWriter(SerialWriter):
         self,
         destination: Union[str, Path],
         mode: str = "x",
-        link0: dict = {},
+        link0: dict = None,
         route: Union[str, List[str]] = "",
         comment: str = "No information provided.",
         post_spec: str = "",
@@ -48,38 +52,76 @@ class GjfWriter(SerialWriter):
         super().__init__(
             destination=destination, mode=mode, filename_template=filename_template
         )
-        self.link0 = link0
+        self.link0 = link0 or {}
         self.route = route
         self.comment = comment
         self.post_spec = post_spec
 
-    def write(self, geometry, charge, multiplicity):
-        for fname, coords, c, m in zip(geometry.filenames, geometry.values):
-            pass
+    def write(
+        self,
+        geometry: Geometry,
+        charge: Union[IntegerArray, Sequence[int], int] = (0,),
+        multiplicity: Union[IntegerArray, Sequence[int], int] = (1,),
+    ):
+        geom = geometry.values
+        atoms = cycle(geometry.molecule_atoms)
+        try:
+            char = charge.values
+        except AttributeError:
+            char = [charge] if not isinstance(charge, Iterable) else charge
+        char = cycle(char)
+        try:
+            mult = multiplicity.values
+        except AttributeError:
+            mult = (
+                [multiplicity]
+                if not isinstance(multiplicity, Iterable)
+                else multiplicity
+            )
+        mult = cycle(mult)
+        for num, (fnm, *params) in enumerate(
+            zip(geometry.filenames, geom, atoms, char, mult)
+        ):
+            filename = self.filename_template.substitute(
+                filename=fnm, ext=self.extension, num=num, genre=geometry.genre
+            )
+            self._write_conformer(filename, *params)
 
-    def _write_conformer(self, filename, coords, c, m):
+    def _write_conformer(
+        self,
+        filename: str,
+        g: Sequence[Sequence[float]],
+        a: Sequence[int],
+        c: int,
+        m: int,
+    ):
         path = self.destination.joinpath(filename)
         with path.open(self.mode) as file:
-            for key, value in self.link0:
+            for key, value in self.link0.items():
                 if "save" in key:
-                    file.write(f"%{self._link0_commands[key]}")
+                    file.write(f"%{self._link0_commands[key]}\n")
                 else:
                     file.write(f"%{self._link0_commands[key]}={value}\n")
             file.write(self.route)
-            file.write("\n")
+            file.write("\n" * 2)
             file.write(self.comment)
-            file.write("\n")
-            file.write(f"{c} {m}")
-            for line in self._format_coords(coords):
+            file.write("\n" * 2)
+            file.write(f"{c} {m}\n")
+            for line in self._format_coords(g, a):
                 file.write(line)
             if self.post_spec:
                 file.write("\n")
                 file.write(self.post_spec)
-            file.write("\n" * self.empty_lines_at_end)
+                file.write("\n")
+            file.write("\n" * (self.empty_lines_at_end - 1))
 
-    def _format_coords(self, coords):
-        for a, x, y, z in coords:
-            yield f" {a: <2} {x: > .7f} {y: > .7f} {z: > .7f}\n"
+    def _format_coords(self, coords, atoms):
+        for a, (x, y, z) in zip(atoms, coords):
+            try:
+                a = atoms_symbols[a]
+            except KeyError:
+                continue
+            yield f" {a: <2}   {x: > .8f}   {y: > .8f}   {z: > .8f}\n"
 
     @property
     def link0(self):
@@ -93,19 +135,19 @@ class GjfWriter(SerialWriter):
         self._link0 = {k: v for k, v in commands.items() if v}
 
     @property
-    def route(self):
+    def route(self) -> str:
         return " ".join(self._route)
 
     @route.setter
-    def route(self, commands):
+    def route(self, commands: Union[Sequence[str], str]):
         try:
             commands = commands.split()
         except AttributeError:
+            # assume Sequence other than string given
             pass
-        if commands[0] in "T N P".split():
-            commands[0] = f"#{commands[0]}"
-        elif commands[0] == "#" and commands[1] in "T N P".split():
-            commands[:2] = f"#{commands[1]}"
-        elif commands[0] != "#":
+        length = len(commands)
+        if not length:
+            commands = ["#"]
+        elif not commands[0].startswith("#"):
             commands = ["#"] + commands
         self._route = commands
