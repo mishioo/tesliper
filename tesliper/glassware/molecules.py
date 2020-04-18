@@ -32,7 +32,7 @@ class _TrimmedItemsView(_OrderedDictItemsView):
     def __contains__(self, item):
         key, value = item
         try:
-            kept = self._mapping.kept[self._mapping[key]["_index"]]
+            kept = self._mapping.kept[self._mapping.index_of(key)]
         except KeyError:
             return False
         else:
@@ -77,7 +77,7 @@ class _TrimmedKeysView(_OrderedDictKeysView):
 
     def __contains__(self, key):
         try:
-            return self._mapping.kept[self._mapping[key]["_index"]]
+            return self._mapping.kept[self._mapping.index_of(key)]
         except KeyError:
             return False
 
@@ -132,6 +132,7 @@ class Molecules(OrderedDict):
         self.allow_data_inconsistency = allow_data_inconsistency
         self.kept = []
         self.filenames = []
+        self._indices = {}
         super().__init__(*args, **kwargs)
 
     def __setitem__(self, key, value):
@@ -142,21 +143,22 @@ class Molecules(OrderedDict):
         except ValueError as error:
             raise ValueError(f"Can't convert given value to dictionary.") from error
         if key in self:
-            index = self[key]["_index"]
+            index = self._indices[key]
         else:
             index = len(self.filenames)
             self.filenames.append(key)
             self.kept.append(True)
         super().__setitem__(key, value)
-        self[key]["_index"] = index
+        self._indices[key] = index
 
     def __delitem__(self, key):
-        index = self[key]["_index"]
+        index = self._indices[key]
         super().__delitem__(key)
         del self.filenames[index]
         del self.kept[index]
-        for index, mol in enumerate(self.values()):
-            mol["_index"] = index
+        del self._indices[key]
+        for index, key in enumerate(self.keys()):
+            self._indices[key] = index
 
     @property
     def kept(self):
@@ -253,10 +255,8 @@ class Molecules(OrderedDict):
         -----
         Type of the first element of given sequence is used for dynamic
         dispatch.
-
-        TODO
-        ----
-        Consider making return value immutable."""
+        """
+        # TODO: Consider making return value immutable.
         return self.__kept
 
     @kept.setter
@@ -399,7 +399,7 @@ class Molecules(OrderedDict):
     def index_of(self, key: str) -> int:
         """Return index of given key."""
         try:
-            return self[key]["_index"]
+            return self._indices[key]
         except KeyError as error:
             raise KeyError(f"No such molecule: {key}.") from error
 
