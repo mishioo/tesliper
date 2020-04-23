@@ -257,12 +257,12 @@ class Molecules(OrderedDict):
         dispatch.
         """
         # TODO: Consider making return value immutable.
-        return self.__kept
+        return self._kept
 
     @kept.setter
     def kept(self, blade: Union[Sequence[Union[bool, str, int]], bool]):
         if blade is True or blade is False:
-            self.__kept = [blade for __ in self.keys()]
+            self._kept = [blade for _ in self.keys()]
             return
         try:
             first = blade[0]
@@ -277,7 +277,7 @@ class Molecules(OrderedDict):
                     f"Unknown molecules: {', '.join(blade-set(self.keys()))}"
                 )
             else:
-                self.__kept = [fnm in blade for fnm in self.keys()]
+                self._kept = [fnm in blade for fnm in self.keys()]
         elif isinstance(first, (bool, np.bool_)):
             if not len(blade) == len(self):
                 raise ValueError(
@@ -285,7 +285,7 @@ class Molecules(OrderedDict):
                     f"{len(blade)} values provided, {len(self)} excepted."
                 )
             else:
-                self.__kept = [bool(b) for b in blade]  # convert from np.bool_
+                self._kept = [bool(b) for b in blade]  # convert from np.bool_
         elif isinstance(first, int):
             length = len(self)
             out_of_bounds = [b for b in blade if not 0 <= b < length]
@@ -296,7 +296,7 @@ class Molecules(OrderedDict):
                 )
             else:
                 blade = set(blade)
-                self.__kept = [num in blade for num in range(len(self))]
+                self._kept = [num in blade for num in range(len(self))]
         else:
             raise TypeError(
                 f"Expected sequence of strings, integers or booleans, got: "
@@ -482,7 +482,7 @@ class Molecules(OrderedDict):
         else:
             complete = (all(g in mol for g in wanted) for mol in self.values())
         blade = [kept and cmpl for kept, cmpl in zip(self.kept, complete)]
-        self.__kept = blade
+        self._kept = blade
 
     def trim_imaginary_frequencies(self) -> None:
         """Mark all molecules with imaginary frequencies as "not kept".
@@ -497,7 +497,7 @@ class Molecules(OrderedDict):
         for index, mol in enumerate(self.values()):
             freq = np.array(mol.get("freq", dummy))
             if (freq < 0).any():
-                self.__kept[index] = False
+                self._kept[index] = False
 
     def trim_non_matching_stoichiometry(self, wanted: Optional[str] = None) -> None:
         """Mark all molecules with stoichiometry other than `wanted` as "not kept".
@@ -522,7 +522,7 @@ class Molecules(OrderedDict):
             wanted = counter.most_common()[0][0]
         for index, mol in enumerate(self.values()):
             if "stoichiometry" not in mol or not mol["stoichiometry"] == wanted:
-                self.__kept[index] = False
+                self._kept[index] = False
 
     def trim_not_optimized(self) -> None:
         """Mark all molecules that failed structure optimization as "not kept".
@@ -535,7 +535,7 @@ class Molecules(OrderedDict):
         """
         for index, mol in enumerate(self.values()):
             if not mol.get("optimization_completed", True):
-                self.__kept[index] = False
+                self._kept[index] = False
 
     def trim_non_normal_termination(self) -> None:
         """Mark all molecules, which calculation job did not terminate normally,
@@ -549,7 +549,7 @@ class Molecules(OrderedDict):
         """
         for index, mol in enumerate(self.values()):
             if not mol.get("normal_termination", False):
-                self.__kept[index] = False
+                self._kept[index] = False
 
     def trim_inconsistent_sizes(self) -> None:
         """Mark as "not kept" all molecules that contain any iterable data genre,
@@ -585,7 +585,7 @@ class Molecules(OrderedDict):
             for genre, most_common in maxes.items():
                 confs = sizes[genre]
                 if fname in confs and not confs[fname] == most_common:
-                    self.__kept[index] = False
+                    self._kept[index] = False
 
     def trim_to_range(
         self,
@@ -654,11 +654,11 @@ class Molecules(OrderedDict):
 
     def select_all(self) -> None:
         """Marks all molecules as 'kept'. Equivalent to `molecules.kept = True`."""
-        self.__kept = [True for __ in self.__kept]
+        self._kept = [True for _ in self._kept]
 
     def reject_all(self) -> None:
         """Marks all molecules as 'not kept'. Equivalent to `molecules.kept = False`."""
-        self.__kept = [False for __ in self.__kept]
+        self._kept = [False for _ in self._kept]
 
     def trimmed_keys(self, indices=False):
         return _TrimmedKeysView(self, indices=indices)
@@ -672,17 +672,17 @@ class Molecules(OrderedDict):
     @property
     @contextmanager
     def untrimmed(self):
-        blade = self.__kept
+        blade = self._kept
         self.kept = True
         yield self
-        self.__kept = blade
+        self._kept = blade
 
     @contextmanager
     def trimmed_to(self, blade):
-        old_blade = self.__kept
+        old_blade = self._kept
         self.kept = blade
         yield self
-        self.__kept = old_blade
+        self._kept = old_blade
 
     @property
     @contextmanager
