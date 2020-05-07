@@ -1,6 +1,10 @@
 # IMPORTS
+import json
 import os
 import logging as lgg
+from pathlib import Path
+from typing import Union
+
 import numpy as np
 
 from . import glassware as gw
@@ -397,3 +401,66 @@ class Tesliper:
         writer = writer_class(dest)
         data = [s for s in self.averaged.values() if s]
         writer.write(data)
+
+    def serialize(self, destination: Union[Path, str]) -> None:
+        """Serialize instance of Tesliper object to a file.
+
+        Parameters
+        ----------
+        destination
+            Path or path-like object to a file, to which content will be written.
+
+        Notes
+        -----
+        Tesliper is serialized to a few JSON objects, that are written to given file
+        (one JSON object for line).
+        Serialization of `parameters`, `spectra`, and `averaged` attributes' content
+        is not supported yet.
+        """
+        path = Path(destination)
+        content = [
+            {
+                "input_dir": self.input_dir,
+                "output_dir": self.output_dir,
+                "wanted_files": self.wanted_files,
+                # "parameters": self.parameters,  # TODO: add support
+                # "spectra": self.spectra,  # TODO: add support
+                # "averaged": self.averaged,  # TODO: add support
+            },
+            {
+                "allow_data_inconsistency": self.molecules.allow_data_inconsistency,
+                "kept": self.molecules.kept,
+            },
+            list(self.molecules.items()),
+        ]
+        with path.open("w") as file:
+            for obj in content:
+                json.dump(obj, file)
+                file.write("\n")
+
+    @classmethod
+    def load(cls, source: Union[Path, str]) -> "Tesliper":
+        """Load serialized Tesliper object from file.
+
+        Parameters
+        ----------
+        source
+            Path or path-like object to a file with serialized Tesliper object.
+
+        Returns
+        -------
+        Tesliper
+            New instance of Tesliper class containing data read from file.
+        """
+        path = Path(source)
+        tesliper = Tesliper()
+        with path.open("r") as file:
+            tslr_params = json.loads(file.readline())
+            mols_params = json.loads(file.readline())
+            mols_items = json.loads(file.readline())
+        tesliper.molecules.update(mols_items)
+        for name, value in mols_params.items():
+            setattr(tesliper.molecules, name, value)
+        for name, value in tslr_params.items():
+            setattr(tesliper, name, value)
+        return tesliper
