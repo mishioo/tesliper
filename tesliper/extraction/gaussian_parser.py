@@ -19,7 +19,7 @@ cpu_time_reg = re.compile(
 )  # use .findall(text)
 scf = re.compile(r"SCF Done.*=\s+(-?\d+\.?\d*)")  # use .findall(text)
 stoich = re.compile(r"Stoichiometry\s*(\w*)\n")  # use .findall(text)
-stoich_ = re.compile(r"^ Stoichiometry\s*(\w*)\n")  # use .findall(text)
+stoich_ = re.compile(r"^ Stoichiometry\s*(\w*(?:\(\d+[+-]\))?)\n")  # use .findall(text)
 
 # GEOMETRY
 # not used currently
