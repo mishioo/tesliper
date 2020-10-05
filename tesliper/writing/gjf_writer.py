@@ -13,6 +13,16 @@ from ..glassware import Geometry, IntegerArray
 logger = logging.getLogger(__name__)
 
 
+# FUNCTIONS
+def _format_coordinates(coords, atoms):
+    for a, (x, y, z) in zip(atoms, coords):
+        try:
+            a = atoms_symbols[a]
+        except KeyError:
+            continue
+        yield f"{a: <3} {x: > 12.8f} {y: > 12.8f} {z: > 12.8f}\n"
+
+
 # CLASSES
 class GjfWriter(SerialWriter):
     """"""
@@ -21,7 +31,7 @@ class GjfWriter(SerialWriter):
 
     extension = "gjf"
     _link0_commands = {
-        "Mem",  # str with file path
+        "Mem",  # str specifying required memory
         "Chk",  # str with file path
         "OldChk",  # str with file path
         "SChk",  # str with file path
@@ -107,21 +117,13 @@ class GjfWriter(SerialWriter):
             file.write(self.comment)
             file.write("\n" * 2)
             file.write(f"{c} {m}\n")
-            for line in self._format_coords(g, a):
+            for line in _format_coordinates(g, a):
                 file.write(line)
             if self.post_spec:
                 file.write("\n")
                 file.write(self.post_spec)
                 file.write("\n")
             file.write("\n" * (self.empty_lines_at_end - 1))
-
-    def _format_coords(self, coords, atoms):
-        for a, (x, y, z) in zip(atoms, coords):
-            try:
-                a = atoms_symbols[a]
-            except KeyError:
-                continue
-            yield f" {a: <2}   {x: > .8f}   {y: > .8f}   {z: > .8f}\n"
 
     @property
     def link0(self):
@@ -143,9 +145,14 @@ class GjfWriter(SerialWriter):
         try:
             commands = commands.split()
         except AttributeError:
-            # assume Sequence other than string given
-            pass
-        length = len(commands)
+            logger.debug(
+                "Given object has no `split` method - "
+                "I'm asssuming it is of type Sequence other than str."
+            )
+        try:
+            length = len(commands)
+        except AttributeError as error:
+            raise TypeError("Expected object of type str or Sequence.") from error
         if not length:
             commands = ["#"]
         elif not commands[0].startswith("#"):

@@ -5,7 +5,25 @@ from string import Template
 import pytest
 from hypothesis import given, strategies as st, assume
 
-from tesliper.writing.gjf_writer import GjfWriter
+from tesliper.writing.gjf_writer import GjfWriter, _format_coordinates
+
+
+@given(
+    st.lists(
+        st.floats(min_value=-100, max_value=100, exclude_min=True, exclude_max=True),
+        min_size=12,
+        max_size=12,
+    )
+)
+@pytest.mark.parametrize(
+    "atoms",
+    [["C", "H", "H", "O"], [6, 1, 1, 8]],  # as atom symbols and as atomic numbers
+)
+def test__format_coordinates(atoms, coords):
+    coords = [coords[0 + 3 * n : 3 + 3 * n] for n in range(len(atoms))]
+    output = list(_format_coordinates(coords, atoms))
+    assert len(output) == len(atoms)
+    assert all([len(output[0]) == len(output[n]) for n in range(len(output))])
 
 
 @pytest.fixture
