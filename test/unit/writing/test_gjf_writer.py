@@ -1,6 +1,4 @@
-import string
 from pathlib import Path
-from string import Template
 
 import pytest
 from hypothesis import given, strategies as st, assume
@@ -9,15 +7,12 @@ from tesliper.writing.gjf_writer import GjfWriter, _format_coordinates
 
 
 @given(
+    st.lists(st.integers(min_value=1, max_value=118), min_size=4, max_size=4),
     st.lists(
         st.floats(min_value=-100, max_value=100, exclude_min=True, exclude_max=True),
         min_size=12,
         max_size=12,
-    )
-)
-@pytest.mark.parametrize(
-    "atoms",
-    [["C", "H", "H", "O"], [6, 1, 1, 8]],  # as atom symbols and as atomic numbers
+    ),
 )
 def test__format_coordinates(atoms, coords):
     coords = [coords[0 + 3 * n : 3 + 3 * n] for n in range(len(atoms))]
@@ -71,3 +66,39 @@ def test_route_str_startswith_hash(gjfwriter, commands):
     gjfwriter.route = commands
     assert gjfwriter.route == " ".join(commands.split())
     assert gjfwriter._route == commands.split()
+
+
+@given(st.lists(st.text()))
+def test_route_list_not_startswith_hash(gjfwriter, commands):
+    assume(not (commands[0] if commands else "").strip().startswith("#"))
+    gjfwriter.route = commands
+    assert gjfwriter.route == " ".join(["#"] + commands)
+    assert gjfwriter._route == ["#"] + commands
+
+
+st_not_st = st.one_of(
+    st.none(),
+    st.integers(),
+    st.floats(),
+    st.sets(st.text(), min_size=1),
+    st.dictionaries(st.text(), st.text(), min_size=1),
+)
+
+
+@given(st_not_st)
+def test_route_wrong_type(gjfwriter, commands):
+    with pytest.raises(TypeError):
+        gjfwriter.route = commands
+
+
+@given(st.lists(st_not_st, min_size=1))
+def test_route_sequence_wrong_type(gjfwriter, commands):
+    with pytest.raises(TypeError):
+        gjfwriter.route = commands
+
+
+@pytest.mark.parametrize("commands", ["", [], tuple(), set(), {}])
+def test_route_empty(gjfwriter, commands):
+    gjfwriter.route = commands
+    assert gjfwriter.route == "#"
+    assert gjfwriter._route == ["#"]

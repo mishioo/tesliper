@@ -6,7 +6,7 @@ from string import Template
 from typing import Iterable, Union, List, Sequence, Optional
 
 from ._writer import SerialWriter
-from ..datawork.atoms import atoms_symbols
+from ..datawork.atoms import symbol_of_element
 from ..glassware import Geometry, IntegerArray
 
 # LOGGER
@@ -14,13 +14,10 @@ logger = logging.getLogger(__name__)
 
 
 # FUNCTIONS
-def _format_coordinates(coords, atoms):
+def _format_coordinates(coords: Sequence[Sequence[float]], atoms: Sequence[int]):
     for a, (x, y, z) in zip(atoms, coords):
-        try:
-            a = atoms_symbols[a]
-        except KeyError:
-            continue
-        yield f"{a: <3} {x: > 12.8f} {y: > 12.8f} {z: > 12.8f}\n"
+        a = symbol_of_element(a)
+        yield f" {a: <2} {x: > 12.8f} {y: > 12.8f} {z: > 12.8f}\n"
 
 
 # CLASSES
@@ -152,9 +149,23 @@ class GjfWriter(SerialWriter):
         try:
             length = len(commands)
         except AttributeError as error:
-            raise TypeError("Expected object of type str or Sequence.") from error
+            raise TypeError(
+                "Expected object of type str or Sequence of str."
+            ) from error
         if not length:
             commands = ["#"]
-        elif not commands[0].startswith("#"):
-            commands = ["#"] + commands
+        else:
+            try:
+                first = commands[0]
+            except (KeyError, TypeError) as error:
+                raise TypeError(
+                    "Expected object of type str or Sequence of str."
+                ) from error
+            try:
+                if not first.startswith("#"):
+                    commands = ["#"] + commands
+            except AttributeError as error:
+                raise TypeError(
+                    "Expected object of type str or Sequence of str."
+                ) from error
         self._route = commands
