@@ -30,7 +30,7 @@ def overview_writer(tmp_path):
     return TxtOverviewWriter(tmp_path.joinpath("overview.txt"))
 
 
-def test_basic(overview_writer, mols):
+def test_overview_basic(overview_writer, mols):
     overview_writer.write(
         [mols.arrayed(grn) for grn in ar.Energies.associated_genres],
         frequencies=mols.arrayed("freq"),
@@ -49,7 +49,7 @@ meoh-2.out           |  46.3953     45.9840   45.9840   45.9840   45.9577 |  -11
         )
 
 
-def test_no_freqs(overview_writer, mols):
+def test_overview_no_freqs(overview_writer, mols):
     overview_writer.write(
         [mols.arrayed(grn) for grn in ar.Energies.associated_genres],
         stoichiometry=mols.arrayed("stoichiometry"),
@@ -67,7 +67,7 @@ meoh-2.out           |  46.3953     45.9840   45.9840   45.9840   45.9577 |  -11
         )
 
 
-def test_no_stoichiometry(overview_writer, mols):
+def test_overview_no_stoichiometry(overview_writer, mols):
     overview_writer.write(
         [mols.arrayed(grn) for grn in ar.Energies.associated_genres],
         frequencies=mols.arrayed("freq"),
@@ -81,5 +81,33 @@ Gaussian output file |                   Population / %                   |     
 ---------------------------------------------------------------------------------------------------------------------------------------------------------
 meoh-1.out           |  53.6047     54.0160   54.0160   54.0160   54.0423 |  -113.54406542   -113.483474   -113.480579   -113.479635   -113.505977 |   1 
 meoh-2.out           |  46.3953     45.9840   45.9840   45.9840   45.9577 |  -113.54392904   -113.483322   -113.480427   -113.479483   -113.505824 |   1 
+"""
+        )
+
+
+def test_energies_basic(overview_writer, mols):
+    overview_writer.energies(mols.arrayed("gib"), mols.arrayed("gibcorr"))
+    with overview_writer.destination.open("r") as outcome:
+        assert (
+            outcome.read()
+            == """\
+Gaussian output file | Population/% | Min.B.Factor | DE/(kcal/mol) | Energy/Hartree | Corr/Hartree
+--------------------------------------------------------------------------------------------------
+meoh-1.out           |      54.0423 |       1.0000 |        0.0000 |    -113.505977 |     0.038089
+meoh-2.out           |      45.9577 |       0.8504 |        0.0960 |    -113.505824 |     0.038105
+"""
+        )
+
+
+def test_energies_no_corr(overview_writer, mols):
+    overview_writer.energies(mols.arrayed("gib"))
+    with overview_writer.destination.open("r") as outcome:
+        assert (
+            outcome.read()
+            == """\
+Gaussian output file | Population/% | Min.B.Factor | DE/(kcal/mol) | Energy/Hartree
+-----------------------------------------------------------------------------------
+meoh-1.out           |      54.0423 |       1.0000 |        0.0000 |    -113.505977
+meoh-2.out           |      45.9577 |       0.8504 |        0.0960 |    -113.505824
 """
         )
