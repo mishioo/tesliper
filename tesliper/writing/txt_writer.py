@@ -1,4 +1,6 @@
 # IMPORTS
+from typing import Sequence, Optional
+
 import numpy as np
 import logging as lgg
 import os
@@ -6,6 +8,7 @@ from itertools import zip_longest
 
 
 from ._writer import Writer
+from ..glassware.arrays import DataArray, Energies, InfoArray
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -13,6 +16,96 @@ logger.setLevel(lgg.DEBUG)
 
 
 # CLASSES
+class TxtOverviewWriter(Writer):
+    def write(
+        self,
+        energies: Sequence[Energies],
+        frequencies: Optional[DataArray] = None,
+        stoichiometry: Optional[InfoArray] = None,
+    ):
+        """Writes essential information from multiple Energies objects to
+         single txt file.
+
+         Notes
+         -----
+         All Energy objects given should contain information for the same set of files.
+
+        Parameters
+        ----------
+        energies: list of glassware.Energies
+            Energies objects that is to be exported
+        frequencies: glassware.DataArray, optional
+            DataArray object containing frequencies
+        stoichiometry: glassware.InfoArray, optional
+            InfoArray object containing stoichiometry information"""
+        filenames = energies[0].filenames
+        imaginary = [] if frequencies is None else frequencies.imaginary
+        stoichiometry = [] if stoichiometry is None else stoichiometry.values
+        # find the longest string to figure out padding
+        max_fnm = max(np.vectorize(len)(filenames).max(), 20)
+        try:
+            max_stoich = max(np.vectorize(len)(stoichiometry).max(), 13)
+        except ValueError:
+            max_stoich = 0
+        # values should be in shape (file, genre)
+        values = np.array([en.values for en in energies]).T
+        # populations in percent
+        popul = np.array([en.populations * 100 for en in energies]).T
+        names = [self._header[en.genre] for en in energies]
+        population_widths = [max(8, len(n)) for n in names]
+        population_header = "  ".join(
+            [f"{n:<{w}}" for n, w in zip(names, population_widths)]
+        )
+        energies_widths = [14 if n == "SCF" else 12 for n in names]
+        energies_header = "  ".join(
+            [f"{n:<{w}}" for n, w in zip(names, energies_widths)]
+        )
+        stoichiometry_header = f" | {'Stoichiometry':<{max_stoich}}"
+        precisions = [8 if n == "SCF" else 6 for n in names]
+        header = (
+            f"{'Gaussian output file':<{max_fnm}} | "
+            f"{'Population / %':^{len(population_header)}} | "
+            f"{'Energy / Hartree':^{len(energies_header)}}"
+            f"{' | Imag' if frequencies is not None else ''}"
+            f"{stoichiometry_header if max_stoich else ''}"
+        )
+        line_format = (
+            f"{{:<{max_fnm}}} | {{}} | {{}}"
+            f"{' | {:^ 4}' if frequencies is not None else '{}'}"
+            f"{f' | {{:<{max_stoich}}}' if max_stoich else '{}'}\n"
+        )
+        with self.destination.open(self.mode) as file:
+            file.write(header + "\n")
+            names_line = (
+                " " * max_fnm
+                + " | "
+                + population_header
+                + " | "
+                + energies_header
+                + (" |     " if frequencies is not None else "")
+                + (" |              " if max_stoich else "")
+                + "\n"
+            )
+            file.write(names_line)
+            file.write("-" * len(header) + "\n")
+            rows = zip_longest(
+                filenames, values, popul, imaginary, stoichiometry, fillvalue=""
+            )
+            for fnm, vals, pops, imag, stoich in rows:
+                p_line = "  ".join(
+                    [f"{p:>{w}.4f}" for p, w in zip(pops, population_widths)]
+                )
+                v_line = "  ".join(
+                    [
+                        f"{v:> {w}.{p}f}"
+                        for v, w, p in zip(vals, energies_widths, precisions)
+                    ]
+                )
+                line = line_format.format(fnm, p_line, v_line, imag, stoich)
+                file.write(line)
+        logger.info("Energies collective export to text file done.")
+
+
 class TxtWriter(Writer):
     def write(self, data):
         data = self.distribute_data(data)
@@ -42,7 +135,7 @@ class TxtWriter(Writer):
                 interfix="electr",
             )
         if data["other_bars"]:
-            # TO DO
+            # TODO
             pass
         if data["spectra"]:
             for spc in data["spectra"]:
@@ -55,7 +148,7 @@ class TxtWriter(Writer):
                 )
                 self.single_spectrum(file, spc)
         if data["other"]:
-            # TO DO
+            # TODO
             pass
 
     def energies(self, filename, energies, corrections=None):
@@ -107,88 +200,6 @@ class TxtWriter(Writer):
                 ]
                 file_.write(" | ".join(new_row) + "\n")
         logger.info("Energies separate export to text files done.")
-
-    def energies_overview(
-        self, filename, energies, frequencies=None, stoichiometry=None
-    ):
-        """Writes essential information from multiple Energies objects to
-         single txt file.
-
-        Parameters
-        ----------
-        filename: string
-            path to file
-        energies: list of glassware.Energies
-            Energies objects that is to be expored
-        frequencies: glassware.DataArray, optional
-            DataArray object containing frequencies
-        stoichiometry: glassware.InfoArray, optional
-            InfoArray object containing stoichiometry information"""
-        filenames = energies[0].filenames
-        imaginary = [] if frequencies is None else frequencies.imaginary
-        stoichiometry = [] if stoichiometry is None else stoichiometry.values
-        max_fnm = max(np.vectorize(len)(filenames).max(), 20)
-        try:
-            max_stoich = max(np.vectorize(len)(stoichiometry).max(), 13)
-        except ValueError:
-            max_stoich = 0
-        values = np.array([en.values for en in energies]).T
-        # deltas = np.array([en.deltas for en in ens])
-        popul = np.array([en.populations * 100 for en in energies]).T
-        _stoich = f" | {'Stoichiometry':<{max_stoich}}"
-        names = [self._header[en.genre] for en in energies]
-        population_widths = [max(8, len(n)) for n in names]
-        population_subheader = "  ".join(
-            [f"{n:<{w}}" for n, w in zip(names, population_widths)]
-        )
-        energies_widths = [14 if n == "SCF" else 12 for n in names]
-        energies_subheader = "  ".join(
-            [f"{n:<{w}}" for n, w in zip(names, energies_widths)]
-        )
-        precisions = [8 if n == "SCF" else 6 for n in names]
-        header = (
-            f"{'Gaussian output file':<{max_fnm}} | "
-            f"{'Population / %':^{len(population_subheader)}} | "
-            f"{'Energy / Hartree':^{len(energies_subheader)}}"
-            f"{' | Imag' if frequencies is not None else ''}"
-            f"{_stoich if max_stoich else ''}"
-        )
-        line_format = (
-            f"{{:<{max_fnm}}} | {{}} | {{}}"
-            f"{' | {:^ 4}' if frequencies is not None else '{}'}"
-            f"{f' | {{:<{max_stoich}}}' if max_stoich else '{}'}\n"
-        )
-        # fname = 'distribution_overview.txt'
-        with open(self.destination.joinpath(filename), "w") as file_:
-            file_.write(header + "\n")
-            names_line = (
-                " " * max_fnm
-                + " | "
-                + population_subheader
-                + " | "
-                + energies_subheader
-                + (" |     " if frequencies is not None else "")
-                + (" | " if max_stoich else "")
-                + "\n"
-            )
-            file_.write(names_line)
-            file_.write("-" * len(header) + "\n")
-            rows = zip_longest(
-                filenames, values, popul, imaginary, stoichiometry, fillvalue=""
-            )
-            for fnm, vals, pops, imag, stoich in rows:
-                p_line = "  ".join(
-                    [f"{p:>{w}.4f}" for p, w in zip(pops, population_widths)]
-                )
-                v_line = "  ".join(
-                    [
-                        f"{v:> {w}.{p}f}"
-                        for v, w, p in zip(vals, energies_widths, precisions)
-                    ]
-                )
-                line = line_format.format(fnm, p_line, v_line, imag, stoich)
-                file_.write(line)
-        logger.info("Energies collective export to text file done.")
 
     def bars(self, band, bars, interfix=""):
         """Writes Bars objects to txt files (one for each conformer).
