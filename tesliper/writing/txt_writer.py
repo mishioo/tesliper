@@ -1,17 +1,16 @@
 # IMPORTS
 from pathlib import Path
 from string import Template
-from typing import Sequence, Optional, Union
+from typing import Sequence, Optional, Union, List, Iterable
 
 import numpy as np
 import logging as lgg
-import os
 from itertools import zip_longest
 
-
 from ._writer import Writer, SerialWriter
-from ..glassware import SingleSpectrum
-from ..glassware.arrays import DataArray, Energies, InfoArray, FloatArray
+from ..glassware.spectra import SingleSpectrum, Spectra
+from ..glassware.arrays import DataArray, Energies, InfoArray, FloatArray, Bars
+
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -20,6 +19,10 @@ logger.setLevel(lgg.DEBUG)
 
 # CLASSES
 class TxtWriter(Writer):
+    """Object for writing extracted data in .txt format form many conformers
+    to one file.
+    """
+
     def overview(
         self,
         energies: Sequence[Energies],
@@ -38,9 +41,11 @@ class TxtWriter(Writer):
         energies: list of glassware.Energies
             Energies objects that is to be exported
         frequencies: glassware.DataArray, optional
-            DataArray object containing frequencies
+            DataArray object containing frequencies, needed for imaginary
+            frequencies count
         stoichiometry: glassware.InfoArray, optional
-            InfoArray object containing stoichiometry information"""
+            InfoArray object containing stoichiometry information
+        """
         filenames = energies[0].filenames
         imaginary = [] if frequencies is None else frequencies.imaginary
         stoichiometry = [] if stoichiometry is None else stoichiometry.values
@@ -209,7 +214,7 @@ class TxtSerialWriter(SerialWriter):
             destination=destination, mode=mode, filename_template=filename_template
         )
 
-    def write(self, data):
+    def write(self, data: Iterable[DataArray]):
         data = self.distribute_data(data)
         if data["vibra"]:
             self.bars(
@@ -229,7 +234,7 @@ class TxtSerialWriter(SerialWriter):
             # TODO
             pass
 
-    def bars(self, band, bars):
+    def bars(self, band: Bars, bars: List[Bars]):
         """Writes Bars objects to txt files (one for each conformer).
 
         Parameters
@@ -262,7 +267,7 @@ class TxtSerialWriter(SerialWriter):
                     file.write(line + "\n")
         logger.info("Bars export to text files done.")
 
-    def spectra(self, spectra):
+    def spectra(self, spectra: Spectra):
         """Writes Spectra object to text files (one for each conformer).
 
         Parameters
