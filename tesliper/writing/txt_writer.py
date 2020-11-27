@@ -183,61 +183,57 @@ class TxtWriter(Writer):
 
 
 class TxtSerialWriter(SerialWriter):
+    """Writes extracted data in .txt format, generates separate file or set of files for
+    each given conformer.
+
+    Parameters
+    ----------
+    destination: str or pathlib.Path
+        Directory, to which generated files should be written.
+    mode: str
+        Specifies how writing to file should be handled. Should be one of characters:
+         'a' (append to existing file), 'x' (only write if file does'nt exist yet),
+         or 'w' (overwrite file if it already exists).
+    filename_template: str or string.Template
+        Template for names of generated files, defaults to
+        '${filename}.${genre}.${ext}'.
+    """
+
+    def __init__(
+        self,
+        destination: Union[str, Path],
+        mode: str = "x",
+        filename_template: Union[str, Template] = "${filename}.${genre}.${ext}",
+    ):
+        super().__init__(
+            destination=destination, mode=mode, filename_template=filename_template
+        )
+
     def write(self, data):
         data = self.distribute_data(data)
-        if data["energies"]:
-            file = os.path.join(self.destination, "distribution_overview.txt")
-            self.energies_overview(
-                file,
-                data["energies"],
-                frequencies=data["frequencies"],
-                stoichiometry=data["stoichiometry"],
-            )
-            for ens in data["energies"]:
-                file = os.path.join(self.destination, f"distribution.{ens.genre}.txt")
-                self.energies(file, ens, corrections=data["corrections"].get(ens.genre))
         if data["vibra"]:
             self.bars(
-                self.destination,
-                band=data["frequencies"],
-                bars=data["vibra"],
-                interfix="vibra",
+                band=data["frequencies"], bars=data["vibra"],
             )
         if data["electr"]:
             self.bars(
-                self.destination,
-                band=data["wavelengths"],
-                bars=data["electr"],
-                interfix="electr",
+                band=data["wavelengths"], bars=data["electr"],
             )
         if data["other_bars"]:
             # TODO
             pass
         if data["spectra"]:
             for spc in data["spectra"]:
-                self.spectra(self.destination, spc, interfix=spc.genre)
-        if data["single"]:
-            for spc in data["single"]:
-                interfix = f".{spc.averaged_by}" if spc.averaged_by else ""
-                file = os.path.join(
-                    self.destination, f"spectrum.{spc.genre+interfix}.txt"
-                )
-                self.single_spectrum(file, spc)
+                self.spectra(spc)
         if data["other"]:
             # TODO
             pass
 
-    def bars(self, band, bars, interfix=""):
+    def bars(self, band, bars):
         """Writes Bars objects to txt files (one for each conformer).
-
-        Notes
-        -----
-        Filenames are generated in form of conformer_name[.interfix].txt
 
         Parameters
         ----------
-        dest: string
-            path to destination directory
         band: glassware.Bars
             object containing information about band at which transitions occur;
             it should be frequencies for vibrational data and wavelengths or
@@ -245,8 +241,6 @@ class TxtSerialWriter(SerialWriter):
         bars: list of glassware.Bars
             Bars objects that are to be serialized; all should contain
             information for the same conformers
-        interfix: string, optional
-            string included in produced filenames, nothing is added if omitted
         """
         bars = [band] + bars
         genres = [bar.genre for bar in bars]
@@ -254,12 +248,11 @@ class TxtSerialWriter(SerialWriter):
         widths = [self._formatters[genre][4:-4] for genre in genres]
         formatted = [f"{h: <{w}}" for h, w in zip(headers, widths)]
         values = zip(*[bar.values for bar in bars])
-        for fname, values_ in zip(bars[0].filenames, values):
-            filename = (
-                f"{'.'.join(fname.split('.')[:-1])}"
-                f"{'.' if interfix else ''}{interfix}.txt"
+        for num, (fnm, values_) in enumerate(zip(bars[0].filenames, values)):
+            filename = self.filename_template.substitute(
+                filename=fnm, ext=self.extension, num=num, genre=band.genre
             )
-            with open(self.destination.joinpath(filename), "w") as file:
+            with self.destination.joinpath(filename).open(self.mode) as file:
                 file.write("\t".join(formatted))
                 file.write("\n")
                 for vals in zip(*values_):
@@ -269,21 +262,13 @@ class TxtSerialWriter(SerialWriter):
                     file.write(line + "\n")
         logger.info("Bars export to text files done.")
 
-    def spectra(self, spectra, interfix=""):
+    def spectra(self, spectra):
         """Writes Spectra object to text files (one for each conformer).
-
-        Notes
-        -----
-        Filenames are generated in form of conformer_name[.interfix].txt
 
         Parameters
         ----------
-        dest: string
-            path to destination directory
         spectra: glassware.Spectra
             Spectra object, that is to be serialized
-        interfix: string, optional
-            string included in produced filenames, nothing is added if omitted
         """
         abscissa = spectra.x
         title = (
@@ -292,13 +277,11 @@ class TxtSerialWriter(SerialWriter):
             f'fitting, shown as {spectra.units["x"]} vs. '
             f'{spectra.units["y"]}'
         )
-        for fnm, values in zip(spectra.filenames, spectra.y):
-            filename = (
-                f"{'.'.join(fnm.split('.')[:-1])}"
-                f"{'.' if interfix else ''}{interfix}.txt"
+        for num, (fnm, values) in enumerate(zip(spectra.filenames, spectra.y)):
+            filename = self.filename_template.substitute(
+                filename=fnm, ext=self.extension, num=num, genre=spectra.genre
             )
-            file_path = self.destination.joinpath(filename)
-            with open(file_path, "w") as file:
+            with self.destination.joinpath(filename).open(self.mode) as file:
                 file.write(title + "\n")
                 file.write(
                     "\n".join(
