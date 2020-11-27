@@ -1,5 +1,7 @@
 # IMPORTS
-from typing import Sequence, Optional
+from pathlib import Path
+from string import Template
+from typing import Sequence, Optional, Union
 
 import numpy as np
 import logging as lgg
@@ -7,8 +9,9 @@ import os
 from itertools import zip_longest
 
 
-from ._writer import Writer
-from ..glassware.arrays import DataArray, Energies, InfoArray
+from ._writer import Writer, SerialWriter
+from ..glassware import SingleSpectrum
+from ..glassware.arrays import DataArray, Energies, InfoArray, FloatArray
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -16,8 +19,8 @@ logger.setLevel(lgg.DEBUG)
 
 
 # CLASSES
-class TxtOverviewWriter(Writer):
-    def write(
+class TxtWriter(Writer):
+    def overview(
         self,
         energies: Sequence[Energies],
         frequencies: Optional[DataArray] = None,
@@ -99,7 +102,7 @@ class TxtOverviewWriter(Writer):
                 file.write(line)
         logger.info("Energies collective export to text file done.")
 
-    def energies(self, energies, corrections=None):
+    def energies(self, energies: Energies, corrections: Optional[FloatArray] = None):
         """Writes Energies object to txt file.
 
         Parameters
@@ -145,8 +148,41 @@ class TxtOverviewWriter(Writer):
                 file.write(" | ".join(new_row) + "\n")
         logger.info("Energies separate export to text files done.")
 
+    def spectrum(self, spectrum: SingleSpectrum, include_header: bool = True):
+        """Writes SingleSpectrum object to txt file.
 
-class TxtWriter(Writer):
+        Parameters
+        ----------
+        spectrum: glassware.SingleSpectrum
+            spectrum, that is to be serialized
+        include_header: bool, optional
+            determines if file should contain a header with metadata,
+            True by default
+        """
+        title = (
+            f"{spectrum.genre} calculated with peak width = "
+            f'{spectrum.width} {spectrum.units["width"]} and '
+            f'{spectrum.fitting} fitting, shown as {spectrum.units["x"]} '
+            f'vs. {spectrum.units["y"]}'
+        )
+        with self.destination.open(self.mode) as file:
+            if include_header:
+                file.write(title + "\n")
+                if spectrum.averaged_by:
+                    file.write(
+                        f"{len(spectrum.filenames)} conformers averaged base on"
+                        f" {self._header[spectrum.averaged_by]}\n"
+                    )
+            file.write(
+                "\n".join(
+                    f"{int(x):> 7.2f}\t{y: > 10.4f}"
+                    for x, y in zip(spectrum.x, spectrum.y)
+                )
+            )
+        logger.info("Spectrum export to text files done.")
+
+
+class TxtSerialWriter(SerialWriter):
     def write(self, data):
         data = self.distribute_data(data)
         if data["energies"]:
@@ -270,39 +306,3 @@ class TxtWriter(Writer):
                     )
                 )
         logger.info("Spectra export to text files done.")
-
-    def single_spectrum(self, filename, spectrum, include_header=True):
-        """Writes SingleSpectrum object to txt file.
-
-        Parameters
-        ----------
-        file: string
-            path to file
-        spectrum: glassware.SingleSpectrum
-            spectrum, that is to be serialized
-        include_header: bool, optional
-            determines if file should contain a header with metadata,
-            True by default
-        """
-        title = (
-            f"{spectrum.genre} calculated with peak width = "
-            f'{spectrum.width} {spectrum.units["width"]} and '
-            f'{spectrum.fitting} fitting, shown as {spectrum.units["x"]} '
-            f'vs. {spectrum.units["y"]}'
-        )
-        with open(self.destination.joinpath(filename), "w") as file_:
-            if include_header:
-                file_.write(title + "\n")
-                if spectrum.averaged_by:
-                    file_.write(
-                        f"{len(spectrum.filenames)} conformers averaged base on"
-                        f" {self._header[spectrum.averaged_by]}\n"
-                    )
-            file_.write(
-                "\n".join(
-                    # TODO: probably should change when nmr introduced
-                    f"{int(x):>4d}\t{y: .4f}"
-                    for x, y in zip(spectrum.x, spectrum.y)
-                )
-            )
-        logger.info("Spectrum export to text files done.")

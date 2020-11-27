@@ -2,8 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from tesliper.writing.txt_writer import TxtOverviewWriter
-from tesliper.glassware import arrays as ar
+from tesliper.writing.txt_writer import TxtWriter, TxtSerialWriter
+from tesliper.glassware import arrays as ar, SingleSpectrum
 from tesliper.extraction import Soxhlet
 from tesliper.glassware import Molecules
 
@@ -26,17 +26,35 @@ def mols(filenames, fixturesdir):
 
 
 @pytest.fixture
-def overview_writer(tmp_path):
-    return TxtOverviewWriter(tmp_path.joinpath("overview.txt"))
+def spc(filenames):
+    return SingleSpectrum(
+        "ir",
+        [0.3, 0.2, 10, 300, 2],
+        [10, 20, 30, 40, 50],
+        width=5,
+        fitting="gaussian",
+        filenames=filenames,
+        averaged_by="gib",
+    )
 
 
-def test_overview_basic(overview_writer, mols):
-    overview_writer.write(
+@pytest.fixture
+def writer(tmp_path):
+    return TxtWriter(tmp_path.joinpath("overview.txt"))
+
+
+@pytest.fixture
+def serial_writer(tmp_path):
+    return TxtSerialWriter(tmp_path)
+
+
+def test_overview_basic(writer, mols):
+    writer.overview(
         [mols.arrayed(grn) for grn in ar.Energies.associated_genres],
         frequencies=mols.arrayed("freq"),
         stoichiometry=mols.arrayed("stoichiometry"),
     )
-    with overview_writer.destination.open("r") as outcome:
+    with writer.destination.open("r") as outcome:
         assert (
             outcome.read()
             == """\
@@ -49,12 +67,12 @@ meoh-2.out           |  46.3953     45.9840   45.9840   45.9840   45.9577 |  -11
         )
 
 
-def test_overview_no_freqs(overview_writer, mols):
-    overview_writer.write(
+def test_overview_no_freqs(writer, mols):
+    writer.overview(
         [mols.arrayed(grn) for grn in ar.Energies.associated_genres],
         stoichiometry=mols.arrayed("stoichiometry"),
     )
-    with overview_writer.destination.open("r") as outcome:
+    with writer.destination.open("r") as outcome:
         assert (
             outcome.read()
             == """\
@@ -67,12 +85,12 @@ meoh-2.out           |  46.3953     45.9840   45.9840   45.9840   45.9577 |  -11
         )
 
 
-def test_overview_no_stoichiometry(overview_writer, mols):
-    overview_writer.write(
+def test_overview_no_stoichiometry(writer, mols):
+    writer.overview(
         [mols.arrayed(grn) for grn in ar.Energies.associated_genres],
         frequencies=mols.arrayed("freq"),
     )
-    with overview_writer.destination.open("r") as outcome:
+    with writer.destination.open("r") as outcome:
         assert (
             outcome.read()
             == """\
@@ -85,9 +103,9 @@ meoh-2.out           |  46.3953     45.9840   45.9840   45.9840   45.9577 |  -11
         )
 
 
-def test_energies_basic(overview_writer, mols):
-    overview_writer.energies(mols.arrayed("gib"), mols.arrayed("gibcorr"))
-    with overview_writer.destination.open("r") as outcome:
+def test_energies_basic(writer, mols):
+    writer.energies(mols.arrayed("gib"), mols.arrayed("gibcorr"))
+    with writer.destination.open("r") as outcome:
         assert (
             outcome.read()
             == """\
@@ -99,9 +117,9 @@ meoh-2.out           |      45.9577 |       0.8504 |        0.0960 |    -113.505
         )
 
 
-def test_energies_no_corr(overview_writer, mols):
-    overview_writer.energies(mols.arrayed("gib"))
-    with overview_writer.destination.open("r") as outcome:
+def test_energies_no_corr(writer, mols):
+    writer.energies(mols.arrayed("gib"))
+    with writer.destination.open("r") as outcome:
         assert (
             outcome.read()
             == """\
@@ -110,4 +128,50 @@ Gaussian output file | Population/% | Min.B.Factor | DE/(kcal/mol) | Energy/Hart
 meoh-1.out           |      54.0423 |       1.0000 |        0.0000 |    -113.505977
 meoh-2.out           |      45.9577 |       0.8504 |        0.0960 |    -113.505824
 """
+        )
+
+
+def test_specrtum_basic(writer, spc):
+    writer.spectrum(spc)
+    with writer.destination.open("r") as outcome:
+        assert (
+            outcome.read()
+            == """\
+ir calculated with peak width = 5 cm-1 and gaussian fitting, shown as Frequency / cm^(-1) vs. Epsilon
+2 conformers averaged base on Gibbs
+  10.00\t    0.3000
+  20.00\t    0.2000
+  30.00\t   10.0000
+  40.00\t  300.0000
+  50.00\t    2.0000"""
+        )
+
+
+def test_specrtum_no_header(writer, spc):
+    writer.spectrum(spc, include_header=False)
+    with writer.destination.open("r") as outcome:
+        assert (
+            outcome.read()
+            == """\
+  10.00\t    0.3000
+  20.00\t    0.2000
+  30.00\t   10.0000
+  40.00\t  300.0000
+  50.00\t    2.0000"""
+        )
+
+
+def test_specrtum_not_averaged(writer, spc):
+    spc.filenames, spc.averaged_by = None, None
+    writer.spectrum(spc)
+    with writer.destination.open("r") as outcome:
+        assert (
+            outcome.read()
+            == """\
+ir calculated with peak width = 5 cm-1 and gaussian fitting, shown as Frequency / cm^(-1) vs. Epsilon
+  10.00\t    0.3000
+  20.00\t    0.2000
+  30.00\t   10.0000
+  40.00\t  300.0000
+  50.00\t    2.0000"""
         )
