@@ -1,11 +1,12 @@
 # IMPORTS
 from pathlib import Path
 from string import Template
-from typing import Union
+from typing import Union, Iterable, Dict
 
 import logging as lgg
 
-from .. import glassware as gw
+from ..glassware.spectra import SingleSpectrum, Spectra
+from ..glassware.arrays import DataArray, Energies, Bars
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -14,6 +15,23 @@ logger.setLevel(lgg.DEBUG)
 
 # CLASSES
 class Writer:
+    """Base class for writers, that produce single file from multiple conformers.
+
+    Parameters
+    ----------
+    destination: str or pathlib.Path
+        File, to which generated files should be written.
+    mode: str
+        Specifies how writing to file should be handled. Should be one of characters:
+         'a' (append to existing file), 'x' (only write if file does'nt exist yet),
+         or 'w' (overwrite file if it already exists).
+
+    Attributes
+    ----------
+    destination
+    mode
+    """
+
     _header = dict(
         freq="Frequencies",
         mass="Red. masses",
@@ -174,6 +192,10 @@ class Writer:
     def destination(self) -> Path:
         """pathlib.Path: File, to which data should be written.
 
+        Notes
+        -----
+        If str given, it will be converted to pathlib.Path.
+
         Raises
         ------
         FileNotFoundError
@@ -198,7 +220,32 @@ class Writer:
             raise FileNotFoundError("Parent directory of specified file doesn't exist.")
         self._destination = destination
 
-    def distribute_data(self, data):
+    @staticmethod
+    def distribute_data(data: Iterable[DataArray]) -> Dict:
+        """Sorts given data by genre category for use by specialized writing methods.
+
+        Parameters
+        ----------
+        data: Iterable of DataArray
+            Iterable with DataArray objects to sort by genre category.
+
+        Returns
+        -------
+        dict
+            Dictionary with DataArray objects sorted by genre category.
+            Available key: value pairs are:
+                energies: List of Energies,
+                vibra: List of GroundStateBars,
+                electr: List of ExcitedStateBars,
+                other_bars: List of Bars,
+                spectra: List of Spectra,
+                single: List of SingleSpectrum,
+                other: List of DataArray,
+                corrections = dict of genre: FloatArray,
+                frequencies = ExcitedStateBars or None,
+                wavelenghts = GroundStateBars or None,
+                stoichiometry = InfoArray or None
+        """
         distr = dict(
             energies=[],
             vibra=[],
@@ -213,7 +260,7 @@ class Writer:
             stoichiometry=None,
         )
         for obj in data:
-            if isinstance(obj, gw.Energies):
+            if isinstance(obj, Energies):
                 distr["energies"].append(obj)
             elif obj.genre.endswith("corr"):
                 distr["corrections"][obj.genre[:3]] = obj
@@ -223,16 +270,16 @@ class Writer:
                 distr["wavelengths"] = obj
             elif obj.genre == "stoichiometry":
                 distr["stoichiometry"] = obj
-            elif isinstance(obj, gw.Bars):
+            elif isinstance(obj, Bars):
                 if obj.spectra_type == "vibra":
                     distr["vibra"].append(obj)
                 elif obj.spectra_type == "electr":
                     distr["electr"].append(obj)
                 else:
                     distr["other_bars"].append(obj)
-            elif isinstance(obj, gw.SingleSpectrum):
+            elif isinstance(obj, SingleSpectrum):
                 distr["single"].append(obj)
-            elif isinstance(obj, gw.Spectra):
+            elif isinstance(obj, Spectra):
                 distr["spectra"].append(obj)
             else:
                 distr["other"].append(obj)
