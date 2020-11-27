@@ -105,6 +105,52 @@ class TxtOverviewWriter(Writer):
                 file.write(line)
         logger.info("Energies collective export to text file done.")
 
+    def energies(self, energies, corrections=None):
+        """Writes Energies object to txt file.
+
+        Parameters
+        ----------
+        energies: glassware.Energies
+            Energies object that is to be serialized
+        corrections: glassware.DataArray, optional
+            DataArray object, containing energies corrections"""
+        max_fnm = max(np.vectorize(len)(energies.filenames).max(), 20)
+        header = [f"{'Gaussian output file':<{max_fnm}}"]
+        header += ["Population/%", "Min.B.Factor", "DE/(kcal/mol)", "Energy/Hartree"]
+        header += ["Corr/Hartree"] if corrections is not None else []
+        header = " | ".join(header)
+        align = ("<", ">", ">", ">", ">", ">")
+        width = (max_fnm, 12, 12, 13, 14, 12)
+        corrections = corrections.values if corrections is not None else []
+        fmt = (
+            "",
+            ".4f",
+            ".4f",
+            ".4f",
+            ".8f" if energies.genre == "scf" else ".6f",
+            "f",
+        )
+        rows = zip_longest(
+            energies.filenames,
+            energies.populations * 100,
+            energies.min_factors,
+            energies.deltas,
+            energies.values,
+            corrections,
+            fillvalue=None,
+        )
+        with self.destination.open(self.mode) as file:
+            file.write(header + "\n")
+            file.write("-" * len(header) + "\n")
+            for row in rows:
+                new_row = [
+                    f"{v:{a}{w}{f}}"
+                    for v, a, w, f in zip(row, align, width, fmt)
+                    if v is not None
+                ]
+                file.write(" | ".join(new_row) + "\n")
+        logger.info("Energies separate export to text files done.")
+
 
 class TxtWriter(Writer):
     def write(self, data):
@@ -150,56 +196,6 @@ class TxtWriter(Writer):
         if data["other"]:
             # TODO
             pass
-
-    def energies(self, filename, energies, corrections=None):
-        """Writes Energies object to txt file.
-
-        Parameters
-        ----------
-        filename: string
-            path to file
-        energies: glassware.Energies
-            Energies object that is to be serialized
-        corrections: glassware.DataArray, optional
-            DataArray object, containing energies corrections"""
-        max_fnm = max(np.vectorize(len)(energies.filenames).max(), 20)
-        # file_path = os.path.join(self.path,
-        #                          f'distribution.{energies.genre}.txt')
-        header = [f"{'Gaussian output file':<{max_fnm}}"]
-        header += ["Population/%", "Min.B.Factor", "DE/(kcal/mol)", "Energy/Hartree"]
-        header += ["Corr/Hartree"] if corrections is not None else []
-        header = " | ".join(header)
-        align = ("<", ">", ">", ">", ">", ">")
-        width = (max_fnm, 12, 12, 13, 14, 12)
-        corrections = corrections.values if corrections is not None else []
-        fmt = (
-            "",
-            ".4f",
-            ".4f",
-            ".4f",
-            ".8f" if energies.genre == "scf" else ".6f",
-            "f",
-        )
-        rows = zip_longest(
-            energies.filenames,
-            energies.populations * 100,
-            energies.min_factors,
-            energies.deltas,
-            energies.values,
-            corrections,
-            fillvalue=None,
-        )
-        with open(self.destination.joinpath(filename), "w") as file_:
-            file_.write(header + "\n")
-            file_.write("-" * len(header) + "\n")
-            for row in rows:
-                new_row = [
-                    f"{v:{a}{w}{f}}"
-                    for v, a, w, f in zip(row, align, width, fmt)
-                    if v is not None
-                ]
-                file_.write(" | ".join(new_row) + "\n")
-        logger.info("Energies separate export to text files done.")
 
     def bars(self, band, bars, interfix=""):
         """Writes Bars objects to txt files (one for each conformer).
