@@ -60,15 +60,19 @@ class TxtOverviewWriter(Writer):
         energies_header = "  ".join(
             [f"{n:<{w}}" for n, w in zip(names, energies_widths)]
         )
-        stoichiometry_header = f" | {'Stoichiometry':<{max_stoich}}"
+        names_line = [" " * max_fnm, population_header, energies_header]
+        names_line += ["    "] if frequencies is not None else []
+        names_line += ["             "] if max_stoich else []
+        names_line = " | ".join(names_line)
         precisions = [8 if n == "SCF" else 6 for n in names]
-        header = (
-            f"{'Gaussian output file':<{max_fnm}} | "
-            f"{'Population / %':^{len(population_header)}} | "
-            f"{'Energy / Hartree':^{len(energies_header)}}"
-            f"{' | Imag' if frequencies is not None else ''}"
-            f"{stoichiometry_header if max_stoich else ''}"
-        )
+        header = [
+            f"{'Gaussian output file':<{max_fnm}}",
+            f"{'Population / %':^{len(population_header)}}",
+            f"{'Energy / Hartree':^{len(energies_header)}}",
+        ]
+        header += ["Imag"] if frequencies is not None else []
+        header += [f"{'Stoichiometry':<{max_stoich}}"] if max_stoich else []
+        header = " | ".join(header)
         line_format = (
             f"{{:<{max_fnm}}} | {{}} | {{}}"
             f"{' | {:^ 4}' if frequencies is not None else '{}'}"
@@ -76,17 +80,7 @@ class TxtOverviewWriter(Writer):
         )
         with self.destination.open(self.mode) as file:
             file.write(header + "\n")
-            names_line = (
-                " " * max_fnm
-                + " | "
-                + population_header
-                + " | "
-                + energies_header
-                + (" |     " if frequencies is not None else "")
-                + (" |              " if max_stoich else "")
-                + "\n"
-            )
-            file.write(names_line)
+            file.write(names_line + "\n")
             file.write("-" * len(header) + "\n")
             rows = zip_longest(
                 filenames, values, popul, imaginary, stoichiometry, fillvalue=""
