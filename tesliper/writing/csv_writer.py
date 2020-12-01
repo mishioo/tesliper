@@ -2,8 +2,13 @@
 import csv
 import logging as lgg
 from itertools import zip_longest
+from pathlib import Path
+from string import Template
+from typing import Union, List, Optional
 
-from ._writer import Writer
+from ._writer import Writer, SerialWriter
+from ..glassware.spectra import SingleSpectrum, Spectra
+from ..glassware.arrays import Energies, FloatArray, Bars
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -12,41 +17,16 @@ logger.setLevel(lgg.DEBUG)
 
 # CLASSES
 class CsvWriter(Writer):
-    def write(self, data):
-        data = self.distribute_data(data)
-        if data["energies"]:
-            for en in data["energies"]:
-                self.energies(
-                    f"distribution.{en.genre}.csv",
-                    en,
-                    corrections=data["corrections"].get(en.genre),
-                )
-        if data["vibra"]:
-            self.bars(band=data["frequencies"], bars=data["vibra"], interfix="vibra")
-        if data["electr"]:
-            self.bars(band=data["wavelengths"], bars=data["electr"], interfix="electr")
-        if data["other_bars"]:
-            # TO DO
-            pass
-        if data["spectra"]:
-            for spc in data["spectra"]:
-                self.spectra(spc, interfix=spc.genre)
-        if data["single"]:
-            for spc in data["single"]:
-                interfix = f".{spc.averaged_by}" if spc.averaged_by else ""
-                file = f"spectrum.{spc.genre+interfix}.csv"
-                self.single_spectrum(file, spc)
-        if data["other"]:
-            # TO DO
-            pass
-
-    def energies(self, filename, energies, corrections=None, include_header=True):
+    def energies(
+        self,
+        energies: Energies,
+        corrections: Optional[FloatArray] = None,
+        include_header: bool = True,
+    ):
         """Writes Energies object to csv file.
 
         Parameters
         ----------
-        filename: string
-            path to file
         energies: glassware.Energies
             Energies objects that is to be serialized
         corrections: glassware.DataArray, optional
@@ -69,20 +49,37 @@ class CsvWriter(Writer):
             energies.values,
             corr,
         )
-        with open(self.destination.joinpath(filename), "w", newline="") as file:
-            csvwriter = csv.writer(file)
+        with self.destination.open(self.mode) as handle:
+            csvwriter = csv.writer(handle)
             if include_header:
                 csvwriter.writerow(header)
             for row in rows:
                 csvwriter.writerow(v for v in row if v is not None)
         logger.info("Energies export to csv files done.")
 
-    def bars(self, band, bars, include_header=True, interfix=""):
-        """Writes Bars objects to csv files (one for each conformer).
+    def spectrum(self, spectrum: SingleSpectrum):
+        with self.destination.open(self.mode, newline="") as handle:
+            csvwriter = csv.writer(handle)
+            for row in zip(spectrum.x, spectrum.y):
+                csvwriter.writerow(row)
+        logger.info("Spectrum export to csv files done.")
 
-        Notes
-        -----
-        Filenames are generated in form of {conformer_name}[.{interfix}].csv
+
+class CsvSerialWriter(SerialWriter):
+    extension = "csv"
+
+    def __init__(
+        self,
+        destination: Union[str, Path],
+        mode: str = "x",
+        filename_template: Union[str, Template] = "${filename}.${genre}.${ext}",
+    ):
+        super().__init__(
+            destination=destination, mode=mode, filename_template=filename_template
+        )
+
+    def bars(self, band: Bars, bars: List[Bars], include_header: bool = True):
+        """Writes Bars objects to csv files (one for each conformer).
 
         Parameters
         ----------
@@ -96,46 +93,33 @@ class CsvWriter(Writer):
         include_header: bool, optional
             determines if file should contain a header with column names,
             True by default,
-        interfix: string, optional
-            string included in produced filenames, nothing is added if omitted
         """
         bars = [band] + bars
         headers = [self._header[bar.genre] for bar in bars]
         values = zip(*[bar.values for bar in bars])
-        for fname, values_ in zip(bars[0].filenames, values):
-            filename = (
-                f"{'.'.join(fname.split('.')[:-1])}"
-                f"{'.' if interfix else ''}{interfix}.csv"
+        for num, (fnm, values_) in enumerate(zip(bars[0].filenames, values)):
+            file = self.filename_template.substitute(
+                filename=fnm, ext=self.extension, num=num, genre=band.genre
             )
-            path = self.destination.joinpath(filename)
-            with open(path, "w", newline="") as file:
-                csvwriter = csv.writer(file)
+            with self.destination.joinpath(file).open(self.mode, newline="") as handle:
+                csvwriter = csv.writer(handle)
                 if include_header:
                     csvwriter.writerow(headers)
                 for row in zip(*values_):
                     csvwriter.writerow(row)
         logger.info("Bars export to csv files done.")
 
-    def spectra(self, spectra, interfix="", include_header=True):
+    def spectra(self, spectra: Spectra, include_header: bool = True):
         abscissa = spectra.x
-        for fnm, values in zip(spectra.filenames, spectra.y):
-            filename = (
-                f"{'.'.join(fnm.split('.')[:-1])}"
-                f"{'.' if interfix else ''}{interfix}.csv"
+        for num, (fnm, values) in enumerate(zip(spectra.filenames, spectra.y)):
+            file = self.filename_template.substitute(
+                filename=fnm, ext=self.extension, num=num, genre=spectra.genre
             )
-            file_path = self.destination.joinpath(filename)
-            with open(file_path, "w", newline="") as file:
-                csvwriter = csv.writer(file)
+            with self.destination.joinpath(file).open(self.mode) as handle:
+                csvwriter = csv.writer(handle)
                 if include_header:
                     # write header to file
                     pass
                 for row in zip(abscissa, values):
                     csvwriter.writerow(row)
         logger.info("Spectra export to csv files done.")
-
-    def single_spectrum(self, filename, spectrum):
-        with open(self.destination.joinpath(filename), "w", newline="") as file_:
-            csvwriter = csv.writer(file_)
-            for row in zip(spectrum.x, spectrum.y):
-                csvwriter.writerow(row)
-        logger.info("Spectrum export to csv files done.")
