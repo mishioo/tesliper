@@ -17,6 +17,19 @@ logger.setLevel(lgg.DEBUG)
 
 # CLASSES
 class CsvWriter(Writer):
+    def __init__(
+        self,
+        destination: Union[str, Path],
+        mode: str = "x",
+        dialect: Union[str, csv.Dialect] = "excel",
+        **fmtparams,
+    ):
+        super().__init__(destination=destination, mode=mode)
+        self.dialect = (
+            dialect if isinstance(dialect, csv.Dialect) else csv.get_dialect(dialect)
+        )
+        self.fmtparams = fmtparams
+
     def energies(
         self,
         energies: Energies,
@@ -50,7 +63,7 @@ class CsvWriter(Writer):
             corr,
         )
         with self.destination.open(self.mode) as handle:
-            csvwriter = csv.writer(handle)
+            csvwriter = csv.writer(handle, dialect=self.dialect, **self.fmtparams)
             if include_header:
                 csvwriter.writerow(header)
             for row in rows:
@@ -59,7 +72,7 @@ class CsvWriter(Writer):
 
     def spectrum(self, spectrum: SingleSpectrum):
         with self.destination.open(self.mode, newline="") as handle:
-            csvwriter = csv.writer(handle)
+            csvwriter = csv.writer(handle, dialect=self.dialect, **self.fmtparams)
             for row in zip(spectrum.x, spectrum.y):
                 csvwriter.writerow(row)
         logger.info("Spectrum export to csv files done.")
@@ -73,10 +86,16 @@ class CsvSerialWriter(SerialWriter):
         destination: Union[str, Path],
         mode: str = "x",
         filename_template: Union[str, Template] = "${filename}.${genre}.${ext}",
+        dialect: Union[str, csv.Dialect] = "excel",
+        **fmtparams,
     ):
         super().__init__(
             destination=destination, mode=mode, filename_template=filename_template
         )
+        self.dialect = (
+            dialect if isinstance(dialect, csv.Dialect) else csv.get_dialect(dialect)
+        )
+        self.fmtparams = fmtparams
 
     def bars(self, band: Bars, bars: List[Bars], include_header: bool = True):
         """Writes Bars objects to csv files (one for each conformer).
@@ -102,7 +121,7 @@ class CsvSerialWriter(SerialWriter):
                 filename=fnm, ext=self.extension, num=num, genre=band.genre
             )
             with self.destination.joinpath(file).open(self.mode, newline="") as handle:
-                csvwriter = csv.writer(handle)
+                csvwriter = csv.writer(handle, dialect=self.dialect, **self.fmtparams)
                 if include_header:
                     csvwriter.writerow(headers)
                 for row in zip(*values_):
@@ -116,7 +135,7 @@ class CsvSerialWriter(SerialWriter):
                 filename=fnm, ext=self.extension, num=num, genre=spectra.genre
             )
             with self.destination.joinpath(file).open(self.mode) as handle:
-                csvwriter = csv.writer(handle)
+                csvwriter = csv.writer(handle, dialect=self.dialect, **self.fmtparams)
                 if include_header:
                     # write header to file
                     pass
