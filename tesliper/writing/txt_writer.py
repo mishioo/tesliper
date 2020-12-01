@@ -204,6 +204,8 @@ class TxtSerialWriter(SerialWriter):
         '${filename}.${genre}.${ext}'.
     """
 
+    extension = "txt"
+
     def __init__(
         self,
         destination: Union[str, Path],
