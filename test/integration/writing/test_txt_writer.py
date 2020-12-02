@@ -131,7 +131,7 @@ meoh-2.out           |      45.9577 |       0.8504 |        0.0960 |    -113.505
         )
 
 
-def test_specrtum_basic(writer, spc):
+def test_spectrum_basic(writer, spc):
     writer.spectrum(spc)
     with writer.destination.open("r") as outcome:
         assert (
@@ -147,7 +147,7 @@ ir calculated with peak width = 5 cm-1 and gaussian fitting, shown as Frequency 
         )
 
 
-def test_specrtum_no_header(writer, spc):
+def test_spectrum_no_header(writer, spc):
     writer.spectrum(spc, include_header=False)
     with writer.destination.open("r") as outcome:
         assert (
@@ -161,7 +161,7 @@ def test_specrtum_no_header(writer, spc):
         )
 
 
-def test_specrtum_not_averaged(writer, spc):
+def test_spectrum_not_averaged(writer, spc):
     spc.filenames, spc.averaged_by = None, None
     writer.spectrum(spc)
     with writer.destination.open("r") as outcome:
@@ -175,3 +175,19 @@ ir calculated with peak width = 5 cm-1 and gaussian fitting, shown as Frequency 
   40.00\t  300.0000
   50.00\t    2.0000"""
         )
+
+
+def test_serial_bars(serial_writer, mols):
+    serial_writer.bars(mols.arrayed("freq"), [mols.arrayed("iri")])
+    files = ["meoh-1.freq.txt", "meoh-2.freq.txt"]
+    assert set(p.name for p in serial_writer.destination.iterdir()) == {
+        "meoh-1.freq.txt",
+        "meoh-2.freq.txt",
+    }
+    with serial_writer.destination.joinpath("meoh-1.freq.txt").open("r") as handle:
+        cont = handle.read()
+    listed = cont.split("\n")
+    assert "Frequencies" in listed[0]
+    assert "IR Int." in listed[0]
+    # len = +2 because of header and empty last line
+    assert len(listed) == (len(mols["meoh-1.out"]["freq"]) + 2)

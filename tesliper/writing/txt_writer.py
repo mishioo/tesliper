@@ -255,18 +255,16 @@ class TxtSerialWriter(SerialWriter):
         widths = [self._formatters[genre][4:-4] for genre in genres]
         formatted = [f"{h: <{w}}" for h, w in zip(headers, widths)]
         values = zip(*[bar.values for bar in bars])
-        for num, (fnm, values_) in enumerate(zip(bars[0].filenames, values)):
-            filename = self.filename_template.substitute(
-                filename=fnm, ext=self.extension, num=num, genre=band.genre
-            )
-            with self.destination.joinpath(filename).open(self.mode) as file:
-                file.write("\t".join(formatted))
-                file.write("\n")
-                for vals in zip(*values_):
-                    line = "\t".join(
-                        self._formatters[g].format(v) for v, g in zip(vals, genres)
-                    )
-                    file.write(line + "\n")
+        for handle, values_ in zip(
+            self._iter_handles(bars[0].filenames, band.genre), values
+        ):
+            handle.write("\t".join(formatted))
+            handle.write("\n")
+            for vals in zip(*values_):
+                line = "\t".join(
+                    self._formatters[g].format(v) for v, g in zip(vals, genres)
+                )
+                handle.write(line + "\n")
         logger.info("Bars export to text files done.")
 
     def spectra(self, spectra: Spectra):
@@ -284,15 +282,11 @@ class TxtSerialWriter(SerialWriter):
             f'fitting, shown as {spectra.units["x"]} vs. '
             f'{spectra.units["y"]}'
         )
-        for num, (fnm, values) in enumerate(zip(spectra.filenames, spectra.y)):
-            filename = self.filename_template.substitute(
-                filename=fnm, ext=self.extension, num=num, genre=spectra.genre
+        for handle, values in zip(
+            self._iter_handles(spectra.filenames, spectra.genre), spectra.y
+        ):
+            handle.write(title + "\n")
+            handle.write(
+                "\n".join(f"{int(a):>4d}\t{v: .4f}" for a, v in zip(abscissa, values))
             )
-            with self.destination.joinpath(filename).open(self.mode) as file:
-                file.write(title + "\n")
-                file.write(
-                    "\n".join(
-                        f"{int(a):>4d}\t{v: .4f}" for a, v in zip(abscissa, values)
-                    )
-                )
         logger.info("Spectra export to text files done.")

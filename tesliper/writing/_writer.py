@@ -1,7 +1,7 @@
 # IMPORTS
 from pathlib import Path
 from string import Template
-from typing import Union, Iterable, Dict
+from typing import Union, Iterable, Dict, TextIO, Any
 
 import logging as lgg
 
@@ -367,3 +367,27 @@ class SerialWriter(Writer):
             # TODO: add list of unexpected identifiers given
             raise ValueError("Unexpected identifiers given.") from error
         self._filename_template = filename_template
+
+    def _iter_handles(self, filenames: Iterable[str], genre: str) -> (TextIO, Any):
+        """Helper method for iteration over generated files.
+
+        Parameters
+        ----------
+        filenames: list of str
+            list of source filenames
+        genre: str
+            genre name for filename_template
+
+        Yields
+        ------
+        TextIO
+            file handle, will be closed automatically
+        any
+            values corresponding to particular filename, given in `values` parameter
+        """
+        for num, fnm in enumerate(filenames):
+            filename = self.filename_template.substitute(
+                filename=Path(fnm).stem, ext=self.extension, num=num, genre=genre
+            )
+            with self.destination.joinpath(filename).open(self.mode) as handle:
+                yield handle

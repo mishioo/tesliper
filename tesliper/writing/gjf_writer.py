@@ -3,7 +3,7 @@ import logging
 from itertools import cycle
 from pathlib import Path
 from string import Template
-from typing import Iterable, Union, List, Sequence, Optional
+from typing import Iterable, Union, List, Sequence, Optional, TextIO
 
 from ._writer import SerialWriter
 from ..datawork.atoms import symbol_of_element
@@ -86,41 +86,40 @@ class GjfWriter(SerialWriter):
                 else multiplicity
             )
         mult = cycle(mult)
-        for num, (fnm, *params) in enumerate(
-            zip(geometry.filenames, geom, atoms, char, mult)
+        for handle, *params in zip(
+            self._iter_handles(geometry.filenames, geometry.genre),
+            geom,
+            atoms,
+            char,
+            mult,
         ):
-            filename = self.filename_template.substitute(
-                filename=fnm, ext=self.extension, num=num, genre=geometry.genre
-            )
-            self._write_conformer(filename, *params)
+            self._write_conformer(handle, *params)
 
     def _write_conformer(
         self,
-        filename: str,
+        file: TextIO,
         g: Sequence[Sequence[float]],
         a: Sequence[int],
         c: int,
         m: int,
     ):
-        path = self.destination.joinpath(filename)
-        with path.open(self.mode) as file:
-            for key, value in self.link0.items():
-                if "save" in key:
-                    file.write(f"%{self._link0_commands[key]}\n")
-                else:
-                    file.write(f"%{self._link0_commands[key]}={value}\n")
-            file.write(self.route)
-            file.write("\n" * 2)
-            file.write(self.comment)
-            file.write("\n" * 2)
-            file.write(f"{c} {m}\n")
-            for line in _format_coordinates(g, a):
-                file.write(line)
-            if self.post_spec:
-                file.write("\n")
-                file.write(self.post_spec)
-                file.write("\n")
-            file.write("\n" * (self.empty_lines_at_end - 1))
+        for key, value in self.link0.items():
+            if "save" in key:
+                file.write(f"%{self._link0_commands[key]}\n")
+            else:
+                file.write(f"%{self._link0_commands[key]}={value}\n")
+        file.write(self.route)
+        file.write("\n" * 2)
+        file.write(self.comment)
+        file.write("\n" * 2)
+        file.write(f"{c} {m}\n")
+        for line in _format_coordinates(g, a):
+            file.write(line)
+        if self.post_spec:
+            file.write("\n")
+            file.write(self.post_spec)
+            file.write("\n")
+        file.write("\n" * (self.empty_lines_at_end - 1))
 
     @property
     def link0(self):

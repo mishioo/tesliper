@@ -116,29 +116,25 @@ class CsvSerialWriter(SerialWriter):
         bars = [band] + bars
         headers = [self._header[bar.genre] for bar in bars]
         values = zip(*[bar.values for bar in bars])
-        for num, (fnm, values_) in enumerate(zip(bars[0].filenames, values)):
-            file = self.filename_template.substitute(
-                filename=fnm, ext=self.extension, num=num, genre=band.genre
-            )
-            with self.destination.joinpath(file).open(self.mode, newline="") as handle:
-                csvwriter = csv.writer(handle, dialect=self.dialect, **self.fmtparams)
-                if include_header:
-                    csvwriter.writerow(headers)
-                for row in zip(*values_):
-                    csvwriter.writerow(row)
+        for handle, values_ in zip(
+            self._iter_handles(bars[0].filenames, band.genre), values
+        ):
+            csvwriter = csv.writer(handle, dialect=self.dialect, **self.fmtparams)
+            if include_header:
+                csvwriter.writerow(headers)
+            for row in zip(*values_):
+                csvwriter.writerow(row)
         logger.info("Bars export to csv files done.")
 
     def spectra(self, spectra: Spectra, include_header: bool = True):
         abscissa = spectra.x
-        for num, (fnm, values) in enumerate(zip(spectra.filenames, spectra.y)):
-            file = self.filename_template.substitute(
-                filename=fnm, ext=self.extension, num=num, genre=spectra.genre
-            )
-            with self.destination.joinpath(file).open(self.mode) as handle:
-                csvwriter = csv.writer(handle, dialect=self.dialect, **self.fmtparams)
-                if include_header:
-                    # write header to file
-                    pass
-                for row in zip(abscissa, values):
-                    csvwriter.writerow(row)
+        for handle, values in zip(
+            self._iter_handles(spectra.filenames, spectra.genre), spectra.y
+        ):
+            csvwriter = csv.writer(handle, dialect=self.dialect, **self.fmtparams)
+            if include_header:
+                # write header to file
+                pass
+            for row in zip(abscissa, values):
+                csvwriter.writerow(row)
         logger.info("Spectra export to csv files done.")

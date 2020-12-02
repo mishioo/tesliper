@@ -130,7 +130,8 @@ def test_alt_args(tmp_path, gjfwriter, geometry, altcharge, altmultiplicity, fil
 )
 def test_link0(tmp_path, gjfwriter, link0, expline):
     gjfwriter.link0 = link0
-    gjfwriter._write_conformer("test.gjf", [[1, 1, 1]], [1], 0, 1)
+    with tmp_path.joinpath("test.gjf").open("w") as file:
+        gjfwriter._write_conformer(file, [[1, 1, 1]], [1], 0, 1)
     expected = [
         expline,
         "# hf/sto-3g\n",
