@@ -177,12 +177,10 @@ ir calculated with peak width = 5 cm-1 and gaussian fitting, shown as Frequency 
         )
 
 
-def test_serial_bars(serial_writer, mols):
+def test_serial_bars(serial_writer, mols, filenames):
     serial_writer.bars(mols.arrayed("freq"), [mols.arrayed("iri")])
-    files = ["meoh-1.freq.txt", "meoh-2.freq.txt"]
     assert set(p.name for p in serial_writer.destination.iterdir()) == {
-        "meoh-1.freq.txt",
-        "meoh-2.freq.txt",
+        Path(f).with_suffix('.freq.txt').name for f in filenames
     }
     with serial_writer.destination.joinpath("meoh-1.freq.txt").open("r") as handle:
         cont = handle.read()
