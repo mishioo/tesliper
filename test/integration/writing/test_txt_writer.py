@@ -15,7 +15,7 @@ def filenames():
 
 @pytest.fixture
 def fixturesdir():
-    return Path().joinpath("../fixtures")
+    return Path(__file__).parent.with_name("fixtures")
 
 
 @pytest.fixture
