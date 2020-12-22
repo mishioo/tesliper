@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 
 from tesliper.writing.txt_writer import TxtWriter, TxtSerialWriter
-from tesliper.glassware import arrays as ar, SingleSpectrum
+from tesliper.glassware import arrays as ar, SingleSpectrum, Spectra
 from tesliper.extraction import Soxhlet
 from tesliper.glassware import Molecules
 
@@ -35,6 +35,18 @@ def spc(filenames):
         fitting="gaussian",
         filenames=filenames,
         averaged_by="gib",
+    )
+
+
+@pytest.fixture
+def spectra(filenames):
+    return Spectra(
+        genre="ir",
+        values=[[0.3, 0.2, 10, 300, 2], [0.5, 0.8, 12, 150, 5]],
+        abscissa=[10, 20, 30, 40, 50],
+        width=5,
+        fitting="gaussian",
+        filenames=filenames,
     )
 
 
@@ -189,3 +201,17 @@ def test_serial_bars(serial_writer, mols, filenames):
     assert "IR Int." in listed[0]
     # len = +2 because of header and empty last line
     assert len(listed) == (len(mols["meoh-1.out"]["freq"]) + 2)
+
+
+def test_serial_spectra(serial_writer, spectra, filenames):
+    serial_writer.spectra(spectra)
+    for name, values in zip(spectra.filenames, spectra.values):
+        file = serial_writer.destination.joinpath(name).with_suffix('.ir.txt')
+        with file.open('r') as f:
+            output = f.readlines()
+        assert 'ir calculated' in output[0]
+        assert 'width = 5 cm-1' in output[0]
+        assert 'gaussian fitting' in output[0]
+        assert 'Frequency / cm^(-1) vs. Epsilon' in output[0]
+        for line, y, x in zip(output[1:], spectra.abscissa, values):
+            assert [float(v) for v in line.split()] == [y, x]
