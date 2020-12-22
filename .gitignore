@@ -78,9 +78,6 @@ logi/
 private/
 quickcheck*
 tslr_err_log.txt
-build/
-dist/
-*.spec
 .idea/
 tesliper_output/
 *.pkl
