@@ -49,7 +49,7 @@ class _CsvMixin:
             *args,
             dialect: Union[str, csv.Dialect] = "excel",
             fmtparams: Optional[Dict] = None,
-            include_header: Optional[bool] = True,
+            include_header: bool = True,
             **kwargs,
     ):
         self.dialect = dialect
@@ -98,11 +98,16 @@ class CsvWriter(_CsvMixin, Writer):
         self,
         destination: Union[str, Path],
         mode: str = "x",
+        include_header: bool = True,
         dialect: Union[str, csv.Dialect] = "excel",
         **fmtparams,
     ):
         super().__init__(
-            destination=destination, mode=mode, dialect=dialect, fmtparams=fmtparams
+            destination=destination,
+            mode=mode,
+            dialect=dialect,
+            fmtparams=fmtparams,
+            include_header=include_header,
         )
 
     def energies(
@@ -160,6 +165,7 @@ class CsvSerialWriter(_CsvMixin, SerialWriter):
         destination: Union[str, Path],
         mode: str = "x",
         filename_template: Union[str, Template] = "${filename}.${genre}.${ext}",
+        include_header: bool = True,
         dialect: Union[str, csv.Dialect] = "excel",
         **fmtparams,
     ):
@@ -169,6 +175,7 @@ class CsvSerialWriter(_CsvMixin, SerialWriter):
             filename_template=filename_template,
             dialect=dialect,
             fmtparams=fmtparams,
+            include_header=include_header,
         )
 
     def bars(self, band: Bars, bars: List[Bars]):
