@@ -153,16 +153,13 @@ class TxtWriter(Writer):
                 file.write(" | ".join(new_row) + "\n")
         logger.info("Energies separate export to text files done.")
 
-    def spectrum(self, spectrum: SingleSpectrum, include_header: bool = True):
+    def spectrum(self, spectrum: SingleSpectrum):
         """Writes SingleSpectrum object to txt file.
 
         Parameters
         ----------
         spectrum: glassware.SingleSpectrum
             spectrum, that is to be serialized
-        include_header: bool, optional
-            determines if file should contain a header with metadata,
-            True by default
         """
         title = (
             f"{spectrum.genre} calculated with peak width = "
@@ -171,13 +168,12 @@ class TxtWriter(Writer):
             f'vs. {spectrum.units["y"]}'
         )
         with self.destination.open(self.mode) as file:
-            if include_header:
-                file.write(title + "\n")
-                if spectrum.averaged_by:
-                    file.write(
-                        f"{len(spectrum.filenames)} conformers averaged base on"
-                        f" {self._header[spectrum.averaged_by]}\n"
-                    )
+            file.write(title + "\n")
+            if spectrum.averaged_by:
+                file.write(
+                    f"{len(spectrum.filenames)} conformers averaged base on"
+                    f" {self._header[spectrum.averaged_by]}\n"
+                )
             file.write(
                 "\n".join(
                     f"{int(x):> 7.2f}\t{y: > 10.4f}"

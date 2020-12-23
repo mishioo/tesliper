@@ -159,20 +159,6 @@ ir calculated with peak width = 5 cm-1 and gaussian fitting, shown as Frequency 
         )
 
 
-def test_spectrum_no_header(writer, spc):
-    writer.spectrum(spc, include_header=False)
-    with writer.destination.open("r") as outcome:
-        assert (
-            outcome.read()
-            == """\
-  10.00\t    0.3000
-  20.00\t    0.2000
-  30.00\t   10.0000
-  40.00\t  300.0000
-  50.00\t    2.0000"""
-        )
-
-
 def test_spectrum_not_averaged(writer, spc):
     spc.filenames, spc.averaged_by = None, None
     writer.spectrum(spc)
