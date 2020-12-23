@@ -129,17 +129,16 @@ def test_energies_no_corr_no_header(writer, gib_no_corr):
             assert given == tuple(str_or_float(v) for v in got)
 
 
-def test_spectrum(writer, spc):
-    writer.spectrum(spc)
+def test_spectrum_no_header(writer, spc):
+    writer.spectrum(spc, include_header=False)
     with writer.destination.open('r', newline='') as file:
         reader = csv.reader(file)
         for given, got in zip(zip(spc.abscissa, spc.values), reader):
             assert given == tuple(float(v) for v in got)
 
 
-@pytest.mark.xfail(reason="Not supported yet")
-def test_spectrum_with_header(writer, spc):
-    writer.spectrum(spc, include_header=True)
+def test_spectrum(writer, spc):
+    writer.spectrum(spc)
     header = [spc.units['y'], spc.units['x']]
     with writer.destination.open('r', newline='') as file:
         reader = csv.reader(file)
@@ -174,10 +173,9 @@ def test_serial_bars_no_header(serial_writer, mols):
                 assert given == [float(v) for v in got]
 
 
-@pytest.mark.xfail(reason="Not supported yet")
 def test_serial_spectra(serial_writer, spectra):
     serial_writer.spectra(spectra)
-    header = ''
+    header = [spectra.units['y'], spectra.units['x']]
     for name, values in zip(spectra.filenames, spectra.values):
         file = serial_writer.destination.joinpath(name).with_suffix('.ir.csv')
         with file.open('r') as file:

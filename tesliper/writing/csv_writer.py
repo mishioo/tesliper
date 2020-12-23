@@ -70,9 +70,11 @@ class CsvWriter(Writer):
                 csvwriter.writerow(v for v in row if v is not None)
         logger.info("Energies export to csv files done.")
 
-    def spectrum(self, spectrum: SingleSpectrum):
+    def spectrum(self, spectrum: SingleSpectrum, include_header: bool = True):
         with self.destination.open(self.mode, newline="") as handle:
             csvwriter = csv.writer(handle, dialect=self.dialect, **self.fmtparams)
+            if include_header:
+                csvwriter.writerow([spectrum.units['y'], spectrum.units['x']])
             for row in zip(spectrum.x, spectrum.y):
                 csvwriter.writerow(row)
         logger.info("Spectrum export to csv files done.")
@@ -128,13 +130,13 @@ class CsvSerialWriter(SerialWriter):
 
     def spectra(self, spectra: Spectra, include_header: bool = True):
         abscissa = spectra.x
+        header = [spectra.units['y'], spectra.units['x']]
         for handle, values in zip(
             self._iter_handles(spectra.filenames, spectra.genre), spectra.y
         ):
             csvwriter = csv.writer(handle, dialect=self.dialect, **self.fmtparams)
             if include_header:
-                # write header to file
-                pass
+                csvwriter.writerow(header)
             for row in zip(abscissa, values):
                 csvwriter.writerow(row)
         logger.info("Spectra export to csv files done.")
