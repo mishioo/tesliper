@@ -30,6 +30,8 @@ class _CsvMixin:
     fmtparams: dict, optional
         Additional formatting parameters for csv.writer to use.
         For list of valid parameters consult csv.Dialect documentation.
+    include_header: bool, optional
+        Determines if file should contain a header with column names, True by default.
     """
     _known_fmt_params = {
         "delimiter",
@@ -47,10 +49,12 @@ class _CsvMixin:
             *args,
             dialect: Union[str, csv.Dialect] = "excel",
             fmtparams: Optional[Dict] = None,
+            include_header: Optional[bool] = True,
             **kwargs,
     ):
         self.dialect = dialect
         self.fmtparams = fmtparams or {}
+        self.include_header = include_header
         super().__init__(*args, **kwargs)
 
     @property
@@ -105,7 +109,6 @@ class CsvWriter(_CsvMixin, Writer):
         self,
         energies: Energies,
         corrections: Optional[FloatArray] = None,
-        include_header: bool = True,
     ):
         """Writes Energies object to csv file.
 
@@ -115,9 +118,7 @@ class CsvWriter(_CsvMixin, Writer):
             Energies objects that is to be serialized
         corrections: glassware.DataArray, optional
             DataArray objects containing energies corrections
-        include_header: bool, optional
-            determines if file should contain a header with column names,
-            True by default"""
+        """
         header = ["Gaussian output file"]
         header += "population min_factor delta energy".split(" ")
         if corrections is not None:
@@ -135,16 +136,16 @@ class CsvWriter(_CsvMixin, Writer):
         )
         with self.destination.open(self.mode) as handle:
             csvwriter = csv.writer(handle, dialect=self.dialect, **self.fmtparams)
-            if include_header:
+            if self.include_header:
                 csvwriter.writerow(header)
             for row in rows:
                 csvwriter.writerow(v for v in row if v is not None)
         logger.info("Energies export to csv files done.")
 
-    def spectrum(self, spectrum: SingleSpectrum, include_header: bool = True):
+    def spectrum(self, spectrum: SingleSpectrum):
         with self.destination.open(self.mode, newline="") as handle:
             csvwriter = csv.writer(handle, dialect=self.dialect, **self.fmtparams)
-            if include_header:
+            if self.include_header:
                 csvwriter.writerow([spectrum.units['y'], spectrum.units['x']])
             for row in zip(spectrum.x, spectrum.y):
                 csvwriter.writerow(row)
@@ -170,7 +171,7 @@ class CsvSerialWriter(_CsvMixin, SerialWriter):
             fmtparams=fmtparams,
         )
 
-    def bars(self, band: Bars, bars: List[Bars], include_header: bool = True):
+    def bars(self, band: Bars, bars: List[Bars]):
         """Writes Bars objects to csv files (one for each conformer).
 
         Parameters
@@ -182,9 +183,6 @@ class CsvSerialWriter(_CsvMixin, SerialWriter):
         bars: list of glassware.Bars
             Bars objects that are to be serialized; all should contain
             information for the same conformers
-        include_header: bool, optional
-            determines if file should contain a header with column names,
-            True by default,
         """
         bars = [band] + bars
         headers = [self._header[bar.genre] for bar in bars]
@@ -193,20 +191,20 @@ class CsvSerialWriter(_CsvMixin, SerialWriter):
             self._iter_handles(bars[0].filenames, band.genre), values
         ):
             csvwriter = csv.writer(handle, dialect=self.dialect, **self.fmtparams)
-            if include_header:
+            if self.include_header:
                 csvwriter.writerow(headers)
             for row in zip(*values_):
                 csvwriter.writerow(row)
         logger.info("Bars export to csv files done.")
 
-    def spectra(self, spectra: Spectra, include_header: bool = True):
+    def spectra(self, spectra: Spectra):
         abscissa = spectra.x
         header = [spectra.units['y'], spectra.units['x']]
         for handle, values in zip(
             self._iter_handles(spectra.filenames, spectra.genre), spectra.y
         ):
             csvwriter = csv.writer(handle, dialect=self.dialect, **self.fmtparams)
-            if include_header:
+            if self.include_header:
                 csvwriter.writerow(header)
             for row in zip(abscissa, values):
                 csvwriter.writerow(row)

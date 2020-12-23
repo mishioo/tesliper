@@ -121,8 +121,9 @@ def test_energies(writer, gib_with_corr):
 
 
 def test_energies_no_header(writer, gib_with_corr):
+    writer.include_header = False
     gib, corr, values = gib_with_corr
-    writer.energies(gib, corr, include_header=False)
+    writer.energies(gib, corr)
     with writer.destination.open('r', newline='') as file:
         reader = csv.reader(file)
         for given, got in zip(values, reader):
@@ -130,8 +131,9 @@ def test_energies_no_header(writer, gib_with_corr):
 
 
 def test_energies_no_corr_no_header(writer, gib_no_corr):
+    writer.include_header = False
     gib, values = gib_no_corr
-    writer.energies(gib, include_header=False)
+    writer.energies(gib)
     with writer.destination.open('r', newline='') as file:
         reader = csv.reader(file)
         for given, got in zip(values, reader):
@@ -139,7 +141,8 @@ def test_energies_no_corr_no_header(writer, gib_no_corr):
 
 
 def test_spectrum_no_header(writer, spc):
-    writer.spectrum(spc, include_header=False)
+    writer.include_header = False
+    writer.spectrum(spc)
     with writer.destination.open('r', newline='') as file:
         reader = csv.reader(file)
         for given, got in zip(zip(spc.abscissa, spc.values), reader):
@@ -171,8 +174,9 @@ def test_serial_bars(serial_writer, mols):
 
 
 def test_serial_bars_no_header(serial_writer, mols):
+    serial_writer.include_header = False
     freq, bars = mols.arrayed("freq"), [mols.arrayed("iri")]
-    serial_writer.bars(freq, bars, include_header=False)
+    serial_writer.bars(freq, bars)
     values = list(zip(freq.values, *[b.values for b in bars]))
     for name, values in zip(freq.filenames, values):
         file = serial_writer.destination.joinpath(name).with_suffix('.freq.csv')
@@ -195,7 +199,8 @@ def test_serial_spectra(serial_writer, spectra):
 
 
 def test_serial_spectra_no_header(serial_writer, spectra):
-    serial_writer.spectra(spectra, include_header=False)
+    serial_writer.include_header = False
+    serial_writer.spectra(spectra)
     for name, values in zip(spectra.filenames, spectra.values):
         file = serial_writer.destination.joinpath(name).with_suffix('.ir.csv')
         with file.open('r') as file:
