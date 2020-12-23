@@ -61,7 +61,7 @@ class _CsvMixin:
         return self._dialect
 
     @dialect.setter
-    def dialect(self, dialect):
+    def dialect(self, dialect: Union[str, csv.Dialect]):
         self._dialect = (
             dialect if isinstance(dialect, csv.Dialect) else csv.get_dialect(dialect)
         )
@@ -79,13 +79,13 @@ class _CsvMixin:
         return self._fmtparams
 
     @fmtparams.setter
-    def fmtparams(self, **kwargs):
-        for param in kwargs.keys():
+    def fmtparams(self, params: Dict):
+        for param in params.keys():
             if param not in self._known_fmt_params:
                 raise TypeError(
                     f"'{param}' is an invalid csv formatting parameter"
                 )
-        self._fmtparams = kwargs
+        self._fmtparams = params
 
 
 # CLASSES
