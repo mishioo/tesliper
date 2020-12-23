@@ -19,8 +19,16 @@ logger.setLevel(lgg.DEBUG)
 
 # CLASSES
 class TxtWriter(Writer):
-    """Object for writing extracted data in .txt format form many conformers
-    to one file.
+    """Writes extracted data in .txt format form many conformers to one file.
+
+    Parameters
+    ----------
+    destination: str or pathlib.Path
+        Directory, to which generated files should be written.
+    mode: str
+        Specifies how writing to file should be handled. Should be one of characters:
+         'a' (append to existing file), 'x' (only write if file does'nt exist yet),
+         or 'w' (overwrite file if it already exists).
     """
 
     def overview(

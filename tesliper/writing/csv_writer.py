@@ -94,6 +94,25 @@ class _CsvMixin:
 
 # CLASSES
 class CsvWriter(_CsvMixin, Writer):
+    """Writes extracted data in .csv format form many conformers to one file.
+
+    Parameters
+    ----------
+    destination: str or pathlib.Path
+        Directory, to which generated files should be written.
+    mode: str
+        Specifies how writing to file should be handled. Should be one of characters:
+         'a' (append to existing file), 'x' (only write if file does'nt exist yet),
+         or 'w' (overwrite file if it already exists).
+    include_header: bool, optional
+        Determines if file should contain a header with column names, True by default.
+    dialect: str or csv.Dialect
+        Name of a dialect or csv.Dialect object, which will be used by underlying
+        csv.writer.
+    fmtparams: dict, optional
+        Additional formatting parameters for underlying csv.writer to use.
+        For list of valid parameters consult csv.Dialect documentation.
+    """
     def __init__(
         self,
         destination: Union[str, Path],
@@ -115,7 +134,9 @@ class CsvWriter(_CsvMixin, Writer):
         energies: Energies,
         corrections: Optional[FloatArray] = None,
     ):
-        """Writes Energies object to csv file.
+        """Writes Energies object to csv file. The output also contains derived values:
+        populations, min_factors, deltas. Corrections are added only when explicitly
+        given.
 
         Parameters
         ----------
@@ -148,6 +169,13 @@ class CsvWriter(_CsvMixin, Writer):
         logger.info("Energies export to csv files done.")
 
     def spectrum(self, spectrum: SingleSpectrum):
+        """Writes SingleSpectrum object to csv file.
+
+        Parameters
+        ----------
+        spectrum: glassware.SingleSpectrum
+            spectrum, that is to be serialized
+        """
         with self.destination.open(self.mode, newline="") as handle:
             csvwriter = csv.writer(handle, dialect=self.dialect, **self.fmtparams)
             if self.include_header:
@@ -158,6 +186,29 @@ class CsvWriter(_CsvMixin, Writer):
 
 
 class CsvSerialWriter(_CsvMixin, SerialWriter):
+    """Writes extracted data in .csv format, generates separate file for
+    each given conformer.
+
+    Parameters
+    ----------
+    destination: str or pathlib.Path
+        Directory, to which generated files should be written.
+    mode: str
+        Specifies how writing to file should be handled. Should be one of characters:
+         'a' (append to existing file), 'x' (only write if file doesn't exist yet),
+         or 'w' (overwrite file if it already exists).
+    filename_template: str or string.Template
+        Template for names of generated files, defaults to
+        '${filename}.${genre}.${ext}'.
+     include_header: bool, optional
+        Determines if file should contain a header with column names, True by default.
+    dialect: str or csv.Dialect
+        Name of a dialect or csv.Dialect object, which will be used by underlying
+        csv.writer.
+    fmtparams: dict, optional
+        Additional formatting parameters for underlying csv.writer to use.
+        For list of valid parameters consult csv.Dialect documentation.
+   """
     extension = "csv"
 
     def __init__(
@@ -179,17 +230,17 @@ class CsvSerialWriter(_CsvMixin, SerialWriter):
         )
 
     def bars(self, band: Bars, bars: List[Bars]):
-        """Writes Bars objects to csv files (one for each conformer).
+        """Writes Bars objects to csv files (one file for each conformer).
 
         Parameters
         ----------
         band: glassware.Bars
-            object containing information about band at which transitions occur;
+            Object containing information about band at which transitions occur;
             it should be frequencies for vibrational data and wavelengths or
-            excitation energies for electronic data
+            excitation energies for electronic data.
         bars: list of glassware.Bars
             Bars objects that are to be serialized; all should contain
-            information for the same conformers
+            information for the same set of conformers and correspond to given band.
         """
         bars = [band] + bars
         headers = [self._header[bar.genre] for bar in bars]
@@ -205,6 +256,13 @@ class CsvSerialWriter(_CsvMixin, SerialWriter):
         logger.info("Bars export to csv files done.")
 
     def spectra(self, spectra: Spectra):
+        """Writes Spectra object to .csv files (one file for each conformer).
+
+        Parameters
+        ----------
+        spectra: glassware.Spectra
+            Spectra object, that is to be serialized.
+        """
         abscissa = spectra.x
         header = [spectra.units['y'], spectra.units['x']]
         for handle, values in zip(
