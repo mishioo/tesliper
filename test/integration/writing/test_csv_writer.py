@@ -99,6 +99,11 @@ def test_non_existent_dialect(tmp_path):
         CsvWriter(tmp_path.joinpath("test.scv"), dialect="no-dialect")
 
 
+def test_invalif_fmt_parameter(tmp_path):
+    with pytest.raises(TypeError):
+        CsvWriter(tmp_path.joinpath("test.scv"), invalidparam='wrong')
+
+
 def test_energies(writer, gib_with_corr):
     gib, corr, values = gib_with_corr
     writer.energies(gib, corr)

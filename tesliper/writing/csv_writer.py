@@ -4,7 +4,7 @@ import logging as lgg
 from itertools import zip_longest
 from pathlib import Path
 from string import Template
-from typing import Union, List, Optional
+from typing import Union, List, Optional, Dict
 
 from ._writer import Writer, SerialWriter
 from ..glassware.spectra import SingleSpectrum, Spectra
@@ -15,8 +15,81 @@ logger = lgg.getLogger(__name__)
 logger.setLevel(lgg.DEBUG)
 
 
+class _CsvMixin:
+    """Mixin class for csv writers.
+
+    This class takes care of setting up format of produced csv files.
+    It should be used as a first base class to ensure proper cooperation with other
+    base classes. It will pass all given *args and **kwargs to the next base class
+    in MRO.
+
+    Parameters
+    ----------
+    dialect: str or csv.Dialect
+        Name of a dialect or csv.Dialect object, which will be used by csv.writer.
+    fmtparams: dict, optional
+        Additional formatting parameters for csv.writer to use.
+        For list of valid parameters consult csv.Dialect documentation.
+    """
+    _known_fmt_params = {
+        "delimiter",
+        "doublequote",
+        "escapechar",
+        "lineterminator",
+        "quotechar",
+        "quoting",
+        "skipinitialspace",
+        "strict",
+    }
+
+    def __init__(
+            self,
+            *args,
+            dialect: Union[str, csv.Dialect] = "excel",
+            fmtparams: Optional[Dict] = None,
+            **kwargs,
+    ):
+        self.dialect = dialect
+        self.fmtparams = fmtparams or {}
+        super().__init__(*args, **kwargs)
+
+    @property
+    def dialect(self):
+        """Name of a dialect (as string) or csv.Dialect object,
+        which will be used by csv.writer.
+        """
+        return self._dialect
+
+    @dialect.setter
+    def dialect(self, dialect):
+        self._dialect = (
+            dialect if isinstance(dialect, csv.Dialect) else csv.get_dialect(dialect)
+        )
+
+    @property
+    def fmtparams(self):
+        """Dict of additional formatting parameters for csv.writer to use.
+        For list of valid parameters consult csv.Dialect documentation.
+
+        Raises
+        ------
+        TypeError
+            if invalid parameter is given
+        """
+        return self._fmtparams
+
+    @fmtparams.setter
+    def fmtparams(self, **kwargs):
+        for param in kwargs.keys():
+            if param not in self._known_fmt_params:
+                raise TypeError(
+                    f"'{param}' is an invalid csv formatting parameter"
+                )
+        self._fmtparams = kwargs
+
+
 # CLASSES
-class CsvWriter(Writer):
+class CsvWriter(_CsvMixin, Writer):
     def __init__(
         self,
         destination: Union[str, Path],
@@ -24,11 +97,9 @@ class CsvWriter(Writer):
         dialect: Union[str, csv.Dialect] = "excel",
         **fmtparams,
     ):
-        super().__init__(destination=destination, mode=mode)
-        self.dialect = (
-            dialect if isinstance(dialect, csv.Dialect) else csv.get_dialect(dialect)
+        super().__init__(
+            destination=destination, mode=mode, dialect=dialect, fmtparams=fmtparams
         )
-        self.fmtparams = fmtparams
 
     def energies(
         self,
@@ -80,7 +151,7 @@ class CsvWriter(Writer):
         logger.info("Spectrum export to csv files done.")
 
 
-class CsvSerialWriter(SerialWriter):
+class CsvSerialWriter(_CsvMixin, SerialWriter):
     extension = "csv"
 
     def __init__(
@@ -92,12 +163,12 @@ class CsvSerialWriter(SerialWriter):
         **fmtparams,
     ):
         super().__init__(
-            destination=destination, mode=mode, filename_template=filename_template
+            destination=destination,
+            mode=mode,
+            filename_template=filename_template,
+            dialect=dialect,
+            fmtparams=fmtparams,
         )
-        self.dialect = (
-            dialect if isinstance(dialect, csv.Dialect) else csv.get_dialect(dialect)
-        )
-        self.fmtparams = fmtparams
 
     def bars(self, band: Bars, bars: List[Bars], include_header: bool = True):
         """Writes Bars objects to csv files (one for each conformer).
