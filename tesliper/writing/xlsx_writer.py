@@ -126,7 +126,8 @@ class XlsxWriter(Writer):
         for column, width in zip(ws.columns, widths):
             if not width:
                 width = max(len(str(cell.value)) for cell in column) + 2
-            ws.column_dimensions[column[0].column].width = width
+            column_letter = oxl.utils.get_column_letter(column[0].column)
+            ws.column_dimensions[column_letter].width = width
         # proceed to write detailed info on separate sheet for each energy
         corrs = {c.genre[:3]: c for c in corrections} if corrections is not None else {}
         for en in energies:
@@ -165,7 +166,8 @@ class XlsxWriter(Writer):
             for column, width in zip(ws.columns, widths):
                 if not width:
                     width = max(len(str(cell.value)) for cell in column) + 2
-                ws.column_dimensions[column[0].column].width = width
+                column_letter = oxl.utils.get_column_letter(column[0].column)
+                ws.column_dimensions[column_letter].width = width
         wb.save(self.destination)
         logger.info("Energies export to xlsx files done.")
 
@@ -194,7 +196,8 @@ class XlsxWriter(Writer):
             ws.append(headers)
             ws.freeze_panes = "B2"
             for column, width in zip(ws.columns, widths):
-                ws.column_dimensions[column[0].column].width = width
+                column_letter = oxl.utils.get_column_letter(column[0].column)
+                ws.column_dimensions[column_letter].width = width
             for col_num, (vals, fmt) in enumerate(zip(values_, fmts)):
                 for row_num, v in enumerate(vals):
                     cell = ws.cell(row=row_num + 2, column=col_num + 1)
