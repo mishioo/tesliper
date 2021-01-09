@@ -33,6 +33,7 @@ class _CsvMixin:
     include_header: bool, optional
         Determines if file should contain a header with column names, True by default.
     """
+
     _known_fmt_params = {
         "delimiter",
         "doublequote",
@@ -45,12 +46,12 @@ class _CsvMixin:
     }
 
     def __init__(
-            self,
-            *args,
-            dialect: Union[str, csv.Dialect] = "excel",
-            fmtparams: Optional[Dict] = None,
-            include_header: bool = True,
-            **kwargs,
+        self,
+        *args,
+        dialect: Union[str, csv.Dialect] = "excel",
+        fmtparams: Optional[Dict] = None,
+        include_header: bool = True,
+        **kwargs,
     ):
         self.dialect = dialect
         self.fmtparams = fmtparams or {}
@@ -86,9 +87,7 @@ class _CsvMixin:
     def fmtparams(self, params: Dict):
         for param in params.keys():
             if param not in self._known_fmt_params:
-                raise TypeError(
-                    f"'{param}' is an invalid csv formatting parameter"
-                )
+                raise TypeError(f"'{param}' is an invalid csv formatting parameter")
         self._fmtparams = params
 
 
@@ -102,7 +101,7 @@ class CsvWriter(_CsvMixin, Writer):
         Directory, to which generated files should be written.
     mode: str
         Specifies how writing to file should be handled. Should be one of characters:
-         'a' (append to existing file), 'x' (only write if file does'nt exist yet),
+         'a' (append to existing file), 'x' (only write if file doesn't exist yet),
          or 'w' (overwrite file if it already exists).
     include_header: bool, optional
         Determines if file should contain a header with column names, True by default.
@@ -113,6 +112,7 @@ class CsvWriter(_CsvMixin, Writer):
         Additional formatting parameters for underlying csv.writer to use.
         For list of valid parameters consult csv.Dialect documentation.
     """
+
     def __init__(
         self,
         destination: Union[str, Path],
@@ -130,9 +130,7 @@ class CsvWriter(_CsvMixin, Writer):
         )
 
     def energies(
-        self,
-        energies: Energies,
-        corrections: Optional[FloatArray] = None,
+        self, energies: Energies, corrections: Optional[FloatArray] = None,
     ):
         """Writes Energies object to csv file. The output also contains derived values:
         populations, min_factors, deltas. Corrections are added only when explicitly
@@ -179,7 +177,7 @@ class CsvWriter(_CsvMixin, Writer):
         with self.destination.open(self.mode, newline="") as handle:
             csvwriter = csv.writer(handle, dialect=self.dialect, **self.fmtparams)
             if self.include_header:
-                csvwriter.writerow([spectrum.units['y'], spectrum.units['x']])
+                csvwriter.writerow([spectrum.units["y"], spectrum.units["x"]])
             for row in zip(spectrum.x, spectrum.y):
                 csvwriter.writerow(row)
         logger.info("Spectrum export to csv files done.")
@@ -209,6 +207,7 @@ class CsvSerialWriter(_CsvMixin, SerialWriter):
         Additional formatting parameters for underlying csv.writer to use.
         For list of valid parameters consult csv.Dialect documentation.
    """
+
     extension = "csv"
 
     def __init__(
@@ -264,7 +263,7 @@ class CsvSerialWriter(_CsvMixin, SerialWriter):
             Spectra object, that is to be serialized.
         """
         abscissa = spectra.x
-        header = [spectra.units['y'], spectra.units['x']]
+        header = [spectra.units["y"], spectra.units["x"]]
         for handle, values in zip(
             self._iter_handles(spectra.filenames, spectra.genre), spectra.y
         ):

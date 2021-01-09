@@ -27,7 +27,7 @@ class TxtWriter(Writer):
         Directory, to which generated files should be written.
     mode: str
         Specifies how writing to file should be handled. Should be one of characters:
-         'a' (append to existing file), 'x' (only write if file does'nt exist yet),
+         'a' (append to existing file), 'x' (only write if file doesn't exist yet),
          or 'w' (overwrite file if it already exists).
     """
 
