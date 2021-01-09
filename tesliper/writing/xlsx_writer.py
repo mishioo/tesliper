@@ -18,6 +18,18 @@ logger.setLevel(lgg.DEBUG)
 
 # CLASSES
 class XlsxWriter(Writer):
+    """Writes extracted data to .xlsx file.
+
+    Parameters
+    ----------
+    destination: str or pathlib.Path
+        Directory, to which generated files should be written.
+    mode: str
+        Specifies how writing to file should be handled. Should be one of characters:
+         'a' (append to existing file), 'x' (only write if file doesn't exist yet),
+         or 'w' (overwrite file if it already exists).
+    """
+
     def __init__(self, destination: Union[str, Path], mode: str = "x"):
         super().__init__(destination=destination, mode=mode)
         if self.mode == "a":
@@ -33,13 +45,18 @@ class XlsxWriter(Writer):
         stoichiometry: Optional[InfoArray] = None,
         corrections: Sequence[FloatArray] = None,
     ):
-        """Writes detailed information from multiple Energies objects to
-         single xlsx file.
+        """Writes detailed information from multiple Energies objects to xlsx file.
+        Creates "Collective overview" sheet and one "<<genre>>" sheet for each Energies
+        object provided. The former contains energy values and calculated
+        populations for each energy object given, as well as number of imaginary
+        frequencies and stoichiometry of conformers if `frequencies` and `stoichiometry`
+        are provided, respectively. The latter contains detailed information about
+        each type of energy given, including corrections, if those are provided.
 
         Parameters
         ----------
         energies: list of glassware.Energies
-            Energies objects that is to be exported
+            Energies objects that are to be exported
         frequencies: glassware.DataArray, optional
             DataArray object containing frequencies
         stoichiometry: glassware.InfoArray, optional
@@ -177,6 +194,13 @@ class XlsxWriter(Writer):
         logger.info("Bars export to xlsx files done.")
 
     def spectra(self, spectra: Spectra):
+        """Writes given spectral data collectively to one sheet of xlsx workbook.
+
+        Parameters
+        ----------
+        spectra: glassware.Spectra
+            Spectra object, that is to be serialized
+        """
         wb = self.workbook
         ws = wb.create_sheet(title=spectra.genre)
         ws.freeze_panes = "B2"
@@ -195,6 +219,13 @@ class XlsxWriter(Writer):
         logger.info("Spectra export to xlsx file done.")
 
     def single_spectrum(self, spectrum: SingleSpectrum):
+        """Writes SingleSpectrum object to new sheet of xlsx workbook.
+
+        Parameters
+        ----------
+        spectrum: glassware.SingleSpectrum
+            spectrum, that is to be serialized
+        """
         # TODO: add comment as in txt export
         wb = self.workbook
         ws = wb.create_sheet(title=f"{spectrum.genre}_{spectrum.averaged_by}")
