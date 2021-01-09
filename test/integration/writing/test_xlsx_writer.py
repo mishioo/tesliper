@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import pytest
+import openpyxl as oxl
 
 from tesliper import Energies
 from tesliper.writing.xlsx_writer import XlsxWriter
@@ -63,18 +64,43 @@ def test_energies(writer, mols):
         stoichiometry=mols.arrayed("stoichiometry"),
     )
     assert writer.destination.exists()
+    wb = oxl.load_workbook(writer.destination)
+    assert wb.sheetnames == ["Collective overview"] + [
+        XlsxWriter._header[grn] for grn in Energies.associated_genres
+    ]
+    ws = wb.get_sheet_by_name("Collective overview")
+    assert len(list(ws.columns)) == 13
+    assert len(list(ws.rows)) == 2 + len(list(mols.keys()))
+    for grn in Energies.associated_genres:
+        ws = wb.get_sheet_by_name(XlsxWriter._header[grn])
+        assert len(list(ws.columns)) == 5
+        assert len(list(ws.rows)) == 1 + len(list(mols.keys()))
 
 
-def test_bars(writer, mols):
+def test_bars(writer, mols, filenames):
     writer.bars(mols.arrayed("freq"), [mols.arrayed("iri")])
     assert writer.destination.exists()
+    wb = oxl.load_workbook(writer.destination)
+    assert wb.sheetnames == filenames
+    for file in filenames:
+        ws = wb.get_sheet_by_name(file)
+        assert len(list(ws.columns)) == 2
+        assert len(list(ws.rows)) == 1 + mols.arrayed("freq").values.shape[1]
 
 
 def test_spectra(writer, mols, spectra):
     writer.spectra(spectra)
     assert writer.destination.exists()
+    wb = oxl.load_workbook(writer.destination)
+    ws = wb.get_sheet_by_name(spectra.genre)
+    assert len(list(ws.columns)) == 1 + spectra.filenames.size
+    assert len(list(ws.rows)) == 1 + spectra.values.shape[1]
 
 
 def test_single_spectrum(writer, mols, spc):
     writer.single_spectrum(spc)
     assert writer.destination.exists()
+    wb = oxl.load_workbook(writer.destination)
+    ws = wb.get_sheet_by_name(f"{spc.genre}_{spc.averaged_by}")
+    assert len(list(ws.columns)) == 2
+    assert len(list(ws.rows)) == 1 + spc.values.size
