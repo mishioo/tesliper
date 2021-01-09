@@ -26,36 +26,6 @@ class XlsxWriter(Writer):
             self.workbook = oxl.Workbook()
             self.workbook.remove(self.workbook.active)
 
-    def write(self, data):
-        data = self.distribute_data(data)
-        if data["energies"]:
-            file = self.destination.joinpath("distribution.xlsx")
-            self.energies(
-                file,
-                data["energies"],
-                frequencies=data["frequencies"],
-                stoichiometry=data["stoichiometry"],
-                corrections=data["corrections"].values(),
-            )
-        if data["vibra"]:
-            file = self.destination.joinpath("bars.vibra.xlsx")
-            self.bars(file, band=data["frequencies"], bars=data["vibra"])
-        if data["electr"]:
-            file = self.destination.joinpath("bars.electr.xlsx")
-            self.bars(file, band=data["wavelengths"], bars=data["electr"])
-        if data["other_bars"]:
-            # TO DO
-            pass
-        if data["spectra"]:
-            file = self.destination.joinpath("spectra.xlsx")
-            self.spectra(file, data["spectra"])
-        if data["single"]:
-            file = self.destination.joinpath("averaged_spectra.xlsx")
-            self.single_spectrum(file, data["single"])
-        if data["other"]:
-            # TODO
-            pass
-
     def energies(
         self,
         energies: Sequence[Energies],

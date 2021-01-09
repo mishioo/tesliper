@@ -220,26 +220,6 @@ class TxtSerialWriter(SerialWriter):
             destination=destination, mode=mode, filename_template=filename_template
         )
 
-    def write(self, data: Iterable[DataArray]):
-        data = self.distribute_data(data)
-        if data["vibra"]:
-            self.bars(
-                band=data["frequencies"], bars=data["vibra"],
-            )
-        if data["electr"]:
-            self.bars(
-                band=data["wavelengths"], bars=data["electr"],
-            )
-        if data["other_bars"]:
-            # TODO
-            pass
-        if data["spectra"]:
-            for spc in data["spectra"]:
-                self.spectra(spc)
-        if data["other"]:
-            # TODO
-            pass
-
     def bars(self, band: Bars, bars: List[Bars]):
         """Writes Bars objects to txt files (one for each conformer).
 
