@@ -6,6 +6,7 @@ from typing import Union, List, Dict, Any
 from ._writer import Writer
 from .. import Tesliper, Molecules, Spectra
 from ..glassware import SingleSpectrum
+from .. import datawork as dw
 
 
 class ArchiveWriter(Writer):
@@ -57,9 +58,9 @@ class ArchiveWriter(Writer):
             self._write_parameters(tesliper.parameters)
             self._write_molecules(tesliper.molecules)
             # self._write_experimental(tesliper.experimental)  # not supported yet
-            for spc in tesliper.spectra.values():
-                self._write_averaged(spc)
             for spc in tesliper.averaged.values():
+                self._write_averaged(spc)
+            for spc in tesliper.spectra.values():
                 self._write_calculated(spc)
 
     def _write_arguments(
@@ -80,8 +81,13 @@ class ArchiveWriter(Writer):
             )
 
     def _write_parameters(self, parameters):
+        # TODO: Implement more universal way of serializing fitting
+        #       this won't deserialize custom fitting functions
+        to_write = parameters.copy()
+        to_write["vibra"]["fitting"] = to_write["vibra"]["fitting"].__name__
+        to_write["electr"]["fitting"] = to_write["electr"]["fitting"].__name__
         with self.root.open("parameters.json", mode="w") as handle:
-            handle.write(self.jsonencode(parameters))
+            handle.write(self.jsonencode(to_write))
 
     def _write_molecules(self, molecules: Molecules):
         self._write_molecules_arguments(
@@ -93,7 +99,7 @@ class ArchiveWriter(Writer):
             self._write_mol(filename=filename, mol=molecules[filename])
 
     def _write_molecules_arguments(self, allow_data_inconsistency: bool):
-        with self.root.open("molecules/arguments.json") as handle:
+        with self.root.open("molecules/arguments.json", mode="w") as handle:
             handle.write(
                 self.jsonencode({"allow_data_inconsistency": allow_data_inconsistency})
             )
@@ -118,34 +124,38 @@ class ArchiveWriter(Writer):
         path = f"spectra/calculated/{spectra.genre}.json"
         with self.root.open(path, mode="w") as handle:
             handle.write(
-                {
-                    "genre": spectra.genre,
-                    "filenames": spectra.filenames.tolist(),
-                    "values": spectra.values.tolist(),
-                    "abscissa": spectra.abscissa.tolist(),
-                    "width": spectra.width,
-                    "fitting": spectra.fitting,
-                    "scaling": spectra.scaling,
-                    "offset": spectra.offset,
-                    "allow_data_inconsistency": spectra.allow_data_inconsistency,
-                }
+                self.jsonencode(
+                    {
+                        "genre": spectra.genre,
+                        "filenames": spectra.filenames.tolist(),
+                        "values": spectra.values.tolist(),
+                        "abscissa": spectra.abscissa.tolist(),
+                        "width": spectra.width,
+                        "fitting": spectra.fitting,
+                        "scaling": spectra.scaling,
+                        "offset": spectra.offset,
+                        "allow_data_inconsistency": spectra.allow_data_inconsistency,
+                    }
+                )
             )
 
     def _write_averaged(self, spectrum: SingleSpectrum):
         path = f"spectra/averaged/{spectrum.genre}.json"
         with self.root.open(path, mode="w") as handle:
             handle.write(
-                {
-                    "genre": spectrum.genre,
-                    "filenames": spectrum.filenames.tolist(),
-                    "values": spectrum.values.tolist(),
-                    "abscissa": spectrum.abscissa.tolist(),
-                    "width": spectrum.width,
-                    "fitting": spectrum.fitting,
-                    "scaling": spectrum.scaling,
-                    "offset": spectrum.offset,
-                    "averaged_by": spectrum.averaged_by,
-                }
+                self.jsonencode(
+                    {
+                        "genre": spectrum.genre,
+                        "filenames": spectrum.filenames.tolist(),
+                        "values": spectrum.values.tolist(),
+                        "abscissa": spectrum.abscissa.tolist(),
+                        "width": spectrum.width,
+                        "fitting": spectrum.fitting,
+                        "scaling": spectrum.scaling,
+                        "offset": spectrum.offset,
+                        "averaged_by": spectrum.averaged_by,
+                    }
+                )
             )
 
     def jsonencode(
@@ -225,7 +235,7 @@ class ArchiveLoader:
     def load(self) -> Tesliper:
         with self:
             tslr = Tesliper(**self._load("arguments.json"))
-            tslr.parameters = self._load("parameters.json")
+            tslr.parameters = self._load_parameters()
             filenames = self._load("molecules/filenames.json")
             mols = (
                 (name, self._load(f"molecules/data/{name}.json")) for name in filenames
@@ -244,6 +254,12 @@ class ArchiveLoader:
 
     def _load(self, dest):
         return self.jsondecode(self.root.read(dest))
+
+    def _load_parameters(self):
+        params = self._load("parameters.json")
+        params["vibra"]["fitting"] = getattr(dw, params["vibra"]["fitting"])
+        params["electr"]["fitting"] = getattr(dw, params["electr"]["fitting"])
+        return params
 
     def jsondecode(
         self,
