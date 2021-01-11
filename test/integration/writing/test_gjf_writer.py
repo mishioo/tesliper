@@ -145,3 +145,18 @@ def test_link0(tmp_path, gjfwriter, link0, expline):
     with tmp_path.joinpath("test.gjf").open("r") as file:
         for line, exp in zip_longest(file, expected, fillvalue=None):
             assert line == exp
+
+
+def test_wrong_route_type(gjfwriter):
+    with pytest.raises(TypeError):
+        gjfwriter.route = 123
+
+
+def test_post_spec(tmp_path, gjfwriter):
+    gjfwriter.post_spec = "some post specs 123"
+    with tmp_path.joinpath("test.gjf").open("w") as file:
+        gjfwriter._write_conformer(file, [[1, 1, 1]], [1], 0, 1)
+    with tmp_path.joinpath("test.gjf").open("r") as file:
+        output = file.read()
+    assert output.endswith(f"\n\n{gjfwriter.post_spec}\n\n")
+    assert not output.endswith(f"\n\n\n{gjfwriter.post_spec}\n\n")

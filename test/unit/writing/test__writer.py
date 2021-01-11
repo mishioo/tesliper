@@ -5,6 +5,13 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
+from tesliper import Energies, Spectra, InfoArray
+from tesliper.glassware import (
+    GroundStateBars,
+    ExcitedStateBars,
+    SingleSpectrum,
+    FloatArray,
+)
 from tesliper.writing import Writer, SerialWriter
 
 normal_writers = [Writer]
@@ -43,6 +50,27 @@ def destination_doesnt_exists(monkeypatch):
     monkeypatch.setattr(Path, "exists", lambda _: False)
 
 
+@pytest.fixture
+def no_parent_dir(monkeypatch):
+    parent = mock.Mock()
+    parent.exists = mock.Mock(return_value=False)
+    monkeypatch.setattr(Path, "parent", parent)
+
+
+arrays_by_type = dict(
+    energies=Energies("gib", [""], [1]),
+    vibra=GroundStateBars("iri", [""], [[1]], [[1]]),
+    electr=ExcitedStateBars("ex_en", [""], [[1]], [[1]]),
+    spectra=Spectra("ir", [""], [[1, 2]], [1, 2]),
+    single=SingleSpectrum("ir", [1, 2], [1, 2]),
+    other=InfoArray("command", [""], [""]),
+    corrections=FloatArray("gibcorr", [""], [1]),
+    frequencies=GroundStateBars("freq", [""], [[1]], [[1]]),
+    wavelengths=ExcitedStateBars("wave", [""], [[1]], [[1]]),
+    stoichiometry=InfoArray("stoichiometry", [""], [""]),
+)
+
+
 @pytest.mark.parametrize("writer_class", serial_writers)
 @given(st.text())
 def test_writer_mode_init(writer_class, mode):
@@ -75,6 +103,14 @@ def test_writer_init_overwrite(writer_class):
     assert wrt.mode == "w"
 
 
+@pytest.mark.usefixtures("destination_doesnt_exists")
+@pytest.mark.usefixtures("no_parent_dir")
+@pytest.mark.parametrize("writer_class", normal_writers)
+def test_writer_init_no_parent_dir(writer_class):
+    with pytest.raises(FileNotFoundError):
+        writer_class(destination="", mode="w")
+
+
 @pytest.mark.usefixtures("destination_exists")
 @pytest.mark.parametrize("writer_class", normal_writers)
 def test_writer_init_new_only_no_dest(writer_class):
@@ -88,3 +124,10 @@ def test_writer_init_new_only_no_dest(writer_class):
 def test_serial_writer_init_no_dest(writer_class, mode):
     with pytest.raises(FileNotFoundError):
         writer_class(destination="", mode=mode)
+
+
+@pytest.mark.parametrize("arraytype,array", tuple(arrays_by_type.items()))
+def test_distribution(arraytype, array):
+    output = Writer.distribute_data([array])
+    assert isinstance(output, dict)
+    assert output[arraytype], f"arraytype: {arraytype}, output: {output}"

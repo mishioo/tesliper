@@ -57,6 +57,13 @@ def writer(tmp_path):
     return XlsxWriter(tmp_path.joinpath("output.xlsx"))
 
 
+def test_start_with_existing_file(tmp_path):
+    file = tmp_path.joinpath("output.xlsx")
+    wb = oxl.Workbook()
+    wb.save(file)
+    XlsxWriter(file, mode="a")
+
+
 def test_energies(writer, mols):
     writer.energies(
         [mols.arrayed(grn) for grn in Energies.associated_genres],
@@ -74,6 +81,26 @@ def test_energies(writer, mols):
     for grn in Energies.associated_genres:
         ws = wb.get_sheet_by_name(XlsxWriter._header[grn])
         assert len(list(ws.columns)) == 5
+        assert len(list(ws.rows)) == 1 + len(list(mols.keys()))
+
+
+def test_energies_with_corrections(writer, mols):
+    corrs = [
+        mols.arrayed(f"{grn}corr") for grn in Energies.associated_genres if grn != "scf"
+    ]
+    ens = [mols.arrayed(grn) for grn in Energies.associated_genres]
+    writer.energies(ens, corrections=corrs)
+    assert writer.destination.exists()
+    wb = oxl.load_workbook(writer.destination)
+    assert wb.sheetnames == ["Collective overview"] + [
+        XlsxWriter._header[grn] for grn in Energies.associated_genres
+    ]
+    ws = wb.get_sheet_by_name("Collective overview")
+    assert len(list(ws.columns)) == 11
+    assert len(list(ws.rows)) == 2 + len(list(mols.keys()))
+    for grn in Energies.associated_genres:
+        ws = wb.get_sheet_by_name(XlsxWriter._header[grn])
+        assert len(list(ws.columns)) == 5 + (grn != "scf")
         assert len(list(ws.rows)) == 1 + len(list(mols.keys()))
 
 
