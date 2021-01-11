@@ -6,7 +6,13 @@ from typing import Union, Iterable, Dict, TextIO, Any
 import logging as lgg
 
 from ..glassware.spectra import SingleSpectrum, Spectra
-from ..glassware.arrays import DataArray, Energies, Bars
+from ..glassware.arrays import (
+    DataArray,
+    Energies,
+    Bars,
+    GroundStateBars,
+    ExcitedStateBars,
+)
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -256,7 +262,7 @@ class Writer:
             other=[],
             corrections={},
             frequencies=None,
-            wavelenghts=None,
+            wavelengths=None,
             stoichiometry=None,
         )
         for obj in data:
@@ -270,17 +276,16 @@ class Writer:
                 distr["wavelengths"] = obj
             elif obj.genre == "stoichiometry":
                 distr["stoichiometry"] = obj
+            elif isinstance(obj, GroundStateBars):
+                distr["vibra"].append(obj)
+            elif isinstance(obj, ExcitedStateBars):
+                distr["electr"].append(obj)
             elif isinstance(obj, Bars):
-                if obj.spectra_type == "vibra":
-                    distr["vibra"].append(obj)
-                elif obj.spectra_type == "electr":
-                    distr["electr"].append(obj)
-                else:
-                    distr["other_bars"].append(obj)
-            elif isinstance(obj, SingleSpectrum):
-                distr["single"].append(obj)
+                distr["other_bars"].append(obj)
             elif isinstance(obj, Spectra):
                 distr["spectra"].append(obj)
+            elif isinstance(obj, SingleSpectrum):
+                distr["single"].append(obj)
             else:
                 distr["other"].append(obj)
         return distr
