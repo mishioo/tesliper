@@ -4,9 +4,9 @@ import json
 from typing import Union, List, Dict, Any
 
 from ._writer import Writer
-from .. import Tesliper, Molecules, Spectra
-from ..glassware import SingleSpectrum
+from ..glassware import Molecules, Spectra, SingleSpectrum
 from .. import datawork as dw
+import tesliper
 
 
 class ArchiveWriter(Writer):
@@ -50,17 +50,15 @@ class ArchiveWriter(Writer):
     def close(self):
         self.root.close()
 
-    def write(self, tesliper: Tesliper):
+    def write(self, obj: "tesliper.Tesliper"):
         with self:
-            self._write_arguments(
-                tesliper.input_dir, tesliper.output_dir, tesliper.wanted_files
-            )
-            self._write_parameters(tesliper.parameters)
-            self._write_molecules(tesliper.molecules)
+            self._write_arguments(obj.input_dir, obj.output_dir, obj.wanted_files)
+            self._write_parameters(obj.parameters)
+            self._write_molecules(obj.molecules)
             # self._write_experimental(tesliper.experimental)  # not supported yet
-            for spc in tesliper.averaged.values():
+            for spc in obj.averaged.values():
                 self._write_averaged(spc)
-            for spc in tesliper.spectra.values():
+            for spc in obj.spectra.values():
                 self._write_calculated(spc)
 
     def _write_arguments(
@@ -80,7 +78,7 @@ class ArchiveWriter(Writer):
                 )
             )
 
-    def _write_parameters(self, parameters):
+    def _write_parameters(self, parameters: dict):
         # TODO: Implement more universal way of serializing fitting
         #       this won't deserialize custom fitting functions
         to_write = parameters.copy()
@@ -232,9 +230,9 @@ class ArchiveLoader:
             raise FileNotFoundError("Given destination doesn't exist.")
         self._destination = destination
 
-    def load(self) -> Tesliper:
+    def load(self) -> "tesliper.Tesliper":
         with self:
-            tslr = Tesliper(**self._load("arguments.json"))
+            tslr = tesliper.Tesliper(**self._load("arguments.json"))
             tslr.parameters = self._load_parameters()
             filenames = self._load("molecules/filenames.json")
             mols = (
