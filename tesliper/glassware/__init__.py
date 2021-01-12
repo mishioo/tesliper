@@ -3,6 +3,7 @@ from .spectra import SingleSpectrum, Spectra
 from .arrays import (
     DataArray,
     FilenamesArray,
+    IntegerArray,
     FloatArray,
     InfoArray,
     BooleanArray,
@@ -10,5 +11,6 @@ from .arrays import (
     Bars,
     GroundStateBars,
     ExcitedStateBars,
+    Geometry,
 )
 from .molecules import Molecules

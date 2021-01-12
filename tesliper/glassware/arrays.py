@@ -4,10 +4,13 @@ from typing import Sequence, Union, Any
 
 import numpy as np
 from .. import datawork as dw
-from .array_base import ArrayBase, ArrayProperty
+from .array_base import ArrayBase, ArrayProperty, CollapsibleArrayProperty
 from .spectra import Spectra
 
 # LOGGER
+from ..datawork.atoms import atomic_number
+from ..exceptions import InconsistentDataError
+
 logger = lgg.getLogger(__name__)
 logger.setLevel(lgg.DEBUG)
 
@@ -27,7 +30,7 @@ default_spectra_bars = {
 class DataArray(ArrayBase):
     """Base class for data holding objects. It provides trimming functionality
     for filtering data based on other objects content or arbitrary choice.
-    ↑ this is no longer true, TO DO: correct this
+    ^ this is no longer true, TODO: correct this
 
     Parameters
     ----------
@@ -36,11 +39,9 @@ class DataArray(ArrayBase):
         extracted.
     values : numpy.ndarray(dtype=float)
         List of appropriate data values.
-
-    TO DO
-    -----
-    Supplement full_name_ref
     """
+
+    # TODO: Supplement full_name_ref
 
     full_name_ref = dict(
         rot="Rot. Strength",
@@ -70,70 +71,52 @@ class DataArray(ArrayBase):
         return self.full_name_ref[self.genre]
 
 
+class IntegerArray(DataArray):
+
+    associated_genres = ("charge", "multiplicity")
+    values = ArrayProperty(dtype=int, check_against="filenames")
+
+
 class FloatArray(DataArray):
 
     associated_genres = (
-        "zpecorr tencorr entcorr gibcorr mass frc emang "
-        "depolarp depolaru depp depu alpha2 beta2 alphag "
-        "gamma2 delta2 cid1 cid2 cid3 rc180 eemang".split(" ")
+        "zpecorr",
+        "tencorr",
+        "entcorr",
+        "gibcorr",
+        "mass",
+        "frc",
+        "emang",
+        "depolarp",
+        "depolaru",
+        "depp",
+        "depu",
+        "alpha2",
+        "beta2",
+        "alphag ",
+        "gamma2",
+        "delta2",
+        "cid1",
+        "cid2",
+        "cid3",
+        "rc180",
+        "eemang",
     )
     values = ArrayProperty(dtype=float, check_against="filenames")
 
-    def average_conformers(self, energies):
-        """A method for averaging values by population of conformers.
-
-        Parameters
-        ----------
-        energies : Energies object instance or iterable
-            Object with `populations` and `genre` attributes, containing
-            respectively: list of populations values as numpy.ndarray and
-            string specifying energy type. Alternatively, list of weights
-            for each conformer.
-
-        Returns
-        -------
-        DataArray
-            New instance of DataArray's subclass, on which `average` method was
-            called, containing averaged values.
-
-        Raises
-        ------
-            If creation of an instance based on its' __init__ signature is
-            impossible.
-        """
-        try:
-            populations = energies.populations
-            energy_type = energies.genre
-        except AttributeError:
-            populations = np.asanyarray(energies, dtype=float)
-            energy_type = "unknown"
-        averaged_values = dw.calculate_average(self.values, populations)
-        args = self.get_repr_args()
-        args["values"] = [averaged_values]
-        args["allow_data_inconsistency"] = True
-        try:
-            averaged = type(self)(**args)
-        except (TypeError, ValueError) as err:
-            raise TypeError(
-                f"Could not create an instance of {type(self)} from its "
-                f"signature. Use tesliper.datawork.calculate_average instead."
-            ) from err
-        logger.debug(f"{self.genre} averaged by {energy_type}.")
-        return averaged
-
 
 class InfoArray(DataArray):
-    associated_genres = [
+    associated_genres = (
         "command",
         "cpu_time",
         "transitions",
         "stoichiometry",
-    ]
+    )
     values = ArrayProperty(dtype=str, check_against="filenames")
 
 
 class FilenamesArray(DataArray):
-    associated_genres = ["filenames"]
+    associated_genres = ("filenames",)
     """Special case of DataArray, holds only filenames. `values` property returns
     same as `filenames` and ignores any value given to its setter.
 
@@ -166,7 +149,7 @@ class FilenamesArray(DataArray):
 
 
 class BooleanArray(DataArray):
-    associated_genres = ["normal_termination", "optimization_completed"]
+    associated_genres = ("normal_termination", "optimization_completed")
     values = ArrayProperty(dtype=bool, check_against="filenames")
 
 
@@ -184,7 +167,13 @@ class Energies(FloatArray):
     t : int or float
         Temperature of calculated state in K."""
 
-    associated_genres = "scf zpe ten ent gib".split(" ")
+    associated_genres = (
+        "scf",
+        "zpe",
+        "ten",
+        "ent",
+        "gib",
+    )
 
     def __init__(
         self, genre, filenames, values, t=298.15, allow_data_inconsistency=False
@@ -245,7 +234,56 @@ class Energies(FloatArray):
         return dw.calculate_populations(self.values, t)
 
 
-class Bars(FloatArray):
+class Averagable:
+    """Mix-in for DataArrays, that may be averaged based on populations of conformers.
+    """
+
+    def average_conformers(self: DataArray, energies) -> DataArray:
+        """A method for averaging values by population of conformers.
+
+        Parameters
+        ----------
+        energies : Energies object instance or iterable
+            Object with `populations` and `genre` attributes, containing
+            respectively: list of populations values as numpy.ndarray and
+            string specifying energy type. Alternatively, list of weights
+            for each conformer.
+
+        Returns
+        -------
+        DataArray
+            New instance of DataArray's subclass, on which `average` method was
+            called, containing averaged values.
+
+        Raises
+        ------
+            If creation of an instance based on its' __init__ signature is
+            impossible.
+        """
+        # TODO: make sure returning DataArray is necessary and beneficial
+        #       maybe it should return just averaged value
+        try:
+            populations = energies.populations
+            energy_type = energies.genre
+        except AttributeError:
+            populations = np.asanyarray(energies, dtype=float)
+            energy_type = "unknown"
+        averaged_values = dw.calculate_average(self.values, populations)
+        args = self.get_repr_args()
+        args["values"] = [averaged_values]
+        args["allow_data_inconsistency"] = True
+        try:
+            averaged = type(self)(**args)
+        except (TypeError, ValueError) as err:
+            raise TypeError(
+                f"Could not create an instance of {type(self)} from its "
+                f"signature. Use tesliper.datawork.calculate_average instead."
+            ) from err
+        logger.debug(f"{self.genre} averaged by {energy_type}.")
+        return averaged
+
+
+class Bars(FloatArray, Averagable):
 
     associated_genres = ()
     spectra_name_ref = dict(
@@ -350,7 +388,17 @@ class Bars(FloatArray):
 
 class GroundStateBars(Bars):
     associated_genres = (
-        "freq iri dip rot ramact raman1 roa1 raman2 " "roa2 raman3 roa3".split(" ")
+        "freq",
+        "iri",
+        "dip",
+        "rot",
+        "ramact",
+        "raman1",
+        "roa1",
+        "raman2 ",
+        "roa2",
+        "raman3",
+        "roa3",
     )
 
     def __init__(
@@ -436,7 +484,16 @@ class GroundStateBars(Bars):
 
 
 class ExcitedStateBars(Bars):
-    associated_genres = "wave ex_en vdip ldip vrot lrot vosc losc".split(" ")
+    associated_genres = (
+        "wave",
+        "ex_en",
+        "vdip",
+        "ldip",
+        "vrot",
+        "lrot",
+        "vosc",
+        "losc",
+    )
 
     def __init__(
         self,
@@ -495,5 +552,49 @@ class ExcitedStateBars(Bars):
         return spectra
 
 
-class Geometry(DataArray):
-    pass
+class Geometry(FloatArray):
+    """DataArray that stores information about geometry of conformers.
+
+    Attributes
+    ----------
+    molecule_atoms : numpy.ndarray(dtype=int)
+        List of atomic numbers representing atoms in molecule, one for each coordinate.
+
+        Value given to setter should be a list of integers or list of strings, that
+        can be interpreted as integers or symbols of atoms. Setter can be given a list
+        of lists - one list of atoms for each conformer. All those lists should be
+        identical in such case, otherwise InconsistentDataError is raised.
+        Only one list of atoms is stored in either case.
+    filenames : numpy.ndarray(dtype=str)
+        List of filenames of gaussian output files, from which data were extracted.
+    values : numpy.ndarray(dtype=float)
+        List of x, y, z coordinated for each conformer, for each atom.
+    genre : str
+        Genre of given data.
+    allow_data_inconsistency : bool, optional
+        Specifies if inconsistency of data should be allowed when creating instance
+        of this class and setting it's attributes. Defaults to `False`.
+    """
+
+    associated_genres = ("geometry",)
+    values = ArrayProperty(dtype=float, check_against="filenames")
+    molecule_atoms = CollapsibleArrayProperty(
+        dtype=int,
+        check_against="values",
+        check_depth=2,
+        # TODO: make sanitizer, that accepts jagged nested sequences
+        fsan=np.vectorize(atomic_number),
+    )
+
+    def __init__(
+        self,
+        genre: str,
+        filenames: Sequence[str],
+        values: Sequence[Sequence[Sequence[float]]],
+        molecule_atoms: Union[
+            Sequence[Union[int, str]], Sequence[Sequence[Union[int, str]]]
+        ],
+        allow_data_inconsistency: bool = False,
+    ):
+        super().__init__(genre, filenames, values, allow_data_inconsistency)
+        self.molecule_atoms = molecule_atoms
