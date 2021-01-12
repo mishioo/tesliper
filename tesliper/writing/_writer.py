@@ -29,8 +29,8 @@ class Writer:
         File, to which generated files should be written.
     mode: str
         Specifies how writing to file should be handled. Should be one of characters:
-         'a' (append to existing file), 'x' (only write if file does'nt exist yet),
-         or 'w' (overwrite file if it already exists).
+         "a" (append to existing file); "x" (only write if file does'nt exist yet);
+         or "w" (overwrite file if it already exists). Defaults to "x".
 
     Attributes
     ----------
@@ -176,16 +176,16 @@ class Writer:
     @property
     def mode(self):
         """Specifies how writing to file should be handled. Should be one of characters:
-         'a', 'x', or 'w'.
-         a - append to existing file
-         x - only write if file does'nt exist yet
-         w - overwrite file if it already exists
+        "a", "x", or "w".
+        "a" - append to existing file;
+        "x" - only write if file doesn't exist yet;
+        "w" - overwrite file if it already exists.
 
-         Raises
-         ------
-         ValueError
-            If given anything other than 'a', 'x', or 'w'.
-         """
+        Raises
+        ------
+        ValueError
+            If given anything other than "a", "x", or "w".
+        """
         return self._mode
 
     @mode.setter
