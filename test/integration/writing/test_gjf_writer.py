@@ -1,8 +1,6 @@
-from io import StringIO
 from itertools import zip_longest
 
 import pytest
-from hypothesis import given, strategies as st
 
 from tesliper.writing.gjf_writer import GjfWriter
 from tesliper.glassware import arrays as ar
