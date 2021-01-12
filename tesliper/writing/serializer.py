@@ -50,7 +50,7 @@ class ArchiveWriter(Writer):
     def close(self):
         self.root.close()
 
-    def serialize(self, tesliper: Tesliper):
+    def write(self, tesliper: Tesliper):
         with self:
             self._write_arguments(
                 tesliper.input_dir, tesliper.output_dir, tesliper.wanted_files
@@ -192,8 +192,8 @@ class ArchiveWriter(Writer):
 class ArchiveLoader:
     """Class for deserialization of Tesliper objects."""
 
-    def __init__(self, destination: Union[str, Path], encoding: str = "utf-8"):
-        self.destination = destination
+    def __init__(self, source: Union[str, Path], encoding: str = "utf-8"):
+        self.source = source
         self.encoding = encoding
         self.root = None
 
@@ -204,14 +204,14 @@ class ArchiveLoader:
         self.close()
 
     def open(self):
-        self.root = zipfile.ZipFile(self.destination, mode="r")
+        self.root = zipfile.ZipFile(self.source, mode="r")
         return self
 
     def close(self):
         self.root.close()
 
     @property
-    def destination(self) -> Path:
+    def source(self) -> Path:
         """pathlib.Path: File, from which data should read.
 
         Notes
@@ -225,8 +225,8 @@ class ArchiveLoader:
         """
         return self._destination
 
-    @destination.setter
-    def destination(self, destination: Union[str, Path]) -> None:
+    @source.setter
+    def source(self, destination: Union[str, Path]) -> None:
         destination = Path(destination)
         if not destination.exists():
             raise FileNotFoundError("Given destination doesn't exist.")

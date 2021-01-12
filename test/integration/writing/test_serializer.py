@@ -43,8 +43,8 @@ with_spectra.averaged["ir"] = SingleSpectrum(
 def test_serialization(tmp_path, tesliper):
     path = tmp_path / "archive.tslr"
     writer = ArchiveWriter(destination=path)
-    writer.serialize(tesliper)
-    loader = ArchiveLoader(destination=path)
+    writer.write(tesliper)
+    loader = ArchiveLoader(source=path)
     resurected = loader.load()
     assert resurected.input_dir == tesliper.input_dir
     assert resurected.output_dir == tesliper.output_dir
