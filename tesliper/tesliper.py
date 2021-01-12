@@ -1,5 +1,4 @@
 # IMPORTS
-import json
 import os
 import logging as lgg
 from pathlib import Path
@@ -11,7 +10,6 @@ from . import glassware as gw
 from . import datawork as dw
 from . import extraction as ex
 from . import writing as wr
-from .extraction import gaussian_parser as gp
 
 
 # GLOBAL VARIABLES
@@ -402,65 +400,53 @@ class Tesliper:
         data = [s for s in self.averaged.values() if s]
         writer.write(data)
 
-    def serialize(self, destination: Union[Path, str]) -> None:
-        """Serialize instance of Tesliper object to a file.
+    def serialize(self, filename: str = ".tslr", mode: str = "x") -> None:
+        """Serialize instance of Tesliper object to a file in `self.output_dir`.
 
         Parameters
         ----------
-        destination
-            Path or path-like object to a file, to which content will be written.
+        filename: str
+            Name of the file, to which content will be written. Defaults to ".tslr".
+        mode: str
+            Specifies how writing to file should be handled.
+            Should be one of characters: "x" or "w".
+            "x" - only write if file doesn't exist yet;
+            "w" - overwrite file if it already exists.
+            Defaults to "x".
+
+        Raises
+        ------
+        ValueError
+            If given any other `mode` than "x" or "w".
 
         Notes
         -----
-        Tesliper is serialized to a few JSON objects, that are written to given file
-        (one JSON object for line).
-        Serialization of `parameters`, `spectra`, and `averaged` attributes' content
-        is not supported yet.
+        If `self.output_dir` is `None`, current working directory is assumed.
         """
-        path = Path(destination)
-        content = [
-            {
-                "input_dir": self.input_dir,
-                "output_dir": self.output_dir,
-                "wanted_files": self.wanted_files,
-                # "parameters": self.parameters,  # TODO: add support
-                # "spectra": self.spectra,  # TODO: add support
-                # "averaged": self.averaged,  # TODO: add support
-            },
-            {
-                "allow_data_inconsistency": self.molecules.allow_data_inconsistency,
-                "kept": self.molecules.kept,
-            },
-            list(self.molecules.items()),
-        ]
-        with path.open("w") as file:
-            for obj in content:
-                json.dump(obj, file)
-                file.write("\n")
+        path = self.output_dir or Path()  # TODO: move default dir to self.output_dir
+        path = path / filename
+        if mode not in {"x", "w"}:
+            raise ValueError(
+                f"'{mode}' is not a valid mode for serializing Tesliper object. "
+                f"It should be 'x' or 'w'."
+            )
+        writer = wr.ArchiveWriter(destination=path, mode=mode)
+        writer.write(self)
 
     @classmethod
     def load(cls, source: Union[Path, str]) -> "Tesliper":
-        """Load serialized Tesliper object from file.
+        """Load serialized Tesliper object from given file.
 
         Parameters
         ----------
-        source
-            Path or path-like object to a file with serialized Tesliper object.
+        source: pathlib.Path or str
+            Path to the file with serialized Tesliper object.
 
         Returns
         -------
         Tesliper
-            New instance of Tesliper class containing data read from file.
+            New instance of Tesliper class containing data read from the file.
         """
         path = Path(source)
-        tesliper = Tesliper()
-        with path.open("r") as file:
-            tslr_params = json.loads(file.readline())
-            mols_params = json.loads(file.readline())
-            mols_items = json.loads(file.readline())
-        tesliper.molecules.update(mols_items)
-        for name, value in mols_params.items():
-            setattr(tesliper.molecules, name, value)
-        for name, value in tslr_params.items():
-            setattr(tesliper, name, value)
-        return tesliper
+        loader = wr.ArchiveLoader(source=path)
+        return loader.load()
