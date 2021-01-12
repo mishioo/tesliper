@@ -238,7 +238,7 @@ class ArchiveLoader:
             mols = (
                 (name, self._load(f"molecules/data/{name}.json")) for name in filenames
             )
-            tslr.molecules = Molecules(*mols, **self._load("molecules/arguments.json"))
+            tslr.molecules = Molecules(mols, **self._load("molecules/arguments.json"))
             for file in self.root.namelist():
                 if "experimental" in file:
                     ...  # not implemented yet
