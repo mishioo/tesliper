@@ -61,6 +61,8 @@ class Soxhlet:
         """
         self.path = path
         self.files = os.listdir(path)
+        # TODO: change wanted_files to be  given priority over guess_extension
+        #       or to ignore file extensions
         self.wanted_files = wanted_files
         self.extension = extension
         self.parser = gaussian_parser.GaussianParser()

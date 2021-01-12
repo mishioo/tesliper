@@ -1,13 +1,15 @@
 # IMPORTS
 import os
 import logging as lgg
+from pathlib import Path
+from typing import Union
+
 import numpy as np
 
 from . import glassware as gw
 from . import datawork as dw
 from . import extraction as ex
-from . import writer as wr
-from .extraction import gaussian_parser as gp
+from . import writing as wr
 
 
 # GLOBAL VARIABLES
@@ -58,19 +60,24 @@ class Tesliper:
         },
     }
 
-    def __init__(self, input_dir=None, output_dir=None, wanted_files=None):
+    def __init__(self, input_dir=".", output_dir=".", wanted_files=None):
         """
         Parameters
         ----------
         input_dir : str or path-like object, optional
-            Path to directory containing files for extraction.
+            Path to directory containing files for extraction, defaults to current
+            working directory.
         output_dir : str or path-like object, optional
-            Path to directory for output files.
+            Path to directory for output files, defaults to current working directory.
         wanted_files : list, optional
             List filenames representing wanted files.
         """
         self.molecules = gw.Molecules()
-        self.writers = {fmt: Wrt() for fmt, Wrt in wr.Writer.writers.items()}
+        self.writers = {
+            "txt": wr.TxtWriter,
+            "xlsx": wr.XlsxWriter,
+            "csv": wr.CsvWriter,
+        }
         self.soxhlet = None if input_dir is not None else ex.Soxhlet()
         self.wanted_files = wanted_files  # setter modifies self.soxhlet
         self.input_dir = input_dir
@@ -126,32 +133,29 @@ class Tesliper:
         #                 "type {}".format(type(value)))
 
     @property
-    def input_dir(self):
+    def input_dir(self) -> Path:
         return self.__input_dir
 
     @input_dir.setter
-    def input_dir(self, path=None):
-        if path is not None:
-            path = os.path.normpath(path)
-            if not os.path.isdir(path):
-                raise FileNotFoundError(
-                    "Invalid path or directory not found: {}".format(path)
-                )
-            self.soxhlet = ex.Soxhlet(path, self.wanted_files)
-            logger.info("Current working directory is: {}".format(path))
+    def input_dir(self, path: Union[Path, str] = "."):
+        path = Path(path).resolve()
+        if not path.is_dir():
+            raise FileNotFoundError(
+                "Invalid path or directory not found: {}".format(path)
+            )
+        self.soxhlet = ex.Soxhlet(path, self.wanted_files)
+        logger.info("Current working directory is: {}".format(path))
         self.__input_dir = path
 
     @property
-    def output_dir(self):
+    def output_dir(self) -> Path:
         return self.__output_dir
 
     @output_dir.setter
-    def output_dir(self, path=None):
-        if path is not None:
-            path = os.path.normpath(path)
-            os.makedirs(path, exist_ok=True)
-            # self.writer.path = path  # depreciated
-            logger.info("Current output directory is: {}".format(path))
+    def output_dir(self, path: Union[Path, str] = "."):
+        path = Path(path).resolve()
+        path.mkdir(exist_ok=True)
+        logger.info("Current output directory is: {}".format(path))
         self.__output_dir = path
 
     def extract_iterate(self, path=None, wanted_files=None):
@@ -335,56 +339,111 @@ class Tesliper:
         if not dest:
             raise ValueError("No destination provided.")
         try:
-            writer = self.writers[fmt]
+            writer_class = self.writers[fmt]
         except KeyError:
             raise ValueError(f"Invalid file format: {fmt}")
+        writer = writer_class(dest)
         data = [self[g] for g in genres]
-        writer.write(dest, data)
+        writer.write(data)
 
     def export_energies(self, dest="", fmt="txt"):
         dest = dest if dest else self.output_dir
         if not dest:
             raise ValueError("No destination provided.")
         try:
-            writer = self.writers[fmt]
+            writer_class = self.writers[fmt]
         except KeyError:
             raise ValueError(f"Invalid file format: {fmt}")
+        writer = writer_class(dest)
         energies = [e for e in self.energies.values() if e]
         corrections = (self[f"{e.genre}corr"] for e in energies if e.genre != "scf")
         frequencies = self["freq"]
         stoichiometry = self["stoichiometry"]
-        writer.write(dest, data=[*energies, frequencies, stoichiometry, *corrections])
+        writer.write(data=[*energies, frequencies, stoichiometry, *corrections])
 
     def export_bars(self, dest="", fmt="txt"):
         dest = dest if dest else self.output_dir
         if not dest:
             raise ValueError("No destination provided.")
         try:
-            writer = self.writers[fmt]
+            writer_class = self.writers[fmt]
         except KeyError:
             raise ValueError(f"Invalid file format: {fmt}")
+        writer = writer_class(dest)
         bands = [self["freq"], self["wave"]]
         data = [b for b in self.spectral.values() if b] + [b for b in bands if b]
-        writer.write(dest, data)
+        writer.write(data)
 
     def export_spectra(self, dest="", fmt="txt"):
         dest = dest if dest else self.output_dir
         if not dest:
             raise ValueError("No destination provided.")
         try:
-            writer = self.writers[fmt]
+            writer_class = self.writers[fmt]
         except KeyError:
             raise ValueError(f"Invalid file format: {fmt}")
+        writer = writer_class(dest)
         data = [s for s in self.spectra.values() if s]
-        writer.write(dest, data)
+        writer.write(data)
 
     def export_averaged(self, dest="", fmt="txt"):
         dest = dest if dest else self.output_dir
         if not dest:
             raise ValueError("No destination provided.")
         try:
-            writer = self.writers[fmt]
+            writer_class = self.writers[fmt]
         except KeyError:
             raise ValueError(f"Invalid file format: {fmt}")
+        writer = writer_class(dest)
         data = [s for s in self.averaged.values() if s]
-        writer.write(dest, data)
+        writer.write(data)
+
+    def serialize(self, filename: str = ".tslr", mode: str = "x") -> None:
+        """Serialize instance of Tesliper object to a file in `self.output_dir`.
+
+        Parameters
+        ----------
+        filename: str
+            Name of the file, to which content will be written. Defaults to ".tslr".
+        mode: str
+            Specifies how writing to file should be handled.
+            Should be one of characters: "x" or "w".
+            "x" - only write if file doesn't exist yet;
+            "w" - overwrite file if it already exists.
+            Defaults to "x".
+
+        Raises
+        ------
+        ValueError
+            If given any other `mode` than "x" or "w".
+
+        Notes
+        -----
+        If `self.output_dir` is `None`, current working directory is assumed.
+        """
+        path = self.output_dir / filename
+        if mode not in {"x", "w"}:
+            raise ValueError(
+                f"'{mode}' is not a valid mode for serializing Tesliper object. "
+                f"It should be 'x' or 'w'."
+            )
+        writer = wr.ArchiveWriter(destination=path, mode=mode)
+        writer.write(self)
+
+    @classmethod
+    def load(cls, source: Union[Path, str]) -> "Tesliper":
+        """Load serialized Tesliper object from given file.
+
+        Parameters
+        ----------
+        source: pathlib.Path or str
+            Path to the file with serialized Tesliper object.
+
+        Returns
+        -------
+        Tesliper
+            New instance of Tesliper class containing data read from the file.
+        """
+        path = Path(source)
+        loader = wr.ArchiveLoader(source=path)
+        return loader.load()

@@ -61,7 +61,7 @@ class ParserTestCase:
         assert self.data["stoichiometry"] == "CH2O"
 
     def test_atoms(self):
-        assert self.data["molecule_atoms"] == (6, 1, 1, 8)
+        assert self.data["molecule_atoms"] == [6, 1, 1, 8]
 
 
 @pytest.mark.usefixtures("setup_class")
@@ -172,12 +172,12 @@ class TestFreq(ParserTestCase):
         ]
 
     def test_geometry(self):
-        assert self.data["geometry"] == (
+        assert self.data["geometry"] == [
             (0.000199, 0.562211, 0.000000),
             (0.924720, 1.100877, 0.000000),
             (-0.927506, 1.095374, 0.000000),
             (0.000199, -0.696189, 0.000000),
-        )
+        ]
 
 
 @pytest.mark.usefixtures("setup_class")
@@ -365,12 +365,12 @@ class TestOpt(ParserTestCase):
         assert self.data["scf"] == -113.221819992
 
     def test_geometry(self):
-        assert self.data["geometry"] == (
+        assert self.data["geometry"] == [
             (-0.000016, 0.530659, 0.000000),
             (0.913392, 1.112945, 0.000000),
             (-0.913174, 1.113406, 0.000000),
             (-0.000016, -0.676288, 0.000000),
-        )
+        ]
 
 
 @pytest.mark.usefixtures("setup_class")

@@ -19,7 +19,7 @@ cpu_time_reg = re.compile(
 )  # use .findall(text)
 scf = re.compile(r"SCF Done.*=\s+(-?\d+\.?\d*)")  # use .findall(text)
 stoich = re.compile(r"Stoichiometry\s*(\w*)\n")  # use .findall(text)
-stoich_ = re.compile(r"^ Stoichiometry\s*(\w*)\n")  # use .findall(text)
+stoich_ = re.compile(r"^ Stoichiometry\s*(\w*(?:\(\d+[+-]\))?)\n")  # use .findall(text)
 
 # GEOMETRY
 # not used currently
@@ -253,17 +253,17 @@ class GaussianParser(Parser):
         true if structure optimization was performed successfully
     version : str, always available
         version of Gaussian software used
-    charge : float, always available
+    charge : int, always available
         molecule's charge
-    multiplicity : float, always available
+    multiplicity : int, always available
         molecule's spin multiplicity
     input_geom : list of tuples of (str, float, float, float), always available
         input orientation, starting with atom symbol
     stoichiometry : str, always available
         molecule's stoichiometry
-    molecule_atoms : tuple of ints, always available
+    molecule_atoms : list of ints, always available
         molecule's atoms as atomic numbers
-    geometry : tuple of tuples of floats, always available
+    geometry : list of tuples of floats, always available
         molecule's geometry (last one found in file) as X, Y, Z coordinates of atoms
 
     Attributes
@@ -338,7 +338,7 @@ class GaussianParser(Parser):
         while not line == " Symbolic Z-matrix:\n":
             line = next(iterator)
         c_and_m = re.match(r" Charge =\s*(-?\d) Multiplicity = (\d)", next(iterator))
-        data["charge"], data["multiplicity"] = map(float, c_and_m.groups())
+        data["charge"], data["multiplicity"] = map(int, c_and_m.groups())
         line = next(iterator).strip()
         input_geom = []
         pattern = r"(\w+)" + 3 * number_group
@@ -393,7 +393,8 @@ class GaussianParser(Parser):
             line = next(iterator)
             match = geom_line_.match(line)
         geom = ((int(a), (float(x), float(y), float(z))) for _, a, _, x, y, z in geom)
-        data["molecule_atoms"], data["geometry"] = zip(*geom)
+        # produce list and list of tuples instead of tuple and tuple of tuples
+        data["molecule_atoms"], data["geometry"] = map(list, zip(*geom))
         self.workhorse = self.wait
 
     @Parser.state(trigger=re.compile("^ Search for a local minimum."))
@@ -467,6 +468,7 @@ class GaussianParser(Parser):
         iterator = self._iterator
         while not line.startswith(" Excited State"):
             line = next(iterator)
+        # map obj unpacked in calling method
         out = [map(float, excited_reg.match(line).groups())]
         while line.strip():
             line = next(iterator)

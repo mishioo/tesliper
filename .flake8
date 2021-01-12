@@ -2,4 +2,7 @@
 max-line-length = 88
 max-complexity = 18
 select = B,C,E,F,W,T4,B9
-ignore = W503, F403, F401
+ignore = W503,
+         F403,
+         F401,
+         E203 # See https://github.com/PyCQA/pycodestyle/issues/373

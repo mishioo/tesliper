@@ -112,7 +112,7 @@ def test_delitem_many(full):
     del full["imag"]
     assert full.kept == [True] * 6
     assert full.filenames == ["base", "noopt", "stoich", "term", "size", "incom"]
-    assert [m["_index"] for m in full.values()] == list(range(6))
+    assert [full._indices[k] for k in full.keys()] == list(range(6))
 
 
 def test_update_with_kwargs(single):
@@ -120,7 +120,8 @@ def test_update_with_kwargs(single):
     assert len(single) == 2
     assert single.kept == [True, True]
     assert single.filenames == ["bla", "bla2"]
-    assert single["bla2"] == {"_index": 1, "data": [1, 2, 3, 4]}
+    assert single._indices["bla2"] == 1
+    assert single["bla2"] == {"data": [1, 2, 3, 4]}
 
 
 def test_update_with_dict(single):
@@ -128,7 +129,8 @@ def test_update_with_dict(single):
     assert len(single) == 2
     assert single.kept == [True, True]
     assert single.filenames == ["bla", "bla2"]
-    assert single["bla2"] == {"_index": 1, "data": [1, 2, 3, 4]}
+    assert single._indices["bla2"] == 1
+    assert single["bla2"] == {"data": [1, 2, 3, 4]}
 
 
 def test_update_with_zip(single):
@@ -136,7 +138,8 @@ def test_update_with_zip(single):
     assert len(single) == 2
     assert single.kept == [True, True]
     assert single.filenames == ["bla", "bla2"]
-    assert single["bla2"] == {"_index": 1, "data": [1, 2, 3, 4]}
+    assert single._indices["bla2"] == 1
+    assert single["bla2"] == {"data": [1, 2, 3, 4]}
 
 
 def test_update_with_tuple(single):
@@ -144,7 +147,8 @@ def test_update_with_tuple(single):
     assert len(single) == 2
     assert single.kept == [True, True]
     assert single.filenames == ["bla", "bla2"]
-    assert single["bla2"] == {"_index": 1, "data": [1, 2, 3, 4]}
+    assert single._indices["bla2"] == 1
+    assert single["bla2"] == {"data": [1, 2, 3, 4]}
 
 
 def test_update_new(single):
@@ -152,7 +156,8 @@ def test_update_new(single):
     assert len(single) == 2
     assert single.kept == [True, True]
     assert single.filenames == ["bla", "bla2"]
-    assert single["bla2"] == {"_index": 1, "data": [5, 6, 7, 8]}
+    assert single._indices["bla2"] == 1
+    assert single["bla2"] == {"data": [5, 6, 7, 8]}
 
 
 def test_update_existing_with_new_data(single):
@@ -160,7 +165,8 @@ def test_update_existing_with_new_data(single):
     assert len(single) == 1
     assert single.kept == [True]
     assert single.filenames == ["bla"]
-    assert single["bla"] == {"_index": 0, "data": [1, 2, 3, 4], "data_new": "new"}
+    assert single._indices == {"bla": 0}
+    assert single["bla"] == {"data": [1, 2, 3, 4], "data_new": "new"}
 
 
 def test_update_existing_and_new(single):
@@ -168,8 +174,9 @@ def test_update_existing_and_new(single):
     assert len(single) == 2
     assert single.kept == [True, True]
     assert single.filenames == ["bla", "bla2"]
-    assert single["bla2"] == {"_index": 1, "data": [1, 2, 3, 4]}
-    assert single["bla"] == {"_index": 0, "data": [1, 2, 3, 4], "data_new": "new"}
+    assert single._indices == {"bla2": 1, "bla": 0}
+    assert single["bla2"] == {"data": [1, 2, 3, 4]}
+    assert single["bla"] == {"data": [1, 2, 3, 4], "data_new": "new"}
 
 
 def test_update_repeated(single):
@@ -213,6 +220,8 @@ def test_arrayed_types(full):
     assert gw.ExcitedStateBars is type(vdip)
     emang = full.arrayed("emang")
     assert gw.FloatArray is type(emang)
+    charge = full.arrayed("charge")
+    assert gw.IntegerArray is type(charge)
     filenames = full.arrayed("filenames")
     assert gw.FilenamesArray is type(filenames)
 
