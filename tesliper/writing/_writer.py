@@ -373,8 +373,11 @@ class SerialWriter(Writer):
             raise ValueError("Unexpected identifiers given.") from error
         self._filename_template = filename_template
 
-    def _iter_handles(self, filenames: Iterable[str], genre: str) -> (TextIO, Any):
-        """Helper method for iteration over generated files.
+    def _iter_handles(
+        self, filenames: Iterable[str], genre: str, **kwargs
+    ) -> (TextIO, Any):
+        """Helper method for iteration over generated files. Given additional kwargs
+        will be passed to `open()` method.
 
         Parameters
         ----------
@@ -394,5 +397,7 @@ class SerialWriter(Writer):
             filename = self.filename_template.substitute(
                 filename=Path(fnm).stem, ext=self.extension, num=num, genre=genre
             )
-            with self.destination.joinpath(filename).open(self.mode) as handle:
+            with self.destination.joinpath(filename).open(
+                self.mode, **kwargs
+            ) as handle:
                 yield handle

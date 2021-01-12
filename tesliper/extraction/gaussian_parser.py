@@ -261,9 +261,9 @@ class GaussianParser(Parser):
         input orientation, starting with atom symbol
     stoichiometry : str, always available
         molecule's stoichiometry
-    molecule_atoms : tuple of ints, always available
+    molecule_atoms : list of ints, always available
         molecule's atoms as atomic numbers
-    geometry : tuple of tuples of floats, always available
+    geometry : list of tuples of floats, always available
         molecule's geometry (last one found in file) as X, Y, Z coordinates of atoms
 
     Attributes
@@ -393,7 +393,8 @@ class GaussianParser(Parser):
             line = next(iterator)
             match = geom_line_.match(line)
         geom = ((int(a), (float(x), float(y), float(z))) for _, a, _, x, y, z in geom)
-        data["molecule_atoms"], data["geometry"] = zip(*geom)
+        # produce list and list of tuples instead of tuple and tuple of tuples
+        data["molecule_atoms"], data["geometry"] = map(list, zip(*geom))
         self.workhorse = self.wait
 
     @Parser.state(trigger=re.compile("^ Search for a local minimum."))
@@ -467,6 +468,7 @@ class GaussianParser(Parser):
         iterator = self._iterator
         while not line.startswith(" Excited State"):
             line = next(iterator)
+        # map obj unpacked in calling method
         out = [map(float, excited_reg.match(line).groups())]
         while line.strip():
             line = next(iterator)

@@ -158,7 +158,7 @@ class CsvWriter(_CsvMixin, Writer):
             energies.values,
             corr,
         )
-        with self.destination.open(self.mode) as handle:
+        with self.destination.open(self.mode, newline="") as handle:
             csvwriter = csv.writer(handle, dialect=self.dialect, **self.fmtparams)
             if self.include_header:
                 csvwriter.writerow(header)
@@ -245,7 +245,7 @@ class CsvSerialWriter(_CsvMixin, SerialWriter):
         headers = [self._header[bar.genre] for bar in bars]
         values = zip(*[bar.values for bar in bars])
         for handle, values_ in zip(
-            self._iter_handles(bars[0].filenames, band.genre), values
+            self._iter_handles(bars[0].filenames, band.genre, newline=""), values
         ):
             csvwriter = csv.writer(handle, dialect=self.dialect, **self.fmtparams)
             if self.include_header:
@@ -265,7 +265,7 @@ class CsvSerialWriter(_CsvMixin, SerialWriter):
         abscissa = spectra.x
         header = [spectra.units["y"], spectra.units["x"]]
         for handle, values in zip(
-            self._iter_handles(spectra.filenames, spectra.genre), spectra.y
+            self._iter_handles(spectra.filenames, spectra.genre, newline=""), spectra.y
         ):
             csvwriter = csv.writer(handle, dialect=self.dialect, **self.fmtparams)
             if self.include_header:

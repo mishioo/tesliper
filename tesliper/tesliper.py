@@ -60,14 +60,15 @@ class Tesliper:
         },
     }
 
-    def __init__(self, input_dir=None, output_dir=None, wanted_files=None):
+    def __init__(self, input_dir=".", output_dir=".", wanted_files=None):
         """
         Parameters
         ----------
         input_dir : str or path-like object, optional
-            Path to directory containing files for extraction.
+            Path to directory containing files for extraction, defaults to current
+            working directory.
         output_dir : str or path-like object, optional
-            Path to directory for output files.
+            Path to directory for output files, defaults to current working directory.
         wanted_files : list, optional
             List filenames representing wanted files.
         """
@@ -132,32 +133,29 @@ class Tesliper:
         #                 "type {}".format(type(value)))
 
     @property
-    def input_dir(self):
+    def input_dir(self) -> Path:
         return self.__input_dir
 
     @input_dir.setter
-    def input_dir(self, path=None):
-        if path is not None:
-            path = os.path.normpath(path)
-            if not os.path.isdir(path):
-                raise FileNotFoundError(
-                    "Invalid path or directory not found: {}".format(path)
-                )
-            self.soxhlet = ex.Soxhlet(path, self.wanted_files)
-            logger.info("Current working directory is: {}".format(path))
+    def input_dir(self, path: Union[Path, str] = "."):
+        path = Path(path).resolve()
+        if not path.is_dir():
+            raise FileNotFoundError(
+                "Invalid path or directory not found: {}".format(path)
+            )
+        self.soxhlet = ex.Soxhlet(path, self.wanted_files)
+        logger.info("Current working directory is: {}".format(path))
         self.__input_dir = path
 
     @property
-    def output_dir(self):
+    def output_dir(self) -> Path:
         return self.__output_dir
 
     @output_dir.setter
-    def output_dir(self, path=None):
-        if path is not None:
-            path = os.path.normpath(path)
-            os.makedirs(path, exist_ok=True)
-            # self.writer.path = path  # depreciated
-            logger.info("Current output directory is: {}".format(path))
+    def output_dir(self, path: Union[Path, str] = "."):
+        path = Path(path).resolve()
+        path.mkdir(exist_ok=True)
+        logger.info("Current output directory is: {}".format(path))
         self.__output_dir = path
 
     def extract_iterate(self, path=None, wanted_files=None):
@@ -423,8 +421,7 @@ class Tesliper:
         -----
         If `self.output_dir` is `None`, current working directory is assumed.
         """
-        path = self.output_dir or Path()  # TODO: move default dir to self.output_dir
-        path = path / filename
+        path = self.output_dir / filename
         if mode not in {"x", "w"}:
             raise ValueError(
                 f"'{mode}' is not a valid mode for serializing Tesliper object. "
