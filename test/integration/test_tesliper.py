@@ -26,17 +26,18 @@ def molecules():
 
 
 @pytest.fixture
-def teslpier(molecules):
-    t = Tesliper()
+def teslpier(tmp_path, molecules):
+    t = Tesliper(output_dir=tmp_path)
     t.molecules.update(molecules)
     t.molecules.kept = [0, 1]
     return t
 
 
 def test_json_serialization(teslpier, molecules, tmp_path):
-    jsonfile = tmp_path / "tslr.json"
-    teslpier.serialize(jsonfile)
-    newt = Tesliper.load(jsonfile)
+    file = ".tslr"
+    path = tmp_path / file
+    teslpier.serialize(file)
+    newt = Tesliper.load(path)
     assert newt.molecules == molecules
     assert newt.molecules.kept == teslpier.molecules.kept
     assert (

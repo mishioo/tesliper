@@ -71,8 +71,8 @@ class ArchiveWriter(Writer):
             handle.write(
                 self.jsonencode(
                     {
-                        "input_dir": input_dir,
-                        "output_dir": output_dir,
+                        "input_dir": str(input_dir),
+                        "output_dir": str(output_dir),
                         "wanted_files": wanted_files,
                     }
                 )
