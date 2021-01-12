@@ -1,6 +1,8 @@
 import zipfile
 from pathlib import Path
 import json
+from json.decoder import JSONArray
+from json.scanner import py_make_scanner
 from typing import Union, List, Dict, Any
 
 from ._writer import Writer
@@ -187,6 +189,28 @@ class ArchiveWriter(Writer):
         ).encode(self.encoding)
 
 
+class ConformerDecoder(json.JSONDecoder):
+    """JSONDecoder subclass, that transforms all inner lists into tuples."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        in_array = False
+
+        def parse_array(*_args, **_kwargs):
+            nonlocal in_array
+            if not in_array:
+                in_array = True
+                values, end = JSONArray(*_args, **_kwargs)
+                in_array = False
+            else:
+                values, end = JSONArray(*_args, **_kwargs)
+                values = tuple(values)
+            return values, end
+
+        self.parse_array = parse_array
+        self.scan_once = py_make_scanner(self)
+
+
 class ArchiveLoader:
     """Class for deserialization of Tesliper objects."""
 
@@ -236,8 +260,15 @@ class ArchiveLoader:
             tslr.parameters = self._load_parameters()
             filenames = self._load("molecules/filenames.json")
             mols = (
-                (name, self._load(f"molecules/data/{name}.json")) for name in filenames
-            )
+                (
+                    name,
+                    self.jsondecode(
+                        self.root.read(f"molecules/data/{name}.json"),
+                        cls=ConformerDecoder,
+                    ),
+                )
+                for name in filenames
+            )  # iterator producing key-value pairs
             tslr.molecules = Molecules(mols, **self._load("molecules/arguments.json"))
             for file in self.root.namelist():
                 if "experimental" in file:

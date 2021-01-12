@@ -13,14 +13,14 @@ def molecules():
             integer=42,
             floating=0.73,
             listoffloats=[0.1, 0.2, 0.3],
-            listoflists=[[1, 2], [3, 4], [5, 6]],
+            listoftuples=[(1, 2), (3, 4), (5, 6)],
         ),
         two=dict(
             string="other_value",
             integer=-5,
             floating=0.22,
             listoffloats=[0.4, 0.5, 0.6],
-            listoflists=[[3, 4], [5, 6], [7, 8]],
+            listoftuples=[(3, 4), (5, 6), (7, 8)],
         ),
     )
 
