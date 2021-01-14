@@ -75,11 +75,11 @@ def test_energies(writer, mols):
     assert wb.sheetnames == ["Collective overview"] + [
         XlsxWriter._header[grn] for grn in Energies.associated_genres
     ]
-    ws = wb.get_sheet_by_name("Collective overview")
+    ws = wb["Collective overview"]
     assert len(list(ws.columns)) == 13
     assert len(list(ws.rows)) == 2 + len(list(mols.keys()))
     for grn in Energies.associated_genres:
-        ws = wb.get_sheet_by_name(XlsxWriter._header[grn])
+        ws = wb[XlsxWriter._header[grn]]
         assert len(list(ws.columns)) == 5
         assert len(list(ws.rows)) == 1 + len(list(mols.keys()))
 
@@ -95,11 +95,11 @@ def test_energies_with_corrections(writer, mols):
     assert wb.sheetnames == ["Collective overview"] + [
         XlsxWriter._header[grn] for grn in Energies.associated_genres
     ]
-    ws = wb.get_sheet_by_name("Collective overview")
+    ws = wb["Collective overview"]
     assert len(list(ws.columns)) == 11
     assert len(list(ws.rows)) == 2 + len(list(mols.keys()))
     for grn in Energies.associated_genres:
-        ws = wb.get_sheet_by_name(XlsxWriter._header[grn])
+        ws = wb[XlsxWriter._header[grn]]
         assert len(list(ws.columns)) == 5 + (grn != "scf")
         assert len(list(ws.rows)) == 1 + len(list(mols.keys()))
 
@@ -110,7 +110,7 @@ def test_bars(writer, mols, filenames):
     wb = oxl.load_workbook(writer.destination)
     assert wb.sheetnames == filenames
     for file in filenames:
-        ws = wb.get_sheet_by_name(file)
+        ws = wb[file]
         assert len(list(ws.columns)) == 2
         assert len(list(ws.rows)) == 1 + mols.arrayed("freq").values.shape[1]
 
@@ -119,7 +119,7 @@ def test_spectra(writer, mols, spectra):
     writer.spectra(spectra)
     assert writer.destination.exists()
     wb = oxl.load_workbook(writer.destination)
-    ws = wb.get_sheet_by_name(spectra.genre)
+    ws = wb[spectra.genre]
     assert len(list(ws.columns)) == 1 + spectra.filenames.size
     assert len(list(ws.rows)) == 1 + spectra.values.shape[1]
 
@@ -128,6 +128,6 @@ def test_single_spectrum(writer, mols, spc):
     writer.single_spectrum(spc)
     assert writer.destination.exists()
     wb = oxl.load_workbook(writer.destination)
-    ws = wb.get_sheet_by_name(f"{spc.genre}_{spc.averaged_by}")
+    ws = wb[f"{spc.genre}_{spc.averaged_by}"]
     assert len(list(ws.columns)) == 2
     assert len(list(ws.rows)) == 1 + spc.values.size
