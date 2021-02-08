@@ -21,6 +21,12 @@ def test_symbol_of_elem_not_atomic_number_int():
         atoms.symbol_of_element(0)
 
 
+@pytest.mark.parametrize("element", [[], {}, tuple(), set()])
+def test_symbol_of_elem_cannot_convert(element):
+    with pytest.raises(TypeError):
+        atoms.symbol_of_element(element)
+
+
 def test_symbol_of_elem_not_atomic_number_float():
     with pytest.raises(ValueError):
         atoms.symbol_of_element(0.5)
@@ -67,6 +73,12 @@ def test_atomic_number_not_atomic_number():
         atoms.atomic_number(0)
 
 
+@pytest.mark.parametrize("element", [[], {}, tuple(), set()])
+def test_atomic_number_cannot_convert(element):
+    with pytest.raises(TypeError):
+        atoms.atomic_number(element)
+
+
 # test validate_atoms
 def test_validate_integer():
     assert atoms.validate_atoms(1) == [1]
@@ -94,3 +106,8 @@ def test_validate_list_of_floats():
 
 def test_validate_list_of_strings():
     assert atoms.validate_atoms(["H", "H"]) == [1, 1]
+
+@pytest.mark.parametrize("element", [[], {}, tuple(), set()])
+def test_validate_cannot_convert(element):
+    with pytest.raises(atoms.InvalidElementError):
+        atoms.validate_atoms([element])
