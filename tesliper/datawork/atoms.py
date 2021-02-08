@@ -41,7 +41,7 @@ def symbol_of_element(element: Union[int, str]) -> str:
         return stringified
     try:
         integerized = int(element)
-    except ValueError as exc:
+    except (ValueError, TypeError) as exc:
         if isinstance(element, str):
             raise ValueError(f"Cannot convert element {element} to integer.") from exc
         raise TypeError(
