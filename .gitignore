@@ -78,7 +78,6 @@ logi/
 private/
 quickcheck*
 tslr_err_log.txt
-.idea/
 tesliper_output/
 *.pkl
 *.diff
@@ -86,3 +85,7 @@ message.txt
 icon/
 WinPython/
 tesliper_gui.*
+
+# ide config
+.idea/
+.vscode/
