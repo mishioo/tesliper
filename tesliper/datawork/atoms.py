@@ -83,7 +83,7 @@ def atomic_number(element: Union[int, str]) -> int:
         return atomicnums[stringified]
     elif element in atoms_symbols:
         return element
-    elif isinstance(element, (str, int, float, np.str, np.integer, np.float)):
+    elif isinstance(element, (str, int, float, np.str_, np.integer, np.float64)):
         raise InvalidElementError(f"Unknown element: {element}")
     else:
         raise TypeError(f"Expected str or int, got '{type(element)}'.")
@@ -108,9 +108,9 @@ def validate_atoms(atoms: Union[int, str, List[Union[int, str]]]) -> List[int]:
     -----
     InvalidElementError
         if `atoms` cannot be interpreted as list of atoms' identifiers"""
-    if isinstance(atoms, (str, np.str)):
+    if isinstance(atoms, (str, np.str_)):
         atoms = atoms.split()
-    elif isinstance(atoms, (int, np.integer, float, np.float)):
+    elif isinstance(atoms, (int, np.integer, float, np.float64)):
         atoms = [atoms]
     try:
         return [atomic_number(a) for a in atoms]

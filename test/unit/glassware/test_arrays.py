@@ -25,7 +25,7 @@ def test_filenames_array_values():
 
 def test_dtype():
     arr = ar.FloatArray(genre="bla", filenames=["f1", "f2", "f3"], values=[3, 12, 15])
-    assert arr.values.dtype == np.float
+    assert arr.values.dtype == np.float64
 
 
 @pytest.fixture
