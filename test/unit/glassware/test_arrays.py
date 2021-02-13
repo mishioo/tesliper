@@ -243,10 +243,13 @@ def test_molecule_values_varying_sizes_inconsistency_allowed(geom):
         [[30, 40, 60], [40, 60, 70], [50, 80, 10]],
         [[35, 45, 65], [45, 65, 75]],
     ]
-    assert geom.values.tolist() == [
-        [[30, 40, 60], [40, 60, 70], [50, 80, 10]],
-        [[35, 45, 65], [45, 65, 75], [0, 0, 0]],
-    ]
+    np.testing.assert_array_equal(
+        geom.values,
+        [
+            [[30, 40, 60], [40, 60, 70], [50, 80, 10]],
+            [[35, 45, 65], [45, 65, 75], [0, 0, 0]],
+        ],
+    )
 
 
 @pytest.mark.xfail(

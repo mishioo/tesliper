@@ -440,38 +440,12 @@ class ArrayProperty(property):
                 )
                 raise InconsistentDataError(error_msg) from error
             else:
-                values = self.pad(values)
+                values = to_masked(values, dtype=self.dtype)
                 logger.info(
                     f"{genre} values' lists were appended with zeros to "
                     f"match length of longest entry."
                 )
                 return values
-
-    def pad(self, values: Sequence) -> np.ndarray:
-        """Appends each subsequence of given sequence to match the length
-        of the longest subsequence on given level of nesting depth, using
-        `self.pad_value` as a filler.
-
-        Parameters
-        ----------
-        values : sequence [of sequences [of...]]
-            Arbitrarily deep nested sequence of sequences.
-
-        Returns
-        -------
-        numpy.ndarray
-            Array formed from `values`, with missing values filled.
-        """
-
-        def _pad(vals, lens, padval=self.pad_value):
-            padding = ((0, lens[0] - len(vals)),) + ((0, 0),) * (len(lens) - 1)
-            if len(lens) > 1:
-                vals = [_pad(v, lens[1:]) for v in vals]
-            return np.pad(vals, padding, "constant", constant_values=padval)
-
-        longest = longest_subsequences(values)
-        values = [_pad(v, longest) for v in values]
-        return np.array(values, dtype=self.dtype)
 
 
 class CollapsibleArrayProperty(ArrayProperty):
