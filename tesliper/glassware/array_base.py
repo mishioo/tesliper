@@ -94,6 +94,72 @@ def find_best_shape(jagged: NestedSequence) -> Tuple[int, ...]:
     return (len(jagged), *longest_subsequences(jagged))
 
 
+def _mask(jagged: NestedSequence, shape: tuple) -> np.ndarray:
+    """A workhorse of `mask` function, see there.
+
+    Parameters
+    ----------
+    jagged : sequence [of sequences [of...]]
+        Arbitrarily deep, nested sequence of sequences.
+    shape : tuple of int
+        Shape of an array that would fit `jagged`.
+
+    Returns
+    -------
+    numpy.array
+    Array of booleans, of given shape, indicating if value of same index exist
+    in `jagged`.
+
+    Notes
+    -----
+    Current implementation does not support shapes other than best fitting
+    (see `find_best_shape`).
+    """
+    if len(shape) == 0:
+        mask = np.array([])
+    elif len(shape) == 1:
+        mask = np.arange(shape[0]) < len(jagged)
+    else:
+        jagged = [_mask(v, shape[1:]) for v in jagged]
+        padding = ((0, shape[0] - len(jagged)),) + ((0, 0),) * (len(shape) - 1)
+        mask = np.pad(jagged, padding, "constant", constant_values=False)
+    return mask
+
+
+def mask(jagged: NestedSequence) -> np.ndarray:
+    """Returns a numpy.array of booleans, of shape that best fits given jagged nested
+    sequence `jagged`. Each boolean value of the output indicates if corresponding value
+    exists in `jagged`.
+
+    Parameters
+    ----------
+    jagged : sequence [of sequences [of...]]
+        Arbitrarily deep, nested sequence of sequences.
+
+    Returns
+    -------
+    numpy.array of bool
+        Array of booleans, of shape that best fits `jagged`, indicating if value of
+        same index exist in `jagged`.
+
+    Notes
+    -----
+    To use output as a mask of numpy.ma.masked_array, it should be inverted.
+    >>> np.ma.array(values, mask=~mask(jagged))
+
+    Examples
+    --------
+    >>> mask([[1, 2], [1]])
+    array([[True, True], [True, False]])
+    >>> mask([[1, 2], []])
+    array([[True, True], [False, False]])
+    >>> mask([[[1], []], [[2, 3]]])
+    array([[[True, False], [False, False]], [[True, True], [False, False]]])
+
+    """
+    return _mask(jagged, find_best_shape(jagged))
+
+
 # CLASSES
 class ArrayProperty(property):
     """

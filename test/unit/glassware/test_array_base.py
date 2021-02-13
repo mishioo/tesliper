@@ -4,6 +4,7 @@ from unittest import mock
 from tesliper.exceptions import InconsistentDataError
 import tesliper.glassware.array_base as ab
 import pytest
+import numpy as np
 
 from hypothesis import given, strategies as st
 
@@ -51,6 +52,71 @@ def test_longest_subsequences_str(values, lengths):
 )
 def test_find_best_shape(values, lengths):
     assert ab.find_best_shape(values) == lengths
+
+
+@pytest.mark.parametrize(
+    "values,mask",
+    [
+        ([], []),
+        ([1], [1]),
+        ([[1, 2], [3]], [[1, 1], [1, 0]]),
+        ([[1, 2], []], [[1, 1], [0, 0]]),
+        ([[1, 2], [3], [4, 5, 6]], [[1, 1, 0], [1, 0, 0], [1, 1, 1]]),
+        ([[[1, 2], [3]]], [[[1, 1], [1, 0]]]),
+        ([[[1, 2], []]], [[[1, 1], [0, 0]]]),
+        (
+            [[[1, 2], [3]], [[1, 2, 3]]],
+            [[[1, 1, 0], [1, 0, 0]], [[1, 1, 1], [0, 0, 0]]],
+        ),
+        (
+            [[[[], [1, 2]]], [[[]], [[3]]]],
+            [
+                [[[0, 0], [1, 2]], [[0, 0], [0, 0]]],
+                [[[0, 0], [0, 0]], [[1, 0], [0, 0]]],
+            ],
+        ),
+    ],
+)
+def test__mask(values, mask):
+    mask = np.array(mask, dtype=bool)
+    values = ab._mask(values, mask.shape)
+    np.testing.assert_array_equal(values, mask)
+
+
+@pytest.mark.xfail
+def test__mask_shape_more_dims():
+    shape = (1, 1, 1)
+    mask = ab._mask([[1]], shape)
+    assert mask.shape == shape
+
+
+def test__mask_shape_less_dims():
+    shape = (1, 1)
+    mask = ab._mask([[[1]]], shape)
+    assert mask.shape == shape
+
+
+@pytest.mark.parametrize("shape", [(1, 2), (2, 1), (2, 2)])
+def test__mask_shape_bigger(shape):
+    mask = ab._mask([[1]], shape)
+    assert mask.shape == shape
+
+
+@pytest.mark.xfail
+@pytest.mark.parametrize("shape", [(1, 2), (2, 1), (2, 2)])
+def test__mask_shape_smaller(shape):
+    mask = ab._mask([[1, 1], [1, 1]], shape)
+    assert mask.shape == shape
+
+
+def test_mask(mocker):
+    values = mock.Mock()
+    shape = mock.Mock()
+    mocker.patch("tesliper.glassware.array_base.find_best_shape", return_value=shape)
+    mocker.patch("tesliper.glassware.array_base._mask")
+    ab.mask(values)
+    ab.find_best_shape.assert_called_with(values)
+    ab._mask.assert_called_with(values, shape)
 
 
 @pytest.fixture
