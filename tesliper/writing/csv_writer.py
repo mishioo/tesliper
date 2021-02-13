@@ -130,7 +130,9 @@ class CsvWriter(_CsvMixin, Writer):
         )
 
     def energies(
-        self, energies: Energies, corrections: Optional[FloatArray] = None,
+        self,
+        energies: Energies,
+        corrections: Optional[FloatArray] = None,
     ):
         """Writes Energies object to csv file. The output also contains derived values:
         populations, min_factors, deltas. Corrections are added only when explicitly
@@ -206,7 +208,7 @@ class CsvSerialWriter(_CsvMixin, SerialWriter):
     fmtparams: dict, optional
         Additional formatting parameters for underlying csv.writer to use.
         For list of valid parameters consult csv.Dialect documentation.
-   """
+    """
 
     extension = "csv"
 

@@ -173,7 +173,11 @@ def bars():
 def test_intensieties(bars, inten, fnms, vals, freq):
     _ = bars.intensities
     inten.assert_called_with(
-        bars.genre, bars.values, bars.frequencies, bars.t, bars.laser,
+        bars.genre,
+        bars.values,
+        bars.frequencies,
+        bars.t,
+        bars.laser,
     )
 
 

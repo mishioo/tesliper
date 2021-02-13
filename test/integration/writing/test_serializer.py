@@ -14,7 +14,10 @@ with_args = Tesliper(
     output_dir=fixtures_dir,
     wanted_files=["one_file.out", "two_file.out"],
 )
-with_mols = Tesliper(input_dir=fixtures_dir, wanted_files=["meoh-1.out", "meoh-2.out"],)
+with_mols = Tesliper(
+    input_dir=fixtures_dir,
+    wanted_files=["meoh-1.out", "meoh-2.out"],
+)
 with_mols.extract()
 with_spectra = Tesliper()
 with_spectra.spectra["ir"] = Spectra(

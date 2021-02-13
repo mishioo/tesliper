@@ -29,7 +29,8 @@ def test_longest_subsequences(values, lengths):
 
 
 @pytest.mark.parametrize(
-    "values,lengths", [(["a"], ()), ([["a"]], (1,)), ([["aa"]], (1,))],
+    "values,lengths",
+    [(["a"], ()), ([["a"]], (1,)), ([["aa"]], (1,))],
 )
 def test_longest_subsequences_str(values, lengths):
     assert ab.longest_subsequences(values) == lengths
@@ -582,7 +583,12 @@ def test_array_base_get_args_not_stored_arg(filenames_mock, values_mock):
 def test_array_base_get_args_not_stored_arg_with_default(filenames_mock, values_mock):
     class Sub(ab.ArrayBase):
         def __init__(
-            self, genre, filenames, values, other="foo", allow_data_inconsistency=False,
+            self,
+            genre,
+            filenames,
+            values,
+            other="foo",
+            allow_data_inconsistency=False,
         ):
             super().__init__(genre, filenames, values, allow_data_inconsistency)
 

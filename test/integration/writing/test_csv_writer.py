@@ -63,21 +63,25 @@ def serial_writer(tmp_path):
 
 @pytest.fixture
 def gib_with_corr(mols):
-    gib = mols.arrayed('gib')
-    corr = mols.arrayed('gibcorr')
-    return gib, corr, zip(
-        gib.filenames,
-        gib.populations,
-        gib.min_factors,
-        gib.deltas,
-        gib.values,
-        corr.values,
+    gib = mols.arrayed("gib")
+    corr = mols.arrayed("gibcorr")
+    return (
+        gib,
+        corr,
+        zip(
+            gib.filenames,
+            gib.populations,
+            gib.min_factors,
+            gib.deltas,
+            gib.values,
+            corr.values,
+        ),
     )
 
 
 @pytest.fixture
 def gib_no_corr(mols):
-    gib = mols.arrayed('gib')
+    gib = mols.arrayed("gib")
     return gib, zip(
         gib.filenames,
         gib.populations,
@@ -100,12 +104,12 @@ def test_non_existent_dialect(tmp_path):
 
 
 def test_fmt_parameter(tmp_path):
-    CsvWriter(tmp_path.joinpath("test.scv"), delimiter=';')
+    CsvWriter(tmp_path.joinpath("test.scv"), delimiter=";")
 
 
 def test_invalid_fmt_parameter(tmp_path):
     with pytest.raises(TypeError):
-        CsvWriter(tmp_path.joinpath("test.scv"), invalidparam='wrong')
+        CsvWriter(tmp_path.joinpath("test.scv"), invalidparam="wrong")
 
 
 def test_energies(writer, gib_with_corr):
@@ -113,7 +117,7 @@ def test_energies(writer, gib_with_corr):
     writer.energies(gib, corr)
     header = ["Gaussian output file"]
     header += "population min_factor delta energy corrections".split(" ")
-    with writer.destination.open('r', newline='') as file:
+    with writer.destination.open("r", newline="") as file:
         reader = csv.reader(file)
         assert next(reader) == header
         for given, got in zip(values, reader):
@@ -124,7 +128,7 @@ def test_energies_no_header(writer, gib_with_corr):
     writer.include_header = False
     gib, corr, values = gib_with_corr
     writer.energies(gib, corr)
-    with writer.destination.open('r', newline='') as file:
+    with writer.destination.open("r", newline="") as file:
         reader = csv.reader(file)
         for given, got in zip(values, reader):
             assert given == tuple(str_or_float(v) for v in got)
@@ -134,7 +138,7 @@ def test_energies_no_corr_no_header(writer, gib_no_corr):
     writer.include_header = False
     gib, values = gib_no_corr
     writer.energies(gib)
-    with writer.destination.open('r', newline='') as file:
+    with writer.destination.open("r", newline="") as file:
         reader = csv.reader(file)
         for given, got in zip(values, reader):
             assert given == tuple(str_or_float(v) for v in got)
@@ -143,7 +147,7 @@ def test_energies_no_corr_no_header(writer, gib_no_corr):
 def test_spectrum_no_header(writer, spc):
     writer.include_header = False
     writer.spectrum(spc)
-    with writer.destination.open('r', newline='') as file:
+    with writer.destination.open("r", newline="") as file:
         reader = csv.reader(file)
         for given, got in zip(zip(spc.abscissa, spc.values), reader):
             assert given == tuple(float(v) for v in got)
@@ -151,8 +155,8 @@ def test_spectrum_no_header(writer, spc):
 
 def test_spectrum(writer, spc):
     writer.spectrum(spc)
-    header = [spc.units['y'], spc.units['x']]
-    with writer.destination.open('r', newline='') as file:
+    header = [spc.units["y"], spc.units["x"]]
+    with writer.destination.open("r", newline="") as file:
         reader = csv.reader(file)
         assert next(reader) == header
         for given, got in zip(zip(spc.abscissa, spc.values), reader):
@@ -165,8 +169,8 @@ def test_serial_bars(serial_writer, mols):
     values = list(zip(freq.values, *[b.values for b in bars]))
     header = [CsvSerialWriter._header[bar.genre] for bar in [freq, *bars]]
     for name, values in zip(freq.filenames, values):
-        file = serial_writer.destination.joinpath(name).with_suffix('.freq.csv')
-        with file.open('r', newline='') as file:
+        file = serial_writer.destination.joinpath(name).with_suffix(".freq.csv")
+        with file.open("r", newline="") as file:
             reader = csv.reader(file)
             assert next(reader) == header
             for *given, got in zip(*values, reader):
@@ -179,8 +183,8 @@ def test_serial_bars_no_header(serial_writer, mols):
     serial_writer.bars(freq, bars)
     values = list(zip(freq.values, *[b.values for b in bars]))
     for name, values in zip(freq.filenames, values):
-        file = serial_writer.destination.joinpath(name).with_suffix('.freq.csv')
-        with file.open('r', newline='') as file:
+        file = serial_writer.destination.joinpath(name).with_suffix(".freq.csv")
+        with file.open("r", newline="") as file:
             reader = csv.reader(file)
             for *given, got in zip(*values, reader):
                 assert given == [float(v) for v in got]
@@ -188,10 +192,10 @@ def test_serial_bars_no_header(serial_writer, mols):
 
 def test_serial_spectra(serial_writer, spectra):
     serial_writer.spectra(spectra)
-    header = [spectra.units['y'], spectra.units['x']]
+    header = [spectra.units["y"], spectra.units["x"]]
     for name, values in zip(spectra.filenames, spectra.values):
-        file = serial_writer.destination.joinpath(name).with_suffix('.ir.csv')
-        with file.open('r') as file:
+        file = serial_writer.destination.joinpath(name).with_suffix(".ir.csv")
+        with file.open("r") as file:
             reader = csv.reader(file)
             assert next(reader) == header
             for line, y, x in zip(reader, spectra.abscissa, values):
@@ -202,8 +206,8 @@ def test_serial_spectra_no_header(serial_writer, spectra):
     serial_writer.include_header = False
     serial_writer.spectra(spectra)
     for name, values in zip(spectra.filenames, spectra.values):
-        file = serial_writer.destination.joinpath(name).with_suffix('.ir.csv')
-        with file.open('r') as file:
+        file = serial_writer.destination.joinpath(name).with_suffix(".ir.csv")
+        with file.open("r") as file:
             reader = csv.reader(file)
             for line, y, x in zip(reader, spectra.abscissa, values):
                 assert [float(v) for v in line] == [y, x]

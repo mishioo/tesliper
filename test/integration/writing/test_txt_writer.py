@@ -178,7 +178,7 @@ ir calculated with peak width = 5 cm-1 and gaussian fitting, shown as Frequency 
 def test_serial_bars(serial_writer, mols, filenames):
     serial_writer.bars(mols.arrayed("freq"), [mols.arrayed("iri")])
     assert set(p.name for p in serial_writer.destination.iterdir()) == {
-        Path(f).with_suffix('.freq.txt').name for f in filenames
+        Path(f).with_suffix(".freq.txt").name for f in filenames
     }
     with serial_writer.destination.joinpath("meoh-1.freq.txt").open("r") as handle:
         cont = handle.read()
@@ -192,12 +192,12 @@ def test_serial_bars(serial_writer, mols, filenames):
 def test_serial_spectra(serial_writer, spectra, filenames):
     serial_writer.spectra(spectra)
     for name, values in zip(spectra.filenames, spectra.values):
-        file = serial_writer.destination.joinpath(name).with_suffix('.ir.txt')
-        with file.open('r') as f:
+        file = serial_writer.destination.joinpath(name).with_suffix(".ir.txt")
+        with file.open("r") as f:
             output = f.readlines()
-        assert 'ir calculated' in output[0]
-        assert 'width = 5 cm-1' in output[0]
-        assert 'gaussian fitting' in output[0]
-        assert 'Frequency / cm^(-1) vs. Epsilon' in output[0]
+        assert "ir calculated" in output[0]
+        assert "width = 5 cm-1" in output[0]
+        assert "gaussian fitting" in output[0]
+        assert "Frequency / cm^(-1) vs. Epsilon" in output[0]
         for line, y, x in zip(output[1:], spectra.abscissa, values):
             assert [float(v) for v in line.split()] == [y, x]

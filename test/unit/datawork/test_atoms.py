@@ -107,6 +107,7 @@ def test_validate_list_of_floats():
 def test_validate_list_of_strings():
     assert atoms.validate_atoms(["H", "H"]) == [1, 1]
 
+
 @pytest.mark.parametrize("element", [[], {}, tuple(), set()])
 def test_validate_cannot_convert(element):
     with pytest.raises(atoms.InvalidElementError):
