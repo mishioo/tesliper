@@ -72,6 +72,42 @@ def test_flatten(values, depth, flatted):
 
 
 @pytest.mark.parametrize(
+    "values,masked",
+    [
+        ([], []),
+        ([1], [1]),
+        ([[1, 2], [3]], [[1, 2], [3, 0]]),
+        ([[1, 2], []], [[1, 2], [0, 0]]),
+        ([[1, 2], [3], [4, 5, 6]], [[1, 2, 0], [3, 0, 0], [4, 5, 6]]),
+        ([[[1, 2], [3]]], [[[1, 2], [3, 0]]]),
+        ([[[1, 2], []]], [[[1, 2], [0, 0]]]),
+        (
+            [[[1, 2], [3]], [[1, 2, 3]]],
+            [[[1, 2, 0], [3, 0, 0]], [[1, 2, 3], [0, 0, 0]]],
+        ),
+        (
+            [[[[], [1, 2]]], [[[]], [[3]]]],
+            [
+                [[[0, 0], [1, 2]], [[0, 0], [0, 0]]],
+                [[[0, 0], [0, 0]], [[3, 0], [0, 0]]],
+            ],
+        ),
+    ],
+)
+def test_to_masked(values, masked):
+    masked = np.array(masked)
+    masked = np.ma.array(masked, mask=(masked == 0))
+    array = ab.to_masked(values)
+    np.testing.assert_array_equal(array, masked)
+    np.testing.assert_array_equal(array.mask, masked.mask)
+
+
+def test_to_masked_inconsistent_dims():
+    with pytest.raises(ValueError):
+        ab.to_masked([[1], 1])
+
+
+@pytest.mark.parametrize(
     "values,mask",
     [
         ([], []),

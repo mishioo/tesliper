@@ -194,6 +194,79 @@ def mask(jagged: NestedSequence) -> np.ndarray:
     return _mask(jagged, find_best_shape(jagged))
 
 
+def to_masked(
+    jagged: NestedSequence,
+    dtype: Optional[type] = None,
+    fill_value: Optional[Any] = None,
+) -> np.ma.core.MaskedArray:
+    """Convert jagged, arbitrarily deep, nested sequence to numpy.ma.masked_array
+    with missing entries masked.
+
+    Parameters
+    ----------
+    jagged : sequence [of sequences [of...]]
+        Arbitrarily deep, nested sequence of sequences.
+    dtype : type, optional
+        Data type of the output. If `dtype` is `None`, the type of the data is figured
+        out by numpy machinery.
+    fill_value : scalar, optional
+        Value used to fill in the masked values when necessary. If `None`, a default
+        based on the data-type is used.
+
+    Returns
+    -------
+    numpy.ma.core.MaskedArray
+        Given `jagged` converted to numpy.ma.masked_array with missing entries masked.
+
+    Raises
+    ------
+    ValueError
+        If jagged sequence has inconsistent number of dimensions.
+
+    Examples
+    --------
+    >>> to_masked([[1, 2], [1]])
+    array(data=[[1, 2], [1, --]], mask=[[True, True], [True, False]])
+    >>> to_masked([1, [1]])
+    Traceback (most recent call last):
+    ValueError: Cannot convert to masked array: jagged sequence has inconsistent
+    number of dimensions.
+    """
+    if not jagged:
+        return np.ma.array([])
+    array, shape, done, lengths = jagged, (len(jagged),), False, []
+    while not done:
+        # iterate over each level of nesting, accumulating partially flatted array
+        each_is_vector = all(
+            isinstance(x, Iterable) and not isinstance(x, (str, bytes)) for x in array
+        )
+        each_is_scalar = all(
+            not isinstance(x, Iterable) or isinstance(x, (str, bytes)) for x in array
+        )
+        if each_is_vector:
+            # if each entry is vector, find these vectors' length
+            lengths = [len(x) for x in array]
+            # longest vector defines current dimension's shape
+            shape = shape + (max(lengths),)
+            # flatten one level
+            array = [v for x in array for v in x]
+        elif each_is_scalar:
+            # if each entry is scalar, we're done
+            done = True
+        else:
+            # if scalar and vector entries mixed, we raise an error
+            raise ValueError(
+                "Cannot convert to masked array: jagged sequence has inconsistent "
+                "number of dimensions."
+            )
+    mask = _mask(jagged, shape)
+    output = np.ma.zeros(shape, dtype=dtype)
+    # fill output with values
+    output[mask] = array
+    # mask for numpy.ma.masked_array must be inverted (`True` masks value)
+    return np.ma.array(output, mask=~mask, dtype=dtype, fill_value=fill_value)
+
+
 # CLASSES
 class ArrayProperty(property):
     """
