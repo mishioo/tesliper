@@ -55,6 +55,23 @@ def test_find_best_shape(values, lengths):
 
 
 @pytest.mark.parametrize(
+    "values,depth,flatted",
+    [
+        ([[1, 2], [3]], 2, [1, 2, 3]),
+        ([[1, 2], []], 2, [1, 2]),
+        ([[1, [2]], [3]], 2, [1, [2], 3]),
+        ([[1, [2]], [3]], None, [1, 2, 3]),
+        ([[[[1]]]], 1, [[[[1]]]]),  # ndim - 3
+        ([[[[1]]]], 2, [[[1]]]),  # ndim - 2
+        ([[[[1]]]], 3, [[1]]),  # ndim - 1
+        ([[[[1]]]], 4, [1]),  # ndim
+    ],
+)
+def test_flatten(values, depth, flatted):
+    assert list(ab.flatten(values, depth)) == flatted
+
+
+@pytest.mark.parametrize(
     "values,mask",
     [
         ([], []),

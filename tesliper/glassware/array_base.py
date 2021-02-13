@@ -2,7 +2,17 @@
 import inspect
 import logging as lgg
 
-from typing import Callable, Optional, Any, Sequence, Tuple, Iterable, Union, List
+from typing import (
+    Callable,
+    Optional,
+    Any,
+    Sequence,
+    Tuple,
+    Iterable,
+    Iterator,
+    Union,
+    List,
+)
 
 import numpy as np
 
@@ -92,6 +102,30 @@ def find_best_shape(jagged: NestedSequence) -> Tuple[int, ...]:
     (2, 3, 2)
     """
     return (len(jagged), *longest_subsequences(jagged))
+
+
+def flatten(items: NestedSequence, depth: Optional[int] = None) -> Iterator:
+    """Yield items from any nested iterable as chain of values up to given `depth`.
+    If `depth` is `None`, yielded sequence is completely flat.
+
+    Parameters
+    ----------
+    items : NestedSequence
+        Arbitrarily deep, nested sequence of sequences.
+    depth : int, optional
+        How deep should fattening be.
+
+    Yields
+    ------
+    Any
+        Values from `items` as flatted sequence."""
+    depth = float("inf") if depth is None else depth
+    for x in items:
+        should_iter = isinstance(x, Iterable) and not isinstance(x, (str, bytes))
+        if should_iter and depth > 1:
+            yield from flatten(x, depth - 1)
+        else:
+            yield x
 
 
 def _mask(jagged: NestedSequence, shape: tuple) -> np.ndarray:
@@ -368,8 +402,7 @@ class ArrayProperty(property):
 
 
 class CollapsibleArrayProperty(ArrayProperty):
-    """ArrayProperty, that stores only one value, if all entries are identical.
-    """
+    """ArrayProperty, that stores only one value, if all entries are identical."""
 
     def check_shape(self, instance: Any, values: Sequence):
         """Raises an error if `values` have different shape than attribute specified
