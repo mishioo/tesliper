@@ -274,9 +274,29 @@ def test_molecule_atoms_not_matching_num_of_conformers(geom):
         geom.molecule_atoms = [[2, 2, 2]] * 3
 
 
-def test_transitions_unpack():
-    values = [[[(11, 21, 0.5), (12, 22, 0.6)], [(31, 32, 1.1)]]]
-    ground, excited, coefs = ar.Transitions.unpack_values(values)
+@pytest.fixture(scope="module")
+def transitions_values():
+    return [[[(11, 21, 0.5), (12, 22, 0.6)], [(31, 32, 1.1)]]]
+
+
+@pytest.fixture
+def transitions(transitions_values):
+    return ar.Transitions(
+        genre="transitions",
+        filenames=["one"],
+        values=transitions_values,
+    )
+
+
+def test_transitions_unpack(transitions_values):
+    ground, excited, coefs = ar.Transitions.unpack_values(transitions_values)
     assert ground == [[[11, 12], [31]]]
     assert excited == [[[21, 22], [32]]]
     assert coefs == [[[0.5, 0.6], [1.1]]]
+
+
+def test_transitions_highest(transitions):
+    # TODO: make better tests
+    i = transitions.indices_highest
+    g, e, v, c = transitions.highest_contribution
+    np.testing.assert_array_equal(v, transitions.values[i])
