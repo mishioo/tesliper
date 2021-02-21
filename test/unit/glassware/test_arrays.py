@@ -272,3 +272,11 @@ def test_molecule_atoms_too_short(geom):
 def test_molecule_atoms_not_matching_num_of_conformers(geom):
     with pytest.raises(ValueError):
         geom.molecule_atoms = [[2, 2, 2]] * 3
+
+
+def test_transitions_unpack():
+    values = [[[(11, 21, 0.5), (12, 22, 0.6)], [(31, 32, 1.1)]]]
+    ground, excited, coefs = ar.Transitions.unpack_values(values)
+    assert ground == [[[11, 12], [31]]]
+    assert excited == [[[21, 22], [32]]]
+    assert coefs == [[[0.5, 0.6], [1.1]]]

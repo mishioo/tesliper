@@ -1,6 +1,6 @@
 # IMPORTS
 import logging as lgg
-from typing import Sequence, Union, Any
+from typing import Sequence, Union, Any, Tuple
 
 import numpy as np
 from .. import datawork as dw
@@ -549,6 +549,108 @@ class ExcitedStateBars(Bars):
             spectra_name, self.filenames, values, abscissa, width, fitting_name
         )
         return spectra
+
+
+class Transitions(DataArray):
+    """DataArray that stores information about electronic transitions from ground
+    to excited state contributing to each band.
+
+    Data is stored in three attributes: `ground`, `excited`, and `values`, which are
+    respectively: list of ground state electronic subshells, list of excited state
+    electronic subshells, and list of coefficients of transitions from corresponding
+    ground to excited subshell. Each of these arrays is of shape (conformers, bands,
+    max_transitions), where 'max_transitions' is a highest number of transitions
+    contributing to single band across all bands of all conformers.
+
+    Attributes
+    ----------
+    filenames : numpy.ndarray(dtype=str)
+        List of filenames of gaussian output files, from which data were extracted.
+    values : numpy.ndarray(dtype=float)
+        List of coefficients of each transition. It is a 3-dimensional of shape
+        (conformers, bands, max_transitions).
+    ground : numpy.ndarray(dtype=int)
+        List of ground state electronic subshells, stored as integers assigned to them
+        by used quantum computations program. It is a 3-dimensional of shape
+        (conformers, bands, max_transitions).
+    ground : numpy.ndarray(dtype=int)
+        List of excited state electronic subshells, stored as integers assigned to them
+        by used quantum computations program. It is a 3-dimensional of shape
+        (conformers, bands, max_transitions).
+    genre : str
+        Genre of given data.
+    allow_data_inconsistency : bool, optional
+        Specifies if inconsistency of data should be allowed when creating instance
+        of this class and setting it's attributes. Defaults to `True`, as different
+        number of transitions may be contributing to each band.
+
+    """
+
+    associated_genres = ("transitions",)
+    ground = ArrayProperty(dtype=int, check_against="filenames")
+    excited = ArrayProperty(dtype=int, check_against="filenames")
+    values = ArrayProperty(dtype=float, check_against="filenames")
+
+    @staticmethod
+    def unpack_values(values: Sequence[Sequence[Tuple[int, int, float]]]):
+        """Unpack transitions data stored as list of tuples of (ground, excited,
+        coefficient) to separate lists for each information pice, keeping original
+        dimensionality (conformers, bands, transitions).
+
+        Parameters
+        ----------
+        values : list of lists of tuples of (int, int, float)
+            Transitions data (ground and excited state electronic subshell and
+            coefficient of transition from former to latter) for each transition
+            of each band of each conformer.
+
+        Returns
+        -------
+        list of lists of lists of int,
+        list of lists of lists of int,
+        list of lists of lists of float
+            Transitions data separated to lists of ground, excited, and coefficients,
+            for each transition of each band of each conformer.
+        """
+        outs = [[], [], []]  # ground, excited, coefs
+        for conformer in values:
+            [out.append(list()) for out in outs]
+            curr_confs = [out[-1] for out in outs]
+            for band in conformer:
+                [c.append(list()) for c in curr_confs]
+                curr_bands = [c[-1] for c in curr_confs]
+                for transition in band:
+                    for container, value in zip(curr_bands, transition):
+                        container.append(value)
+        return outs
+
+    def __init__(
+        self,
+        genre: str,
+        filenames: Sequence[str],
+        values: Sequence[Sequence[Tuple[int, int, float]]],
+        allow_data_inconsistency: bool = True,
+    ):
+        super().__init__(genre, filenames, values, allow_data_inconsistency)
+        ground, excited, values = self.unpack_values(values)
+        self.ground = ground
+        self.excited = excited
+        self.values = values
+
+    @property
+    def coefficients(self) -> np.ndarray:
+        """Coefficients of each transition, alias for `values`."""
+        return self.values
+
+    @coefficients.setter
+    def coefficients(self, values):
+        self.values = values
+
+    @property
+    def contribution(self) -> np.ndarray:
+        """Contribution of each transition to given band, calculated as 2 * coef^2.
+        To get values in percent, multiply by 100."""
+        return 2 * np.square(self.values)
 
 
 class Geometry(FloatArray):
