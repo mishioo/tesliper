@@ -592,14 +592,14 @@ class Transitions(DataArray):
     values = ArrayProperty(dtype=float, check_against="filenames")
 
     @staticmethod
-    def unpack_values(values: Sequence[Sequence[Tuple[int, int, float]]]):
+    def unpack_values(values: Sequence[Sequence[Sequence[Tuple[int, int, float]]]]):
         """Unpack transitions data stored as list of tuples of (ground, excited,
         coefficient) to separate lists for each information pice, keeping original
         dimensionality (conformers, bands, transitions).
 
         Parameters
         ----------
-        values : list of lists of tuples of (int, int, float)
+        values : list of lists of lists of tuples of (int, int, float)
             Transitions data (ground and excited state electronic subshell and
             coefficient of transition from former to latter) for each transition
             of each band of each conformer.
@@ -628,7 +628,7 @@ class Transitions(DataArray):
         self,
         genre: str,
         filenames: Sequence[str],
-        values: Sequence[Sequence[Tuple[int, int, float]]],
+        values: Sequence[Sequence[Sequence[Tuple[int, int, float]]]],
         allow_data_inconsistency: bool = True,
     ):
         super().__init__(genre, filenames, values, allow_data_inconsistency)
