@@ -9,8 +9,15 @@ from itertools import zip_longest
 
 from ._writer import Writer, SerialWriter
 from ..glassware.spectra import SingleSpectrum, Spectra
-from ..glassware.arrays import DataArray, Energies, InfoArray, FloatArray, Bars
-
+from ..glassware.arrays import (
+    DataArray,
+    Energies,
+    InfoArray,
+    FloatArray,
+    Bars,
+    Transitions,
+    ExcitedStateBars,
+)
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -274,3 +281,54 @@ class TxtSerialWriter(SerialWriter):
                 "\n".join(f"{int(a):>4d}\t{v: .4f}" for a, v in zip(abscissa, values))
             )
         logger.info("Spectra export to text files done.")
+
+    def transitions(
+        self, transitions: Transitions, wavelengths: ExcitedStateBars, only_highest=True
+    ):
+        """Writes electronic transitions data to text files (one for each conformer).
+
+        Parameters
+        ----------
+        transitions : glassware.Transitions
+            Electronic transitions data that should be serialized.
+        wavelengths : glassware.ExcitedStateBars
+            Object containing information about wavelength at which transitions occur.
+        only_highest : bool
+            Specifies if only transition of highest contribution to given band should
+            be reported. If `False` all transition are saved to file.
+            Defaults to `True`.
+        """
+        transtions_data = (
+            transitions.highest_contribution
+            if only_highest
+            else (
+                transitions.ground,
+                transitions.excited,
+                transitions.values,
+                transitions.contribution,
+            )
+        )
+        contrib_text = "of highest contribution" if only_highest else "contributing"
+        title = f"Electronic transitions {contrib_text} to each band."
+        legend = "wavelength: ground -> excited, coefficient, contribution"
+        transition_entry = "{:>6d} -> {:<7d} {:> 11.5f} {:>12.0%}\n"
+        for handle, grounds, exciteds, values, contribs, bands in zip(
+            self._iter_handles(transitions.filenames, transitions.genre),
+            *transtions_data,
+            wavelengths.wavelen,
+        ):
+            handle.write(title + "\n")
+            handle.write(legend + "\n\n")
+            for g, e, v, c, b in zip(grounds, exciteds, values, contribs, bands):
+                try:
+                    listed = [
+                        transition_entry.format(*d)
+                        for d in zip(g, e, v, c)
+                        # omit entry if any value is masked
+                        if all(x is not np.ma.masked for x in d)
+                    ]
+                    listed = (" " * 12).join(listed)
+                except TypeError:
+                    # transition_data is transitions.highest_contribution
+                    listed = transition_entry.format(g, e, v, c)
+                handle.write(f"  {b:> 7.2f} nm: {listed}")

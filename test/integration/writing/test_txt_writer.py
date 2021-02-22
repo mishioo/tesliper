@@ -14,6 +14,11 @@ def filenames():
 
 
 @pytest.fixture
+def filenamestd():
+    return ["fal-td.out"]
+
+
+@pytest.fixture
 def fixturesdir():
     return Path(__file__).parent.with_name("fixtures")
 
@@ -22,6 +27,13 @@ def fixturesdir():
 def mols(filenames, fixturesdir):
     s = Soxhlet(fixturesdir)
     s.wanted_files = filenames
+    return Molecules(s.extract())
+
+
+@pytest.fixture
+def molstd(filenamestd, fixturesdir):
+    s = Soxhlet(fixturesdir)
+    s.wanted_files = filenamestd
     return Molecules(s.extract())
 
 
@@ -201,3 +213,52 @@ def test_serial_spectra(serial_writer, spectra, filenames):
         assert "Frequency / cm^(-1) vs. Epsilon" in output[0]
         for line, y, x in zip(output[1:], spectra.abscissa, values):
             assert [float(v) for v in line.split()] == [y, x]
+
+
+def test_serial_transitions_only_highest(serial_writer, molstd, filenamestd):
+    serial_writer.transitions(
+        molstd.arrayed("transitions"), molstd.arrayed("wavelen"), only_highest=True
+    )
+    output_file_path = serial_writer.destination.joinpath(filenamestd[0])
+    output_file_path = output_file_path.with_suffix(".transitions.txt")
+    with output_file_path.open("r") as handle:
+        cont = iter(handle.readlines())
+    assert "of highest contribution" in next(cont)
+    assert next(cont).startswith(
+        "wavelength: ground -> excited, coefficient, contribution"
+    )
+    assert not next(cont).strip()
+    outs = [
+        "326.42 nm: 8 ->  9  0.69982".split(),
+        "149.31 nm: 6 ->  9  0.70461".split(),
+        "135.60 nm: 7 ->  9  0.68192".split(),
+    ]
+    for line, out in zip(cont, outs):
+        out += [f"{2 * float(out[-1]) ** 2:.0%}"]
+        assert line.split() == out
+
+
+def test_serial_transitions_all(serial_writer, molstd, filenamestd):
+    serial_writer.transitions(
+        molstd.arrayed("transitions"), molstd.arrayed("wavelen"), only_highest=False
+    )
+    output_file_path = serial_writer.destination.joinpath(filenamestd[0])
+    output_file_path = output_file_path.with_suffix(".transitions.txt")
+    with output_file_path.open("r") as handle:
+        cont = iter(handle.readlines())
+    assert "contributing" in next(cont)
+    assert next(cont).startswith(
+        "wavelength: ground -> excited, coefficient, contribution"
+    )
+    assert not next(cont).strip()
+    outs = [
+        "326.42 nm: 5 ->  9  0.10410".split(),
+        "           8 ->  9  0.69982".split(),
+        "149.31 nm: 6 ->  9  0.70461".split(),
+        "135.60 nm: 6 -> 12  0.12121".split(),
+        "           7 ->  9  0.68192".split(),
+        "           8 -> 11 -0.11535".split(),
+    ]
+    for line, out in zip(cont, outs):
+        out += [f"{2 * float(out[-1]) ** 2:.0%}"]
+        assert line.split() == out
