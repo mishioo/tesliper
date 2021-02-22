@@ -485,7 +485,7 @@ class GroundStateBars(Bars):
 
 class ExcitedStateBars(Bars):
     associated_genres = (
-        "wave",
+        "wavelen",
         "ex_en",
         "vdip",
         "ldip",
