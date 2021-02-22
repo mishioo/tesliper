@@ -283,14 +283,14 @@ class ArrayProperty(property):
         dtype: type = float,
         check_against: Optional[str] = None,
         check_depth: int = 1,
-        pad_value: Any = 0,
+        fill_value: Any = 0,
         fsan: Optional[Callable[[Sequence], Sequence]] = None,
     ):
         super().__init__(fget=fget, fset=fset, fdel=fdel, doc=doc)
         self.dtype = dtype
         self.check_against = check_against
         self.check_depth = check_depth
-        self.pad_value = pad_value
+        self.fill_value = fill_value
         self.fsan = fsan
 
     def __set_name__(self, objtype, name):
@@ -328,7 +328,7 @@ class ArrayProperty(property):
             self.__doc__,
             self.dtype,
             self.check_against,
-            self.pad_value,
+            self.fill_value,
             self.fsan,
         )
 
@@ -341,7 +341,7 @@ class ArrayProperty(property):
             self.__doc__,
             self.dtype,
             self.check_against,
-            self.pad_value,
+            self.fill_value,
             self.fsan,
         )
 
@@ -354,7 +354,7 @@ class ArrayProperty(property):
             self.__doc__,
             self.dtype,
             self.check_against,
-            self.pad_value,
+            self.fill_value,
             self.fsan,
         )
 
@@ -371,7 +371,7 @@ class ArrayProperty(property):
             self.__doc__,
             self.dtype,
             self.check_against,
-            self.pad_value,
+            self.fill_value,
             fsan,
         )
 
@@ -456,7 +456,7 @@ class JaggedArrayProperty(ArrayProperty):
 
     def check_input(self, instance: Any, values: Sequence) -> np.ndarray:
         self.check_shape(instance, values)
-        return to_masked(values, dtype=self.dtype, fill_value=self.pad_value)
+        return to_masked(values, dtype=self.dtype, fill_value=self.fill_value)
 
 
 class CollapsibleArrayProperty(ArrayProperty):
