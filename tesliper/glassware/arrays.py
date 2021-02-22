@@ -4,7 +4,12 @@ from typing import Sequence, Union, Any, Tuple
 
 import numpy as np
 from .. import datawork as dw
-from .array_base import ArrayBase, ArrayProperty, CollapsibleArrayProperty
+from .array_base import (
+    ArrayBase,
+    ArrayProperty,
+    CollapsibleArrayProperty,
+    JaggedArrayProperty,
+)
 from .spectra import Spectra
 
 # LOGGER
@@ -235,7 +240,8 @@ class Energies(FloatArray):
 
 
 class Averagable:
-    """Mix-in for DataArrays, that may be averaged based on populations of conformers."""
+    """Mix-in for DataArrays, that may be averaged based on populations of conformers.
+    """
 
     def average_conformers(self: DataArray, energies) -> DataArray:
         """A method for averaging values by population of conformers.
@@ -587,9 +593,9 @@ class Transitions(DataArray):
     """
 
     associated_genres = ("transitions",)
-    ground = ArrayProperty(dtype=int, check_against="filenames")
-    excited = ArrayProperty(dtype=int, check_against="filenames")
-    values = ArrayProperty(dtype=float, check_against="filenames")
+    ground = JaggedArrayProperty(dtype=int, check_against="filenames")
+    excited = JaggedArrayProperty(dtype=int, check_against="filenames")
+    values = JaggedArrayProperty(dtype=float, check_against="filenames")
 
     @staticmethod
     def unpack_values(values: Sequence[Sequence[Sequence[Tuple[int, int, float]]]]):
@@ -629,7 +635,7 @@ class Transitions(DataArray):
         genre: str,
         filenames: Sequence[str],
         values: Sequence[Sequence[Sequence[Tuple[int, int, float]]]],
-        allow_data_inconsistency: bool = True,
+        allow_data_inconsistency: bool = False,
     ):
         super().__init__(genre, filenames, values, allow_data_inconsistency)
         ground, excited, values = self.unpack_values(values)
@@ -646,38 +652,36 @@ class Transitions(DataArray):
     def coefficients(self, values):
         self.values = values
 
-    @staticmethod
-    def _contribution(values):
-        return 2 * np.square(values)
-
     @property
     def contribution(self) -> np.ndarray:
         """Contribution of each transition to given band, calculated as 2 * coef^2.
         To get values in percent, multiply by 100."""
-        return self._contribution(self.values)
+        return 2 * np.square(self.values)
 
     @property
     def indices_highest(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Indices of coefficients of highest contribution to band in form that
         can be used in numpy's advanced indexing mechanism."""
-        highest = self.values.argmax(axis=2)
-        x, y, _ = self.values.shape
+        contribution = self.contribution
+        indices = contribution.argmax(axis=2)
+        x, y, _ = contribution.shape
         # np.ogrid generates missing part of a slice tuple; i.e. creates
         # arrays of integers from 0 to n, with appropriate dimensionality,
         # where n is size of given dimension
         x, y = np.ogrid[:x, :y]
         # returned tuple can be used to slice original values array
-        return x, y, highest
+        return x, y, indices
 
     @property
     def highest_contribution(
         self,
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        indices = self.values.argmax(axis=2)
         """Electronic transitions data limited to transition of highest contribution
         to each band. Returns tuple with 4 arrays: ground and excited state electronic
         subshell, coefficient of transition from former to latter, and its contribution,
         for each band of each conformer."""
+        contribution = self.contribution
+        indices = contribution.argmax(axis=2)
         ground = np.take_along_axis(
             self.ground, indices[..., np.newaxis], axis=2
         ).squeeze(axis=2)
@@ -687,7 +691,10 @@ class Transitions(DataArray):
         values = np.take_along_axis(
             self.values, indices[..., np.newaxis], axis=2
         ).squeeze(axis=2)
-        return ground, excited, values, self._contribution(values)
+        contribution = np.take_along_axis(
+            self.contribution, indices[..., np.newaxis], axis=2
+        ).squeeze(axis=2)
+        return ground, excited, values, contribution
 
 
 class Geometry(FloatArray):
