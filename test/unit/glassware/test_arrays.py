@@ -173,11 +173,7 @@ def bars():
 def test_intensieties(bars, inten, fnms, vals, freq):
     _ = bars.intensities
     inten.assert_called_with(
-        bars.genre,
-        bars.values,
-        bars.frequencies,
-        bars.t,
-        bars.laser,
+        bars.genre, bars.values, bars.frequencies, bars.t, bars.laser,
     )
 
 
@@ -276,15 +272,13 @@ def test_molecule_atoms_not_matching_num_of_conformers(geom):
 
 @pytest.fixture(scope="module")
 def transitions_values():
-    return [[[(11, 21, 0.5), (12, 22, 0.6)], [(31, 32, 1.1)]]]
+    return [[[(11, 21, 0.5), (12, 22, -0.6)], [(31, 32, 0.9)]]]
 
 
 @pytest.fixture
 def transitions(transitions_values):
     return ar.Transitions(
-        genre="transitions",
-        filenames=["one"],
-        values=transitions_values,
+        genre="transitions", filenames=["one"], values=transitions_values,
     )
 
 
@@ -292,11 +286,12 @@ def test_transitions_unpack(transitions_values):
     ground, excited, coefs = ar.Transitions.unpack_values(transitions_values)
     assert ground == [[[11, 12], [31]]]
     assert excited == [[[21, 22], [32]]]
-    assert coefs == [[[0.5, 0.6], [1.1]]]
+    assert coefs == [[[0.5, -0.6], [0.9]]]
 
 
 def test_transitions_highest(transitions):
-    # TODO: make better tests
-    i = transitions.indices_highest
     g, e, v, c = transitions.highest_contribution
-    np.testing.assert_array_equal(v, transitions.values[i])
+    np.testing.assert_array_equal(v, [[-0.6, 0.9]])
+    np.testing.assert_array_equal(c, [[2 * (-0.6) ** 2, 2 * 0.9 ** 2]])
+    np.testing.assert_array_equal(e, [[22, 32]])
+    np.testing.assert_array_equal(g, [[12, 31]])

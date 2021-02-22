@@ -680,21 +680,16 @@ class Transitions(DataArray):
         to each band. Returns tuple with 4 arrays: ground and excited state electronic
         subshell, coefficient of transition from former to latter, and its contribution,
         for each band of each conformer."""
-        contribution = self.contribution
-        indices = contribution.argmax(axis=2)
-        ground = np.take_along_axis(
-            self.ground, indices[..., np.newaxis], axis=2
-        ).squeeze(axis=2)
-        excited = np.take_along_axis(
-            self.excited, indices[..., np.newaxis], axis=2
-        ).squeeze(axis=2)
-        values = np.take_along_axis(
-            self.values, indices[..., np.newaxis], axis=2
-        ).squeeze(axis=2)
-        contribution = np.take_along_axis(
-            self.contribution, indices[..., np.newaxis], axis=2
-        ).squeeze(axis=2)
-        return ground, excited, values, contribution
+        indices = self.indices_highest
+        # could be also achieved by the following:
+        # np.take_along_axis(values, indices[..., np.newaxis], axis=2).squeeze(axis=2)
+        # but indexing is much quicker, once `indices` is established
+        return (
+            self.ground[indices],
+            self.excited[indices],
+            self.values[indices],
+            self.contribution[indices],
+        )
 
 
 class Geometry(FloatArray):
