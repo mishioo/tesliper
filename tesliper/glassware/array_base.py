@@ -448,8 +448,19 @@ class ArrayProperty(property):
                 return values
 
 
+class JaggedArrayProperty(ArrayProperty):
+    """ArrayProperty for storing intentionally jagged arrays of data.
+    InconsistentDataError is only raised if `check_shape()` fails. Given values are
+    converted to masked array and expanded as needed, regardless value of
+    `allow_data_inconsistency` attribute."""
+
+    def check_input(self, instance: Any, values: Sequence) -> np.ndarray:
+        self.check_shape(instance, values)
+        return to_masked(values, dtype=self.dtype, fill_value=self.pad_value)
+
+
 class CollapsibleArrayProperty(ArrayProperty):
-    """ArrayProperty, that stores only one value, if all entries are identical."""
+    """ArrayProperty that stores only one value, if all entries are identical."""
 
     def check_shape(self, instance: Any, values: Sequence):
         """Raises an error if `values` have different shape than attribute specified
