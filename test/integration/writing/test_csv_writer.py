@@ -1,6 +1,8 @@
 import csv
+from itertools import repeat
 from pathlib import Path
 
+import numpy as np
 import pytest
 
 from tesliper.writing.csv_writer import CsvWriter, CsvSerialWriter
@@ -82,12 +84,9 @@ def gib_with_corr(mols):
 @pytest.fixture
 def gib_no_corr(mols):
     gib = mols.arrayed("gib")
-    return gib, zip(
-        gib.filenames,
-        gib.populations,
-        gib.min_factors,
-        gib.deltas,
-        gib.values,
+    return (
+        gib,
+        zip(gib.filenames, gib.populations, gib.min_factors, gib.deltas, gib.values,),
     )
 
 
@@ -211,3 +210,57 @@ def test_serial_spectra_no_header(serial_writer, spectra):
             reader = csv.reader(file)
             for line, y, x in zip(reader, spectra.abscissa, values):
                 assert [float(v) for v in line] == [y, x]
+
+
+@pytest.fixture
+def filenamestd():
+    return ["fal-td.out"]
+
+
+@pytest.fixture
+def molstd(filenamestd, fixturesdir):
+    s = Soxhlet(fixturesdir)
+    s.wanted_files = filenamestd
+    return Molecules(s.extract())
+
+
+def test_serial_transitions_header(serial_writer, molstd):
+    trans, wave = molstd.arrayed("transitions"), molstd.arrayed("wavelen")
+    serial_writer.transitions(trans, wave, only_highest=True)
+    values = list(zip(wave.wavelen, *trans.highest_contribution))
+    header = ["wavelength/nm", "ground", "excited", "coefficient", "contribution"]
+    for name, values in zip(trans.filenames, values):
+        file = serial_writer.destination.joinpath(name).with_suffix(".transitions.csv")
+        with file.open("r", newline="") as file:
+            reader = csv.reader(file)
+            assert next(reader) == header
+            for *given, got in zip(*values, reader):
+                got = list(map(float, got))
+                assert given == got
+
+
+def test_serial_transitions_only_highest(serial_writer, molstd, filenamestd):
+    serial_writer.include_header = False
+    trans, wave = molstd.arrayed("transitions"), molstd.arrayed("wavelen")
+    serial_writer.transitions(trans, wave, only_highest=True)
+    values = list(zip(wave.wavelen, *trans.highest_contribution))
+    for name, values in zip(trans.filenames, values):
+        file = serial_writer.destination.joinpath(name).with_suffix(".transitions.csv")
+        with file.open("r", newline="") as file:
+            reader = csv.reader(file)
+            for *given, got in zip(*values, reader):
+                got = list(map(float, got))
+                assert given == got
+
+
+def test_serial_transitions_all(serial_writer, molstd, filenamestd):
+    serial_writer.include_header = False
+    trans, wave = molstd.arrayed("transitions"), molstd.arrayed("wavelen")
+    serial_writer.transitions(trans, wave, only_highest=False)
+    for name, values in zip(trans.filenames, trans.values):
+        file = serial_writer.destination.joinpath(name).with_suffix(".transitions.csv")
+        with file.open("r", newline="") as file:
+            reader = csv.reader(file)
+            # TODO: should also check if correct wavelength assigned
+            expected_len = values.count()  # count non-masked
+            assert len(list(reader)) == expected_len
