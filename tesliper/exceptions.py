@@ -20,6 +20,6 @@ class InvalidStateError(TesliperError, ValueError):
 
 class InvalidElementError(TesliperError, ValueError):
     """Used by tesliper to indicate, that value cannot be interpreted as an
-     element. Subclasses TesliperError and ValueError."""
+    element. Subclasses TesliperError and ValueError."""
 
     pass

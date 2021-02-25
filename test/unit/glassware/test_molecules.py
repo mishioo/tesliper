@@ -322,7 +322,9 @@ def test_trim_incomplete_wanted(full):
 
 def test_trim_incomplete_strict(full):
     m = gw.Molecules(
-        one={"a": 1, "b": 2}, two={"a": 1, "c": 3}, three={"a": 1, "d": 3},
+        one={"a": 1, "b": 2},
+        two={"a": 1, "c": 3},
+        three={"a": 1, "d": 3},
     )
     assert [True, True, True] == m.kept
     m.trim_incomplete(wanted=["a", "b", "c"])

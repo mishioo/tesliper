@@ -131,3 +131,39 @@ def test_single_spectrum(writer, mols, spc):
     ws = wb[f"{spc.genre}_{spc.averaged_by}"]
     assert len(list(ws.columns)) == 2
     assert len(list(ws.rows)) == 1 + spc.values.size
+
+
+@pytest.fixture
+def filenamestd():
+    return ["fal-td.out"]
+
+
+@pytest.fixture
+def molstd(filenamestd, fixturesdir):
+    s = Soxhlet(fixturesdir)
+    s.wanted_files = filenamestd
+    return Molecules(s.extract())
+
+
+def test_transitions_only_highest(writer, molstd, filenamestd):
+    trans, wave = molstd.arrayed("transitions"), molstd.arrayed("wavelen")
+    writer.transitions(trans, wave, only_highest=True)
+    assert writer.destination.exists()
+    wb = oxl.load_workbook(writer.destination)
+    assert wb.sheetnames == filenamestd
+    for file in filenamestd:
+        ws = wb[file]
+        assert len(list(ws.columns)) == 5
+        assert len(list(ws.rows)) == 1 + trans.values.shape[1]
+
+
+def test_transitions_all(writer, molstd, filenamestd):
+    trans, wave = molstd.arrayed("transitions"), molstd.arrayed("wavelen")
+    writer.transitions(trans, wave, only_highest=False)
+    assert writer.destination.exists()
+    wb = oxl.load_workbook(writer.destination)
+    assert wb.sheetnames == filenamestd
+    for num, file in enumerate(filenamestd):
+        ws = wb[file]
+        assert len(list(ws.columns)) == 5
+        assert len(list(ws.rows)) == 1 + trans.values[num].count()

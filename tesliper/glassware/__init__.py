@@ -11,6 +11,7 @@ from .arrays import (
     Bars,
     GroundStateBars,
     ExcitedStateBars,
+    Transitions,
     Geometry,
 )
 from .molecules import Molecules

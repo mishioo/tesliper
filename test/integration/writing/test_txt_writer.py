@@ -14,6 +14,11 @@ def filenames():
 
 
 @pytest.fixture
+def filenamestd():
+    return ["fal-td.out"]
+
+
+@pytest.fixture
 def fixturesdir():
     return Path(__file__).parent.with_name("fixtures")
 
@@ -22,6 +27,13 @@ def fixturesdir():
 def mols(filenames, fixturesdir):
     s = Soxhlet(fixturesdir)
     s.wanted_files = filenames
+    return Molecules(s.extract())
+
+
+@pytest.fixture
+def molstd(filenamestd, fixturesdir):
+    s = Soxhlet(fixturesdir)
+    s.wanted_files = filenamestd
     return Molecules(s.extract())
 
 
@@ -178,7 +190,7 @@ ir calculated with peak width = 5 cm-1 and gaussian fitting, shown as Frequency 
 def test_serial_bars(serial_writer, mols, filenames):
     serial_writer.bars(mols.arrayed("freq"), [mols.arrayed("iri")])
     assert set(p.name for p in serial_writer.destination.iterdir()) == {
-        Path(f).with_suffix('.freq.txt').name for f in filenames
+        Path(f).with_suffix(".freq.txt").name for f in filenames
     }
     with serial_writer.destination.joinpath("meoh-1.freq.txt").open("r") as handle:
         cont = handle.read()
@@ -192,12 +204,61 @@ def test_serial_bars(serial_writer, mols, filenames):
 def test_serial_spectra(serial_writer, spectra, filenames):
     serial_writer.spectra(spectra)
     for name, values in zip(spectra.filenames, spectra.values):
-        file = serial_writer.destination.joinpath(name).with_suffix('.ir.txt')
-        with file.open('r') as f:
+        file = serial_writer.destination.joinpath(name).with_suffix(".ir.txt")
+        with file.open("r") as f:
             output = f.readlines()
-        assert 'ir calculated' in output[0]
-        assert 'width = 5 cm-1' in output[0]
-        assert 'gaussian fitting' in output[0]
-        assert 'Frequency / cm^(-1) vs. Epsilon' in output[0]
+        assert "ir calculated" in output[0]
+        assert "width = 5 cm-1" in output[0]
+        assert "gaussian fitting" in output[0]
+        assert "Frequency / cm^(-1) vs. Epsilon" in output[0]
         for line, y, x in zip(output[1:], spectra.abscissa, values):
             assert [float(v) for v in line.split()] == [y, x]
+
+
+def test_serial_transitions_only_highest(serial_writer, molstd, filenamestd):
+    serial_writer.transitions(
+        molstd.arrayed("transitions"), molstd.arrayed("wavelen"), only_highest=True
+    )
+    output_file_path = serial_writer.destination.joinpath(filenamestd[0])
+    output_file_path = output_file_path.with_suffix(".transitions.txt")
+    with output_file_path.open("r") as handle:
+        cont = iter(handle.readlines())
+    assert "of highest contribution" in next(cont)
+    assert next(cont).startswith(
+        "wavelength: ground -> excited, coefficient, contribution"
+    )
+    assert not next(cont).strip()
+    outs = [
+        "326.42 nm: 8 ->  9  0.69982".split(),
+        "149.31 nm: 6 ->  9  0.70461".split(),
+        "135.60 nm: 7 ->  9  0.68192".split(),
+    ]
+    for line, out in zip(cont, outs):
+        out += [f"{2 * float(out[-1]) ** 2:.0%}"]
+        assert line.split() == out
+
+
+def test_serial_transitions_all(serial_writer, molstd, filenamestd):
+    serial_writer.transitions(
+        molstd.arrayed("transitions"), molstd.arrayed("wavelen"), only_highest=False
+    )
+    output_file_path = serial_writer.destination.joinpath(filenamestd[0])
+    output_file_path = output_file_path.with_suffix(".transitions.txt")
+    with output_file_path.open("r") as handle:
+        cont = iter(handle.readlines())
+    assert "contributing" in next(cont)
+    assert next(cont).startswith(
+        "wavelength: ground -> excited, coefficient, contribution"
+    )
+    assert not next(cont).strip()
+    outs = [
+        "326.42 nm: 5 ->  9  0.10410".split(),
+        "           8 ->  9  0.69982".split(),
+        "149.31 nm: 6 ->  9  0.70461".split(),
+        "135.60 nm: 6 -> 12  0.12121".split(),
+        "           7 ->  9  0.68192".split(),
+        "           8 -> 11 -0.11535".split(),
+    ]
+    for line, out in zip(cont, outs):
+        out += [f"{2 * float(out[-1]) ** 2:.0%}"]
+        assert line.split() == out

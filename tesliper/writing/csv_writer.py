@@ -1,14 +1,16 @@
 # IMPORTS
 import csv
 import logging as lgg
-from itertools import zip_longest
+from itertools import zip_longest, repeat
 from pathlib import Path
 from string import Template
 from typing import Union, List, Optional, Dict
 
+import numpy as np
+
 from ._writer import Writer, SerialWriter
 from ..glassware.spectra import SingleSpectrum, Spectra
-from ..glassware.arrays import Energies, FloatArray, Bars
+from ..glassware.arrays import Energies, FloatArray, Bars, Transitions, ExcitedStateBars
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -206,7 +208,7 @@ class CsvSerialWriter(_CsvMixin, SerialWriter):
     fmtparams: dict, optional
         Additional formatting parameters for underlying csv.writer to use.
         For list of valid parameters consult csv.Dialect documentation.
-   """
+    """
 
     extension = "csv"
 
@@ -273,3 +275,52 @@ class CsvSerialWriter(_CsvMixin, SerialWriter):
             for row in zip(abscissa, values):
                 csvwriter.writerow(row)
         logger.info("Spectra export to csv files done.")
+
+    def transitions(
+        self, transitions: Transitions, wavelengths: ExcitedStateBars, only_highest=True
+    ):
+        """Writes electronic transitions data to CSV files (one for each conformer).
+
+        Parameters
+        ----------
+        transitions : glassware.Transitions
+            Electronic transitions data that should be serialized.
+        wavelengths : glassware.ExcitedStateBars
+            Object containing information about wavelength at which transitions occur.
+        only_highest : bool
+            Specifies if only transition of highest contribution to given band should
+            be reported. If `False` all transition are saved to file.
+            Defaults to `True`.
+        """
+        transtions_data = (
+            transitions.highest_contribution
+            if only_highest
+            else (
+                transitions.ground,
+                transitions.excited,
+                transitions.values,
+                transitions.contribution,
+            )
+        )
+        header = ["wavelength/nm", "ground", "excited", "coefficient", "contribution"]
+        for handle, grounds, exciteds, values, contribs, bands in zip(
+            self._iter_handles(transitions.filenames, transitions.genre, newline=""),
+            *transtions_data,
+            wavelengths.wavelen,
+        ):
+            csvwriter = csv.writer(handle, dialect=self.dialect, **self.fmtparams)
+            if self.include_header:
+                csvwriter.writerow(header)
+            for g, e, v, c, b in zip(grounds, exciteds, values, contribs, bands):
+                try:
+                    listed = [
+                        d
+                        for d in zip(repeat(b), g, e, v, c)
+                        # omit entry if any value is masked
+                        if all(x is not np.ma.masked for x in d)
+                    ]
+                except TypeError:
+                    # transition_data is transitions.highest_contribution
+                    listed = [(b, g, e, v, c)]
+                for data in listed:
+                    csvwriter.writerow(data)

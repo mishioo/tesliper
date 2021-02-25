@@ -6,3 +6,4 @@ flake8
 coverage
 pytest
 hypothesis
+pytest-mock

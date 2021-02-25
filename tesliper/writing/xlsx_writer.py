@@ -3,11 +3,20 @@ import logging as lgg
 from pathlib import Path
 from typing import Sequence, Optional, Union, Iterable
 
+import numpy as np
 import openpyxl as oxl
-from itertools import zip_longest
+from itertools import zip_longest, repeat, chain
 
 from ._writer import Writer
-from ..glassware.arrays import Energies, Bars, InfoArray, FloatArray, DataArray
+from ..glassware.arrays import (
+    Energies,
+    Bars,
+    InfoArray,
+    FloatArray,
+    DataArray,
+    Transitions,
+    ExcitedStateBars,
+)
 from ..glassware.spectra import Spectra, SingleSpectrum
 
 
@@ -234,3 +243,58 @@ class XlsxWriter(Writer):
             ws.append(row)
         wb.save(self.destination)
         logger.info("Spectrum export to xlsx files done.")
+
+    def transitions(
+        self, transitions: Transitions, wavelengths: ExcitedStateBars, only_highest=True
+    ):
+        transtions_data = (
+            transitions.highest_contribution
+            if only_highest
+            else (
+                transitions.ground,
+                transitions.excited,
+                transitions.values,
+                transitions.contribution,
+            )
+        )
+        wb = self.workbook
+        headers = [
+            self._header[wavelengths.genre],
+            "Ground",
+            "Excited",
+            "Coefficient",
+            "Contribution",
+        ]
+        widths = [len(h) for h in headers]
+        fmts = [self._excel_formats[wavelengths.genre], "0", "0", "0.0000", "0%"]
+
+        for fname, grounds, exciteds, values, contribs, bands in zip(
+            transitions.filenames, *transtions_data, wavelengths.wavelen,
+        ):
+            ws = wb.create_sheet(title=fname)
+            ws.append(headers)
+            ws.freeze_panes = "B2"
+            for column, width in zip(ws.columns, widths):
+                column_letter = oxl.utils.get_column_letter(column[0].column)
+                ws.column_dimensions[column_letter].width = width
+            row_num = 1
+            for g, e, v, c, b in zip(grounds, exciteds, values, contribs, bands):
+                try:
+                    values_ = [
+                        # print wavelength value only once
+                        d
+                        for d in zip(chain([b], repeat(None)), g, e, v, c)
+                        # omit entry if any value is masked
+                        if all(x is not np.ma.masked for x in d)
+                    ]
+                except TypeError:
+                    # transition_data is transitions.highest_contribution
+                    values_ = [(b, g, e, v, c)]
+                for vals in values_:
+                    row_num += 1
+                    for col_num, (v_, fmt) in enumerate(zip(vals, fmts), start=1):
+                        cell = ws.cell(row=row_num, column=col_num)
+                        cell.value = v_
+                        cell.number_format = fmt
+        wb.save(self.destination)
+        logger.info("Transitions export to xlsx files done.")
