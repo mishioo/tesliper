@@ -29,8 +29,7 @@ def test_longest_subsequences(values, lengths):
 
 
 @pytest.mark.parametrize(
-    "values,lengths",
-    [(["a"], ()), ([["a"]], (1,)), ([["aa"]], (1,))],
+    "values,lengths", [(["a"], ()), ([["a"]], (1,)), ([["aa"]], (1,))],
 )
 def test_longest_subsequences_str(values, lengths):
     assert ab.longest_subsequences(values) == lengths
@@ -163,14 +162,15 @@ def test__mask_shape_smaller(shape):
     assert mask.shape == shape
 
 
-def test_mask(mocker):
+def test_mask():
     values = mock.Mock()
     shape = mock.Mock()
-    mocker.patch("tesliper.glassware.array_base.find_best_shape", return_value=shape)
-    mocker.patch("tesliper.glassware.array_base._mask")
-    ab.mask(values)
-    ab.find_best_shape.assert_called_with(values)
-    ab._mask.assert_called_with(values, shape)
+    with mock.patch(
+        "tesliper.glassware.array_base.find_best_shape", return_value=shape
+    ), mock.patch("tesliper.glassware.array_base._mask"):
+        ab.mask(values)
+        ab.find_best_shape.assert_called_with(values)
+        ab._mask.assert_called_with(values, shape)
 
 
 @pytest.fixture
@@ -556,12 +556,7 @@ def test_array_base_get_args_not_stored_arg(filenames_mock, values_mock):
 def test_array_base_get_args_not_stored_arg_with_default(filenames_mock, values_mock):
     class Sub(ab.ArrayBase):
         def __init__(
-            self,
-            genre,
-            filenames,
-            values,
-            other="foo",
-            allow_data_inconsistency=False,
+            self, genre, filenames, values, other="foo", allow_data_inconsistency=False,
         ):
             super().__init__(genre, filenames, values, allow_data_inconsistency)
 
