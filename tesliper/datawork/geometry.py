@@ -1,8 +1,7 @@
 import math
-from typing import Sequence, Union
+from typing import Sequence, Iterable, Union
 
 import numpy as np
-from collections.abc import Iterable
 
 
 def take_atoms(
