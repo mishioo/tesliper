@@ -13,9 +13,6 @@ from .array_base import (
 from .spectra import Spectra
 
 # LOGGER
-from ..datawork.atoms import atomic_number
-from ..exceptions import InconsistentDataError
-
 logger = lgg.getLogger(__name__)
 logger.setLevel(lgg.DEBUG)
 
@@ -723,7 +720,7 @@ class Geometry(FloatArray):
         check_against="values",
         check_depth=2,
         # TODO: make sanitizer, that accepts jagged nested sequences
-        fsan=np.vectorize(atomic_number),
+        fsan=np.vectorize(dw.atoms.atomic_number),
     )
 
     def __init__(
@@ -738,3 +735,24 @@ class Geometry(FloatArray):
     ):
         super().__init__(genre, filenames, values, allow_data_inconsistency)
         self.molecule_atoms = molecule_atoms
+
+    def rms_sieve(
+        self,
+        energies: Energies,
+        window_size: int = 10,
+        threshold: float = 1,
+        ignore_hydrogen_atoms: bool = True,
+    ):
+        blade = np.ones_like(energies.values, dtype=bool)
+        sorted_indices = energies.values.argsort
+        geom = (
+            dw.geometry.drop_atoms(self.values, self.molecule_atoms, dw.atoms.Atom.H)
+            if ignore_hydrogen_atoms
+            else self.values
+        )
+        # get sorted view of geom and energies
+        # define windows on geom
+        # for each window:
+        #   calculate RMS matrix
+        #   if RMS > threshold mark in blade as False
+        # return filenames kept
