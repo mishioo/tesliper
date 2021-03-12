@@ -1,6 +1,7 @@
 import pytest
 import numpy as np
 from tesliper.datawork import geometry
+from tesliper.datawork.atoms import Atom
 
 
 @pytest.fixture(scope="module")
@@ -50,12 +51,12 @@ def test_invalid_atom():
 
 
 def test_take_absent_atom(atoms_take, two_dim):
-    out = geometry.take_atoms(two_dim, atoms_take, 4).tolist()
+    out = geometry.take_atoms(two_dim, atoms_take, 4)
     np.testing.assert_array_equal(out, [])
 
 
 def test_take_all_atoms(atoms_take, two_dim):
-    out = geometry.take_atoms(two_dim, atoms_take, [1, 2, 3]).tolist()
+    out = geometry.take_atoms(two_dim, atoms_take, [1, 2, 3])
     np.testing.assert_array_equal(out, two_dim)
 
 
@@ -65,24 +66,29 @@ def test_take_non_matching_sizes():
 
 
 def test_take_one_dimension(atoms_take, one_dim):
-    out = geometry.take_atoms(one_dim, atoms_take, 1).tolist()
+    out = geometry.take_atoms(one_dim, atoms_take, 1)
+    np.testing.assert_array_equal(out, [0, 2])
+
+
+def test_take_one_dimension_as_enum(atoms_take, one_dim):
+    out = geometry.take_atoms(one_dim, atoms_take, Atom.H)
     np.testing.assert_array_equal(out, [0, 2])
 
 
 def test_take_two_dimensions(atoms_take, two_dim):
-    out = geometry.take_atoms(two_dim, atoms_take, 1).tolist()
+    out = geometry.take_atoms(two_dim, atoms_take, 1)
     np.testing.assert_array_equal(out, [[0, 2], [10, 12]])
 
 
 def test_take_three_dimensions(atoms_take, three_dim):
-    out = geometry.take_atoms(three_dim, atoms_take, 1).tolist()
+    out = geometry.take_atoms(three_dim, atoms_take, 1)
     np.testing.assert_array_equal(
         out, [[[0, 1, 2], [20, 21, 22]], [[100, 101, 102], [120, 121, 122]]]
     )
 
 
 def test_take_four_dimensions(atoms_take, four_dim):
-    out = geometry.take_atoms(four_dim, atoms_take, 1).tolist()
+    out = geometry.take_atoms(four_dim, atoms_take, 1)
     np.testing.assert_array_equal(
         out,
         [
@@ -101,7 +107,7 @@ def test_two_dimensions_atoms():
 
 
 def test_take_atoms_keeping(atoms_take):
-    out = geometry.take_atoms(atoms_take, atoms_take, 1).tolist()
+    out = geometry.take_atoms(atoms_take, atoms_take, 1)
     np.testing.assert_array_equal(out, [1, 1])
 
 
@@ -111,17 +117,17 @@ def test_invalid_atom():
 
 
 def test_drop_empty_discarded(atoms_drop, two_dim):
-    out = geometry.drop_atoms(two_dim, atoms_drop, []).tolist()
+    out = geometry.drop_atoms(two_dim, atoms_drop, [])
     np.testing.assert_array_equal(out, two_dim)
 
 
 def test_drop_absent_atom(atoms_drop, two_dim):
-    out = geometry.drop_atoms(two_dim, atoms_drop, 4).tolist()
+    out = geometry.drop_atoms(two_dim, atoms_drop, 4)
     np.testing.assert_array_equal(out, two_dim)
 
 
 def test_drop_all_atoms(atoms_drop, two_dim):
-    out = geometry.drop_atoms(two_dim, atoms_drop, [1, 2, 3]).tolist()
+    out = geometry.drop_atoms(two_dim, atoms_drop, [1, 2, 3])
     np.testing.assert_array_equal(out, [])
 
 
@@ -131,24 +137,24 @@ def test_non_matching_sizes():
 
 
 def test_drop_one_dimension(atoms_drop, one_dim):
-    out = geometry.drop_atoms(one_dim, atoms_drop, 1).tolist()
+    out = geometry.drop_atoms(one_dim, atoms_drop, 1)
     np.testing.assert_array_equal(out, [0, 2])
 
 
 def test_drop_two_dimensions(atoms_drop, two_dim):
-    out = geometry.drop_atoms(two_dim, atoms_drop, 1).tolist()
+    out = geometry.drop_atoms(two_dim, atoms_drop, 1)
     np.testing.assert_array_equal(out, [[0, 2], [10, 12]])
 
 
 def test_drop_three_dimensions(atoms_drop, three_dim):
-    out = geometry.drop_atoms(three_dim, atoms_drop, 1).tolist()
+    out = geometry.drop_atoms(three_dim, atoms_drop, 1)
     np.testing.assert_array_equal(
         out, [[[0, 1, 2], [20, 21, 22]], [[100, 101, 102], [120, 121, 122]]]
     )
 
 
 def test_drop_four_dimensions(atoms_drop, four_dim):
-    out = geometry.drop_atoms(four_dim, atoms_drop, 1).tolist()
+    out = geometry.drop_atoms(four_dim, atoms_drop, 1)
     np.testing.assert_array_equal(
         out,
         [
@@ -167,7 +173,7 @@ def test_drop_two_dimensions_atoms():
 
 
 def test_drop_atoms_dropping(atoms_drop):
-    out = geometry.drop_atoms(atoms_drop, atoms_drop, 1).tolist()
+    out = geometry.drop_atoms(atoms_drop, atoms_drop, 1)
     np.testing.assert_array_equal(out, [3, 2])
 
 
