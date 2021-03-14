@@ -1,5 +1,7 @@
 from unittest.mock import Mock
 import numpy as np
+from hypothesis import given, strategies as st, assume
+
 from tesliper.datawork import spectra as sp
 import pytest
 
@@ -107,30 +109,21 @@ def test_gaussian_mean_0_std_dev_1():
 def test_gaussian_width_zero():
     with pytest.raises(ValueError):
         sp.gaussian(
-            np.array([1]),
-            np.array([0]),
-            np.arange(-5, 6, 1),
-            0,
+            np.array([1]), np.array([0]), np.arange(-5, 6, 1), 0,
         )
 
 
 def test_gaussian_width_below_zero():
     with pytest.raises(ValueError):
         sp.gaussian(
-            np.array([1]),
-            np.array([0]),
-            np.arange(-5, 6, 1),
-            -1,
+            np.array([1]), np.array([0]), np.arange(-5, 6, 1), -1,
         )
 
 
 def test_gaussian_unequal_sizes():
     with pytest.raises(ValueError):
         sp.gaussian(
-            np.array([1, 2]),
-            np.array([0]),
-            np.arange(-5, 6, 1),
-            1,
+            np.array([1, 2]), np.array([0]), np.arange(-5, 6, 1), 1,
         )
 
 
@@ -168,30 +161,21 @@ def test_lorentzian_mean_0_std_dev_1():
 def test_lorentzian_width_zero():
     with pytest.raises(ValueError):
         sp.lorentzian(
-            np.array([1]),
-            np.array([0]),
-            np.arange(-5, 6, 1),
-            0,
+            np.array([1]), np.array([0]), np.arange(-5, 6, 1), 0,
         )
 
 
 def test_lorentzian_width_below_zero():
     with pytest.raises(ValueError):
         sp.lorentzian(
-            np.array([1]),
-            np.array([0]),
-            np.arange(-5, 6, 1),
-            -1,
+            np.array([1]), np.array([0]), np.arange(-5, 6, 1), -1,
         )
 
 
 def test_lorentzian_unequal_sizes():
     with pytest.raises(ValueError):
         sp.lorentzian(
-            np.array([1, 2]),
-            np.array([0]),
-            np.arange(-5, 6, 1),
-            1,
+            np.array([1, 2]), np.array([0]), np.arange(-5, 6, 1), 1,
         )
 
 
@@ -241,11 +225,7 @@ def test_calculate_spectra_two_conformers(fitting):
 def test_calculate_spectra_unmatching_arrays(fitting):
     with pytest.raises(ValueError):
         sp.calculate_spectra(
-            np.ones((2, 2)),
-            np.ones((3, 2)),
-            np.arange(3),
-            1,
-            fitting,
+            np.ones((2, 2)), np.ones((3, 2)), np.arange(3), 1, fitting,
         )
 
 
@@ -284,3 +264,14 @@ def test_calculate_average_unmatching_sizes():
         sp.calculate_average([1, 2, 3], [1, 2])
     with pytest.raises(ValueError):
         sp.calculate_average([1, 2, 3], 1)
+
+
+@given(st.integers(min_value=1, max_value=100), st.integers(), st.integers())
+def test_offset_one_peak_same_size(size, peak, shift):
+    assume(0 <= peak < size)
+    assume(0 <= peak + shift < size)
+    a, b = np.zeros(size), np.zeros(size)
+    a[peak] = 10
+    b[peak + shift] = 10
+    offset = sp.find_offset(a, b)
+    assert offset == -shift

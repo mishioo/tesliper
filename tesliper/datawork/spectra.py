@@ -228,3 +228,15 @@ def calculate_average(values, populations):
     shape = (-1,) + (1,) * (values.ndim - 1)
     popul = populations.reshape(*shape)
     return (values * popul).sum(0)
+
+
+def find_offset(a, b):
+    """Calculate offset by which `b` should be shifted to best match `a`. """
+    a, b = np.asanyarray(a), np.asanyarray(b)
+    # normalize values to be zero centered to prevent influence of padding with zeros
+    a = (a - a.mean()) / a.std()
+    b = (b - b.mean()) / b.std()
+    # calculate cross correlation array and find best overlap
+    cross = np.correlate(a, b, mode="full")
+    best = cross.argmax()
+    return best - b.size + 1
