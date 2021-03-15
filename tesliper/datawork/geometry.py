@@ -134,3 +134,20 @@ def get_triangular(m: int) -> int:
     if not m // 1 == m:
         raise ValueError(f'"m" should be a whole number, {m} given.')
     return m * (m + 1) // 2
+
+
+def kabsch_rotate(a: Sequence, b: Sequence):
+    """Minimize RMSD of molecules `a` and `b` by rotating molecule `a` onto `b`."""
+    a, b = np.asanyarray(a), np.asanyarray(b)
+    # normalize translation by subtracting centroids
+    a = a - a.mean(axis=0)
+    b = b - b.mean(axis=0)
+    # covariance matrix
+    cov = a.T @ b
+    u, s, vh = np.linalg.svd(cov)
+    # if determinant is negative, swap to ensure right-handed coordinate system
+    swap = np.eye(3)
+    swap[2, 2] = -1 if np.linalg.det(vh @ u.T) < 0 else 1
+    rotation = vh @ swap @ u.T  # wikipedia
+    rotation = u @ swap @ vh  # charnley/rmsd
+    # which one is ok ???
