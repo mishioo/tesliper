@@ -200,7 +200,7 @@ def windowed(series: Sequence, size: int) -> np.ndarray:
     """
     if not isinstance(size, int):
         raise TypeError(f"`size` must be a positive integer, but {type(size)} given.")
-    elif size >= 0:
+    elif size <= 0:
         raise ValueError(f"`size` must be a positive integer, but {size} given.")
     series = np.asanyarray(series)
     # create indices for fancy indexing [[0, 1, ..., size], [1, 2, ..., size + 1], ...]

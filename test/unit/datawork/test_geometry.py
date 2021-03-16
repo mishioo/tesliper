@@ -284,3 +284,22 @@ def test_kabsch_rotate(rotation, points):
     rotated = points @ rotation
     kabsch = geometry.kabsch_rotate(rotated, points)
     np.testing.assert_array_almost_equal(kabsch, points)
+
+
+@given(st.integers(min_value=1, max_value=100), st.integers(min_value=1, max_value=100))
+def test_windowed(series_size, window_size):
+    assume(window_size <= series_size)
+    windowed = geometry.windowed(np.empty((series_size,)), window_size)
+    assert windowed.shape == (series_size - window_size + 1, window_size)
+
+
+@given(st.integers(max_value=0))
+def test_windowed_wrong_size_value(size):
+    with pytest.raises(ValueError, match=r"must be a positive integer"):
+        geometry.windowed([], size)
+
+
+@pytest.mark.parametrize("size", [0.1, "1", tuple(), [], {}, set()])
+def test_windowed_wrong_size_type(size):
+    with pytest.raises(TypeError, match=r"must be a positive integer"):
+        geometry.windowed([], size)
