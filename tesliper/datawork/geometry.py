@@ -136,7 +136,9 @@ def get_triangular(m: int) -> int:
     return m * (m + 1) // 2
 
 
-def kabsch_rotate(a: Sequence[Sequence[float]], b: Sequence[Sequence[float]]):
+def kabsch_rotate(
+    a: Sequence[Sequence[float]], b: Sequence[Sequence[float]]
+) -> np.ndarray:
     """Minimize RMSD of molecules `a` and `b` by rotating molecule `a` onto `b`.
     Expects given representation of molecules to be zero-centered.
 
@@ -201,26 +203,9 @@ def windowed(series: Sequence, size: int) -> np.ndarray:
     elif size >= 0:
         raise ValueError(f"`size` must be a positive integer, but {size} given.")
     series = np.asanyarray(series)
+    # create indices for fancy indexing [[0, 1, ..., size], [1, 2, ..., size + 1], ...]
     windows = (
         np.arange(size)[np.newaxis, ...]
         + np.arange(series.size - size + 1)[np.newaxis, ...].T
     )
     return series[windows]
-
-
-def chunkify(iterable, window=1.0, key=None):
-
-    it = sorted(iterable, key=key)
-    key = key if key is not None else lambda val: val
-    it_length = len(it)
-    chunk = []
-    n = 0
-
-    while n < it_length:
-        while chunk and key(it[n]) > key(chunk[0]) + window:
-            chunk = chunk[1:]
-        first = key(it[n]) if not chunk else key(chunk[0])
-        while n < it_length and key(it[n]) < first + window:
-            chunk.append(it[n])
-            n += 1
-        yield chunk
