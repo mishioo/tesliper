@@ -28,7 +28,7 @@ from .spectra import (
     count_imaginary,
     find_imaginary,
 )
-from geometry import (
+from .geometry import (
     take_atoms,
     drop_atoms,
     is_triangular,
