@@ -1,5 +1,7 @@
 import pytest
 import numpy as np
+from hypothesis import given, strategies as st, assume
+
 from tesliper.datawork import geometry
 from tesliper.datawork.atoms import Atom
 
@@ -262,3 +264,24 @@ def test_get_triangular_base_triangular():
 def test_get_triangular_base_non_triangular():
     with pytest.raises(ValueError):
         geometry.get_triangular_base(7)
+
+
+st_small_floats = st.floats(
+    allow_nan=False, allow_infinity=False, max_value=100, min_value=-100
+)
+
+
+@given(
+    st.lists(st_small_floats, min_size=9, max_size=9),
+    st.lists(st_small_floats, min_size=3, max_size=30),
+)
+def test_kabsch_rotate(rotation, points):
+    assume(not len(points) % 3)
+    # random rotation matrix as proposed by:
+    # https://math.stackexchange.com/a/1602779/469731
+    rotation, _ = np.linalg.qr(np.reshape(rotation, (3, 3)))
+    points = np.reshape(points, (-1, 3))
+    points = points - points.mean(axis=0)  # zero-centered
+    rotated = points @ rotation
+    kabsch = geometry.kabsch_rotate(rotated, points)
+    np.testing.assert_array_almost_equal(kabsch, points)

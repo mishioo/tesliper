@@ -136,21 +136,36 @@ def get_triangular(m: int) -> int:
     return m * (m + 1) // 2
 
 
-def kabsch_rotate(a: Sequence, b: Sequence):
-    """Minimize RMSD of molecules `a` and `b` by rotating molecule `a` onto `b`."""
+def kabsch_rotate(a: Sequence[Sequence[float]], b: Sequence[Sequence[float]]):
+    """Minimize RMSD of molecules `a` and `b` by rotating molecule `a` onto `b`.
+    Expects given representation of molecules to be zero-centered.
+
+    Parameters
+    ----------
+    a : Sequence of Sequence of float
+        Set of points representing atoms, that will be rotated to best match reference.
+    b : Sequence of Sequence of float
+        Set of points representing atoms of the reference molecule.
+
+    Returns
+    -------
+    Sequence of Sequence of float
+        Rotated `a` set of points.
+
+    Notes
+    -----
+    Uses Kabsch algorithm, also known as Wahba's problem. See:
+    https://en.wikipedia.org/wiki/Kabsch_algorithm and
+    https://en.wikipedia.org/wiki/Wahba%27s_problem
+    """
     a, b = np.asanyarray(a), np.asanyarray(b)
-    # normalize translation by subtracting centroids
-    a = a - a.mean(axis=0)
-    b = b - b.mean(axis=0)
-    # covariance matrix
-    cov = a.T @ b
-    u, s, vh = np.linalg.svd(cov)
+    cov = a.T @ b  # covariance matrix
+    u, s, vh = np.linalg.svd(cov)  # singular value decomposition
     # if determinant is negative, swap to ensure right-handed coordinate system
-    swap = np.eye(3)
-    swap[2, 2] = -1 if np.linalg.det(vh @ u.T) < 0 else 1
-    rotation = vh @ swap @ u.T  # wikipedia
-    rotation = u @ swap @ vh  # charnley/rmsd
-    # which one is ok ???
+    det = np.linalg.det(vh @ u)
+    swap = np.diag([1, 1, -1 if det < 0 else 1])
+    rotation = u @ swap @ vh  # calculate optimal rotation matrix
+    return a @ rotation
 
 
 def chunkify(iterable, window=1.0, key=None):
