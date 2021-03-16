@@ -3,7 +3,6 @@ import numpy as np
 from hypothesis import given, strategies as st, assume
 
 from tesliper.datawork import geometry
-from tesliper.datawork.atoms import Atom
 
 
 @pytest.fixture(scope="module")
@@ -48,7 +47,7 @@ def four_dim():
 
 
 @pytest.mark.skip("To be created.")
-def test_invalid_atom():
+def test_take_invalid_atom():
     pass
 
 
@@ -73,7 +72,7 @@ def test_take_one_dimension(atoms_take, one_dim):
 
 
 def test_take_one_dimension_as_enum(atoms_take, one_dim):
-    out = geometry.take_atoms(one_dim, atoms_take, Atom.H)
+    out = geometry.take_atoms(one_dim, atoms_take, 1)
     np.testing.assert_array_equal(out, [0, 2])
 
 
@@ -104,7 +103,7 @@ def test_take_four_dimensions(atoms_take, four_dim):
 
 
 @pytest.mark.skip("To be created.")
-def test_two_dimensions_atoms():
+def test_take_two_dimensions_atoms():
     pass
 
 
@@ -114,7 +113,7 @@ def test_take_atoms_keeping(atoms_take):
 
 
 @pytest.mark.skip("To be created.")
-def test_invalid_atom():
+def test_drop_invalid_atom():
     pass
 
 
