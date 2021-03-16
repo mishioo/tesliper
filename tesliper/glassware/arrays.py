@@ -744,15 +744,19 @@ class Geometry(FloatArray):
         ignore_hydrogen_atoms: bool = True,
     ):
         blade = np.ones_like(energies.values, dtype=bool)
-        sorted_indices = energies.values.argsort
+        sorted_indices = energies.values.argsort()
         geom = (
             dw.geometry.drop_atoms(self.values, self.molecule_atoms, dw.atoms.Atom.H)
             if ignore_hydrogen_atoms
             else self.values
         )
-        # get sorted view of geom and energies
-        # define windows on geom
-        # for each window:
-        #   calculate RMS matrix
-        #   if RMS > threshold mark in blade as False
+        # zero-center all molecules by subtracting their centroids
+        geom = geom - np.expand_dims(geom.mean(axis=1), 1)
+        windows = dw.geometry.windowed(sorted_indices, window_size)
+        for w in windows:
+            # windowed view
+            g, e = geom[w], energies[w]
+            # find best rotation of mols in window onto first mol
+            # calculate RMS list of mols to first mol
+            # if RMS > threshold mark in blade as False
         # return filenames kept
