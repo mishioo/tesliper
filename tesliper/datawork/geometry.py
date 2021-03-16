@@ -168,6 +168,46 @@ def kabsch_rotate(a: Sequence[Sequence[float]], b: Sequence[Sequence[float]]):
     return a @ rotation
 
 
+def windowed(series: Sequence, size: int) -> np.ndarray:
+    """Simple, vectorized implementation of basic sliding window.
+    Produces a list of windows of given `size` from given `series`.
+
+    Parameters
+    ----------
+    series : sequence
+        Series of data, of which sliding window view is requested.
+    size : int
+        Number of data points in the window. Must be a positive integer.
+
+    Returns
+    -------
+    numpy.ndarray
+        Windowed view of the given sequence.
+
+    Raises
+    ------
+    ValueError
+        if non-positive integer given as window size
+    TypeError
+        if non-integer value given as window size
+
+    Notes
+    -----
+    Implementation inspired by
+    https://towardsdatascience.com/fast-and-robust-sliding-window-vectorization-with-numpy-3ad950ed62f5
+    """
+    if not isinstance(size, int):
+        raise TypeError(f"`size` must be a positive integer, but {type(size)} given.")
+    elif size >= 0:
+        raise ValueError(f"`size` must be a positive integer, but {size} given.")
+    series = np.asanyarray(series)
+    windows = (
+        np.arange(size)[np.newaxis, ...]
+        + np.arange(series.size - size + 1)[np.newaxis, ...].T
+    )
+    return series[windows]
+
+
 def chunkify(iterable, window=1.0, key=None):
 
     it = sorted(iterable, key=key)
