@@ -151,3 +151,21 @@ def kabsch_rotate(a: Sequence, b: Sequence):
     rotation = vh @ swap @ u.T  # wikipedia
     rotation = u @ swap @ vh  # charnley/rmsd
     # which one is ok ???
+
+
+def chunkify(iterable, window=1.0, key=None):
+
+    it = sorted(iterable, key=key)
+    key = key if key is not None else lambda val: val
+    it_length = len(it)
+    chunk = []
+    n = 0
+
+    while n < it_length:
+        while chunk and key(it[n]) > key(chunk[0]) + window:
+            chunk = chunk[1:]
+        first = key(it[n]) if not chunk else key(chunk[0])
+        while n < it_length and key(it[n]) < first + window:
+            chunk.append(it[n])
+            n += 1
+        yield chunk
