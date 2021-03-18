@@ -141,6 +141,7 @@ def kabsch_rotate(
 ) -> np.ndarray:
     """Minimize RMSD of molecules `a` and `b` by rotating molecule `a` onto `b`.
     Expects given representation of molecules to be zero-centered.
+    Both `a` and `b` may be a single molecule or a set of molecules.
 
     Parameters
     ----------
@@ -160,14 +161,27 @@ def kabsch_rotate(
     https://en.wikipedia.org/wiki/Kabsch_algorithm and
     https://en.wikipedia.org/wiki/Wahba%27s_problem
     """
+    # this implementation uses Einstein summation convention, numpy.eisnum()
+    # this approach is probably not the most efficient
+    # but lets us easily perform a matrix multiplication on stacks of matrices
     a, b = np.asanyarray(a), np.asanyarray(b)
-    cov = a.T @ b  # covariance matrix
+    # calculate covariance matrix for each stacked set of points
+    # for each of stacked sets of points, equivalent of:
+    # >>> cov = a.T @ b
+    cov = np.einsum("...ji,...jk", a, b)
     u, s, vh = np.linalg.svd(cov)  # singular value decomposition
     # if determinant is negative, swap to ensure right-handed coordinate system
-    det = np.linalg.det(vh @ u)
-    swap = np.diag([1, 1, -1 if det < 0 else 1])
-    rotation = u @ swap @ vh  # calculate optimal rotation matrix
-    return a @ rotation
+    det = np.linalg.det(vh @ u)  # works with stacked matrices
+    # don't introduce new dimension if not necessary
+    shape = (det.size, 3, 3) if det.size > 1 else (3, 3)
+    swap = np.zeros(shape)
+    swap[..., np.arange(2), np.arange(2)] = 1
+    swap[..., -1, -1] = np.sign(det)
+    # calculate optimally rotated set/s of points `a`
+    # for each of stacked sets of points, equivalent of
+    # >>> rotated = a @ u @ swap @ vh
+    # where u @ swap @ vh is rotation matrix
+    return np.einsum("...ij,...jk,...kl,...lm", a, u, swap, vh)
 
 
 def windowed(series: Sequence, size: int) -> np.ndarray:

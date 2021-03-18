@@ -286,6 +286,50 @@ def test_kabsch_rotate(rotation, points):
     np.testing.assert_array_almost_equal(kabsch, points)
 
 
+@given(
+    st.lists(st_small_floats, min_size=18, max_size=18),
+    st.lists(st_small_floats, min_size=6, max_size=60),
+)
+def test_kabsch_rotate_multidim(rotation, points):
+    assume(not len(points) % 6)
+    rotation = np.array([np.linalg.qr(r)[0] for r in np.reshape(rotation, (2, 3, 3))])
+    points = np.reshape(points, (2, -1, 3))
+    points = points - points.mean(axis=1)  # zero-centered
+    rotated = np.array([p @ r for p, r in zip(points, rotation)])
+    kabsch = geometry.kabsch_rotate(rotated, points)
+    np.testing.assert_array_almost_equal(kabsch, points)
+
+
+@given(
+    st.lists(st_small_floats, min_size=9, max_size=18),
+    st.lists(st_small_floats, min_size=3, max_size=30),
+)
+def test_kabsch_rotate_a_multidim(rotation, points):
+    assume(not len(rotation) % 9)
+    assume(not len(points) % 3)
+    rotation = np.array([np.linalg.qr(r)[0] for r in np.reshape(rotation, (-1, 3, 3))])
+    points = np.reshape(points, (-1, 3))
+    points = points - points.mean(axis=0)  # zero-centered
+    rotated = np.array([points @ r for r in rotation])
+    kabsch = geometry.kabsch_rotate(rotated, points)
+    np.testing.assert_array_almost_equal(kabsch, [points] * rotation.shape[0])
+
+
+@given(
+    st.lists(st_small_floats, min_size=9, max_size=18),
+    st.lists(st_small_floats, min_size=3, max_size=30),
+)
+def test_kabsch_rotate_b_multidim(rotation, points):
+    assume(not len(rotation) % 9)
+    assume(not len(points) % 3)
+    rotation = np.array([np.linalg.qr(r)[0] for r in np.reshape(rotation, (-1, 3, 3))])
+    points = np.reshape(points, (-1, 3))
+    points = points - points.mean(axis=0)  # zero-centered
+    rotated = np.array([points @ r for r in rotation])
+    kabsch = geometry.kabsch_rotate(points, rotated)
+    np.testing.assert_array_almost_equal(kabsch, rotated)
+
+
 @given(st.integers(min_value=1, max_value=100), st.integers(min_value=1, max_value=100))
 def test_windowed(series_size, window_size):
     assume(window_size <= series_size)
