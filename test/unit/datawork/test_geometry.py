@@ -330,6 +330,15 @@ def test_kabsch_rotate_b_multidim(rotation, points):
     np.testing.assert_array_almost_equal(kabsch, rotated)
 
 
+@given(st.lists(st_small_floats, min_size=3, max_size=30), st_small_floats)
+def test_rmsd(points, error):
+    assume(not len(points) % 3)
+    points = np.array(points).reshape(-1, 3)
+    np.testing.assert_almost_equal(
+        geometry.rmsd(points, points + error), np.sqrt(error ** 2)
+    )
+
+
 @given(st.integers(min_value=1, max_value=100), st.integers(min_value=1, max_value=100))
 def test_windowed(series_size, window_size):
     assume(window_size <= series_size)

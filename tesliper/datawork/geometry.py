@@ -185,6 +185,26 @@ def kabsch_rotate(a: MoleculeOrList, b: MoleculeOrList) -> np.ndarray:
     return np.einsum("...ij,...jk,...kl,...lm", a, u, swap, vh)
 
 
+def rmsd(a: MoleculeOrList, b: MoleculeOrList) -> np.ndarray:
+    """Compute RMSD (round-mean-square deviation) of two molecules (or sets of them).
+
+    Parameters
+    ----------
+    a : [Sequence of ]Sequence of Sequence of float
+        Set of points representing atoms or list thereof.
+    b : [Sequence of ]Sequence of Sequence of float
+        Set of points representing atoms  or list thereof.
+
+    Returns
+    -------
+    float or numpy.ndarray
+        Value of RMSD od two molecules or list of values, if list of molecules given.
+    """
+    deviation = np.asanyarray(a) - np.asanyarray(b)
+    # get a mean of two last dimensions by using `axis=(-2, -1)`
+    return np.sqrt(np.square(deviation).mean(axis=(-2, -1)))
+
+
 def windowed(series: Sequence, size: int) -> np.ndarray:
     """Simple, vectorized implementation of basic sliding window.
     Produces a list of windows of given `size` from given `series`.
