@@ -294,7 +294,7 @@ def test_kabsch_rotate_multidim(rotation, points):
     assume(not len(points) % 6)
     rotation = np.array([np.linalg.qr(r)[0] for r in np.reshape(rotation, (2, 3, 3))])
     points = np.reshape(points, (2, -1, 3))
-    points = points - points.mean(axis=1)  # zero-centered
+    points = points - np.expand_dims(points.mean(axis=1), 1)  # zero-centered
     rotated = np.array([p @ r for p, r in zip(points, rotation)])
     kabsch = geometry.kabsch_rotate(rotated, points)
     np.testing.assert_array_almost_equal(kabsch, points)
