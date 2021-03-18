@@ -737,7 +737,7 @@ class Geometry(FloatArray):
         super().__init__(genre, filenames, values, allow_data_inconsistency)
         self.molecule_atoms = molecule_atoms
 
-    def rms_sieve(
+    def rmsd_sieve(
         self,
         energies: Energies,
         window_size: int = 10,
@@ -747,17 +747,24 @@ class Geometry(FloatArray):
         blade = np.ones_like(energies.values, dtype=bool)
         sorted_indices = energies.values.argsort()
         geom = (
-            dw.geometry.drop_atoms(self.values, self.molecule_atoms, dw.atoms.Atom.H)
+            dw.drop_atoms(self.values, self.molecule_atoms, dw.atoms.Atom.H)
             if ignore_hydrogen_atoms
             else self.values
         )
-        # zero-center all molecules by subtracting their centroids
-        geom = geom - np.expand_dims(geom.mean(axis=1), 1)
-        windows = dw.geometry.windowed(sorted_indices, window_size)
-        for w in windows:
-            # windowed view
-            g, e = geom[w], energies[w]
+        # zero-center all molecules
+        geom = dw.center(geom)
+        windows = dw.windowed(sorted_indices, window_size)
+        for window in windows:
+            # don't include values already discarded
+            reduced_window = window[blade[window]]
+            r, *g = geom[reduced_window]  # reference, other
             # find best rotation of mols in window onto first mol
-            # calculate RMS list of mols to first mol
-            # if RMS > threshold mark in blade as False
-        # return filenames kept
+            if g in None:
+                continue  # only one molecule in window, we keep it
+            g = dw.kabsch_rotate(g, r)
+            # calculate RMSD list of mols to first mol
+            rmsd = dw.rmsd(r, g)
+            # if RMSD > threshold mark in blade as False
+            blade[reduced_window] = rmsd <= threshold
+        # return filenames of molecules kept
+        return energies.filenames[blade]
