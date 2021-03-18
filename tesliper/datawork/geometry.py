@@ -136,24 +136,25 @@ def get_triangular(m: int) -> int:
     return m * (m + 1) // 2
 
 
-def kabsch_rotate(
-    a: Sequence[Sequence[float]], b: Sequence[Sequence[float]]
-) -> np.ndarray:
+MoleculeOrList = Union[Sequence[Sequence[float]], Sequence[Sequence[Sequence[float]]]]
+
+
+def kabsch_rotate(a: MoleculeOrList, b: MoleculeOrList) -> np.ndarray:
     """Minimize RMSD of molecules `a` and `b` by rotating molecule `a` onto `b`.
     Expects given representation of molecules to be zero-centered.
     Both `a` and `b` may be a single molecule or a set of molecules.
 
     Parameters
     ----------
-    a : Sequence of Sequence of float
+    a : [Sequence of ]Sequence of Sequence of float
         Set of points representing atoms, that will be rotated to best match reference.
-    b : Sequence of Sequence of float
+    b : [Sequence of ]Sequence of Sequence of float
         Set of points representing atoms of the reference molecule.
 
     Returns
     -------
-    Sequence of Sequence of float
-        Rotated `a` set of points.
+    numpy.ndarray
+        Rotated set of points `a`.
 
     Notes
     -----
