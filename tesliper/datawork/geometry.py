@@ -139,6 +139,13 @@ def get_triangular(m: int) -> int:
 MoleculeOrList = Union[Sequence[Sequence[float]], Sequence[Sequence[Sequence[float]]]]
 
 
+def center(a: MoleculeOrList) -> MoleculeOrList:
+    """Zero-center all given molecules by subtracting their centroids.
+    Accepts single molecule or list of molecules."""
+    a = np.asanyarray(a)
+    return a - np.expand_dims(a.mean(axis=-2), -2)
+
+
 def kabsch_rotate(a: MoleculeOrList, b: MoleculeOrList) -> np.ndarray:
     """Minimize RMSD of molecules `a` and `b` by rotating molecule `a` onto `b`.
     Expects given representation of molecules to be zero-centered.
