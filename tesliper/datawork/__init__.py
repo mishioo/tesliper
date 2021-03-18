@@ -34,4 +34,8 @@ from .geometry import (
     is_triangular,
     get_triangular_base,
     get_triangular,
+    kabsch_rotate,
+    rmsd,
+    windowed,
+    center,
 )
