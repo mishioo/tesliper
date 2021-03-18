@@ -757,14 +757,16 @@ class Geometry(FloatArray):
         for window in windows:
             # don't include values already discarded
             reduced_window = window[blade[window]]
+            if reduced_window.size <= 1:
+                # only one molecule in the window, we keep it
+                # or no molecules at all
+                continue
             r, *g = geom[reduced_window]  # reference, other
             # find best rotation of mols in window onto first mol
-            if g in None:
-                continue  # only one molecule in window, we keep it
             g = dw.kabsch_rotate(g, r)
             # calculate RMSD list of mols to first mol
             rmsd = dw.rmsd(r, g)
-            # if RMSD > threshold mark in blade as False
-            blade[reduced_window] = rmsd <= threshold
+            # if RMSD > threshold mark in blade as False, first one is always kept
+            blade[reduced_window[1:]] = rmsd <= threshold
         # return filenames of molecules kept
         return energies.filenames[blade]
