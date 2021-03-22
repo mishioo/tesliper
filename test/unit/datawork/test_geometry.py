@@ -359,17 +359,40 @@ def test_windowed_wrong_size_type(size):
 
 
 @pytest.mark.parametrize(
-    "ens,out", [([], []), ([1], []), (list(range(3)), [[0, 1, 2], [1, 2]])]
+    "ens,out",
+    [
+        ([], []),
+        ([1], []),
+        (list(range(4)), [[0, 1, 2], [1, 2, 3]]),
+        ([1, 2, 10, 20, 21], [[0, 1], [3, 4]]),
+    ],
 )
 def test_energy_windows(ens, out):
-    assert [x.tolist() for x in geometry.energy_windows(ens, 5)] == out
+    assert [x.tolist() for x in geometry.energy_windows(ens, 2)] == out
 
 
 @pytest.mark.parametrize(
-    "ens,out", [([], []), ([1], [[0]]), (list(range(3)), [[0, 1, 2], [1, 2], [2]])]
+    "ens,out", [([], []), ([1], [[0]]), ([1, 2, 10, 20, 21], [[0, 1], [2], [3, 4]])]
 )
 def test_energy_windows_keep_hermits(ens, out):
-    assert [x.tolist() for x in geometry.energy_windows(ens, 5, True)] == out
+    assert [
+        x.tolist() for x in geometry.energy_windows(ens, 2, keep_hermits=True)
+    ] == out
+
+
+@pytest.mark.parametrize(
+    "ens,out",
+    [
+        ([], []),
+        ([1], []),
+        (list(range(4)), [[0, 1, 2], [1, 2, 3], [2, 3]]),
+        ([1, 2, 3, 20, 21], [[0, 1, 2], [1, 2], [3, 4]]),
+    ],
+)
+def test_energy_windows_soft_bound(ens, out):
+    assert [
+        x.tolist() for x in geometry.energy_windows(ens, 2, hard_bound=False)
+    ] == out
 
 
 @given(size=st.floats(max_value=0, allow_nan=False))

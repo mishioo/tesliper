@@ -254,20 +254,30 @@ def windowed(series: Sequence, size: int) -> np.ndarray:
 
 
 def energy_windows(
-    values: Sequence[float], size: Union[int, float], keep_hermits: bool = False
+    values: Sequence[float],
+    size: Union[int, float],
+    keep_hermits: bool = False,
+    hard_bound: bool = True,
 ) -> np.ndarray:
     """Implements a sliding window of a variable size, where values in each window are
     at most `size` bigger than the lowest value in given window. Values yielded
     are np.arrays of indices of sorted values, that constitute each window.
 
-    A window is formed for each value in the original array, so a few last windows
-    produced are subsequences of first window that includes the highest value in given
-    `values` array. This "soft" right bound is also observed when distribution of values
-    is uneven (ie. when gaps between some values are larger than given `size`).
+    When window reaches a border, that is an end of the `values` array or a gap between
+    values that is larger than given `size`, it immediately moves to its other side.
 
-    >>> list(energy_windows([1, 2, 3, 4], 3))
+    >>> list(energy_windows([1, 2, 3, 4, 7, 8], 3))
+    [[0, 1, 2], [1, 2, 3], [4, 5]]
+
+    This "hard" right bound may be "softened" by passing `hard_bound=False`
+    as a parameter to function call. A window will then be "squezed", when pressed
+    against the border, producing subsequences of the first view that touches a border.
+    This may be usfull when one wants to form a window for each value in the original
+    array.
+
+    >>> list(energy_windows([1, 2, 3, 4], 3), hard_bound=False)
     [[0, 1, 2], [1, 2, 3], [2, 3]]
-    >>> list(energy_windows([1, 2, 3, 7, 8], 3))
+    >>> list(energy_windows([1, 2, 3, 7, 8], 3), hard_bound=False)
     [[0, 1, 2], [1, 2], [3, 4]]
 
     Windows of size 1, called hermits, are by default ignored.
@@ -275,11 +285,12 @@ def energy_windows(
     >>> list(energy_windows([1, 2, 10, 20, 22], 5))
     [[0, 1], [3, 4]]
 
-    If such behavior is not desired, it may be turnd off with `keep_hermits = True`.
-    One must remember that, due to the "soft" bound, the last window is always a hermit,
-    if `keep_hermits`.
+    If such behaviour is not desired, it may be turnd off with `keep_hermits = True`.
+    One must remember that, whan a bound is "soft", the last window is always a hermit.
 
     >>> list(energy_windows([1, 2, 10, 20, 22], 5, keep_hermits=True))
+    [[0, 1], [2], [3, 4]]
+    >>> list(energy_windows([1, 2, 10, 20, 22], 5, keep_hermits=True, hard_bound=False))
     [[0, 1], [1], [2], [3, 4], [4]]
 
     Parameters
@@ -291,6 +302,11 @@ def energy_windows(
     keep_hermits : bool
         If windows of size one should be yielded (True) or omitted (False).
         False by default.
+    hard_bound : bool
+        How window should behave close to borders. With hard bound (True) it will move
+        to the other side of border as soon, as it is reached. With soft bound (False)
+        it will "squeze" when pressed against the border, producing subsequences of
+        the first view that includes border value. True by default.
 
     Yields
     ------
@@ -306,9 +322,20 @@ def energy_windows(
     if size <= 0:
         raise ValueError("Size of the energy window must be a positive number.")
     order = np.argsort(values)
+    if not order.size:
+        return
     ordered = np.asanyarray(values)[order]
     # side="right" is ie. "or equal to" part of "include lower on equal to value+size"
     indices = np.searchsorted(ordered, ordered + size, side="right")
-    for start, stop in enumerate(indices):
-        if stop - start > 1 or keep_hermits:
-            yield order[start : (stop if stop <= indices.size else None)]
+    bounds = np.stack([np.arange(indices.size), indices], axis=1)  # shape (N, 2)
+    if hard_bound:
+        # don't allow repeated stop index
+        unique = np.insert(np.diff(indices).astype(np.bool), 0, True)
+        bounds = bounds[unique]
+    if not keep_hermits:
+        # if difference between start and stop is 1, it is a hermit
+        hermits = np.diff(bounds, axis=1) == 1
+        bounds = bounds[~hermits.reshape(-1)]
+    for start, stop in bounds:
+        # if necessary make it order[start:] to include last value
+        yield order[start : (stop if stop <= indices.size else None)]
