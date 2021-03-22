@@ -251,3 +251,64 @@ def windowed(series: Sequence, size: int) -> np.ndarray:
         + np.arange(series.size - size + 1)[np.newaxis, ...].T
     )
     return series[windows]
+
+
+def energy_windows(
+    values: Sequence[float], size: Union[int, float], keep_hermits: bool = False
+) -> np.ndarray:
+    """Implements a sliding window of a variable size, where values in each window are
+    at most `size` bigger than the lowest value in given window. Values yielded
+    are np.arrays of indices of sorted values, that constitute each window.
+
+    A window is formed for each value in the original array, so a few last windows
+    produced are subsequences of first window that includes the highest value in given
+    `values` array. This "soft" right bound is also observed when distribution of values
+    is uneven (ie. when gaps between some values are larger than given `size`).
+
+    >>> list(energy_windows([1, 2, 3, 4], 3))
+    [[0, 1, 2], [1, 2, 3], [2, 3]]
+    >>> list(energy_windows([1, 2, 3, 7, 8], 3))
+    [[0, 1, 2], [1, 2], [3, 4]]
+
+    Windows of size 1, called hermits, are by default ignored.
+
+    >>> list(energy_windows([1, 2, 10, 20, 22], 5))
+    [[0, 1], [3, 4]]
+
+    If such behavior is not desired, it may be turnd off with `keep_hermits = True`.
+    One must remember that, due to the "soft" bound, the last window is always a hermit,
+    if `keep_hermits`.
+
+    >>> list(energy_windows([1, 2, 10, 20, 22], 5, keep_hermits=True))
+    [[0, 1], [1], [2], [3, 4], [4]]
+
+    Parameters
+    ----------
+    values : Sequence of float
+        List of values, on which sliding window view is requested.
+    size : int or float
+        Maximum difference of smallest and largest values inside each window.
+    keep_hermits : bool
+        If windows of size one should be yielded (True) or omitted (False).
+        False by default.
+
+    Yields
+    ------
+    np.array of int
+        List of indices, corresponding to sorted values in the original array,
+        that form a window.
+
+    Raises
+    ------
+    ValueError
+        If given `size` is not a positive number.
+    """
+    if size <= 0:
+        raise ValueError("Size of the energy window must be a positive number.")
+    order = np.argsort(values)
+    ordered = np.asanyarray(values)[order]
+    # side="right" is ie. "or equal to" part of "include lower on equal to value+size"
+    indices = np.searchsorted(ordered, ordered + size, side="right")
+    for start, stop in enumerate(indices):
+        if stop - start > 1 or keep_hermits:
+            yield order[start : (stop if stop <= indices.size else None)]

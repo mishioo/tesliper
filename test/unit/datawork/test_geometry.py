@@ -356,3 +356,24 @@ def test_windowed_wrong_size_value(size):
 def test_windowed_wrong_size_type(size):
     with pytest.raises(TypeError, match=r"must be a positive integer"):
         geometry.windowed([], size)
+
+
+@pytest.mark.parametrize(
+    "ens,out", [([], []), ([1], []), (list(range(3)), [[0, 1, 2], [1, 2]])]
+)
+def test_energy_windows(ens, out):
+    assert [x.tolist() for x in geometry.energy_windows(ens, 5)] == out
+
+
+@pytest.mark.parametrize(
+    "ens,out", [([], []), ([1], [[0]]), (list(range(3)), [[0, 1, 2], [1, 2], [2]])]
+)
+def test_energy_windows_keep_hermits(ens, out):
+    assert [x.tolist() for x in geometry.energy_windows(ens, 5, True)] == out
+
+
+@given(size=st.floats(max_value=0, allow_nan=False))
+@pytest.mark.parametrize("ens", [[], [1], [1, 1]])
+def test_energy_windows_size_non_positive(ens, size):
+    with pytest.raises(ValueError):
+        next(geometry.energy_windows(ens, size))
