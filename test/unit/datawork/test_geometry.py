@@ -335,7 +335,8 @@ def test_rmsd(points, error):
     assume(not len(points) % 3)
     points = np.array(points).reshape(-1, 3)
     np.testing.assert_almost_equal(
-        geometry.rmsd(points, points + error), np.sqrt(error ** 2)
+        geometry.rmsd(points, points + error),
+        np.sqrt(3 * error ** 2),  # error adds up from each coordinate
     )
 
 

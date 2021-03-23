@@ -206,10 +206,14 @@ def rmsd(a: MoleculeOrList, b: MoleculeOrList) -> np.ndarray:
     -------
     float or numpy.ndarray
         Value of RMSD od two molecules or list of values, if list of molecules given.
+
+    Links
+    -----
+    https://en.wikipedia.org/wiki/Root-mean-square_deviation_of_atomic_positions
     """
     deviation = np.asanyarray(a) - np.asanyarray(b)
-    # get a mean of two last dimensions by using `axis=(-2, -1)`
-    return np.sqrt(np.square(deviation).mean(axis=(-2, -1)))
+    # get a sum of two last dimensions by using `axis=(-2, -1)`
+    return np.sqrt(np.square(deviation).sum(axis=(-2, -1)) / deviation.shape[-2])
 
 
 def fixed_windows(series: Sequence, size: int) -> np.ndarray:
