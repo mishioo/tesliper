@@ -36,6 +36,7 @@ from .geometry import (
     get_triangular,
     kabsch_rotate,
     rmsd,
-    windowed,
+    fixed_windows,
+    stretching_windows,
     center,
 )

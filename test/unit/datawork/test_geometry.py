@@ -340,22 +340,22 @@ def test_rmsd(points, error):
 
 
 @given(st.integers(min_value=1, max_value=100), st.integers(min_value=1, max_value=100))
-def test_windowed(series_size, window_size):
+def test_fixed_windows(series_size, window_size):
     assume(window_size <= series_size)
-    windowed = geometry.windowed(np.empty((series_size,)), window_size)
+    windowed = geometry.fixed_windows(np.empty((series_size,)), window_size)
     assert windowed.shape == (series_size - window_size + 1, window_size)
 
 
 @given(st.integers(max_value=0))
-def test_windowed_wrong_size_value(size):
+def test_fixed_windows_wrong_size_value(size):
     with pytest.raises(ValueError, match=r"must be a positive integer"):
-        geometry.windowed([], size)
+        geometry.fixed_windows([], size)
 
 
 @pytest.mark.parametrize("size", [0.1, "1", tuple(), [], {}, set()])
-def test_windowed_wrong_size_type(size):
+def test_fixed_windows_wrong_size_type(size):
     with pytest.raises(TypeError, match=r"must be a positive integer"):
-        geometry.windowed([], size)
+        geometry.fixed_windows([], size)
 
 
 @pytest.mark.parametrize(
@@ -367,16 +367,16 @@ def test_windowed_wrong_size_type(size):
         ([1, 2, 10, 20, 21], [[0, 1], [3, 4]]),
     ],
 )
-def test_energy_windows(ens, out):
-    assert [x.tolist() for x in geometry.energy_windows(ens, 2)] == out
+def test_sliding_windows(ens, out):
+    assert [x.tolist() for x in geometry.stretching_windows(ens, 2)] == out
 
 
 @pytest.mark.parametrize(
     "ens,out", [([], []), ([1], [[0]]), ([1, 2, 10, 20, 21], [[0, 1], [2], [3, 4]])]
 )
-def test_energy_windows_keep_hermits(ens, out):
+def test_sliding_windows_keep_hermits(ens, out):
     assert [
-        x.tolist() for x in geometry.energy_windows(ens, 2, keep_hermits=True)
+        x.tolist() for x in geometry.stretching_windows(ens, 2, keep_hermits=True)
     ] == out
 
 
@@ -389,14 +389,14 @@ def test_energy_windows_keep_hermits(ens, out):
         ([1, 2, 3, 20, 21], [[0, 1, 2], [1, 2], [3, 4]]),
     ],
 )
-def test_energy_windows_soft_bound(ens, out):
+def test_sliding_windows_soft_bound(ens, out):
     assert [
-        x.tolist() for x in geometry.energy_windows(ens, 2, hard_bound=False)
+        x.tolist() for x in geometry.stretching_windows(ens, 2, hard_bound=False)
     ] == out
 
 
 @given(size=st.floats(max_value=0, allow_nan=False))
 @pytest.mark.parametrize("ens", [[], [1], [1, 1]])
-def test_energy_windows_size_non_positive(ens, size):
+def test_sliding_windows_size_non_positive(ens, size):
     with pytest.raises(ValueError):
-        next(geometry.energy_windows(ens, size))
+        next(geometry.stretching_windows(ens, size))

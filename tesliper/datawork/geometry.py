@@ -212,7 +212,7 @@ def rmsd(a: MoleculeOrList, b: MoleculeOrList) -> np.ndarray:
     return np.sqrt(np.square(deviation).mean(axis=(-2, -1)))
 
 
-def windowed(series: Sequence, size: int) -> np.ndarray:
+def fixed_windows(series: Sequence, size: int) -> np.ndarray:
     """Simple, vectorized implementation of basic sliding window.
     Produces a list of windows of given `size` from given `series`.
 
@@ -253,7 +253,7 @@ def windowed(series: Sequence, size: int) -> np.ndarray:
     return series[windows]
 
 
-def energy_windows(
+def stretching_windows(
     values: Sequence[float],
     size: Union[int, float],
     keep_hermits: bool = False,
@@ -266,7 +266,7 @@ def energy_windows(
     When window reaches a border, that is an end of the `values` array or a gap between
     values that is larger than given `size`, it immediately moves to its other side.
 
-    >>> list(energy_windows([1, 2, 3, 4, 7, 8], 3))
+    >>> list(stretching_windows([1, 2, 3, 4, 7, 8], 3))
     [[0, 1, 2], [1, 2, 3], [4, 5]]
 
     This "hard" right bound may be "softened" by passing `hard_bound=False`
@@ -275,22 +275,23 @@ def energy_windows(
     This may be usfull when one wants to form a window for each value in the original
     array.
 
-    >>> list(energy_windows([1, 2, 3, 4], 3), hard_bound=False)
+    >>> list(stretching_windows([1, 2, 3, 4], 3), hard_bound=False)
     [[0, 1, 2], [1, 2, 3], [2, 3]]
-    >>> list(energy_windows([1, 2, 3, 7, 8], 3), hard_bound=False)
+    >>> list(stretching_windows([1, 2, 3, 7, 8], 3), hard_bound=False)
     [[0, 1, 2], [1, 2], [3, 4]]
 
     Windows of size 1, called hermits, are by default ignored.
 
-    >>> list(energy_windows([1, 2, 10, 20, 22], 5))
+    >>> arr = [1, 2, 10, 20, 22]
+    >>> list(stretching_windows(arr, 5))
     [[0, 1], [3, 4]]
 
     If such behaviour is not desired, it may be turnd off with `keep_hermits = True`.
     One must remember that, whan a bound is "soft", the last window is always a hermit.
 
-    >>> list(energy_windows([1, 2, 10, 20, 22], 5, keep_hermits=True))
+    >>> list(stretching_windows(arr, 5, keep_hermits=True))
     [[0, 1], [2], [3, 4]]
-    >>> list(energy_windows([1, 2, 10, 20, 22], 5, keep_hermits=True, hard_bound=False))
+    >>> list(stretching_windows(arr, 5, keep_hermits=True, hard_bound=False))
     [[0, 1], [1], [2], [3, 4], [4]]
 
     Parameters
