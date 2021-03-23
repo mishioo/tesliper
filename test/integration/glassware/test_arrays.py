@@ -1,3 +1,4 @@
+import string
 from pathlib import Path
 
 import pytest
@@ -36,4 +37,20 @@ def test_transitions_values(transitions):
 def test_transitions_indices_highest(transitions):
     np.testing.assert_array_equal(
         transitions.values.max(axis=2), transitions.values[transitions.indices_highest]
+    )
+
+
+def test_geometry_rmsd_sieve():
+    molecule = np.random.random(15).reshape(5, 3)
+    shift = np.random.random(15).reshape(5, 3)
+    scale = np.arange(0, 1, 0.1)
+    shift = (shift - shift.mean())[None, ...] * scale[..., None, None]
+    values = molecule + shift
+    fnames = np.random.choice(list(string.ascii_lowercase), size=10, replace=False)
+    atoms = np.array([2] * 5 * 10).reshape(10, 5)
+    geom = gw.Geometry("geometry", fnames, values, atoms)
+    ens = gw.Energies("scf", fnames, np.arange(10))
+    np.testing.assert_array_equal(
+        geom.rmsd_sieve(ens, window_size=10, rmsd_threshold=shift.mean()),
+        fnames[shift >= shift.mean()],
     )
