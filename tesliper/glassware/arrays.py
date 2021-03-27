@@ -765,7 +765,7 @@ class Geometry(FloatArray):
             tail = dw.kabsch_rotate(tail, head)
             # calculate RMSD list of mols to first mol
             rmsd = dw.rmsd(head, tail)
-            # if RMSD > threshold mark in blade as False, first one is always kept
-            blade[reduced_window[1:]] = rmsd <= rmsd_threshold
+            # if RMSD <= threshold mark in blade as False, first one is always kept
+            blade[reduced_window[1:]] = rmsd > rmsd_threshold
         # return filenames of molecules kept
         return energies.filenames[blade]

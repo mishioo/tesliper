@@ -4,6 +4,7 @@ import pytest
 import numpy as np
 
 import tesliper.glassware.arrays as ar
+import tesliper.datawork as dw
 from tesliper.exceptions import InconsistentDataError
 
 
@@ -268,6 +269,35 @@ def test_molecule_atoms_too_short(geom):
 def test_molecule_atoms_not_matching_num_of_conformers(geom):
     with pytest.raises(ValueError):
         geom.molecule_atoms = [[2, 2, 2]] * 3
+
+
+@pytest.fixture
+def rmsd_mock(monkeypatch):
+    monkeypatch.setattr(dw, "center", mock.Mock(side_effect=lambda x: x))
+    monkeypatch.setattr(dw, "kabsch_rotate", mock.Mock(side_effect=lambda a, b: a))
+    monkeypatch.setattr(
+        dw,
+        "rmsd",
+        mock.Mock(
+            side_effect=lambda a, b: np.abs((a[None, ...] - b).mean(axis=(-2, -1)))
+        ),
+    )
+
+
+def test_geometry_rmsd_sieve(rmsd_mock):
+    molecule = np.random.normal(1, 3, 15).reshape(5, 3)
+    scale = np.array([0.1, 0.2, 3, 3.1, 3.7, 0.1, 5, 0.3, 0.5, 3])
+    kept = np.array([1, 0, 1, 0, 1, 1, 1, 0, 1, 1], dtype=bool)
+    ens = np.arange(10)
+    values = molecule[None, ...] + scale[..., None, None]
+    fnames = np.arange(scale.size).astype(str)
+    atoms = np.array([2] * 5 * scale.size).reshape(-1, 5)
+    geom = ar.Geometry("geometry", fnames, values, atoms)
+    ens = ar.Energies("scf", fnames, ens)
+    np.testing.assert_array_equal(
+        geom.rmsd_sieve(ens, window_size=2, rmsd_threshold=0.5, ignore_hydrogen=False),
+        fnames[kept],
+    )
 
 
 @pytest.fixture(scope="module")
