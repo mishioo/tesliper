@@ -4,6 +4,53 @@ from typing import Sequence, Iterable, Union
 import numpy as np
 
 
+def find_atoms(
+    atoms: Union[Sequence[int], np.ndarray],
+    find: Union[int, Iterable[int], np.ndarray],
+    reverse: bool = False,
+) -> np.ndarray:
+    """Get indices of wanted atoms.
+
+    Parameters
+    ----------
+    atoms : Sequence of int or numpy.ndarray
+        List of atoms represented by their atomic numbers.
+    find : int, Sequence of int, or numpy.ndarray
+        Element or list of elements, represented by their atomic numbers, which indices
+        should be find in `atoms` array.
+    reverse : bool
+        If `True`, indices of atoms NOT specified in `find` will be returned.
+
+    Returns
+    -------
+    numpy.ndarray
+        Indices of found elements.
+    """
+    if isinstance(find, Iterable):
+        blade = np.isin(atoms, find)
+    else:
+        blade = np.equal(atoms, find)
+    blade = np.logical_xor(blade, reverse)
+    indices = np.where(blade)[0]  # `atoms` is assumed to be one-dimensional
+    return indices
+
+
+def select_atoms(
+    values: Union[Sequence, np.ndarray], indices: Union[Sequence[int], np.ndarray],
+) -> np.ndarray:
+    """Filter given values to contain values only corresponding to atoms on given
+    indices. Recognizes if given values ate list of values for one or many conformers.
+    """
+    if not indices.size:
+        output = np.array([])
+    else:
+        try:
+            output = np.take(values, indices, 1)
+        except np.AxisError:
+            output = np.take(values, indices, 0)
+    return output
+
+
 def take_atoms(
     values: Union[Sequence, np.ndarray],
     atoms: Union[Sequence[int], np.ndarray],
@@ -11,7 +58,7 @@ def take_atoms(
 ) -> np.ndarray:
     """Filters given values, returning those corresponding to atoms specified
     as `wanted`. Roughly equivalent to:
-    >>> numpy.take(values, numpy.where(numpy.equal(atoms, wanted))[0], 1)
+    >>> numpy.take(values, numpy.nonzero(numpy.equal(atoms, wanted))[0], 1)
     but returns empty array, if no atom in `atoms` matches `wanted` atom.
     If `wanted` is list of elements, numpy.isin is used instead of numpy.equal.
 
@@ -33,19 +80,8 @@ def take_atoms(
         values trimmed to corresponding to desired atoms only; preserves
         original dimension information
     """
-    if isinstance(wanted, Iterable):
-        blade = np.isin(atoms, wanted)
-    else:
-        blade = np.equal(atoms, wanted)
-    indices = np.where(blade)[0]
-    if not indices.size:
-        output = np.array([])
-    else:
-        try:
-            output = np.take(values, indices, 1)
-        except np.AxisError:
-            output = np.take(values, indices, 0)
-    return output
+    indices = find_atoms(atoms, wanted)
+    return select_atoms(values, indices)
 
 
 def drop_atoms(
@@ -55,7 +91,7 @@ def drop_atoms(
 ) -> np.ndarray:
     """Filters given values, returning those corresponding to atoms not
     specified as discarded. Roughly equivalent to:
-    >>> numpy.take(values, numpy.where(~numpy.equal(atoms, discarded))[0], 1)
+    >>> numpy.take(values, numpy.nonzero(~numpy.equal(atoms, discarded))[0], 1)
     If `wanted` is list of elements, numpy.isin is used instead of numpy.equal.
 
     Parameters
@@ -76,19 +112,8 @@ def drop_atoms(
         values trimmed to corresponding to desired atoms only; preserves
         original dimension information
     """
-    if isinstance(discarded, Iterable):
-        blade = np.isin(atoms, discarded)
-    else:
-        blade = np.equal(atoms, discarded)
-    indices = np.where(np.logical_not(blade))[0]
-    if not indices.size:
-        output = np.array([])
-    else:
-        try:
-            output = np.take(values, indices, 1)
-        except np.AxisError:
-            output = np.take(values, indices, 0)
-    return output
+    indices = find_atoms(atoms, discarded, reverse=True)
+    return select_atoms(values, indices)
 
 
 def is_triangular(n: int) -> bool:
