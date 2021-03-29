@@ -295,8 +295,7 @@ def test_geometry_rmsd_sieve(rmsd_mock):
     geom = ar.Geometry("geometry", fnames, values, atoms)
     ens = ar.Energies("scf", fnames, ens)
     np.testing.assert_array_equal(
-        geom.rmsd_sieve(ens, window_size=2, rmsd_threshold=0.5, ignore_hydrogen=False),
-        fnames[kept],
+        geom.rmsd_sieve(ens, window_size=2, rmsd_threshold=0.5), fnames[kept],
     )
 
 

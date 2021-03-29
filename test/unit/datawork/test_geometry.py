@@ -3,6 +3,7 @@ import numpy as np
 from hypothesis import given, strategies as st, assume
 
 from tesliper.datawork import geometry
+from tesliper.datawork.atoms import Atom
 
 
 @pytest.fixture(scope="module")
@@ -72,7 +73,7 @@ def test_take_one_dimension(atoms_take, one_dim):
 
 
 def test_take_one_dimension_as_enum(atoms_take, one_dim):
-    out = geometry.take_atoms(one_dim, atoms_take, 1)
+    out = geometry.take_atoms(one_dim, atoms_take, Atom.H)
     np.testing.assert_array_equal(out, [0, 2])
 
 
