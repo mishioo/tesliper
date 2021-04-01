@@ -17,6 +17,8 @@ logger.setLevel(lgg.DEBUG)
 
 
 # CLASSES
+# TODO: correct load_bars, load_popul, load_spectrs, load_settings, from_dict methods
+# TODO: Consider integration with gauopen interface: http://gaussian.com/interfacing/
 class Soxhlet:
     """A tool for data extraction from files in specific directory. Typical
     use:
@@ -32,10 +34,6 @@ class Soxhlet:
         List of files present in directory bounded to Soxhlet instance.
     output_files
     bar_files
-
-    TO DO
-    -----
-    correct load_bars, load_popul, load_spectrs, load_settings, from_dict methods
     """
 
     def __init__(self, path=None, wanted_files=None, extension=None):
