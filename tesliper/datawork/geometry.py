@@ -369,3 +369,7 @@ def stretching_windows(
     for start, stop in bounds:
         # if necessary make it order[start:] to include last value
         yield order[start : (stop if stop <= indices.size else None)]
+
+
+# TODO: move core implementation of Geometry.rmsd_sieve here
+# TODO: add support for fixed window in rmsd_sieve

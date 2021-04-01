@@ -744,6 +744,8 @@ class Geometry(FloatArray):
         rmsd_threshold: float = 1,
         ignore_hydrogen: bool = True,
     ):
+        # TODO: Add docs
+        # TODO: add support for fixed window
         blade = np.ones_like(energies.values, dtype=bool)
         geom = (
             dw.drop_atoms(self.values, self.molecule_atoms, dw.atoms.Atom.H)

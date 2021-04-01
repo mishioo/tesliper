@@ -271,6 +271,9 @@ class GaussianParser(Parser):
     data : dict
         Data extracted during last parsing."""
 
+    # TODO: unify geometry and input_geom, so both can be casted on Geometry
+    # TODO?: add optimized_geometry or similarly named genre
+
     purpose = "gaussian"
 
     def __init__(self):
