@@ -652,6 +652,28 @@ class Molecules(OrderedDict):
             ) from error
         self.kept = arr.filenames[in_range]
 
+    def trim_rmsd(
+        self,
+        threshold: Union[int, float],
+        window_size: Union[int, float],
+        geometry_genre: str = "geometry",
+        energy_genre: str = "scf",
+        ignore_hydrogen: bool = True,
+        fixed_window: bool = False,
+    ) -> None:
+        # TODO: Add docs
+        if fixed_window and not isinstance(window_size, int):
+            raise TypeError(
+                "`fixed_window` should be an integer, when requesting windows of fixed "
+                f"size, but {type(fixed_window)} was given."
+            )
+        # TODO: check if requested energies are not empty
+        energy = self.arrayed(energy_genre)
+        geom = self.arrayed(geometry_genre)
+        # TODO: add support for fixed window
+        wanted = geom.rmsd_sieve(energy, window_size, threshold, ignore_hydrogen)
+        self.kept = wanted
+
     def select_all(self) -> None:
         """Marks all molecules as 'kept'. Equivalent to `molecules.kept = True`."""
         self._kept = [True for _ in self._kept]
