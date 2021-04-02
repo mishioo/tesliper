@@ -1,5 +1,6 @@
 import math
-from typing import Sequence, Iterable, Union
+from enum import Enum
+from typing import Sequence, Iterable, Union, Callable
 
 import numpy as np
 
@@ -36,7 +37,8 @@ def find_atoms(
 
 
 def select_atoms(
-    values: Union[Sequence, np.ndarray], indices: Union[Sequence[int], np.ndarray],
+    values: Union[Sequence, np.ndarray],
+    indices: Union[Sequence[int], np.ndarray],
 ) -> np.ndarray:
     """Filter given values to contain values only corresponding to atoms on given
     indices. Recognizes if given values ate list of values for one or many conformers.
@@ -255,7 +257,8 @@ def fixed_windows(series: Sequence, size: int) -> np.ndarray:
     Returns
     -------
     numpy.ndarray
-        Windowed view of the given sequence.
+        List of indices, corresponding to values in the original array,
+        that form a window
 
     Raises
     ------
@@ -279,7 +282,7 @@ def fixed_windows(series: Sequence, size: int) -> np.ndarray:
         np.arange(size)[np.newaxis, ...]
         + np.arange(series.size - size + 1)[np.newaxis, ...].T
     )
-    return series[windows]
+    return windows
 
 
 def stretching_windows(
@@ -360,7 +363,7 @@ def stretching_windows(
     bounds = np.stack([np.arange(indices.size), indices], axis=1)  # shape (N, 2)
     if hard_bound:
         # don't allow repeated stop index
-        unique = np.insert(np.diff(indices).astype(np.bool), 0, True)
+        unique = np.insert(np.diff(indices).astype(bool), 0, True)
         bounds = bounds[unique]
     if not keep_hermits:
         # if difference between start and stop is 1, it is a hermit
@@ -371,5 +374,109 @@ def stretching_windows(
         yield order[start : (stop if stop <= indices.size else None)]
 
 
-# TODO: move core implementation of Geometry.rmsd_sieve here
-# TODO: add support for fixed window in rmsd_sieve
+def soft_windows(
+    values: Sequence[float],
+    size: Union[int, float],
+    keep_hermits: bool = False,
+) -> np.ndarray:
+    """Implements a sliding window of a variable size, where values in each window are
+    at most `size` bigger than the lowest value in given window. Values yielded
+    are np.arrays of indices of sorted values, that constitute each window.
+
+    Window produced is "soft": when it reaches a border, that is an end of the `values`
+    array or a gap between values that is larger than given `size`, it will then be
+    "squezed", to give subsequences of the first view that touches a border.
+
+    >>> list(stretching_windows([1, 2, 3, 4, 5], 3))
+    [[0, 1, 2, 3], [1, 2, 3, 4], [2, 3, 4], [3, 4]]
+
+    Windows of size 1, called hermits, are by default ignored.
+
+    >>> arr = [1, 2, 10, 20, 22]
+    >>> list(stretching_windows(arr, 5))
+    [[0, 1], [3, 4]]
+
+    If if one wants to produce exactly one window for one value in the input array,
+    `keep_hermits = True` may be used.
+
+    >>> windows = list(stretching_windows(arr, 5, keep_hermits=True))
+    >>> windows
+    [[0, 1], [1], [2], [3, 4], [4]]
+    >>> len(windows) == len(arr)
+    True
+
+    Parameters
+    ----------
+    values : Sequence of float
+        List of values, on which sliding window view is requested.
+    size : int or float
+        Maximum difference of smallest and largest values inside each window.
+    keep_hermits : bool
+        If windows of size one should be yielded (True) or omitted (False).
+        False by default.
+
+    Yields
+    ------
+    np.array of int
+        List of indices, corresponding to sorted values in the original array,
+        that form a window.
+
+    Raises
+    ------
+    ValueError
+        If given `size` is not a positive number.
+    """
+    yield from stretching_windows(
+        values=values, size=size, keep_hermits=keep_hermits, hard_bound=False
+    )
+
+
+def sieve(
+    values: Sequence,
+    energies: Sequence[float],
+    threshold: float,
+    window_size: Union[int, float],
+    # TODO: supplement type hints
+    alignment_method: Callable = kabsch_rotate,  # TODO: make no alignment by default
+    comparison_method: Callable = rmsd,  # TODO: come up with simpler default
+    windowing_method: Callable = soft_windows,  # TODO: make whole triangulted as default
+) -> np.ndarray:
+    """Find values that are unique in given list of values, judging by given
+    `comparison_method` and `threshold`.
+
+    In each window produces by `windowing_method` function a similarity of first
+    value in the window to the remaining values is calculated using given
+    `comparison_method` function. If similarity factor is lower than given `threshold`,
+    the corresponding value is discarded.
+
+    Windows are produced based on `energies` array, which should contain a value for
+    each entry in `values` array, in the same order. If you wish to provide
+    a custom-crafted `windowing_method` function, remember that it should return
+    (or yield) windows in form of lists of indices, that will be used to index `values`.
+    Also, it is a `windowing_method` responsibility to sort `energies` beforehand,
+    if it is desired.
+
+    `alignment_method` is used to find the best alignment of values, minimising
+    calculated similarity factors.
+    """
+    blade = np.ones_like(energies, dtype=bool)
+    # zero-center all molecules
+    geom = center(values)  # TODO: change it to `normalization_method`
+    windows = windowing_method(energies, window_size)
+    for window in windows:
+        # don't include values already discarded
+        reduced_window = window[blade[window]]
+        if reduced_window.size <= 1:
+            # only one molecule in the window, we keep it
+            # or no molecules at all
+            continue
+        head, *tail = geom[reduced_window]  # reference, other
+        # find best alignment of mols in window onto first mol
+        tail = alignment_method(tail, head)
+        # calculate list of mols similarity to the first mol
+        coefficients = comparison_method(head, tail)
+        # if similarity factor <= threshold mark in blade as False
+        # first one is always kept (marked as True)
+        blade[reduced_window[1:]] = coefficients > threshold
+    # return filenames of molecules kept
+    return np.nonzero(blade)[0]
