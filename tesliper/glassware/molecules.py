@@ -14,13 +14,29 @@ from typing import Sequence, Union, Iterable, Optional
 import numpy as np
 
 from tesliper.exceptions import TesliperError
-from .arrays import DataArray
+from . import arrays as ar
 from .array_base import _ARRAY_CONSTRUCTORS
 
 
 # LOGGER
 logger = lgg.getLogger(__name__)
 logger.setLevel(lgg.DEBUG)
+
+
+# TYPE HINTS
+AnyArray = Union[
+    ar.DataArray,
+    ar.Energies,
+    ar.FloatArray,
+    ar.FilenamesArray,
+    ar.InfoArray,
+    ar.BooleanArray,
+    ar.IntegerArray,
+    ar.GroundStateBars,
+    ar.ExcitedStateBars,
+    ar.Transitions,
+    ar.Geometry,
+]
 
 
 # CLASSES
@@ -321,7 +337,7 @@ class Molecules(OrderedDict):
             else:
                 self[key] = value
 
-    def arrayed(self, genre: str, full: bool = False) -> DataArray:
+    def arrayed(self, genre: str, full: bool = False) -> AnyArray:
         """Lists requested data and returns as appropriate DataArray instance.
 
         Parameters

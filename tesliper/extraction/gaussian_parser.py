@@ -8,6 +8,7 @@ logger = lgg.getLogger(__name__)
 logger.setLevel(lgg.INFO)
 
 # REGEXS
+# TODO: Clean up regexes
 number_group = r"\s*(-?\d+\.?\d*)"
 number = number_group.replace("(", "").replace(")", "")
 
@@ -423,9 +424,7 @@ class GaussianParser(Parser):
             self.data["scf"] = float(re.search(number, line).group())
         elif line.startswith(" Optimization completed."):
             self.data["optimization_completed"] = True
-        elif line.startswith(
-            (" Error termination", " Job cpu time"),
-        ):
+        elif line.startswith((" Error termination", " Job cpu time"),):
             self.workhorse = self.wait
 
     @Parser.state(trigger=re.compile("^ Harmonic frequencies"))
