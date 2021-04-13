@@ -736,38 +736,3 @@ class Geometry(FloatArray):
     ):
         super().__init__(genre, filenames, values, allow_data_inconsistency)
         self.molecule_atoms = molecule_atoms
-
-    def rmsd_sieve(
-        self,
-        energies: Energies,
-        window_size: int = 10,
-        rmsd_threshold: float = 1,
-        ignore_hydrogen: bool = True,
-    ):
-        # TODO: Add docs
-        # TODO: add support for fixed window
-        blade = np.ones_like(energies.values, dtype=bool)
-        geom = (
-            dw.drop_atoms(self.values, self.molecule_atoms, dw.atoms.Atom.H)
-            if ignore_hydrogen
-            else self.values
-        )
-        # zero-center all molecules
-        geom = dw.center(geom)
-        windows = dw.stretching_windows(energies.values, window_size, hard_bound=False)
-        for window in windows:
-            # don't include values already discarded
-            reduced_window = window[blade[window]]
-            if reduced_window.size <= 1:
-                # only one molecule in the window, we keep it
-                # or no molecules at all
-                continue
-            head, *tail = geom[reduced_window]  # reference, other
-            # find best rotation of mols in window onto first mol
-            tail = dw.kabsch_rotate(tail, head)
-            # calculate RMSD list of mols to first mol
-            rmsd = dw.rmsd(head, tail)
-            # if RMSD <= threshold mark in blade as False, first one is always kept
-            blade[reduced_window[1:]] = rmsd > rmsd_threshold
-        # return filenames of molecules kept
-        return energies.filenames[blade]

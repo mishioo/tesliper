@@ -15,6 +15,7 @@ import numpy as np
 
 from tesliper.exceptions import TesliperError
 from . import arrays as ar
+from .. import datawork as dw
 from .array_base import _ARRAY_CONSTRUCTORS
 
 
@@ -675,20 +676,18 @@ class Molecules(OrderedDict):
         geometry_genre: str = "geometry",
         energy_genre: str = "scf",
         ignore_hydrogen: bool = True,
-        fixed_window: bool = False,
     ) -> None:
         # TODO: Add docs
-        if fixed_window and not isinstance(window_size, int):
-            raise TypeError(
-                "`fixed_window` should be an integer, when requesting windows of fixed "
-                f"size, but {type(fixed_window)} was given."
-            )
         # TODO: check if requested energies are not empty
         energy = self.arrayed(energy_genre)
-        geom = self.arrayed(geometry_genre)
-        # TODO: add support for fixed window
-        wanted = geom.rmsd_sieve(energy, window_size, threshold, ignore_hydrogen)
-        self.kept = wanted
+        geometry = self.arrayed(geometry_genre)
+        geom = (
+            dw.drop_atoms(geometry.values, geometry.molecule_atoms, dw.atoms.Atom.H)
+            if ignore_hydrogen
+            else geometry.values
+        )
+        wanted = dw.rmsd_sieve(geom, energy.values, window_size, threshold)
+        self.kept = geometry.filenames[wanted]
 
     def select_all(self) -> None:
         """Marks all molecules as 'kept'. Equivalent to `molecules.kept = True`."""
