@@ -1,16 +1,18 @@
+from enum import IntEnum
 from typing import Union, List
 import numpy as np
 from ..exceptions import InvalidElementError
 
-atomicnums = (
+_atoms = (
     "H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu "
     "Zn Ga Ge As Se Br Kr Rb Sr Y Zr Nb Mo Tc Ru Rh Pd Ag Cd In Sn Sb Te I Xe Cs Ba "
     "La Ce Pr Nd Pm Sm Eu Gd Tb Dy Ho Er Tm Yb Lu Hf Ta W Re Os Ir Pt Au Hg Tl Pb "
     "Bi Po At Rn Fr Ra Ac Th Pa U Np Pu Am Cm Bk Cf Es Fm Md No Lr Rf Db Sg Bh Hs Mt "
-    "Ds Rg Cn Nh Fl Mc Lv Ts Og".split()
+    "Ds Rg Cn Nh Fl Mc Lv Ts Og"
 )
-atomicnums = {at: num + 1 for num, at in enumerate(atomicnums)}
+atomicnums = {at: num + 1 for num, at in enumerate(_atoms.split())}
 atoms_symbols = {v: k for k, v in atomicnums.items()}
+Atom = IntEnum("Atom", _atoms)
 
 
 def symbol_of_element(element: Union[int, str]) -> str:

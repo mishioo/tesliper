@@ -13,8 +13,9 @@ from typing import Sequence, Union, Iterable, Optional
 
 import numpy as np
 
-from tesliper.exceptions import TesliperError
+from tesliper.exceptions import TesliperError, InconsistentDataError
 from . import arrays as ar
+from .. import datawork as dw
 from .array_base import _ARRAY_CONSTRUCTORS
 
 
@@ -667,6 +668,71 @@ class Molecules(OrderedDict):
                 f"Cannot compare {type(minimum)} with {type(values[0])}."
             ) from error
         self.kept = arr.filenames[in_range]
+
+    def trim_rmsd(
+        self,
+        threshold: Union[int, float],
+        window_size: Union[int, float],
+        geometry_genre: str = "geometry",
+        energy_genre: str = "scf",
+        ignore_hydrogen: bool = True,
+    ) -> None:
+        """Marks as "not kept" all conformers, that are not identical, according
+        to provided RMSD threshold and energy difference. Conformers, which energy
+        difference (dE) is higher than given `window_size` are always treated as
+        different, while those with dE smaller than `window_size` and RMSD value
+        smaller than given `threshold` are considered identical. From two identical
+        conformers, the one with lower energy is "kept", and the other is discarded
+        (marked as "not kept").
+
+        Notes
+        -----
+        RMSD threshold and size of the energy window should be chosen depending on the
+        parameters of conformers' set: number of conformers, size of the molecule,
+        its lability, etc. However, `threshold` of 0.5 angstrom and `windoe_size`
+        of 5 to 10 kcal/mol is a good place to start if in doubt.
+
+        Parameters
+        ----------
+        threshold : int or float
+            Maximum RMSD value to consider conformers identical.
+        window_size : int or float
+            Size of the energy window, in kcal/mol, inside which RMSD matrix is
+            calculated. Essentially, a difference in conformers' energy, after which
+            conformers are always considered different.
+        geometry_genre : str
+            Genre of geometry used to calculate RMSD matrix. "geometry" is default.
+        energy_genre : str
+            Genre of energy used to sort and group conformers into windows of given
+            energy size. "scf" is used by default.
+        ignore_hydrogen : bool
+            If hydrogen atom should be discarded before RMSD calculation.
+            Defaults to `True`.
+
+        Raises
+        ------
+        InconsistentDataError
+            If requested genres does not provide the same set of conformers.
+        """
+        energy = self.arrayed(energy_genre)
+        geometry = self.arrayed(geometry_genre)
+        if not energy.filenames.size == geometry.filenames.size:
+            raise InconsistentDataError(
+                "Unequal number of conformers in requested geometry and energy genres. "
+                "Trim to incomplete entries before trimming with `trim_rmds`."
+            )
+        elif not np.array_equal(energy.filenames, geometry.filenames):
+            raise InconsistentDataError(
+                "Different conformers  in requested geometry and energy genres. "
+                "Trim to incomplete entries before trimming with `trim_rmds`."
+            )
+        geom = (
+            dw.drop_atoms(geometry.values, geometry.molecule_atoms, dw.atoms.Atom.H)
+            if ignore_hydrogen
+            else geometry.values
+        )
+        wanted = dw.rmsd_sieve(geom, energy.values, window_size, threshold)
+        self.kept = geometry.filenames[wanted]
 
     def select_all(self) -> None:
         """Marks all molecules as 'kept'. Equivalent to `molecules.kept = True`."""

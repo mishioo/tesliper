@@ -4,6 +4,7 @@ import pytest
 import numpy as np
 
 import tesliper.glassware.arrays as ar
+import tesliper.datawork as dw
 from tesliper.exceptions import InconsistentDataError
 
 
@@ -101,38 +102,45 @@ def values_mock(monkeypatch):
 
 
 @pytest.fixture
+def convert_mock(monkeypatch):
+    mocked = mock.PropertyMock(return_value=[3, 12, 15])
+    monkeypatch.setattr(ar.Energies, "as_kcal_per_mol", mocked)
+    return mocked
+
+
+@pytest.fixture
 def en():
     return ar.Energies(
         genre="bla", filenames=["f1", "f2", "f3"], values=[3, 12, 15], t=10
     )
 
 
-def test_deltas(en, monkeypatch, filenames_mock, values_mock):
+def test_deltas(en, monkeypatch, filenames_mock, convert_mock):
     monkeypatch.setattr(ar.dw, "calculate_deltas", mock.Mock())
     _ = en.deltas
-    values_mock.assert_called()
-    ar.dw.calculate_deltas.assert_called_with(en.values)
+    convert_mock.assert_called()
+    ar.dw.calculate_deltas.assert_called_with(en.as_kcal_per_mol)
 
 
-def test_min_factors(en, monkeypatch, filenames_mock, values_mock):
+def test_min_factors(en, monkeypatch, filenames_mock, convert_mock):
     monkeypatch.setattr(ar.dw, "calculate_min_factors", mock.Mock())
     _ = en.min_factors
-    values_mock.assert_called()
-    ar.dw.calculate_min_factors.assert_called_with(en.values, en.t)
+    convert_mock.assert_called()
+    ar.dw.calculate_min_factors.assert_called_with(en.as_kcal_per_mol, en.t)
 
 
-def test_populations(en, monkeypatch, filenames_mock, values_mock):
+def test_populations(en, monkeypatch, filenames_mock, convert_mock):
     monkeypatch.setattr(ar.dw, "calculate_populations", mock.Mock())
     _ = en.populations
-    values_mock.assert_called()
-    ar.dw.calculate_populations.assert_called_with(en.values, en.t)
+    convert_mock.assert_called()
+    ar.dw.calculate_populations.assert_called_with(en.as_kcal_per_mol, en.t)
 
 
-def test_calculate_populations(en, monkeypatch, filenames_mock, values_mock):
+def test_calculate_populations(en, monkeypatch, filenames_mock, convert_mock):
     monkeypatch.setattr(ar.dw, "calculate_populations", mock.Mock())
     en.calculate_populations(20)
-    values_mock.assert_called()
-    ar.dw.calculate_populations.assert_called_with(en.values, 20)
+    convert_mock.assert_called()
+    ar.dw.calculate_populations.assert_called_with(en.as_kcal_per_mol, 20)
 
 
 @pytest.fixture

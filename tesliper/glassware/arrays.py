@@ -13,9 +13,6 @@ from .array_base import (
 from .spectra import Spectra
 
 # LOGGER
-from ..datawork.atoms import atomic_number
-from ..exceptions import InconsistentDataError
-
 logger = lgg.getLogger(__name__)
 logger.setLevel(lgg.DEBUG)
 
@@ -187,15 +184,29 @@ class Energies(FloatArray):
         self.t = t  # temperature in K
 
     @property
-    def deltas(self):
+    def as_kcal_per_mol(self):
+        """Energy values converted to kcal/mol."""
+        # convert hartree to kcal/mol by multiplying by 627.5095
+        return self.values * dw.energies.HARTREE_TO_KCAL_PER_MOL
+
+    @property
+    def deltas(self, as_kcal_per_mol: bool = True):
         """Calculates energy difference between each conformer and lowest energy
-        conformer. Converts energy to kcal/mol.
+        conformer. Converts energy to kcal/mol if `as_kcal_per_mol` is `True` (default).
+
+        Parameters
+        ----------
+        as_kcal_per_mol : bool
+            Specifies if returned data should be converted to kcal/mol from Hartree
+            units. Defaults to `True`.
 
         Returns
         -------
         numpy.ndarray
-            List of energy differences from lowest energy in kcal/mol."""
-        return dw.calculate_deltas(self.values)
+            List of energy differences from lowest energy."""
+        return dw.calculate_deltas(
+            self.as_kcal_per_mol if as_kcal_per_mol else self.values
+        )
 
     @property
     def min_factors(self):
@@ -216,7 +227,7 @@ class Energies(FloatArray):
             List of conformers' Boltzmann factors respective to lowest
             energy conformer."""
         # F(state_n)/F(state_min)
-        return dw.calculate_min_factors(self.values, self.t)
+        return dw.calculate_min_factors(self.as_kcal_per_mol, self.t)
 
     @property
     def populations(self):
@@ -227,7 +238,7 @@ class Energies(FloatArray):
         numpy.ndarary
             List of conformers populations calculated as Boltzmann
             distribution."""
-        return dw.calculate_populations(self.values, self.t)
+        return dw.calculate_populations(self.as_kcal_per_mol, self.t)
 
     def calculate_populations(self, t):
         """Calculates conformers' Boltzmann distribution in given temperature.
@@ -236,11 +247,12 @@ class Energies(FloatArray):
         ----------
         t : int or float
             Temperature of calculated state in K."""
-        return dw.calculate_populations(self.values, t)
+        return dw.calculate_populations(self.as_kcal_per_mol, t)
 
 
 class Averagable:
-    """Mix-in for DataArrays, that may be averaged based on populations of conformers.
+    """Mix-in class for DataArrays, that may be averaged based on populations of
+    conformers.
     """
 
     def average_conformers(self: DataArray, energies) -> DataArray:
@@ -723,7 +735,7 @@ class Geometry(FloatArray):
         check_against="values",
         check_depth=2,
         # TODO: make sanitizer, that accepts jagged nested sequences
-        fsan=np.vectorize(atomic_number),
+        fsan=np.vectorize(dw.atoms.atomic_number),
     )
 
     def __init__(
