@@ -1,6 +1,8 @@
 from unittest import mock
 
 import numpy as np
+from hypothesis import given, strategies as st
+
 from tesliper.datawork import energies as en
 import pytest
 
@@ -35,9 +37,11 @@ def test_calculate_deltas_convertible_string():
     assert out.tolist() == [0]
 
 
-def test_calculate_deltas_more_values():
-    out = en.calculate_deltas([0, 0.001, 0.002])
-    assert out.tolist() == [0, 0.6275095, 2 * 0.6275095]
+@given(st.lists(st.floats(allow_nan=False, allow_infinity=False), min_size=1))
+def test_calculate_deltas_more_values(data):
+    m = min(data)
+    out = en.calculate_deltas(data)
+    assert out.tolist() == [d - m for d in data]
 
 
 @pytest.fixture
