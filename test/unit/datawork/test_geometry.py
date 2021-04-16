@@ -1,3 +1,5 @@
+from unittest import mock
+
 import pytest
 import numpy as np
 from hypothesis import given, strategies as st, assume
@@ -402,3 +404,29 @@ def test_sliding_windows_soft_bound(ens, out):
 def test_sliding_windows_size_non_positive(ens, size):
     with pytest.raises(ValueError):
         next(geometry.stretching_windows(ens, size))
+
+
+@pytest.fixture
+def rmsd_mock(monkeypatch):
+    monkeypatch.setattr(geometry, "center", mock.Mock(side_effect=lambda x: x))
+    monkeypatch.setattr(
+        geometry, "kabsch_rotate", mock.Mock(side_effect=lambda a, b: a)
+    )
+    monkeypatch.setattr(
+        geometry,
+        "calc_rmsd",
+        mock.Mock(
+            side_effect=lambda a, b: np.abs((a[None, ...] - b).mean(axis=(-2, -1)))
+        ),
+    )
+
+
+def test_geometry_rmsd_sieve(rmsd_mock):
+    molecule = np.random.normal(1, 3, 15).reshape(5, 3)
+    scale = np.array([0.1, 0.2, 3, 3.1, 3.7, 0.1, 5, 0.3, 0.5, 3])
+    kept = np.array([1, 0, 1, 0, 1, 1, 1, 0, 1, 1], dtype=bool)
+    ens = np.arange(10)
+    values = molecule[None, ...] + scale[..., None, None]
+    np.testing.assert_array_equal(
+        geometry.rmsd_sieve(values, ens, window_size=2, rmsd_threshold=0.5), kept
+    )
