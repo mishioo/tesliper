@@ -240,3 +240,21 @@ def find_offset(a, b):
     cross = np.correlate(a, b, mode="full")
     best = cross.argmax()
     return best - b.size + 1
+
+
+def unify_abscissa(ax, ay, bx, by, denser=True):
+    ax, ay, bx, by = (
+        np.asanyarray(ax),
+        np.asanyarray(ay),
+        np.asanyarray(bx),
+        np.asanyarray(by),
+    )
+    ads, bds = np.diff(ax), np.diff(bx)
+    ad, bd = ads.mean(), bds.mean()
+    # add interpolation if not all(ad/bd == ads/bds) ?
+    if np.abs(ad) > np.abs(bd) and not denser:  # something missing ?
+        return unify_abscissa(bx, by, ax, ay)  # swap spectra
+    step = np.abs(ad) * bd / np.abs(bd)  # ax denser, but sign from bd
+    nbx = np.arange(bx[0], bx[-1], step)
+    nby = np.interp(nbx, bx, by)
+    return ax, ay, nbx, nby  # maybe better to return only changed ?
