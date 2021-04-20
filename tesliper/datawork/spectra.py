@@ -249,12 +249,11 @@ def unify_abscissa(ax, ay, bx, by, denser=True):
         np.asanyarray(bx),
         np.asanyarray(by),
     )
-    ads, bds = np.diff(ax), np.diff(bx)
-    ad, bd = ads.mean(), bds.mean()
-    # add interpolation if not all(ad/bd == ads/bds) ?
-    if np.abs(ad) > np.abs(bd) and not denser:  # something missing ?
+    ad, bd = ax[0] - ax[1], bx[0] - bx[1]  # should have steady step
+    if (np.abs(ad) < np.abs(bd)) ^ denser:  # xor on booleans
+        # `ad` is smaller than `bd`, but we don't want denser or vice-versa
         return unify_abscissa(bx, by, ax, ay)  # swap spectra
-    step = np.abs(ad) * bd / np.abs(bd)  # ax denser, but sign from bd
+    step = np.abs(ad) * np.sign(bd)  # ad is new step, but sign from bd
     nbx = np.arange(bx[0], bx[-1], step)
     nby = np.interp(nbx, bx, by)
-    return ax, ay, nbx, nby  # maybe better to return only changed ?
+    return ax, ay, nbx, nby
