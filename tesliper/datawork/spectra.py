@@ -236,8 +236,30 @@ def calculate_average(values, populations):
     return (values * popul).sum(0)
 
 
-def find_offset(a, b):
-    """Calculate offset by which `b` should be shifted to best match `a`. """
+def find_offset(a: Numbers, b: Numbers):
+    """Calculate offset by which `b` should be shifted to best overlap with `a`.
+    Both `a` and `b` should be sets of points, interpreted as spectral data. Returned
+    offset is a number of data points, by which `b` should be moved relative to `a`,
+    to get the best overlap of given spectra.
+
+    Parameters
+    ----------
+    a : sequence of ints or floats
+        `x` values` of the first spectrum.
+    b : sequence of ints or floats
+        `x` values` of the second spectrum.
+
+    Returns
+    -------
+    int
+        Offset, in number of data points, by which spectrum `b` should be shifted
+        to best match spectrum `a`. Positive value means it should be shifted to the
+        right and negative value means it should be shifted to the left of `a`.
+
+    Notes
+    -----
+    The best overlap is found by means of cross-correlation of given spectra.
+    """
     a, b = np.asanyarray(a), np.asanyarray(b)
     # normalize values to be zero centered to prevent influence of padding with zeros
     a = (a - a.mean()) / a.std()
