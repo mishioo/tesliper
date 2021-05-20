@@ -236,7 +236,7 @@ def calculate_average(values, populations):
     return (values * popul).sum(0)
 
 
-def find_offset(a: Numbers, b: Numbers):
+def idx_offset(a: Numbers, b: Numbers):
     """Calculate offset by which `b` should be shifted to best overlap with `a`.
     Both `a` and `b` should be sets of points, interpreted as spectral data. Returned
     offset is a number of data points, by which `b` should be moved relative to `a`,

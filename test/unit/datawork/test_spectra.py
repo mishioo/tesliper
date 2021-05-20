@@ -295,5 +295,5 @@ def test_offset_one_peak_same_size(size, peak, shift):
     a, b = np.zeros(size), np.zeros(size)
     a[peak] = 10
     b[peak + shift] = 10
-    offset = sp.find_offset(a, b)
+    offset = sp.idx_offset(a, b)
     assert offset == -shift
