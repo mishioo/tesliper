@@ -240,8 +240,8 @@ class Energies(FloatArray):
 
 
 class Averagable:
-    """Mix-in for DataArrays, that may be averaged based on populations of conformers.
-    """
+    """Mix-in for DataArray subclasses, that may be averaged based on populations
+    of conformers."""
 
     def average_conformers(self: DataArray, energies) -> DataArray:
         """A method for averaging values by population of conformers.

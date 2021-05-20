@@ -109,21 +109,30 @@ def test_gaussian_mean_0_std_dev_1():
 def test_gaussian_width_zero():
     with pytest.raises(ValueError):
         sp.gaussian(
-            np.array([1]), np.array([0]), np.arange(-5, 6, 1), 0,
+            np.array([1]),
+            np.array([0]),
+            np.arange(-5, 6, 1),
+            0,
         )
 
 
 def test_gaussian_width_below_zero():
     with pytest.raises(ValueError):
         sp.gaussian(
-            np.array([1]), np.array([0]), np.arange(-5, 6, 1), -1,
+            np.array([1]),
+            np.array([0]),
+            np.arange(-5, 6, 1),
+            -1,
         )
 
 
 def test_gaussian_unequal_sizes():
     with pytest.raises(ValueError):
         sp.gaussian(
-            np.array([1, 2]), np.array([0]), np.arange(-5, 6, 1), 1,
+            np.array([1, 2]),
+            np.array([0]),
+            np.arange(-5, 6, 1),
+            1,
         )
 
 
@@ -161,21 +170,30 @@ def test_lorentzian_mean_0_std_dev_1():
 def test_lorentzian_width_zero():
     with pytest.raises(ValueError):
         sp.lorentzian(
-            np.array([1]), np.array([0]), np.arange(-5, 6, 1), 0,
+            np.array([1]),
+            np.array([0]),
+            np.arange(-5, 6, 1),
+            0,
         )
 
 
 def test_lorentzian_width_below_zero():
     with pytest.raises(ValueError):
         sp.lorentzian(
-            np.array([1]), np.array([0]), np.arange(-5, 6, 1), -1,
+            np.array([1]),
+            np.array([0]),
+            np.arange(-5, 6, 1),
+            -1,
         )
 
 
 def test_lorentzian_unequal_sizes():
     with pytest.raises(ValueError):
         sp.lorentzian(
-            np.array([1, 2]), np.array([0]), np.arange(-5, 6, 1), 1,
+            np.array([1, 2]),
+            np.array([0]),
+            np.arange(-5, 6, 1),
+            1,
         )
 
 
@@ -225,7 +243,11 @@ def test_calculate_spectra_two_conformers(fitting):
 def test_calculate_spectra_unmatching_arrays(fitting):
     with pytest.raises(ValueError):
         sp.calculate_spectra(
-            np.ones((2, 2)), np.ones((3, 2)), np.arange(3), 1, fitting,
+            np.ones((2, 2)),
+            np.ones((3, 2)),
+            np.arange(3),
+            1,
+            fitting,
         )
 
 
