@@ -1,12 +1,18 @@
 # IMPORTS
 import logging as lgg
 import math
+from typing import Sequence, Union
+
 import numpy as np
 
 
 # LOGGER
 logger = lgg.getLogger(__name__)
 logger.setLevel(lgg.DEBUG)
+
+
+# TYPES
+Numbers = Sequence[Union[int, float]]
 
 
 # MODULE FUNCTIONS
@@ -242,7 +248,38 @@ def find_offset(a, b):
     return best - b.size + 1
 
 
-def unify_abscissa(ax, ay, bx, by, upscale=True):
+def unify_abscissa(
+    ax: Numbers, ay: Numbers, bx: Numbers, by: Numbers, upscale: bool = True
+):
+    """Interpolate one of the given spectra to have the same points density as the
+    other given spectrum.
+
+    Which spectra should be interpolated is determined based on the density of points
+    of both spectra, by default more loosely spaced spectrum is interpolated to match
+    spacing of the other spectrum. This may be changed by passing `upscale=False`
+    to the function call.
+
+    Parameters
+    ----------
+    ax : sequence of ints or floats
+        Abscissa of the first spectrum.
+    ay : sequence of ints or floats
+        Values of the first spectrum.
+    bx : sequence of ints or floats
+        Abscissa of the second spectrum.
+    by : sequence of ints or floats
+        Values of the second spectrum.
+    upscale : bool
+        If interpolation should be done on more loosely spaced spectrum (default).
+        When set to False, spectrum with lower resolution will be treated as reference.
+
+    Returns
+    -------
+    tuple of np.arrays of numbers
+        Spectra, one unchanged and one interpolated, as a tuple of numpy arrays
+        of x and y values. I.e. `tuple(ax, ay, new_bx, new_by)` or
+        `tuple(new_ax, new_ay, bx, by)`, depending on values of `upscale` parameter.
+    """
     ax, ay, bx, by = (
         np.asanyarray(ax),
         np.asanyarray(ay),
