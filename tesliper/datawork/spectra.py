@@ -242,7 +242,7 @@ def find_offset(a, b):
     return best - b.size + 1
 
 
-def unify_abscissa(ax, ay, bx, by, denser=True):
+def unify_abscissa(ax, ay, bx, by, upscale=True):
     ax, ay, bx, by = (
         np.asanyarray(ax),
         np.asanyarray(ay),
@@ -250,8 +250,8 @@ def unify_abscissa(ax, ay, bx, by, denser=True):
         np.asanyarray(by),
     )
     ad, bd = ax[0] - ax[1], bx[0] - bx[1]  # we assume both have steady step
-    if (np.abs(ad) < np.abs(bd)) ^ denser:  # xor on booleans
-        # `ad` is smaller than `bd`, but we don't want denser or vice-versa
+    if (np.abs(ad) < np.abs(bd)) ^ upscale:  # xor on booleans
+        # `ad` is smaller than `bd`, but we don't want to upscale or vice-versa
         nbx, nby, nax, nay = unify_abscissa(bx, by, ax, ay)  # swap spectra
         # but return in the same order as given in parameters
     else:
