@@ -319,3 +319,9 @@ def unify_abscissa(
         nby = np.interp(nbx, bx, by)  # interpolate values on new abscissa
         nax, nay = ax, ay  # the other spectrum stays unchanged
     return nax, nay, nbx, nby
+
+
+def find_scaling(a: Numbers, b: Numbers, avg_func=None):
+    avg_func = np.mean if avg_func is None else avg_func
+    a, b = np.asanyarray(a), np.asanyarray(b)
+    return avg_func(a) / avg_func(b)
