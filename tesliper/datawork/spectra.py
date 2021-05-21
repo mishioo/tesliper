@@ -336,4 +336,6 @@ def find_offset(
 
 
 def find_scaling(a: Numbers, b: Numbers) -> float:
-    return np.mean(np.abs(a)) / np.mean(np.abs(b))
+    scaling = np.mean(np.abs(a)) / np.mean(np.abs(b))
+    scaling = 1.0 if np.isnan(scaling) else scaling
+    return scaling
