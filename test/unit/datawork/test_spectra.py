@@ -280,3 +280,27 @@ def test_unify_abscissa(d1, d2, n1, n2, up, decreasing_abscissa):
         d1, d2, delta = -d1, -d2, -delta
     ax, ay, bx, by = sp.unify_abscissa(x1, np.arange(n1), x2, np.arange(n2), up)
     assert np.allclose([ax[1] - ax[0], bx[1] - bx[0]], [delta])
+
+
+@given(
+    st.floats(min_value=0.1, max_value=10),
+    st.integers(min_value=100, max_value=1000),
+    st.integers(min_value=0, max_value=999),
+    st.integers(min_value=0, max_value=999),
+)
+def test_find_offset(delta, size, peak1, peak2):
+    assume(peak1 < size and peak2 < size)
+    ay, by = np.zeros(size), np.zeros(size)
+    ay[peak1], by[peak2] = 1, 1
+    x = np.arange(0, delta * size, delta)
+    offset = sp.find_offset(x, ay, x, by)
+    assert offset == delta * (peak1 - peak2)
+
+
+@given(
+    st.lists(st.floats(allow_nan=False, allow_infinity=False)),
+    st.lists(st.floats(allow_nan=False, allow_infinity=False)),
+)
+def test_find_scaling(a, b):
+    scale = sp.find_scaling(a, b)
+    assert scale >= 0
