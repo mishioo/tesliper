@@ -326,6 +326,32 @@ def unify_abscissa(
 def find_offset(
     ax: Numbers, ay: Numbers, bx: Numbers, by: Numbers, upscale: bool = True
 ) -> float:
+    """Finds value, by which the spectrum should be shifted along x-axis to best
+    overlap with the first spectrum. If resolution of spectra is not identical,
+    one of them will be interpolated to match resolution of the other one. By default
+    interpolation is done on the lower-resolution spectra. This can be changed
+    by passing `upscale = False` to function call.
+
+    Parameters
+    ----------
+    ax : sequence of ints or floats
+        Abscissa of the first spectrum.
+    ay : sequence of ints or floats
+        Values of the first spectrum.
+    bx : sequence of ints or floats
+        Abscissa of the second spectrum.
+    by : sequence of ints or floats
+        Values of the second spectrum.
+    upscale : bool
+        If interpolation should be done on more loosely spaced spectrum (default).
+        When set to False, spectrum with lower resolution will be treated as reference
+        for density of data points.
+
+    Returns
+    -------
+    float
+        Value, by which second spectrum should be shifted, in appropriate units.
+    """
     ax, ay, bx, by = unify_abscissa(ax, ay, bx, by, upscale=upscale)
     shift = idx_offset(ay, by)
     if shift < 0:
@@ -336,6 +362,25 @@ def find_offset(
 
 
 def find_scaling(a: Numbers, b: Numbers) -> float:
+    """Find factor by which values `b` should be scaled to best match values `a`.
+
+    Parameters
+    ----------
+    a : sequence of ints or floats
+        `x` values` of the first spectrum.
+    b : sequence of ints or floats
+        `x` values` of the second spectrum.
+
+    Returns
+    -------
+    float
+        Scaling factor for `b` values.
+
+    Notes
+    -----
+    If scaling factor cannot be reasonably given, i.e. when `b` is an empty list
+    or list of zeros or NaNs, `1.0` is returned.
+    """
     scaling = np.mean(np.abs(a)) / np.mean(np.abs(b))
     scaling = 1.0 if np.isnan(scaling) else scaling
     return scaling
