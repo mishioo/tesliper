@@ -297,3 +297,22 @@ def test_offset_one_peak_same_size(size, peak, shift):
     b[peak + shift] = 10
     offset = sp.idx_offset(a, b)
     assert offset == -shift
+
+
+@given(
+    st.floats(min_value=0.1, max_value=10),
+    st.floats(min_value=0.1, max_value=10),
+    st.integers(min_value=100, max_value=1000),
+    st.integers(min_value=100, max_value=1000),
+    st.booleans(),
+    st.booleans(),
+)
+def test_unify_abscissa(d1, d2, n1, n2, up, decreasing_abscissa):
+    x1 = np.arange(n1) * d1
+    x2 = np.arange(n2) * d2
+    delta = min([d1, d2]) if up else max([d1, d2])
+    if decreasing_abscissa:
+        x1, x2 = x1[::-1], x2[::-1]
+        d1, d2, delta = -d1, -d2, -delta
+    ax, ay, bx, by = sp.unify_abscissa(x1, np.arange(n1), x2, np.arange(n2), up)
+    assert np.allclose([ax[1] - ax[0], bx[1] - bx[0]], [delta])

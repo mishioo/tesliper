@@ -308,10 +308,12 @@ def unify_abscissa(
         np.asanyarray(bx),
         np.asanyarray(by),
     )
-    ad, bd = ax[0] - ax[1], bx[0] - bx[1]  # we assume both have steady step
-    if (np.abs(ad) < np.abs(bd)) ^ upscale:  # xor on booleans
+    ad, bd = ax[1] - ax[0], bx[1] - bx[0]  # we assume both have steady step
+    if ad == bd:
+        return ax, ay, bx, by  # no need to do anything
+    elif (np.abs(ad) < np.abs(bd)) ^ upscale:  # xor on booleans
         # `ad` is smaller than `bd`, but we don't want to upscale or vice-versa
-        nbx, nby, nax, nay = unify_abscissa(bx, by, ax, ay)  # swap spectra
+        nbx, nby, nax, nay = unify_abscissa(bx, by, ax, ay, upscale)  # swap spectra
         # but return in the same order as given in parameters
     else:
         step = np.abs(ad) * np.sign(bd)  # ad is new step, but sign from bd
