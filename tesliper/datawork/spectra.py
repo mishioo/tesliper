@@ -1,7 +1,7 @@
 # IMPORTS
 import logging as lgg
 import math
-from typing import Sequence, Union
+from typing import Sequence, Union, Tuple
 
 import numpy as np
 
@@ -236,7 +236,7 @@ def calculate_average(values, populations):
     return (values * popul).sum(0)
 
 
-def idx_offset(a: Numbers, b: Numbers):
+def idx_offset(a: Numbers, b: Numbers) -> int:
     """Calculate offset by which `b` should be shifted to best overlap with `a`.
     Both `a` and `b` should be sets of points, interpreted as spectral data. Returned
     offset is a number of data points, by which `b` should be moved relative to `a`,
@@ -272,7 +272,7 @@ def idx_offset(a: Numbers, b: Numbers):
 
 def unify_abscissa(
     ax: Numbers, ay: Numbers, bx: Numbers, by: Numbers, upscale: bool = True
-):
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Interpolate one of the given spectra to have the same points density as the
     other given spectrum.
 
