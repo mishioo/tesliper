@@ -323,5 +323,17 @@ def unify_abscissa(
     return nax, nay, nbx, nby
 
 
+def find_offset(
+    ax: Numbers, ay: Numbers, bx: Numbers, by: Numbers, upscale: bool = True
+) -> float:
+    ax, ay, bx, by = unify_abscissa(ax, ay, bx, by, upscale=upscale)
+    shift = idx_offset(ay, by)
+    if shift < 0:
+        offset = ax[0] - bx[abs(shift)]
+    else:
+        offset = ax[shift] - bx[0]
+    return offset
+
+
 def find_scaling(a: Numbers, b: Numbers) -> float:
     return np.mean(np.abs(a)) / np.mean(np.abs(b))
