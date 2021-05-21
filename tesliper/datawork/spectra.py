@@ -323,7 +323,5 @@ def unify_abscissa(
     return nax, nay, nbx, nby
 
 
-def find_scaling(a: Numbers, b: Numbers, avg_func=None):
-    avg_func = np.mean if avg_func is None else avg_func
-    a, b = np.asanyarray(a), np.asanyarray(b)
-    return avg_func(a) / avg_func(b)
+def find_scaling(a: Numbers, b: Numbers) -> float:
+    return np.mean(np.abs(a)) / np.mean(np.abs(b))
