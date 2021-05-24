@@ -296,6 +296,13 @@ class ArrayProperty(property):
     def __set_name__(self, objtype, name):
         self.name = name
 
+    # TODO: refactor __set__ and __get__ to enable implementing prop.setter
+    #       and prop.getter and still using checks and setting mechanisms
+    #       provided by this class; than also refactor:
+    #       glassware.spectra.Spectra.scaling.setter
+    #       glassware.spectra.Spectra.scaling.getter
+    #       glassware.spectra.Spectra.offset.setter
+    #       glassware.spectra.Spectra.offset.getter
     def __set__(self, instance, values):
         if self.fsan is not None:
             values = self.fsan(values)

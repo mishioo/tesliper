@@ -3,7 +3,7 @@ from typing import Optional, Union
 
 import numpy as np
 
-from .array_base import ArrayProperty
+from .array_base import ArrayProperty, CollapsibleArrayProperty
 from .. import datawork as dw
 from .. import glassware as gw
 
@@ -134,6 +134,8 @@ class Spectra(SingleSpectrum):
     filenames = ArrayProperty(check_against=None, dtype=str)
     abscissa = ArrayProperty(check_against=None)
     values = ArrayProperty(check_against="filenames")
+    scaling = CollapsibleArrayProperty(check_against="filenames", dtype=float)
+    offset = CollapsibleArrayProperty(check_against="filenames", dtype=float)
 
     def __init__(
         self,
@@ -196,15 +198,29 @@ class Spectra(SingleSpectrum):
         logger.debug(f"{self.genre} spectrum averaged by {energy_type}.")
         return av_spec
 
-    @SingleSpectrum.scaling.setter
+    @scaling.setter
     def scaling(self, factor: Union[int, float, np.ndarray]):
-        self._scaling = factor
+        if type(self).scaling.fsan is not None:
+            factor = type(self).scaling.fsan(factor)
+        factor = type(self).scaling.check_input(self, factor)
+        vars(self)["scaling"] = factor
         self._y = self.values * factor
 
-    @SingleSpectrum.offset.setter
+    @scaling.getter
+    def scaling(self):
+        return vars(self)["scaling"]
+
+    @offset.setter
     def offset(self, offset: Union[int, float, np.ndarray]):
-        self._offset = offset
+        if type(self).scaling.fsan is not None:
+            offset = type(self).scaling.fsan(offset)
+        offset = type(self).scaling.check_input(self, offset)
+        vars(self)["offset"] = offset
         self._x = self.abscissa + offset
+
+    @offset.getter
+    def offset(self):
+        return vars(self)["offset"]
 
     def scale_to(
         self, spectrum: SingleSpectrum, average_by: Optional[gw.Energies] = None
