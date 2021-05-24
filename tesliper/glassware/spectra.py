@@ -1,13 +1,11 @@
 import logging as lgg
-from typing import Optional, Union, Sequence, Dict, TYPE_CHECKING
+from typing import Optional, Union, Sequence, Dict
 
 import numpy as np
 
 from .array_base import ArrayProperty, CollapsibleArrayProperty
 from .. import datawork as dw
-
-if TYPE_CHECKING:
-    from ..glassware import Energies
+import tesliper  # absolute import to solve problem of circular imports
 
 
 # LOGGER
@@ -156,7 +154,7 @@ class Spectra(SingleSpectrum):
             self, genre, values, abscissa, width, fitting, scaling, offset, filenames
         )
 
-    def average(self, energies: "Energies") -> SingleSpectrum:
+    def average(self, energies: "tesliper.glassware.Energies") -> SingleSpectrum:
         """A method for averaging spectra by population of conformers. If `scaling`
         or `offset` attributes are `np.ndarray`s, they are averaged as well.
 
@@ -229,7 +227,9 @@ class Spectra(SingleSpectrum):
         return vars(self)["offset"]
 
     def scale_to(
-        self, spectrum: SingleSpectrum, average_by: Optional["Energies"] = None
+        self,
+        spectrum: SingleSpectrum,
+        average_by: Optional["tesliper.glassware.Energies"] = None,
     ) -> None:
         """Establishes a scaling factor to best match a scale of the `spectrum` values.
         If `average_by` is given, it is used to average the spectra prior to calculating
@@ -256,7 +256,9 @@ class Spectra(SingleSpectrum):
             self.scaling = factor
 
     def shift_to(
-        self, spectrum: SingleSpectrum, average_by: Optional["Energies"] = None
+        self,
+        spectrum: SingleSpectrum,
+        average_by: Optional["tesliper.glassware.Energies"] = None,
     ) -> None:
         """Establishes an offset factor to best match given `spectrum`.
         If `average_by` is given, it is used to average the spectra prior to calculating
