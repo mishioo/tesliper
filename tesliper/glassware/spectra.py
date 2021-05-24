@@ -76,29 +76,29 @@ class SingleSpectrum:
 
     @property
     def scaling(self):
-        return self._scaling
+        return vars(self)["scaling"]
 
     @scaling.setter
     def scaling(self, factor):
-        self._scaling = factor
-        self._y = self.values * factor
+        vars(self)["scaling"] = factor
+        vars(self)["y"] = self.values * factor
 
     @property
     def offset(self):
-        return self._offset
+        return vars(self)["offset"]
 
     @offset.setter
     def offset(self, offset):
-        self._offset = offset
-        self._x = self.abscissa + offset
+        vars(self)["offset"] = offset
+        vars(self)["x"] = self.abscissa + offset
 
     @property
     def x(self):
-        return self._x
+        return vars(self)["x"]
 
     @property
     def y(self):
-        return self._y
+        return vars(self)["y"]
 
     def scale_to(self, spectrum: "SingleSpectrum") -> None:
         """Establishes a scaling factor to best match a scale of the `spectrum` values.
@@ -204,7 +204,7 @@ class Spectra(SingleSpectrum):
             factor = type(self).scaling.fsan(factor)
         factor = type(self).scaling.check_input(self, factor)
         vars(self)["scaling"] = factor
-        self._y = self.values * factor
+        vars(self)["y"] = self.values * factor
 
     @scaling.getter
     def scaling(self):
@@ -216,7 +216,7 @@ class Spectra(SingleSpectrum):
             offset = type(self).scaling.fsan(offset)
         offset = type(self).scaling.check_input(self, offset)
         vars(self)["offset"] = offset
-        self._x = self.abscissa + offset
+        vars(self)["x"] = self.abscissa + offset
 
     @offset.getter
     def offset(self):
