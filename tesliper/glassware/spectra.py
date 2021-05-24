@@ -1,6 +1,11 @@
 import logging as lgg
+from typing import Optional, Union
+
+import numpy as np
+
 from .array_base import ArrayProperty
 from .. import datawork as dw
+from .. import glassware as gw
 
 
 # LOGGER
@@ -95,6 +100,28 @@ class SingleSpectrum:
     def y(self):
         return self._y
 
+    def scale_to(self, spectrum: "SingleSpectrum") -> None:
+        """Establishes a scaling factor to best match a scale of the `spectrum` values.
+
+        Parameters
+        ----------
+        spectrum : SingleSpectrum
+            This spectrum's y-axis values will be treated as a reference. If `spectrum`
+            has its own scaling factor, it will be taken into account.
+        """
+        self.scaling = dw.find_scaling(spectrum.y, self.values)
+
+    def shift_to(self, spectrum: "SingleSpectrum") -> None:
+        """Establishes an offset factor to best match given `spectrum`.
+
+        Parameters
+        ----------
+        spectrum : SingleSpectrum
+            This spectrum will be treated as a reference. If `spectrum`
+            has its own offset factor, it will be taken into account.
+        """
+        self.offset = dw.find_offset(spectrum.x, spectrum.y, self.abscissa, self.values)
+
     def __len__(self):
         return len(self.abscissa)
 
@@ -125,8 +152,10 @@ class Spectra(SingleSpectrum):
             self, genre, values, abscissa, width, fitting, scaling, offset, filenames
         )
 
-    def average(self, energies):
-        """A method for averaging spectra by population of conformers.
+    def average(self, energies: gw.Energies) -> SingleSpectrum:
+        """A method for averaging spectra by population of conformers. If `scaling`
+        or `offset` attributes are `np.ndarray`s, they are averaged as well.
+
 
         Parameters
         ----------
@@ -137,23 +166,99 @@ class Spectra(SingleSpectrum):
 
         Returns
         -------
-        numpy.ndarray
-            2d numpy array where arr[0] is list of wavelengths/wave numbers
-            and arr[1] is list of corresponding averaged intensity values.
+        SingleSpectrum
+            Averaged spectrum.
         """
         populations = energies.populations
         energy_type = energies.genre
         av_spec = dw.calculate_average(self.values, populations)
+        scaling = (
+            self.scaling
+            if not isinstance(self.scaling, np.ndarray)
+            else np.average(self.scaling, weights=populations)
+        )
+        offset = (
+            self.offset
+            if not isinstance(self.offset, np.ndarray)
+            else np.average(self.offset, weights=populations)
+        )
         av_spec = SingleSpectrum(
             self.genre,
             av_spec,
             self.abscissa,
             self.width,
             self.fitting,
-            self.scaling,
-            self.offset,
+            scaling=scaling,
+            offset=offset,
             filenames=self.filenames,
             averaged_by=energy_type,
         )
         logger.debug(f"{self.genre} spectrum averaged by {energy_type}.")
         return av_spec
+
+    @SingleSpectrum.scaling.setter
+    def scaling(self, factor: Union[int, float, np.ndarray]):
+        self._scaling = factor
+        self._y = self.values * factor
+
+    @SingleSpectrum.offset.setter
+    def offset(self, offset: Union[int, float, np.ndarray]):
+        self._offset = offset
+        self._x = self.abscissa + offset
+
+    def scale_to(
+        self, spectrum: SingleSpectrum, average_by: Optional[gw.Energies] = None
+    ) -> None:
+        """Establishes a scaling factor to best match a scale of the `spectrum` values.
+        If `average_by` is given, it is used to average the spectra prior to calculating
+        the factor, and one factor is applied to each spectra. Otherwise spectra are
+        treated separately, and resulting factor is an `np.ndarray` of values, different
+        for each spectrum.
+
+        Parameters
+        ----------
+        spectrum : SingleSpectrum
+            This spectrum's y-axis values will be treated as a reference. If `spectrum`
+            has its own scaling factor, it will be taken into account.
+        average_by : Energies, optional
+            Energies object, used to calculate average spectrum prior to calculating
+            the factor. If not given, one factor for each spectrum will be calculated.
+        """
+        if average_by is not None:
+            averaged = self.average(energies=average_by)
+            self.scaling = super().scale_to(averaged)
+        else:
+            factor = np.array(
+                [dw.find_scaling(spectrum.y, conformer) for conformer in self.values]
+            )
+            self.scaling = factor
+
+    def shift_to(
+        self, spectrum: SingleSpectrum, average_by: Optional[gw.Energies] = None
+    ) -> None:
+        """Establishes an offset factor to best match given `spectrum`.
+        If `average_by` is given, it is used to average the spectra prior to calculating
+        the factor, and one factor is applied to each spectra. Otherwise spectra are
+        treated separately, and resulting factor is an `np.ndarray` of values, different
+        for each spectrum.
+
+        Parameters
+        ----------
+        spectrum : SingleSpectrum
+            This spectrum will be treated as a reference. If `spectrum`
+            has its own offset factor, it will be taken into account.
+        average_by : Energies, optional
+            Energies object, used to calculate average spectrum prior to calculating
+            the factor. If not given, one factor for each spectrum will be calculated.
+        """
+        if average_by is not None:
+            averaged = self.average(energies=average_by)
+            self.offset = super().shift_to(averaged)
+        else:
+            offset = np.array(
+                [
+                    dw.find_offset(spectrum.x, spectrum.y, self.abscissa, conformer)
+                    for conformer in self.values
+                ]
+            )
+            self.offset = offset
