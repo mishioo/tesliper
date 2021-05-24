@@ -26,6 +26,10 @@ from .spectra import (
     gaussian,
     count_imaginary,
     find_imaginary,
+    idx_offset,
+    unify_abscissa,
+    find_offset,
+    find_scaling,
 )
 from .helpers import (
     atomic_number, symbol_of_element, take_atoms, drop_atoms, is_triangular,
