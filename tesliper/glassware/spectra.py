@@ -210,6 +210,7 @@ class Spectra(SingleSpectrum):
 
     @scaling.getter
     def scaling(self) -> Union[int, float, np.ndarray]:
+        # TODO: check if type hint ok, maybe np.ndarray only
         return vars(self)["scaling"]
 
     @offset.setter
@@ -224,6 +225,7 @@ class Spectra(SingleSpectrum):
 
     @offset.getter
     def offset(self) -> Union[int, float, np.ndarray]:
+        # TODO: check if type hint ok, maybe np.ndarray only
         return vars(self)["offset"]
 
     def scale_to(

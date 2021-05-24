@@ -151,8 +151,8 @@ class ArchiveWriter(Writer):
                         "abscissa": spectrum.abscissa.tolist(),
                         "width": spectrum.width,
                         "fitting": spectrum.fitting,
-                        "scaling": spectrum.scaling,
-                        "offset": spectrum.offset,
+                        "scaling": spectrum.scaling,  # TODO: fix, this is np.ndarray
+                        "offset": spectrum.offset,  # TODO: fix, this is np.ndarray
                         "averaged_by": spectrum.averaged_by,
                     }
                 )
