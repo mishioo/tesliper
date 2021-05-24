@@ -1,5 +1,5 @@
 import logging as lgg
-from typing import Optional, Union
+from typing import Optional, Union, Sequence, Dict
 
 import numpy as np
 
@@ -71,33 +71,33 @@ class SingleSpectrum:
     values = ArrayProperty(check_against="abscissa")
 
     @property
-    def units(self):
+    def units(self) -> Dict[str, str]:
         return self._units[self.genre]
 
     @property
-    def scaling(self):
+    def scaling(self) -> Union[int, float]:
         return vars(self)["scaling"]
 
     @scaling.setter
-    def scaling(self, factor):
+    def scaling(self, factor: Union[int, float]):
         vars(self)["scaling"] = factor
         vars(self)["y"] = self.values * factor
 
     @property
-    def offset(self):
+    def offset(self) -> Union[int, float]:
         return vars(self)["offset"]
 
     @offset.setter
-    def offset(self, offset):
+    def offset(self, offset: Union[int, float]):
         vars(self)["offset"] = offset
         vars(self)["x"] = self.abscissa + offset
 
     @property
-    def x(self):
+    def x(self) -> np.ndarray:
         return vars(self)["x"]
 
     @property
-    def y(self):
+    def y(self) -> np.ndarray:
         return vars(self)["y"]
 
     def scale_to(self, spectrum: "SingleSpectrum") -> None:
@@ -199,7 +199,9 @@ class Spectra(SingleSpectrum):
         return av_spec
 
     @scaling.setter
-    def scaling(self, factor: Union[int, float, np.ndarray]):
+    def scaling(
+        self, factor: Union[int, float, Sequence[int], Sequence[float], np.ndarray]
+    ):
         if type(self).scaling.fsan is not None:
             factor = type(self).scaling.fsan(factor)
         factor = type(self).scaling.check_input(self, factor)
@@ -207,11 +209,13 @@ class Spectra(SingleSpectrum):
         vars(self)["y"] = self.values * factor
 
     @scaling.getter
-    def scaling(self):
+    def scaling(self) -> Union[int, float, np.ndarray]:
         return vars(self)["scaling"]
 
     @offset.setter
-    def offset(self, offset: Union[int, float, np.ndarray]):
+    def offset(
+        self, offset: Union[int, float, Sequence[int], Sequence[float], np.ndarray]
+    ):
         if type(self).scaling.fsan is not None:
             offset = type(self).scaling.fsan(offset)
         offset = type(self).scaling.check_input(self, offset)
@@ -219,7 +223,7 @@ class Spectra(SingleSpectrum):
         vars(self)["x"] = self.abscissa + offset
 
     @offset.getter
-    def offset(self):
+    def offset(self) -> Union[int, float, np.ndarray]:
         return vars(self)["offset"]
 
     def scale_to(
