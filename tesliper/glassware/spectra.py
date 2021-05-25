@@ -175,13 +175,13 @@ class Spectra(SingleSpectrum):
         energy_type = energies.genre
         av_spec = dw.calculate_average(self.values, populations)
         scaling = (
-            self.scaling
-            if not isinstance(self.scaling, np.ndarray)
+            self.scaling[0]
+            if self.scaling.size == 1
             else np.average(self.scaling, weights=populations)
         )
         offset = (
-            self.offset
-            if not isinstance(self.offset, np.ndarray)
+            self.offset[0]
+            if self.offset.size == 1
             else np.average(self.offset, weights=populations)
         )
         av_spec = SingleSpectrum(
@@ -209,8 +209,7 @@ class Spectra(SingleSpectrum):
         vars(self)["y"] = self.values * factor
 
     @scaling.getter
-    def scaling(self) -> Union[int, float, np.ndarray]:
-        # TODO: check if type hint ok, maybe np.ndarray only
+    def scaling(self) -> np.ndarray:
         return vars(self)["scaling"]
 
     @offset.setter
@@ -224,8 +223,7 @@ class Spectra(SingleSpectrum):
         vars(self)["x"] = self.abscissa + offset
 
     @offset.getter
-    def offset(self) -> Union[int, float, np.ndarray]:
-        # TODO: check if type hint ok, maybe np.ndarray only
+    def offset(self) -> np.ndarray:
         return vars(self)["offset"]
 
     def scale_to(

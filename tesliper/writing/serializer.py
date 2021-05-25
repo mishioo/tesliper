@@ -132,8 +132,8 @@ class ArchiveWriter(Writer):
                         "abscissa": spectra.abscissa.tolist(),
                         "width": spectra.width,
                         "fitting": spectra.fitting,
-                        "scaling": spectra.scaling,
-                        "offset": spectra.offset,
+                        "scaling": spectra.scaling.tolist(),
+                        "offset": spectra.offset.tolist(),
                         "allow_data_inconsistency": spectra.allow_data_inconsistency,
                     }
                 )
@@ -151,8 +151,8 @@ class ArchiveWriter(Writer):
                         "abscissa": spectrum.abscissa.tolist(),
                         "width": spectrum.width,
                         "fitting": spectrum.fitting,
-                        "scaling": spectrum.scaling,  # TODO: fix, this is np.ndarray
-                        "offset": spectrum.offset,  # TODO: fix, this is np.ndarray
+                        "scaling": spectrum.scaling,
+                        "offset": spectrum.offset,
                         "averaged_by": spectrum.averaged_by,
                     }
                 )
