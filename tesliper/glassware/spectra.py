@@ -72,10 +72,17 @@ class SingleSpectrum:
 
     @property
     def units(self) -> Dict[str, str]:
+        """Units in which spectral data is stored. It provides a unit for `.width`,
+        `.start`, `.stop`, `.step`, `.x`, and `.y`. `.abscissa` and `.values` are
+        stored in the same units as `.x` and `.y` respectively.
+        """
         return self._units[self.genre]
 
     @property
     def scaling(self) -> Union[int, float]:
+        """A factor for correcting the scale of spectra. Setting it to new value changes
+        the `y` attribute as well. It should be an `int` or `float`.
+        """
         return vars(self)["scaling"]
 
     @scaling.setter
@@ -85,6 +92,9 @@ class SingleSpectrum:
 
     @property
     def offset(self) -> Union[int, float]:
+        """A factor for correcting the shift of spectra. Setting it to new value changes
+        the `x` attribute as well. It should be an `int` or `float`.
+        """
         return vars(self)["offset"]
 
     @offset.setter
@@ -94,10 +104,12 @@ class SingleSpectrum:
 
     @property
     def x(self) -> np.ndarray:
+        """Spectra's x-values corrected by adding its `.offset` to `.abscissa`."""
         return vars(self)["x"]
 
     @property
     def y(self) -> np.ndarray:
+        """Spectra's y-values corrected by multiplying its `.values` by `.scaling`."""
         return vars(self)["y"]
 
     def scale_to(self, spectrum: "SingleSpectrum") -> None:
@@ -198,6 +210,19 @@ class Spectra(SingleSpectrum):
         logger.debug(f"{self.genre} spectrum averaged by {energy_type}.")
         return av_spec
 
+    @scaling.getter
+    def scaling(self) -> np.ndarray:
+        """A factor for correcting the scale of spectra. Setting it to new value changes
+        the `y` attribute as well.
+
+        It is an np.ndarray of size 1 or the same size as the number of conformers
+        the object represents. It may be set with an `int`, `float` or any type of
+        sequence thereof, which will be transformed to np.ndarray automatically.
+        Trying to set it to a sequence of incorrect length will produce
+        an InconsistentDataError.
+        """
+        return vars(self)["scaling"]
+
     @scaling.setter
     def scaling(
         self, factor: Union[int, float, Sequence[int], Sequence[float], np.ndarray]
@@ -208,9 +233,18 @@ class Spectra(SingleSpectrum):
         vars(self)["scaling"] = factor
         vars(self)["y"] = self.values * factor
 
-    @scaling.getter
-    def scaling(self) -> np.ndarray:
-        return vars(self)["scaling"]
+    @offset.getter
+    def offset(self) -> np.ndarray:
+        """A factor for correcting the shift of spectra. Setting it to new value changes
+        the `x` attribute as well.
+
+        It is an np.ndarray of size 1 or the same size as the number of conformers
+        the object represents. It may be set with an `int`, `float` or any type of
+        sequence thereof, which will be transformed to np.ndarray automatically.
+        Trying to set it to a sequence of incorrect length will produce
+        an InconsistentDataError.
+        """
+        return vars(self)["offset"]
 
     @offset.setter
     def offset(
@@ -221,10 +255,6 @@ class Spectra(SingleSpectrum):
         offset = type(self).scaling.check_input(self, offset)
         vars(self)["offset"] = offset
         vars(self)["x"] = self.abscissa + offset
-
-    @offset.getter
-    def offset(self) -> np.ndarray:
-        return vars(self)["offset"]
 
     def scale_to(
         self,
