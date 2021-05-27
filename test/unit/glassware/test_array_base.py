@@ -404,6 +404,14 @@ def class_collapsable_array(request):
     return Cls
 
 
+@pytest.fixture(params=(int, float, str), scope="module")
+def class_strict_collapsable_array(request):
+    class Cls:
+        arr = ab.CollapsibleArrayProperty(dtype=request.param, strict=True)
+
+    return Cls
+
+
 @pytest.fixture(scope="module")
 def instance_not_adi():
     return mock.Mock(allow_data_inconsistency=False)
@@ -439,10 +447,12 @@ def test_collapsable_list_of_identical(
 
 @pytest.mark.usefixtures("mock_check_input")
 @given(st.data())
-def test_collapsable_list_of_unique(class_collapsable_array, instance_not_adi, data):
-    values = data.draw(list_of_unique[class_collapsable_array.arr.dtype])
+def test_strict_collapsable_list_of_unique(
+    class_strict_collapsable_array, instance_not_adi, data
+):
+    values = data.draw(list_of_unique[class_strict_collapsable_array.arr.dtype])
     with pytest.raises(InconsistentDataError):
-        class_collapsable_array.arr.check_input(instance_not_adi, values)
+        class_strict_collapsable_array.arr.check_input(instance_not_adi, values)
 
 
 @pytest.mark.usefixtures("mock_check_input")
@@ -474,12 +484,12 @@ def test_cllapsable_list_of_identical_lists(
 
 @pytest.mark.usefixtures("mock_check_input")
 @given(st.data())
-def test_cllapsable_list_of_unique_lists(
-    class_collapsable_array, instance_not_adi, data
+def test_strict_cllapsable_list_of_unique_lists(
+    class_strict_collapsable_array, instance_not_adi, data
 ):
-    values = data.draw(list_of_unique_lists[class_collapsable_array.arr.dtype])
+    values = data.draw(list_of_unique_lists[class_strict_collapsable_array.arr.dtype])
     with pytest.raises(InconsistentDataError):
-        class_collapsable_array.arr.check_input(instance_not_adi, values)
+        class_strict_collapsable_array.arr.check_input(instance_not_adi, values)
 
 
 @pytest.mark.usefixtures("mock_check_input")

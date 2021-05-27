@@ -469,6 +469,32 @@ class JaggedArrayProperty(ArrayProperty):
 class CollapsibleArrayProperty(ArrayProperty):
     """ArrayProperty that stores only one value, if all entries are identical."""
 
+    def __init__(
+        self,
+        fget: Optional[Callable[[Any], np.ndarray]] = None,
+        fset: Optional[Callable[[Any, Sequence], None]] = None,
+        fdel: Optional[Callable[[Any], None]] = None,
+        doc: str = None,
+        dtype: type = float,
+        check_against: Optional[str] = None,
+        check_depth: int = 1,
+        fill_value: Any = 0,
+        fsan: Optional[Callable[[Sequence], Sequence]] = None,
+        strict: bool = False,
+    ):
+        self.strict = strict
+        super().__init__(
+            fget=fget,
+            fset=fset,
+            fdel=fdel,
+            doc=doc,
+            dtype=dtype,
+            check_against=check_against,
+            check_depth=check_depth,
+            fill_value=fill_value,
+            fsan=fsan,
+        )
+
     def check_shape(self, instance: Any, values: Sequence):
         """Raises an error if `values` have different shape than attribute specified
         as`check_against`. Accepts values with size of first dimension equal to 1, even
@@ -521,7 +547,8 @@ class CollapsibleArrayProperty(ArrayProperty):
         InconsistentDataError
             If `values` is list of lists of varying size and instance doesn't allow
             data inconsistency.
-            If values are non-uniform and instance doesn't allow data inconsistency.
+            If property is declared as strict, given `values` are non-uniform
+            and instance doesn't allow data inconsistency.
         """
         if not isinstance(values, Iterable) or isinstance(values, str):
             return np.array([values], dtype=self.dtype)
@@ -534,7 +561,7 @@ class CollapsibleArrayProperty(ArrayProperty):
         if all_same:
             # return only first element, but keep dimensionality
             return values[np.newaxis, 0]
-        elif not allow:
+        elif self.strict and not allow:
             raise InconsistentDataError(
                 "List of non-uniform values given to CollapsibleArrayProperty setter."
             )

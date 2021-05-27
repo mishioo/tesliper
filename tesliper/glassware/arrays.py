@@ -724,6 +724,7 @@ class Geometry(FloatArray):
         check_depth=2,
         # TODO: make sanitizer, that accepts jagged nested sequences
         fsan=np.vectorize(atomic_number),
+        strict=True,
     )
 
     def __init__(
