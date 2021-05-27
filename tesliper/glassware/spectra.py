@@ -137,9 +137,6 @@ class SingleSpectrum:
     def __len__(self):
         return len(self.abscissa)
 
-    def __bool__(self):
-        return self.abscissa.size != 0
-
 
 class Spectra(SingleSpectrum):
 
