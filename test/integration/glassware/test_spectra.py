@@ -77,21 +77,53 @@ def test_single_shift_to(size, factor):
     assert np.allclose(s1.x, s2.x)
 
 
-def test_spectra_average_return():
-    s = sp.Spectra("ir", ["one", "two"], [[1, 2], [6, 7]], [0, 1])
-    e = mock.Mock(genre="gib", populations=[0.2, 0.8])
-    n = s.average(e)
-    assert isinstance(n.scaling, float)
-    assert isinstance(n.offset, float)
-    assert n.averaged_by == e.genre
-    assert np.allclose(n.values, np.average(s.values, weights=e.populations, axis=0))
+@pytest.fixture(scope="function")
+def spectra():
+    return sp.Spectra("ir", ["one", "two"], [[1, 2], [6, 7]], [0, 1])
 
 
-def test_spectra_average_offset_scaling_as_arrays():
-    s = sp.Spectra("ir", ["one", "two"], [[1, 2], [6, 7]], [0, 1])
-    e = mock.Mock(genre="gib", populations=[0.2, 0.8])
-    s.scaling = [3, 4]
-    s.offset = [3, 4]
-    n = s.average(e)
-    assert n.scaling == np.average(s.scaling, weights=e.populations, axis=0)
-    assert n.offset == np.average(s.offset, weights=e.populations, axis=0)
+@pytest.fixture(scope="function")
+def en_mock():
+    return mock.Mock(genre="gib", populations=[0.2, 0.8])
+
+
+def test_spectra_average_return(spectra, en_mock):
+    n = spectra.average(en_mock)
+    assert n.averaged_by == en_mock.genre
+    assert np.allclose(
+        n.values, np.average(spectra.values, weights=en_mock.populations, axis=0)
+    )
+
+
+# TODO: add no energies test
+# TODO: test failing, fix
+@given(
+    factor=st.floats(
+        min_value=0,
+        exclude_min=True,
+        max_value=1000,
+        allow_nan=False,
+        allow_infinity=False,
+    )
+)
+def test_spectra_scale_to_with_en(spectra, en_mock, factor):
+    spectra.scaling = 1
+    n = spectra.average(en_mock)
+    n.scaling = factor
+    spectra.scale_to(n, en_mock)
+    assert spectra.scaling == factor
+
+
+# TODO: add no energies test
+# TODO: test failing, fix
+@given(
+    factor=st.floats(
+        min_value=-1000, max_value=1000, allow_nan=False, allow_infinity=False
+    ),
+)
+def test_spectra_shift_to_with_en(spectra, en_mock, factor):
+    spectra.offset = 0
+    n = spectra.average(en_mock)
+    n.offset = factor
+    spectra.shift_to(n, en_mock)
+    assert spectra.offset == factor

@@ -132,8 +132,8 @@ class ArchiveWriter(Writer):
                         "abscissa": spectra.abscissa.tolist(),
                         "width": spectra.width,
                         "fitting": spectra.fitting,
-                        "scaling": spectra.scaling.tolist(),
-                        "offset": spectra.offset.tolist(),
+                        "scaling": spectra.scaling,
+                        "offset": spectra.offset,
                         "allow_data_inconsistency": spectra.allow_data_inconsistency,
                     }
                 )
