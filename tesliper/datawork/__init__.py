@@ -27,6 +27,10 @@ from .spectra import (
     gaussian,
     count_imaginary,
     find_imaginary,
+    idx_offset,
+    unify_abscissa,
+    find_offset,
+    find_scaling,
 )
 from .geometry import (
     take_atoms,

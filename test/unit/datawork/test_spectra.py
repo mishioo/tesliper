@@ -1,5 +1,7 @@
 from unittest.mock import Mock
 import numpy as np
+from hypothesis import given, strategies as st, assume
+
 from tesliper.datawork import spectra as sp
 import pytest
 
@@ -106,32 +108,17 @@ def test_gaussian_mean_0_std_dev_1():
 
 def test_gaussian_width_zero():
     with pytest.raises(ValueError):
-        sp.gaussian(
-            np.array([1]),
-            np.array([0]),
-            np.arange(-5, 6, 1),
-            0,
-        )
+        sp.gaussian(np.array([1]), np.array([0]), np.arange(-5, 6, 1), 0)
 
 
 def test_gaussian_width_below_zero():
     with pytest.raises(ValueError):
-        sp.gaussian(
-            np.array([1]),
-            np.array([0]),
-            np.arange(-5, 6, 1),
-            -1,
-        )
+        sp.gaussian(np.array([1]), np.array([0]), np.arange(-5, 6, 1), -1)
 
 
 def test_gaussian_unequal_sizes():
     with pytest.raises(ValueError):
-        sp.gaussian(
-            np.array([1, 2]),
-            np.array([0]),
-            np.arange(-5, 6, 1),
-            1,
-        )
+        sp.gaussian(np.array([1, 2]), np.array([0]), np.arange(-5, 6, 1), 1)
 
 
 def test_gaussian_empty_intensities():
@@ -167,32 +154,17 @@ def test_lorentzian_mean_0_std_dev_1():
 
 def test_lorentzian_width_zero():
     with pytest.raises(ValueError):
-        sp.lorentzian(
-            np.array([1]),
-            np.array([0]),
-            np.arange(-5, 6, 1),
-            0,
-        )
+        sp.lorentzian(np.array([1]), np.array([0]), np.arange(-5, 6, 1), 0)
 
 
 def test_lorentzian_width_below_zero():
     with pytest.raises(ValueError):
-        sp.lorentzian(
-            np.array([1]),
-            np.array([0]),
-            np.arange(-5, 6, 1),
-            -1,
-        )
+        sp.lorentzian(np.array([1]), np.array([0]), np.arange(-5, 6, 1), -1)
 
 
 def test_lorentzian_unequal_sizes():
     with pytest.raises(ValueError):
-        sp.lorentzian(
-            np.array([1, 2]),
-            np.array([0]),
-            np.arange(-5, 6, 1),
-            1,
-        )
+        sp.lorentzian(np.array([1, 2]), np.array([0]), np.arange(-5, 6, 1), 1)
 
 
 def test_lorentzian_empty_intensities():
@@ -240,13 +212,7 @@ def test_calculate_spectra_two_conformers(fitting):
 
 def test_calculate_spectra_unmatching_arrays(fitting):
     with pytest.raises(ValueError):
-        sp.calculate_spectra(
-            np.ones((2, 2)),
-            np.ones((3, 2)),
-            np.arange(3),
-            1,
-            fitting,
-        )
+        sp.calculate_spectra(np.ones((2, 2)), np.ones((3, 2)), np.arange(3), 1, fitting)
 
 
 def test_calculate_spectra_empty_abscissa(fitting):
@@ -284,3 +250,57 @@ def test_calculate_average_unmatching_sizes():
         sp.calculate_average([1, 2, 3], [1, 2])
     with pytest.raises(ValueError):
         sp.calculate_average([1, 2, 3], 1)
+
+
+@given(st.integers(min_value=1, max_value=100), st.integers(), st.integers())
+def test_offset_one_peak_same_size(size, peak, shift):
+    assume(0 <= peak < size)
+    assume(0 <= peak + shift < size)
+    a, b = np.zeros(size), np.zeros(size)
+    a[peak] = 10
+    b[peak + shift] = 10
+    offset = sp.idx_offset(a, b)
+    assert offset == -shift
+
+
+@given(
+    st.floats(min_value=0.1, max_value=10),
+    st.floats(min_value=0.1, max_value=10),
+    st.integers(min_value=100, max_value=1000),
+    st.integers(min_value=100, max_value=1000),
+    st.booleans(),
+    st.booleans(),
+)
+def test_unify_abscissa(d1, d2, n1, n2, up, decreasing_abscissa):
+    x1 = np.arange(n1) * d1
+    x2 = np.arange(n2) * d2
+    delta = min([d1, d2]) if up else max([d1, d2])
+    if decreasing_abscissa:
+        x1, x2 = x1[::-1], x2[::-1]
+        d1, d2, delta = -d1, -d2, -delta
+    ax, ay, bx, by = sp.unify_abscissa(x1, np.arange(n1), x2, np.arange(n2), up)
+    assert np.allclose([ax[1] - ax[0], bx[1] - bx[0]], [delta])
+
+
+@given(
+    st.floats(min_value=0.1, max_value=10),
+    st.integers(min_value=100, max_value=1000),
+    st.integers(min_value=0, max_value=999),
+    st.integers(min_value=0, max_value=999),
+)
+def test_find_offset(delta, size, peak1, peak2):
+    assume(peak1 < size and peak2 < size)
+    ay, by = np.zeros(size), np.zeros(size)
+    ay[peak1], by[peak2] = 1, 1
+    x = np.arange(0, delta * size, delta)
+    offset = sp.find_offset(x, ay, x, by)
+    assert offset == delta * (peak1 - peak2)
+
+
+@given(
+    st.lists(st.floats(allow_nan=False, allow_infinity=False)),
+    st.lists(st.floats(allow_nan=False, allow_infinity=False)),
+)
+def test_find_scaling(a, b):
+    scale = sp.find_scaling(a, b)
+    assert scale >= 0

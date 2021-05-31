@@ -8,7 +8,7 @@ from typing import Union, List, Dict, Any
 from ._writer import Writer
 from ..glassware import Molecules, Spectra, SingleSpectrum
 from .. import datawork as dw
-import tesliper
+import tesliper  # absolute import to solve problem of circular imports
 
 
 class ArchiveWriter(Writer):

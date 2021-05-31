@@ -251,9 +251,8 @@ class Energies(FloatArray):
 
 
 class Averagable:
-    """Mix-in class for DataArrays, that may be averaged based on populations of
-    conformers.
-    """
+    """Mix-in for DataArray subclasses, that may be averaged based on populations
+    of conformers."""
 
     def average_conformers(self: DataArray, energies) -> DataArray:
         """A method for averaging values by population of conformers.
@@ -735,7 +734,8 @@ class Geometry(FloatArray):
         check_against="values",
         check_depth=2,
         # TODO: make sanitizer, that accepts jagged nested sequences
-        fsan=np.vectorize(dw.atoms.atomic_number),
+        fsan=np.vectorize(atomic_number),
+        strict=True,
     )
 
     def __init__(
