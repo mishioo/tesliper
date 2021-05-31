@@ -1,19 +1,17 @@
 # IMPORTS
-import math
 import logging as lgg
+import math
 import queue
 import tkinter as tk
 import tkinter.ttk as ttk
 from tkinter.filedialog import askopenfilename
 
+from matplotlib import cm
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
-from matplotlib import cm
-
-from . import components as guicom
 
 from .. import tesliper as tesliper
-
+from . import components as guicom
 
 # LOGGER
 logger = lgg.getLogger(__name__)

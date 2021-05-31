@@ -1,19 +1,19 @@
 # IMPORTS
-import os
 import logging as lgg
+import os
 import tkinter as tk
 import tkinter.ttk as ttk
-
-from tkinter import messagebox
 from threading import Thread
-
-from . import components as guicom
-from .tab_loader import Loader, logger as loader_logger
-from .tab_spectra import Spectra, logger as spectra_logger
-from .tab_energies import Conformers, logger as energies_logger
+from tkinter import messagebox
 
 from .. import tesliper
-
+from . import components as guicom
+from .tab_energies import Conformers
+from .tab_energies import logger as energies_logger
+from .tab_loader import Loader
+from .tab_loader import logger as loader_logger
+from .tab_spectra import Spectra
+from .tab_spectra import logger as spectra_logger
 
 _DEVELOPMENT = tesliper._DEVELOPMENT
 

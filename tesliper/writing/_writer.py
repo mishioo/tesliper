@@ -1,18 +1,17 @@
 # IMPORTS
+import logging as lgg
 from pathlib import Path
 from string import Template
-from typing import Union, Iterable, Dict, TextIO, Any
+from typing import Any, Dict, Iterable, TextIO, Union
 
-import logging as lgg
-
-from ..glassware.spectra import SingleSpectrum, Spectra
 from ..glassware.arrays import (
+    Bars,
     DataArray,
     Energies,
-    Bars,
-    GroundStateBars,
     ExcitedStateBars,
+    GroundStateBars,
 )
+from ..glassware.spectra import SingleSpectrum, Spectra
 
 # LOGGER
 logger = lgg.getLogger(__name__)

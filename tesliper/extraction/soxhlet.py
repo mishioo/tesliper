@@ -1,11 +1,10 @@
 # IMPORTS
 import csv
-import os
 import logging as lgg
-
+import os
 from collections import defaultdict
-from . import gaussian_parser
-from . import spectra_parser
+
+from . import gaussian_parser, spectra_parser
 
 # TO DO
 # correct load_bars, load_popul, load_spectra, load_settings methods

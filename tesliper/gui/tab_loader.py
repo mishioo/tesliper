@@ -1,18 +1,16 @@
 # IMPORTS
-import os
 import logging as lgg
-from collections import namedtuple, Counter
+import os
 import tkinter as tk
 import tkinter.ttk as ttk
-
+from collections import Counter, namedtuple
 from tkinter import messagebox
 from tkinter.filedialog import askdirectory, askopenfilenames
 
 import numpy as np
 
-from . import components as guicom
 from .. import tesliper
-
+from . import components as guicom
 
 # LOGGER
 logger = lgg.getLogger(__name__)

@@ -1,12 +1,12 @@
 import logging as lgg
-from typing import Optional, Union, Sequence, Dict
+from typing import Dict, Optional, Sequence, Union
 
 import numpy as np
 
-from .array_base import ArrayProperty
-from .. import datawork as dw
 import tesliper  # absolute import to solve problem of circular imports
 
+from .. import datawork as dw
+from .array_base import ArrayProperty
 
 # LOGGER
 logger = lgg.getLogger(__name__)

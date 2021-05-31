@@ -1,23 +1,23 @@
 # IMPORTS
 import logging as lgg
 from collections import (
-    OrderedDict,
     Counter,
-    _OrderedDictKeysView,
+    OrderedDict,
     _OrderedDictItemsView,
+    _OrderedDictKeysView,
     _OrderedDictValuesView,
 )
 from contextlib import contextmanager
 from itertools import chain
-from typing import Sequence, Union, Iterable, Optional
+from typing import Iterable, Optional, Sequence, Union
 
 import numpy as np
 
-from tesliper.exceptions import TesliperError, InconsistentDataError
-from . import arrays as ar
-from .. import datawork as dw
-from .array_base import _ARRAY_CONSTRUCTORS
+from tesliper.exceptions import InconsistentDataError, TesliperError
 
+from .. import datawork as dw
+from . import arrays as ar
+from .array_base import _ARRAY_CONSTRUCTORS
 
 # LOGGER
 logger = lgg.getLogger(__name__)

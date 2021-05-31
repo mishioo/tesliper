@@ -2,7 +2,6 @@
 import logging as lgg
 import tkinter as tk
 import tkinter.ttk as ttk
-
 from functools import reduce
 
 from . import components as guicom

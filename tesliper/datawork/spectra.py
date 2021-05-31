@@ -1,10 +1,9 @@
 # IMPORTS
 import logging as lgg
 import math
-from typing import Sequence, Union, Tuple
+from typing import Sequence, Tuple, Union
 
 import numpy as np
-
 
 # LOGGER
 logger = lgg.getLogger(__name__)

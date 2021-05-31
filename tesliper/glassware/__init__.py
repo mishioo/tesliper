@@ -1,17 +1,17 @@
 from .array_base import ArrayBase, ArrayProperty
-from .spectra import SingleSpectrum, Spectra
 from .arrays import (
-    DataArray,
-    FilenamesArray,
-    IntegerArray,
-    FloatArray,
-    InfoArray,
-    BooleanArray,
-    Energies,
     Bars,
-    GroundStateBars,
+    BooleanArray,
+    DataArray,
+    Energies,
     ExcitedStateBars,
-    Transitions,
+    FilenamesArray,
+    FloatArray,
     Geometry,
+    GroundStateBars,
+    InfoArray,
+    IntegerArray,
+    Transitions,
 )
 from .molecules import Molecules
+from .spectra import SingleSpectrum, Spectra

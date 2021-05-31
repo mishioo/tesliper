@@ -1,7 +1,7 @@
 # IMPORTS
 import logging as lgg
-import numpy as np
 
+import numpy as np
 
 # LOGGER
 logger = lgg.getLogger(__name__)

@@ -1,8 +1,9 @@
 import csv
-import numpy as np
 import logging as lgg
-from .base_parser import Parser
 
+import numpy as np
+
+from .base_parser import Parser
 
 logger = lgg.getLogger(__name__)
 

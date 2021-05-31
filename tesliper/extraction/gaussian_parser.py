@@ -1,5 +1,5 @@
-import re
 import logging as lgg
+import re
 
 from .base_parser import Parser
 

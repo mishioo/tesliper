@@ -1,14 +1,15 @@
-import zipfile
-from pathlib import Path
 import json
+import zipfile
 from json.decoder import JSONArray
 from json.scanner import py_make_scanner
-from typing import Union, List, Dict, Any
+from pathlib import Path
+from typing import Any, Dict, List, Union
 
-from ._writer import Writer
-from ..glassware import Molecules, Spectra, SingleSpectrum
-from .. import datawork as dw
 import tesliper  # absolute import to solve problem of circular imports
+
+from .. import datawork as dw
+from ..glassware import Molecules, SingleSpectrum, Spectra
+from ._writer import Writer
 
 
 class ArchiveWriter(Writer):
