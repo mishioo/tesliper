@@ -3,7 +3,7 @@ import logging
 from itertools import cycle
 from pathlib import Path
 from string import Template
-from typing import Iterable, List, Optional, Sequence, TextIO, Union
+from typing import Iterable, List, Sequence, TextIO, Union
 
 from ..datawork.atoms import symbol_of_element
 from ..glassware import Geometry, IntegerArray

@@ -3,7 +3,7 @@ import logging as lgg
 from itertools import zip_longest
 from pathlib import Path
 from string import Template
-from typing import Iterable, List, Optional, Sequence, Union
+from typing import List, Optional, Sequence, Union
 
 import numpy as np
 

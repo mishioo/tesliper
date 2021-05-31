@@ -1,17 +1,7 @@
 # IMPORTS
 import inspect
 import logging as lgg
-from typing import (
-    Any,
-    Callable,
-    Iterable,
-    Iterator,
-    List,
-    Optional,
-    Sequence,
-    Tuple,
-    Union,
-)
+from typing import Any, Callable, Iterable, Iterator, Optional, Sequence, Tuple, Union
 
 import numpy as np
 

@@ -1,6 +1,5 @@
 # IMPORTS
 import logging as lgg
-import os
 from pathlib import Path
 from typing import Union
 

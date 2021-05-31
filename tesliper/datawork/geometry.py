@@ -1,5 +1,5 @@
 import math
-from typing import Callable, Iterable, Sequence, Union
+from typing import Iterable, Sequence, Union
 
 import numpy as np
 

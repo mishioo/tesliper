@@ -9,7 +9,6 @@ from tkinter.filedialog import askdirectory, askopenfilenames
 
 import numpy as np
 
-from .. import tesliper
 from . import components as guicom
 
 # LOGGER

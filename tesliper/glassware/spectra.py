@@ -1,5 +1,5 @@
 import logging as lgg
-from typing import Dict, Optional, Sequence, Union
+from typing import Dict, Optional, Union
 
 import numpy as np
 
