@@ -77,12 +77,12 @@ def test_single_shift_to(size, factor):
     assert np.allclose(s1.x, s2.x)
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="module")
 def spectra():
     return sp.Spectra("ir", ["one", "two"], [[1, 2], [6, 7]], [0, 1])
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="module")
 def en_mock():
     return mock.Mock(genre="gib", populations=[0.2, 0.8])
 
@@ -95,8 +95,6 @@ def test_spectra_average_return(spectra, en_mock):
     )
 
 
-# TODO: add no energies test
-# TODO: test failing, fix
 @given(
     factor=st.floats(
         min_value=0,
@@ -107,23 +105,53 @@ def test_spectra_average_return(spectra, en_mock):
     )
 )
 def test_spectra_scale_to_with_en(spectra, en_mock, factor):
-    spectra.scaling = 1
     n = spectra.average(en_mock)
     n.scaling = factor
     spectra.scale_to(n, en_mock)
-    assert spectra.scaling == factor
+    assert np.isclose(spectra.scaling, factor)
+    spectra.scaling = 1  # reset fixture
 
 
-# TODO: add no energies test
-# TODO: test failing, fix
+@given(
+    factor=st.floats(
+        min_value=0,
+        exclude_min=True,
+        max_value=1000,
+        allow_nan=False,
+        allow_infinity=False,
+    )
+)
+def test_spectra_scale_to_without_en(spectra, factor):
+    en_mock = mock.Mock(genre="gib", populations=[0.5, 0.5])  # for easy setup
+    n = spectra.average(en_mock)
+    n.scaling = factor
+    spectra.scale_to(n)  # no Energies provided
+    assert np.isclose(spectra.scaling, factor)
+    spectra.scaling = 1  # reset fixture
+
+
 @given(
     factor=st.floats(
         min_value=-1000, max_value=1000, allow_nan=False, allow_infinity=False
     ),
 )
 def test_spectra_shift_to_with_en(spectra, en_mock, factor):
-    spectra.offset = 0
     n = spectra.average(en_mock)
     n.offset = factor
     spectra.shift_to(n, en_mock)
     assert spectra.offset == factor
+    spectra.offset = 0  # reset fixture
+
+
+@given(
+    factor=st.floats(
+        min_value=-1000, max_value=1000, allow_nan=False, allow_infinity=False
+    ),
+)
+def test_spectra_shift_to_without_en(spectra, factor):
+    en_mock = mock.Mock(genre="gib", populations=[0.5, 0.5])  # for easy setup
+    n = spectra.average(en_mock)
+    n.offset = factor
+    spectra.shift_to(n)  # no Energies provided
+    assert spectra.offset == factor
+    spectra.offset = 0  # reset fixture

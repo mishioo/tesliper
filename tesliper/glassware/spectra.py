@@ -218,14 +218,16 @@ class Spectra(SingleSpectrum):
         """
         if average_by is not None:
             averaged = self.average(energies=average_by)
-            super().scale_to(averaged)
+            averaged.scale_to(spectrum)
+            factor = averaged.scaling
         else:
             logger.warning(
                 "Trying to find optimal scaling factor for spectra, but no Energies "
                 "object given for averaging by population. Results may be inaccurate."
             )
             averaged = np.average(self.values, axis=0)
-            self.scaling = dw.find_scaling(spectrum.y, averaged)
+            factor = dw.find_scaling(spectrum.y, averaged)
+        self.scaling = factor
 
     def shift_to(
         self,
@@ -250,13 +252,13 @@ class Spectra(SingleSpectrum):
         """
         if average_by is not None:
             averaged = self.average(energies=average_by)
-            super().shift_to(averaged)
+            averaged.shift_to(spectrum)
+            factor = averaged.offset
         else:
             logger.warning(
                 "Trying to find optimal offset factor for spectra, but no Energies "
                 "object given for averaging by population. Results may be inaccurate."
             )
             averaged = np.average(self.values, axis=0)
-            self.offset = dw.find_offset(
-                spectrum.x, spectrum.y, self.abscissa, averaged
-            )
+            factor = dw.find_offset(spectrum.x, spectrum.y, self.abscissa, averaged)
+        self.offset = factor
