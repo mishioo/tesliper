@@ -190,23 +190,15 @@ class Energies(FloatArray):
         return self.values * dw.energies.HARTREE_TO_KCAL_PER_MOL
 
     @property
-    def deltas(self, as_kcal_per_mol: bool = True):
+    def deltas(self):
         """Calculates energy difference between each conformer and lowest energy
-        conformer. Converts energy to kcal/mol if `as_kcal_per_mol` is `True` (default).
-
-        Parameters
-        ----------
-        as_kcal_per_mol : bool
-            Specifies if returned data should be converted to kcal/mol from Hartree
-            units. Defaults to `True`.
+        conformer. Converts energy to kcal/mol.
 
         Returns
         -------
         numpy.ndarray
-            List of energy differences from lowest energy."""
-        return dw.calculate_deltas(
-            self.as_kcal_per_mol if as_kcal_per_mol else self.values
-        )
+            List of energy differences from lowest energy in kcal/mol."""
+        return dw.calculate_deltas(self.as_kcal_per_mol)
 
     @property
     def min_factors(self):
