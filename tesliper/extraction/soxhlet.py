@@ -1,14 +1,10 @@
 # IMPORTS
-import csv
 import os
 import logging as lgg
+import re
 
-from collections import defaultdict
 from . import gaussian_parser
 from . import spectra_parser
-
-# TO DO
-# correct load_bars, load_popul, load_spectra, load_settings methods
 
 
 # LOGGER
@@ -17,7 +13,6 @@ logger.setLevel(lgg.DEBUG)
 
 
 # CLASSES
-# TODO: correct load_bars, load_popul, load_spectrs, load_settings, from_dict methods
 # TODO: Consider integration with gauopen interface: http://gaussian.com/interfacing/
 class Soxhlet:
     """A tool for data extraction from files in specific directory. Typical
@@ -93,18 +88,6 @@ class Soxhlet:
         except ValueError:
             gf = []
         return gf
-
-    @property
-    def bar_files(self):
-        """List of (sorted by file name) *.bar files from files list
-        associated with Soxhlet instance.
-        """
-        try:
-            ext = ".bar"
-            bar = sorted(self.filter_files(ext))
-        except ValueError:
-            bar = []
-        return bar
 
     def filter_files(self, ext=None):
         """Filters files from filenames list.
@@ -201,97 +184,26 @@ class Soxhlet:
         """
         return {f: d for f, d in self.extract_iter()}
 
-    def load_bars(self, spectra_type=None):
-        """Parses *.bar files associated with object and loads spectral data
-        previously extracted from gaussian output files.
-
-        Parameters
-        ----------
-        spectra_type : str, optional
-            Type of spectra which is to extract; valid values are
-            'vibra', 'electr' or '' (if spectrum is not present
-            in gaussian output files); if omitted, spectra_type
-            associated with object is used.
-
-        Returns
-        -------
-        dict
-            Dictionary with extracted spectral data.
-
-        TO DO
-        -----
-        Make sure Transitions not needed.
-        Rewrite to match current keys handling
-        remove self.spectra_type dependence
-        """
-        spectra_type = spectra_type if spectra_type else self.spectra_type
-        no = len(self.bar_files)
-        # Create empty dict with list of empty lists as default value.
-        output = defaultdict(lambda: [[] for _ in range(no)])
-        keys = (
-            "freq dip rot vemang".split(" ")
-            if spectra_type == "vibra"
-            else "wave vosc srot losc lrot energy eemang".split(" ")
-        )
-        for num, bar in enumerate(self.bar_files):
-            with open(os.path.join(self.path, bar), newline="") as handle:
-                header = handle.readline()
-                del header
-                col_names = handle.readline()
-                if "Transition" in col_names and "eemang" in keys:
-                    keys = keys[:-1]
-                reader = csv.reader(handle, delimiter="\t")
-                for row in reader:
-                    # For each row in *.bar file copy value to corresponding
-                    # position in prepared output dict
-                    for k, v in zip(keys, row):
-                        # output[value type][file position in sorted list]
-                        output[k][num].append(float(v))
-        return self.from_dict(output)
-
-    def load_popul(self):
-        """Parses BoltzmanDistribution.txt file associated with object and
-        loads conformers' energies previously extracted from gaussian output
-        files and calculated populations.
-
-        Returns
-        -------
-        dict
-            Dictionary with extracted data.
-        """
-        keys = (
-            "filenames scfp entp gibp scfd entd gibd scf ent gib imag "
-            "stoich".split(" ")
-        )
-        output = defaultdict(list)
-        with open(os.path.join(self.path, "BoltzmanDistribution.txt")) as blz:
-            header1 = blz.readline()
-            header2 = blz.readline()
-            del header1, header2
-            for row in blz.readlines():
-                for k, v in zip(keys, self.extractor["popul"](row)):
-                    try:
-                        v = float(v)
-                    except ValueError:
-                        if "%" in v:
-                            v = float(v[:-1]) / 100
-                    output[k].append(v)
-        return self.from_dict(output)
-
     def load_settings(self):
         """Parses Setup.txt file associated with object and returns dict with
         extracted values. Prefers Setup.txt file over *Setup.txt files.
+        Settings values should be placed one for line in this order: hwhm, start, stop,
+        step, fitting. Anything beside a number and "lorentzian" or "gaussian" word
+        is ignored.
 
         Returns
         -------
         dict
-            Dictionary eith extracted settings data.
+            Dictionary with extracted settings data.
 
         Raises
         ------
         FileNotFoundError
             If no or multiple setup.txt files found.
+
         """
+        # TODO: make it use keys instead of order
+        # TODO?: implement ConfigParser-based solution
         try:
             f = open("Setup.txt", "r")
         except FileNotFoundError:
@@ -300,7 +212,10 @@ class Soxhlet:
                 raise FileNotFoundError("No or multiple setup files in directory.")
             else:
                 f = open(fls[0], "r")
-        sett = self.extractor["settings"](f)
+        text = f.read()
+        regex = r"(-?\d+.?d\*|lorentzian|gaussian)"
+        sett = re.findall(regex, text.lower())
+        sett = {k: v for k, v in zip(("hwhm start stop step fitting".split(" "), sett))}
         f.close()
         return sett
 
