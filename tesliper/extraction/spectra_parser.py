@@ -1,4 +1,6 @@
 import csv
+from typing import Optional
+
 import numpy as np
 import logging as lgg
 from .base_parser import Parser
@@ -14,7 +16,13 @@ class SpectraParser(Parser):
         self.xcolumn = 0
         self.ycolumn = 1
 
-    def parse(self, filename, delimiter=None, xcolumn=0, ycolumn=1):
+    def parse(
+        self,
+        filename: str,
+        delimiter: Optional[str] = None,
+        xcolumn: int = 0,
+        ycolumn: int = 1,
+    ) -> np.ndarray:
         """Loads spectral data from file to numpy.array. Currently supports
         only .txt, .xy, and .csv files.
 

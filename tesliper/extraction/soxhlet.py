@@ -2,6 +2,8 @@
 import logging as lgg
 from pathlib import Path
 import re
+from typing import Union, Tuple, Generator, Optional, List
+import numpy as np
 
 from . import gaussian_parser
 from . import spectra_parser
@@ -62,11 +64,11 @@ class Soxhlet:
         self.spectra_parser = spectra_parser.SpectraParser()
 
     @property
-    def path(self):
+    def path(self) -> Path:
         return self._path
 
     @path.setter
-    def path(self, value):
+    def path(self, value: Union[str, Path]):
         value = Path() if value is None else Path(value)
         if not value.is_dir():
             raise FileNotFoundError(f"Path not found: {value}")
@@ -74,7 +76,7 @@ class Soxhlet:
         self.files = [v.name for v in value.iterdir() if v.is_file()]
 
     @property
-    def output_files(self):
+    def output_files(self) -> List[str]:
         """List of (sorted by file name) gaussian output files from files
         list associated with Soxhlet instance.
         """
@@ -87,7 +89,7 @@ class Soxhlet:
             gf = []
         return gf
 
-    def filter_files(self, ext=None):
+    def filter_files(self, ext: Optional[str] = None) -> List[str]:
         """Filters files from filenames list.
 
         Function filters file names in list associated with Soxhlet object
@@ -120,7 +122,7 @@ class Soxhlet:
             ) from error
         return filtered
 
-    def guess_extension(self):
+    def guess_extension(self) -> str:
         """Checks list of file extensions in list of file names.
 
         Function checks for .log and .out files in passed list of file names.
@@ -154,7 +156,7 @@ class Soxhlet:
         else:
             return ".log" if logs else ".out"
 
-    def extract_iter(self):
+    def extract_iter(self) -> Generator[Tuple[str, dict], None, None]:
         """Extracts data from gaussian files associated with Soxhlet instance.
         Implemented as generator.
 
@@ -171,7 +173,7 @@ class Soxhlet:
             logger.debug("file done.\n")
             yield file, data
 
-    def extract(self):
+    def extract(self) -> dict:
         """Extracts data from gaussian files associated with Soxhlet instance.
 
         Returns
@@ -182,7 +184,7 @@ class Soxhlet:
         """
         return {f: d for f, d in self.extract_iter()}
 
-    def load_settings(self):
+    def load_settings(self) -> dict:
         """Parses Setup.txt file associated with object and returns dict with
         extracted values. Prefers Setup.txt file over *Setup.txt files.
         Settings values should be placed one for line in this order: hwhm, start, stop,
@@ -217,7 +219,7 @@ class Soxhlet:
         f.close()
         return sett
 
-    def load_spectrum(self, filename):
+    def load_spectrum(self, filename: Union[str, Path]) -> np.ndarray:
         # TO DO: add support for .spc and .csv files
         # TO DO: add docstring
         appended = self.path / filename
