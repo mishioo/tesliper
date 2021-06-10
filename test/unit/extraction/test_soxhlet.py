@@ -1,5 +1,5 @@
 import builtins
-import os
+from pathlib import Path
 from unittest import mock
 from tesliper.extraction import soxhlet as sx
 import pytest
@@ -8,10 +8,13 @@ import pytest
 @pytest.fixture
 def lsdir():
     with mock.patch(
-        "tesliper.extraction.soxhlet.os.listdir",
-        return_value="a.out b.out b.gjf".split(" "),
-    ) as lsdir:
-        yield lsdir
+        "tesliper.extraction.soxhlet.Path.iterdir",
+        return_value=[Path(p) for p in "a.out b.out b.gjf".split(" ")],
+    ):
+        with mock.patch(
+            "tesliper.extraction.soxhlet.Path.is_file", return_value=True,
+        ) as lsdir:
+            yield lsdir
 
 
 @pytest.fixture
@@ -20,23 +23,23 @@ def sox():
 
 
 def test_path_default(sox):
-    assert sox.path == os.getcwd()
+    assert sox.path == Path().resolve()
 
 
 def test_path_non_existing_path(sox, monkeypatch):
-    monkeypatch.setattr(sx.os.path, "isdir", mock.Mock(return_value=False))
+    monkeypatch.setattr(sx.Path, "is_dir", mock.Mock(return_value=False))
     with pytest.raises(FileNotFoundError):
         sox.path = "\\path\\doesnt\\exist"
-    sx.os.path.isdir.assert_called()
+    sx.Path.is_dir.assert_called()
 
 
 def test_path_ok(lsdir, sox, monkeypatch):
-    monkeypatch.setattr(sx.os.path, "isdir", mock.Mock(return_value=True))
+    monkeypatch.setattr(sx.Path, "is_dir", mock.Mock(return_value=True))
     sox.path = "\\path\\is\\ok"
-    assert "\\path\\is\\ok" == sox.path
-    sx.os.path.isdir.assert_called()
+    assert Path("\\path\\is\\ok").resolve() == sox.path
+    sx.Path.is_dir.assert_called()
     lsdir.assert_called_with("\\path\\is\\ok")
-    assert "a.out b.out b.gjf".split(" ") == sox.files
+    assert "a.out b.out b.gjf".split(" ") == sox.all_files
 
 
 def test_filter_files_no_extension(sox):
@@ -82,8 +85,8 @@ def test_output_files(sox):
 
 
 @pytest.mark.usefixtures("lsdir")
-def test_files(sox):
-    assert "a.out b.out b.gjf".split(" ") == sox.files
+def test_all_files(sox):
+    assert "a.out b.out b.gjf".split(" ") == sox.all_files
 
 
 @pytest.fixture
