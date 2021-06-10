@@ -55,7 +55,6 @@ class Soxhlet:
             If path passed as argument to constructor doesn't exist.
         """
         self.path = path
-        self.files = [v.name for v in self.path.iterdir() if v.is_file()]
         # TODO: change wanted_files to be  given priority over guess_extension
         #       or to ignore file extensions
         self.wanted_files = wanted_files
