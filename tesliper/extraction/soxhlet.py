@@ -1,6 +1,6 @@
 # IMPORTS
-import os
 import logging as lgg
+from pathlib import Path
 import re
 
 from . import gaussian_parser
@@ -53,7 +53,7 @@ class Soxhlet:
             If path passed as argument to constructor doesn't exist.
         """
         self.path = path
-        self.files = os.listdir(path)
+        self.files = [v.name for v in self.path.iterdir() if v.is_file()]
         # TODO: change wanted_files to be  given priority over guess_extension
         #       or to ignore file extensions
         self.wanted_files = wanted_files
@@ -67,13 +67,11 @@ class Soxhlet:
 
     @path.setter
     def path(self, value):
-        if value is None:
-            self._path = os.getcwd()
-        elif not os.path.isdir(value):
+        value = Path() if value is None else Path(value)
+        if not value.is_dir():
             raise FileNotFoundError(f"Path not found: {value}")
-        else:
-            self.files = os.listdir(value)
-            self._path = value
+        self._path = value
+        self.files = [v.name for v in value.iterdir() if v.is_file()]
 
     @property
     def output_files(self):
@@ -168,7 +166,7 @@ class Soxhlet:
         """
         for num, file in enumerate(self.output_files):
             logger.debug(f"Starting extraction from file: {file}")
-            with open(os.path.join(self.path, file)) as handle:
+            with (self.path / file).open() as handle:
                 data = self.parser.parse(handle)
             logger.debug("file done.\n")
             yield file, data
@@ -204,15 +202,15 @@ class Soxhlet:
         """
         # TODO: make it use keys instead of order
         # TODO?: implement ConfigParser-based solution
-        try:
-            f = open("Setup.txt", "r")
-        except FileNotFoundError:
-            fls = [file.endswith("Setup.txt") for file in self.files]
+        settings_file = self.path / "Setup.txt"
+        if not settings_file.is_file():
+            fls = [file for file in self.files if file.endswith("Setup.txt")]
             if len(fls) != 1:
                 raise FileNotFoundError("No or multiple setup files in directory.")
             else:
-                f = open(fls[0], "r")
-        text = f.read()
+                settings_file = self.path / fls[0]
+        with settings_file.open() as f:
+            text = f.read()
         regex = r"(-?\d+.?d\*|lorentzian|gaussian)"
         sett = re.findall(regex, text.lower())
         sett = {k: v for k, v in zip(("hwhm start stop step fitting".split(" "), sett))}
@@ -222,11 +220,11 @@ class Soxhlet:
     def load_spectrum(self, filename):
         # TO DO: add support for .spc and .csv files
         # TO DO: add docstring
-        appended = os.path.join(self.path, filename)
-        if os.path.isfile(appended):
+        appended = self.path / filename
+        if appended.is_file():
             path = appended
-        elif os.path.isfile(filename):
-            path = filename
+        elif Path(filename).is_file():
+            path = Path(filename)
         else:
             raise FileNotFoundError(f"Cannot find such file: '{filename}'.")
         spectrum = self.spectra_parser.parse(path)
