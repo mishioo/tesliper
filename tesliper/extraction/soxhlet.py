@@ -201,7 +201,7 @@ class Soxhlet:
             with file.open() as handle:
                 data = self.parser.parse(handle)
             logger.debug("file done.\n")
-            yield file.name, data
+            yield file.stem, data
 
     def extract(self) -> dict:
         """Extracts data from gaussian files associated with Soxhlet instance.

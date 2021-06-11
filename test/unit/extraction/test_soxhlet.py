@@ -113,7 +113,7 @@ def test_extract_iter(sox, monkeypatch, output):
     monkeypatch.setattr(sx.Path, "open", mock.mock_open())
     monkeypatch.setattr(sox, "parser", mock.Mock(parse=mock.Mock(return_value={})))
     out = dict(sox.extract_iter())
-    assert {"a.out": {}, "b.out": {}} == out
+    assert {"a": {}, "b": {}} == out
     output.assert_called()
     sox.parser.parse.assert_called()
     assert 2 == sox.parser.parse.call_count
