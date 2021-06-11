@@ -117,3 +117,34 @@ def test_extract_iter(sox, monkeypatch, output):
     output.assert_called()
     sox.parser.parse.assert_called()
     assert 2 == sox.parser.parse.call_count
+
+
+@pytest.fixture
+def files_tree(tmp_path):
+    tree = [tmp_path / p for p in "a.out b.out b.gjf inner/c.out inner/c.gjf".split()]
+    tree = sorted(tree)
+    for f in tree:
+        f.parent.mkdir(parents=True, exist_ok=True)
+        with f.open("w") as h:
+            h.write("")
+    return tree
+
+
+@pytest.fixture
+def rsox(files_tree, tmp_path):
+    return sx.Soxhlet(path=tmp_path, recursive=True)
+
+
+def test_rsox_all_files(rsox, files_tree, tmp_path):
+    assert rsox.all_files == files_tree
+
+
+def test_rsox_output_files(rsox, tmp_path):
+    assert rsox.output_files == [
+        tmp_path / p for p in "a.out b.out inner/c.out".split()
+    ]
+
+
+def test_rsox_no_recursive_output_files(rsox, tmp_path):
+    rsox.recursive = False
+    assert rsox.output_files == [tmp_path / p for p in "a.out b.out".split()]

@@ -32,7 +32,13 @@ class Soxhlet:
     bar_files
     """
 
-    def __init__(self, path=None, wanted_files=None, extension=None):
+    def __init__(
+        self,
+        path: Optional[Union[str, Path]] = None,
+        wanted_files: Optional[Iterable[Union[str, Path]]] = None,
+        extension: Optional[str] = None,
+        recursive: bool = False,
+    ):
         """Initialization of Soxhlet object.
 
         Parameters
@@ -43,19 +49,25 @@ class Soxhlet:
         wanted_files: list of str or pathlib.Path objects, optional
             List of files, that should be loaded for further extraction. If
             omitted, all output files present in directory will be processed.
-        extension: str
+        extension: str, optional
             A string representing file extension of output files, that should be
             parsed. If omitted, Soxhlet will try to resolve it based on
             contents of directory given in `path` parameter.
+        recursive : bool
+            If True, given `path` will be searched recursively, extracting data from
+            subdirectories, otherwise subdirectories are ignored and only files
+            placed directly in `path` will be parsed.
 
         Raises
         ------
         FileNotFoundError
-            If path passed as argument to constructor doesn't exist.
+            If path passed as argument to constructor doesn't exist
+            or is not a directory.
         """
         self.path = path
         self.wanted_files = wanted_files
         self.extension = extension
+        self.recursive = recursive
         self.parser = gaussian_parser.GaussianParser()
         self.spectra_parser = spectra_parser.SpectraParser()
 
@@ -72,13 +84,18 @@ class Soxhlet:
 
     @property
     def all_files(self):
-        """List of all files present in directory bounded to Soxhlet instance."""
-        return [v for v in self.path.iterdir() if v.is_file()]
+        """List of all files present in directory bounded to Soxhlet instance.
+        If its `recursive` attribute is `True`, also files from subdirectories
+        are included."""
+        iterable = self.path.iterdir() if not self.recursive else self.path.rglob("*")
+        return [v for v in iterable if v.is_file()]
 
     @property
     def files(self):
         """List of all wanted files available in given directory. If wanted_files
-        is not specified, evaluates to all files in said directory."""
+        is not specified, evaluates to all files in said directory. If Soxhlet
+         object's `recursive` attribute is `True`, also files from subdirectories
+        are included."""
         wanted_empty = not self.wanted_files
         return [
             f for f in self.all_files if wanted_empty or f.stem in self.wanted_files
@@ -188,7 +205,8 @@ class Soxhlet:
 
     def extract_iter(self) -> Generator[Tuple[str, dict], None, None]:
         """Extracts data from gaussian files associated with Soxhlet instance.
-        Implemented as generator.
+        Implemented as generator. If Soxhlet instance's `recursive` attribute is
+        `True`, also files from subdirectories are parsed.
 
         Yields
         ------
@@ -205,6 +223,8 @@ class Soxhlet:
 
     def extract(self) -> dict:
         """Extracts data from gaussian files associated with Soxhlet instance.
+        If its `recursive` attribute is `True`, also files from subdirectories
+        are parsed.
 
         Returns
         ------
