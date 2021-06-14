@@ -234,12 +234,21 @@ class Soxhlet:
         """
         return {f: d for f, d in self.extract_iter()}
 
-    def load_settings(self) -> dict:
-        """Parses Setup.txt file associated with object and returns dict with
-        extracted values. Prefers Setup.txt file over *Setup.txt files.
+    def load_settings(self, source: Optional[Union[str, Path]] = None) -> dict:
+        """Parses setup file specifying spectra calculation parameters and returns
+        dict with extracted values. If `source` file is not given, file named
+        "setup.txt" or "setup.cfg" (with any prefix, case-insensitive) will be searched
+        for in the Soxhlet's directory (recursively if it was requested on object's
+        creation). If no or multiple such files is found, exception will be raised.
         Settings values should be placed one for line in this order: hwhm, start, stop,
         step, fitting. Anything beside a number and "lorentzian" or "gaussian" word
         is ignored.
+
+        Parameters
+        ----------
+        source : str or Path, optional
+            Path or Path-like object to settings file. If not given, Soxhlet object
+            will try to identify one in its `.path`.
 
         Returns
         -------
@@ -249,19 +258,31 @@ class Soxhlet:
         Raises
         ------
         FileNotFoundError
-            If no or multiple setup.txt files found.
+            If no or multiple possible setup files found.
 
         """
         # TODO: make it use keys instead of order
         # TODO?: implement ConfigParser-based solution
-        settings_file = self.path / "Setup.txt"
-        if not settings_file.is_file():
-            fls = [file for file in self.all_files if file.name.endswith("Setup.txt")]
+        # TODO: supplement tests after introducing call parameter and recursive search
+        if source:
+            source = Path(source)
+            if not source.is_file():
+                raise FileNotFoundError(
+                    f"Specified file does not exist: {source.resolve()}."
+                )
+        else:
+            fls = [
+                file
+                for file in self.all_files
+                if file.name.lower().endswith(("setup.txt", "setup.cfg"))
+            ]
             if len(fls) != 1:
-                raise FileNotFoundError("No or multiple setup files in directory.")
-            else:
-                settings_file = self.path / fls[0]
-        with settings_file.open() as f:
+                raise FileNotFoundError(
+                    "No or multiple setup files in directory. "
+                    "Specify source file explicitly."
+                )
+            source = fls[0]
+        with source.open() as f:
             text = f.read()
         regex = r"(-?\d+.?d\*|lorentzian|gaussian)"
         sett = re.findall(regex, text.lower())
