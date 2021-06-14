@@ -2,7 +2,7 @@
 import os
 import logging as lgg
 from pathlib import Path
-from typing import Union
+from typing import Union, Iterable, Optional, Set
 
 import numpy as np
 
@@ -78,8 +78,7 @@ class Tesliper:
             "xlsx": wr.XlsxWriter,
             "csv": wr.CsvWriter,
         }
-        self.soxhlet = None if input_dir is not None else ex.Soxhlet()
-        self.wanted_files = wanted_files  # setter modifies self.soxhlet
+        self.wanted_files = wanted_files
         self.input_dir = input_dir
         self.output_dir = output_dir
         self.spectra = dict()
@@ -110,15 +109,24 @@ class Tesliper:
         return {k: self.molecules.arrayed(k) for k in keys}
 
     @property
-    def wanted_files(self):
-        return self.__wanted_files
+    def wanted_files(self) -> Optional[Set[str]]:
+        """Set of files that are desired for data extraction, stored as filenames
+        without an extension. Any iterable of strings or Path objects is transformed
+        to this form.
+
+        >>> tslr = Tesliper()
+        >>> tslr.wanted_files = [Path("./dir/file_one.out"), Path("./dir/file_two.out")]
+        >>> tslr.wanted_files
+        {"file_one", "file_two"}
+
+        May also be set to `None` or other "falsy" value, in such case it is ignored.
+        """
+        # TODO: reuse Soxhlet.wanted_files property
+        return self._wanted_files
 
     @wanted_files.setter
-    def wanted_files(self, wanted_files):
-        self.__wanted_files = wanted_files
-        if self.soxhlet is not None:
-            self.soxhlet.wanted_files = wanted_files
-        logger.info("New list of wanted_files established.")
+    def wanted_files(self, files: Optional[Iterable[Union[str, Path]]]):
+        self._wanted_files = None if not files else {Path(f).stem for f in files}
 
     @property
     def standard_parameters(self):
@@ -143,7 +151,6 @@ class Tesliper:
             raise FileNotFoundError(
                 "Invalid path or directory not found: {}".format(path)
             )
-        self.soxhlet = ex.Soxhlet(path, self.wanted_files)
         logger.info("Current working directory is: {}".format(path))
         self.__input_dir = path
 
@@ -159,49 +166,28 @@ class Tesliper:
         self.__output_dir = path
 
     def extract_iterate(self, path=None, wanted_files=None):
-        files = wanted_files or self.wanted_files
-        soxhlet = ex.Soxhlet(path, files) if path else self.soxhlet
+        soxhlet = ex.Soxhlet(path or self.input_dir, wanted_files or self.wanted_files)
         for file, data in soxhlet.extract_iter():
             self.update(((file, data),))
             yield file, data
 
     def extract(self, path=None, wanted_files=None):
-        files = wanted_files or self.wanted_files
-        soxhlet = ex.Soxhlet(path, files) if path else self.soxhlet
+        for f, d in self.extract_iterate(path, wanted_files):
+            _ = f, d
+
+    def smart_extract(self, deep_search=True):
+        # TODO: should also parse settings
+        soxhlet = ex.Soxhlet(self.input_dir, self.wanted_files, recursive=deep_search)
         for file, data in soxhlet.extract_iter():
             self.update(((file, data),))
 
-    def smart_extract(self, deep_search=True, with_load=True):
-        # TO DO: add deep search and loading
-        soxhlet = self.soxhlet
-        args = soxhlet.parse_command()
-        return self.extract(*args)
-
     def smart_calculate(self, average=True):
-        # TO DO: do it
+        # TODO: implement it
         pass
 
-    def load_bars(self, path=None, spectra_type=None):
-        soxhlet = ex.Soxhlet(path) if path else self.soxhlet
-        data = soxhlet.load_bars(spectra_type)
-        self.update(data)
-        return data
-
-    def load_populations(self, path=None):
-        soxhlet = ex.Soxhlet(path) if path else self.soxhlet
-        data = soxhlet.load_popul()
-        self.update(data)
-        return data
-
-    def load_spectra(self, path=None):
-        soxhlet = ex.Soxhlet(path) if path else self.soxhlet
-        data = soxhlet.load_spectra()
-        self.update(data)
-        return data
-
     def load_settings(self, path=None, spectra_type=None):
-        # TO DO: remove soxhlet.spectra_type dependence
-        soxhlet = ex.Soxhlet(path) if path else self.soxhlet
+        # TODO: remove soxhlet.spectra_type dependence
+        soxhlet = ex.Soxhlet(path or self.input_dir)
         spectra_type = spectra_type if spectra_type else soxhlet.spectra_type
         settings = soxhlet.load_settings()
         self.settings[spectra_type].update(settings)
