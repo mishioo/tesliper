@@ -17,19 +17,10 @@ logger.setLevel(lgg.DEBUG)
 # CLASSES
 # TODO: Consider integration with gauopen interface: http://gaussian.com/interfacing/
 class Soxhlet:
-    """A tool for data extraction from files in specific directory. Typical
-    use:
+    """A tool for data extraction from files in specific directory. Typical use:
 
     >>> s = Soxhlet('absolute/path_to/working/directory')
     >>> data = s.extract()
-
-    Attributes
-    ----------
-    path: str
-        Path of directory bounded to Soxhlet instance.
-    files
-    output_files
-    bar_files
     """
 
     def __init__(
@@ -290,15 +281,32 @@ class Soxhlet:
         f.close()
         return sett
 
-    def load_spectrum(self, filename: Union[str, Path]) -> np.ndarray:
-        # TO DO: add support for .spc and .csv files
-        # TO DO: add docstring
-        appended = self.path / filename
+    def load_spectrum(self, source: Union[str, Path]) -> np.ndarray:
+        """Parse file containing spectral data. .txt and .csv files are accepted.
+        Returns loaded spectrum as np.ndarray of [[x_values], [y_values]].
+
+        Parameters
+        ----------
+        source : str or Path
+            Path or Path-like object to file with spectral data. Should be .txt or .csv
+
+        Returns
+        -------
+        spectrum : np.ndarray
+            np.ndarray of shape (2, N) where N is number of data points. `spectrum[0]`
+            are x-values and `spectrum[1]` are corresponding y-values.
+
+        Raises
+        ------
+        FileNotFoundError
+            If specified source was not found.
+        """
+        appended = self.path / source
         if appended.is_file():
             path = appended
-        elif Path(filename).is_file():
-            path = Path(filename)
+        elif Path(source).is_file():
+            path = Path(source)
         else:
-            raise FileNotFoundError(f"Cannot find such file: '{filename}'.")
+            raise FileNotFoundError(f"Cannot find such file: '{source}'.")
         spectrum = self.spectra_parser.parse(path)
         return spectrum
