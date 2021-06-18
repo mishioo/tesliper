@@ -53,7 +53,7 @@ def fitting(s: str) -> Callable:
     try:
         return getattr(dw, match.group())
     except AttributeError:
-        raise ParsingError(f"No such fitting function: {match.group()}.")
+        raise ParsingError(f"No such fitting function: {s}.")
 
 
 class ParametersParser(ConfigParser):
@@ -126,5 +126,5 @@ class ParametersParser(ConfigParser):
         try:
             self.read_string(text)
         except MissingSectionHeaderError:
-            self.read_string("[PARAMETERS]\n")
+            self.read_string(f"[PARAMETERS]\n{text}")
         return self.parameters
