@@ -56,7 +56,7 @@ def fitting(s: str) -> Callable:
         raise ParsingError(f"No such fitting function: {s}.")
 
 
-class ParametersParser(ConfigParser):
+class ParametersParser:
     """Parser for configuration files containing spectra calculation parameters.
 
     Configuration file should be in format similar to .ini files: a list of key-value
@@ -90,13 +90,16 @@ class ParametersParser(ConfigParser):
     }
 
     def __init__(self):
-        super().__init__(converters={"quantity": quantity, "fitting": fitting})
+        self._parser = ConfigParser(
+            converters={"quantity": quantity, "fitting": fitting}
+        )
+        self._parser.optionxform = self.optionxform
         self._transformers = {
-            "width": self.getquantity,
-            "start": self.getquantity,
-            "stop": self.getquantity,
-            "step": self.getquantity,
-            "fitting": self.getfitting,
+            "width": self._parser.getquantity,
+            "start": self._parser.getquantity,
+            "stop": self._parser.getquantity,
+            "step": self._parser.getquantity,
+            "fitting": self._parser.getfitting,
         }
 
     def optionxform(self, optionstr: str) -> str:
@@ -112,16 +115,12 @@ class ParametersParser(ConfigParser):
     def parameters(self) -> dict:
         """Dictionary of parameters for calculating spectra extracted from parsed file
         and converted to appropriate type."""
-        if len(self.sections()) > 1:
-            raise ParsingError(
-                "Multiple sections in parameters setup file are not supported."
-            )
         params = {}
         try:
-            section = self.sections()[0]
+            section = self._parser.sections()[0]
         except IndexError:
             return params
-        for option in self.options(section):
+        for option in self._parser.options(section):
             try:
                 params[option] = self._transformers[option](section, option)
             except ParsingError:
@@ -133,7 +132,7 @@ class ParametersParser(ConfigParser):
                     f"Unknown parameter in settings: '{option}',"
                     f" it will not be converted."
                 )
-                params[option] = self.get(section, option)
+                params[option] = self._parser.get(section, option)
         return params
 
     def parse(self, source: Union[str, Path]):
@@ -153,7 +152,11 @@ class ParametersParser(ConfigParser):
         with source.open() as handle:
             text = handle.read()
         try:
-            self.read_string(text)
+            self._parser.read_string(text)
         except MissingSectionHeaderError:
-            self.read_string(f"[PARAMETERS]\n{text}")
+            self._parser.read_string(f"[PARAMETERS]\n{text}")
+        if len(self._parser.sections()) > 1:
+            raise ParsingError(
+                "Multiple sections in parameters setup file are not supported."
+            )
         return self.parameters
