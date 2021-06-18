@@ -74,10 +74,9 @@ class ParametersParser:
 
     Notes
     -----
-    ParametersParser is based on Python's configparser, so it will parse files that
+    ParametersParser is using Python's configparser, so it will parse files that
     contain a section header, enclosed in braces. However, the section name will be
-    ignored and there may be only one such section header, otherwise an exception is
-    raised.
+    ignored and there may be only one such section, otherwise an exception is raised.
     """
 
     ALIASES = {
