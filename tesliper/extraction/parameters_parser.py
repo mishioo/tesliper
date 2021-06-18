@@ -105,6 +105,12 @@ class ParametersParser(ConfigParser):
                 logger.warning(
                     f"Cannot understand value for {option}, it will be ignored."
                 )
+            except KeyError:
+                logger.warning(
+                    f"Unknown parameter in settings: '{option}',"
+                    f" it will not be converted."
+                )
+                params[option] = self.get(section, option)
         return params
 
     def parse(self, source: Union[str, Path]):
