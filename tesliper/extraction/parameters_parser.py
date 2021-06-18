@@ -57,6 +57,28 @@ def fitting(s: str) -> Callable:
 
 
 class ParametersParser(ConfigParser):
+    """Parser for configuration files containing spectra calculation parameters.
+
+    Configuration file should be in format similar to .ini files: a list of key-value
+    pairs, separated with "=" or ":", one pair for line. Standard parameters (width,
+    start, stop, step, and fitting) will be converted to appropriate data type, i.e.
+    float or function reference. If parameter value cannot be converted to its
+    target type, it will be ignored and warning will be emitted. Any other (unexpected)
+    parameters are included in the output and left as they are.
+
+    The parser is case-insensitive and knows some alias names of expected parameters:
+    for instance, "hwhm", "half width of band in half height", "half width at half
+    maximum" will be all recognised as "width" parameter. If you wish to add custom
+    aliases, update `ParametersParser.ALIASES` dictionary with appropriate
+    "alias": "target" pair.
+
+    Notes
+    -----
+    ParametersParser is based on Python's configparser, so it will parse files that
+    contain a section header, enclosed in braces. However, the section name will be
+    ignored and there may be only one such section header, otherwise an exception is
+    raised.
+    """
 
     ALIASES = {
         "half width of band in half height": "width",
