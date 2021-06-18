@@ -59,6 +59,7 @@ class Tesliper:
             "fitting": dw.gaussian,
         },
     }
+    _standard_parameters["scatt"] = _standard_parameters["vibra"]
 
     def __init__(self, input_dir=".", output_dir=".", wanted_files=None):
         """
@@ -84,6 +85,9 @@ class Tesliper:
         self.spectra = dict()
         self.averaged = dict()
         self.parameters = self.standard_parameters
+        self.same_vibrational_parameters = False
+        self.same_electronic_parameters = False
+        self.same_scattering_parameters = False
 
     def __getitem__(self, item):
         try:
@@ -130,10 +134,7 @@ class Tesliper:
 
     @property
     def standard_parameters(self):
-        return {
-            "vibra": self._standard_parameters["vibra"].copy(),
-            "electr": self._standard_parameters["electr"].copy(),
-        }
+        return {key: params.copy() for key, params in self._standard_parameters.items()}
 
     def update(self, *args, **kwargs):
         self.molecules.update(*args, **kwargs)
