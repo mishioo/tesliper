@@ -84,7 +84,7 @@ class ArchiveWriter(Writer):
         # TODO: Implement more universal way of serializing fitting
         #       this won't deserialize custom fitting functions
         to_write = {key: params.copy() for key, params in parameters.items()}
-        for params in parameters.values():
+        for params in to_write.values():
             params["fitting"] = params["fitting"].__name__
         with self.root.open("parameters.json", mode="w") as handle:
             handle.write(self.jsonencode(to_write))
