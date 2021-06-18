@@ -5,8 +5,7 @@ import re
 from typing import Union, Tuple, Generator, Optional, List, Iterable, Set
 import numpy as np
 
-from . import gaussian_parser
-from . import spectra_parser
+from . import gaussian_parser, parameters_parser, spectra_parser
 
 
 # LOGGER
@@ -61,6 +60,7 @@ class Soxhlet:
         self.recursive = recursive
         self.parser = gaussian_parser.GaussianParser()
         self.spectra_parser = spectra_parser.SpectraParser()
+        self.params_parser = parameters_parser.ParametersParser()
 
     @property
     def path(self) -> Path:
@@ -252,8 +252,6 @@ class Soxhlet:
             If no or multiple possible setup files found.
 
         """
-        # TODO: make it use keys instead of order
-        # TODO?: implement ConfigParser-based solution
         # TODO: supplement tests after introducing call parameter and recursive search
         if source:
             source = Path(source)
@@ -273,13 +271,7 @@ class Soxhlet:
                     "Specify source file explicitly."
                 )
             source = fls[0]
-        with source.open() as f:
-            text = f.read()
-        regex = r"(-?\d+.?d\*|lorentzian|gaussian)"
-        sett = re.findall(regex, text.lower())
-        sett = {k: v for k, v in zip(("hwhm start stop step fitting".split(" "), sett))}
-        f.close()
-        return sett
+        return self.params_parser.parse(source)
 
     def load_spectrum(self, source: Union[str, Path]) -> np.ndarray:
         """Parse file containing spectral data. .txt and .csv files are accepted.
