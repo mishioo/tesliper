@@ -60,6 +60,7 @@ class ParametersParser(ConfigParser):
 
     ALIASES = {
         "half width of band in half height": "width",
+        "half width at half maximum": "width",
         "hwhm": "width",
         "start range": "start",
         "stop range": "stop",
