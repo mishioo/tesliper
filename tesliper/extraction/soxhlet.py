@@ -1,14 +1,11 @@
 # IMPORTS
-import csv
-import os
 import logging as lgg
+from pathlib import Path
+import re
+from typing import Union, Tuple, Generator, Optional, List, Iterable, Set
+import numpy as np
 
-from collections import defaultdict
-from . import gaussian_parser
-from . import spectra_parser
-
-# TO DO
-# correct load_bars, load_popul, load_spectra, load_settings methods
+from . import gaussian_parser, parameters_parser, spectra_parser
 
 
 # LOGGER
@@ -17,96 +14,120 @@ logger.setLevel(lgg.DEBUG)
 
 
 # CLASSES
-# TODO: correct load_bars, load_popul, load_spectrs, load_settings, from_dict methods
 # TODO: Consider integration with gauopen interface: http://gaussian.com/interfacing/
 class Soxhlet:
-    """A tool for data extraction from files in specific directory. Typical
-    use:
+    """A tool for data extraction from files in specific directory. Typical use:
 
     >>> s = Soxhlet('absolute/path_to/working/directory')
     >>> data = s.extract()
-
-    Attributes
-    ----------
-    path: str
-        Path of directory bounded to Soxhlet instance.
-    files: list
-        List of files present in directory bounded to Soxhlet instance.
-    output_files
-    bar_files
     """
 
-    def __init__(self, path=None, wanted_files=None, extension=None):
+    def __init__(
+        self,
+        path: Optional[Union[str, Path]] = None,
+        wanted_files: Optional[Iterable[Union[str, Path]]] = None,
+        extension: Optional[str] = None,
+        recursive: bool = False,
+    ):
         """Initialization of Soxhlet object.
 
         Parameters
         ----------
-        path: str
+        path: str or pathlib.Path
             String representing absolute path to directory containing files,
             which will be the subject of data extraction.
-        wanted_files: list, optional
+        wanted_files: list of str or pathlib.Path objects, optional
             List of files, that should be loaded for further extraction. If
-            omitted, all files present in directory will be taken.
-        extension: str
-            String representing file extension of output files, that are to be
+            omitted, all output files present in directory will be processed.
+        extension: str, optional
+            A string representing file extension of output files, that should be
             parsed. If omitted, Soxhlet will try to resolve it based on
-            contents of directory pointed by path.
+            contents of directory given in `path` parameter.
+        recursive : bool
+            If True, given `path` will be searched recursively, extracting data from
+            subdirectories, otherwise subdirectories are ignored and only files
+            placed directly in `path` will be parsed.
 
         Raises
         ------
         FileNotFoundError
-            If path passed as argument to constructor doesn't exist.
+            If path passed as argument to constructor doesn't exist
+            or is not a directory.
         """
         self.path = path
-        self.files = os.listdir(path)
-        # TODO: change wanted_files to be  given priority over guess_extension
-        #       or to ignore file extensions
         self.wanted_files = wanted_files
         self.extension = extension
+        self.recursive = recursive
         self.parser = gaussian_parser.GaussianParser()
         self.spectra_parser = spectra_parser.SpectraParser()
+        self.params_parser = parameters_parser.ParametersParser()
 
     @property
-    def path(self):
+    def path(self) -> Path:
         return self._path
 
     @path.setter
-    def path(self, value):
-        if value is None:
-            self._path = os.getcwd()
-        elif not os.path.isdir(value):
+    def path(self, value: Union[str, Path]):
+        value = Path() if value is None else Path(value)
+        if not value.is_dir():
             raise FileNotFoundError(f"Path not found: {value}")
-        else:
-            self.files = os.listdir(value)
-            self._path = value
+        self._path = value.resolve()
 
     @property
-    def output_files(self):
+    def all_files(self):
+        """List of all files present in directory bounded to Soxhlet instance.
+        If its `recursive` attribute is `True`, also files from subdirectories
+        are included."""
+        iterable = self.path.iterdir() if not self.recursive else self.path.rglob("*")
+        return [v for v in iterable if v.is_file()]
+
+    @property
+    def files(self):
+        """List of all wanted files available in given directory. If wanted_files
+        is not specified, evaluates to all files in said directory. If Soxhlet
+         object's `recursive` attribute is `True`, also files from subdirectories
+        are included."""
+        wanted_empty = not self.wanted_files
+        return [
+            f for f in self.all_files if wanted_empty or f.stem in self.wanted_files
+        ]
+
+    @property
+    def wanted_files(self) -> Optional[Set[str]]:
+        """Set of files that are desired for data extraction, stored as filenames
+        without an extension. Any iterable of strings or Path objects is transformed
+        to this form.
+
+        >>> s = Soxhlet()
+        >>> s.wanted_files = [Path("./dir/file_one.out"), Path("./dir/file_two.out")]
+        >>> s.wanted_files
+        {"file_one", "file_two"}
+
+        May also be set to `None` or other "falsy" value, in such case it is ignored.
+        """
+        return self._wanted_files
+
+    @wanted_files.setter
+    def wanted_files(self, files: Optional[Iterable[Union[str, Path]]]):
+        self._wanted_files = None if not files else {Path(f).stem for f in files}
+
+    @property
+    def output_files(self) -> List[Path]:
         """List of (sorted by file name) gaussian output files from files
         list associated with Soxhlet instance.
         """
         try:
-            ext = (
-                self.extension if self.extension is not None else self.guess_extension()
-            )
+            ext = self.extension if self.extension else self.guess_extension()
+        except (ValueError, FileNotFoundError) as error:
+            logger.warning(f"{error} Returning empty list.")
+            return []
+        try:
             gf = sorted(self.filter_files(ext))
         except ValueError:
             gf = []
         return gf
 
-    @property
-    def bar_files(self):
-        """List of (sorted by file name) *.bar files from files list
-        associated with Soxhlet instance.
-        """
-        try:
-            ext = ".bar"
-            bar = sorted(self.filter_files(ext))
-        except ValueError:
-            bar = []
-        return bar
-
-    def filter_files(self, ext=None):
+    def filter_files(self, ext: Optional[str] = None) -> List[Path]:
         """Filters files from filenames list.
 
         Function filters file names in list associated with Soxhlet object
@@ -130,16 +151,14 @@ class Soxhlet:
             If parameter `ext` is not given and attribute `extension` in None.
         """
         ext = ext if ext is not None else self.extension
-        files = self.wanted_files if self.wanted_files else self.files
-        try:
-            filtered = [f for f in files if f.endswith(ext)]
-        except TypeError as error:
+        if ext is None:
             raise ValueError(
                 "Parameter `ext` must be given if attribute `extension` is None."
-            ) from error
+            )
+        filtered = [f for f in self.files if f.name.endswith(ext)]
         return filtered
 
-    def guess_extension(self):
+    def guess_extension(self) -> str:
         """Checks list of file extensions in list of file names.
 
         Function checks for .log and .out files in passed list of file names.
@@ -157,25 +176,28 @@ class Soxhlet:
         ------
         ValueError
             If both *.log and *.out files are present in list of filenames.
-        TypeError
+        FileNotFoundError
             If neither *.log nor *.out files are present in list of filenames.
 
         TO DO
         -----
         add support for other extensions when new parsers implemented
         """
-        files = self.wanted_files if self.wanted_files else self.files
-        logs, outs = (any(f.endswith(ext) for f in files) for ext in (".log", ".out"))
+        logs, outs = (
+            any(f.name.endswith(ext) for f in self.all_files)
+            for ext in (".log", ".out")
+        )
         if outs and logs:
             raise ValueError(".log and .out files mixed in directory.")
         elif not outs and not logs:
-            raise TypeError("Didn't found any .log or .out files.")
+            raise FileNotFoundError("Didn't found any .log or .out files.")
         else:
             return ".log" if logs else ".out"
 
-    def extract_iter(self):
+    def extract_iter(self) -> Generator[Tuple[str, dict], None, None]:
         """Extracts data from gaussian files associated with Soxhlet instance.
-        Implemented as generator.
+        Implemented as generator. If Soxhlet instance's `recursive` attribute is
+        `True`, also files from subdirectories are parsed.
 
         Yields
         ------
@@ -183,15 +205,17 @@ class Soxhlet:
             Two item tuple with name of parsed file as first and extracted
             data as second item, for each file associated with Soxhlet instance.
         """
-        for num, file in enumerate(self.output_files):
+        for file in self.output_files:
             logger.debug(f"Starting extraction from file: {file}")
-            with open(os.path.join(self.path, file)) as handle:
+            with file.open() as handle:
                 data = self.parser.parse(handle)
             logger.debug("file done.\n")
-            yield file, data
+            yield file.stem, data
 
-    def extract(self):
+    def extract(self) -> dict:
         """Extracts data from gaussian files associated with Soxhlet instance.
+        If its `recursive` attribute is `True`, also files from subdirectories
+        are parsed.
 
         Returns
         ------
@@ -201,118 +225,79 @@ class Soxhlet:
         """
         return {f: d for f, d in self.extract_iter()}
 
-    def load_bars(self, spectra_type=None):
-        """Parses *.bar files associated with object and loads spectral data
-        previously extracted from gaussian output files.
+    def load_settings(self, source: Optional[Union[str, Path]] = None) -> dict:
+        """Parses setup file specifying spectra calculation parameters and returns
+        dict with extracted values. If `source` file is not given, file named
+        "setup.txt" or "setup.cfg" (with any prefix, case-insensitive) will be searched
+        for in the Soxhlet's directory (recursively if it was requested on object's
+        creation). If no or multiple such files is found, exception will be raised.
+        Settings values should be placed one for line in this order: hwhm, start, stop,
+        step, fitting. Anything beside a number and "lorentzian" or "gaussian" word
+        is ignored.
 
         Parameters
         ----------
-        spectra_type : str, optional
-            Type of spectra which is to extract; valid values are
-            'vibra', 'electr' or '' (if spectrum is not present
-            in gaussian output files); if omitted, spectra_type
-            associated with object is used.
+        source : str or Path, optional
+            Path or Path-like object to settings file. If not given, Soxhlet object
+            will try to identify one in its `.path`.
 
         Returns
         -------
         dict
-            Dictionary with extracted spectral data.
-
-        TO DO
-        -----
-        Make sure Transitions not needed.
-        Rewrite to match current keys handling
-        remove self.spectra_type dependence
-        """
-        spectra_type = spectra_type if spectra_type else self.spectra_type
-        no = len(self.bar_files)
-        # Create empty dict with list of empty lists as default value.
-        output = defaultdict(lambda: [[] for _ in range(no)])
-        keys = (
-            "freq dip rot vemang".split(" ")
-            if spectra_type == "vibra"
-            else "wave vosc srot losc lrot energy eemang".split(" ")
-        )
-        for num, bar in enumerate(self.bar_files):
-            with open(os.path.join(self.path, bar), newline="") as handle:
-                header = handle.readline()
-                del header
-                col_names = handle.readline()
-                if "Transition" in col_names and "eemang" in keys:
-                    keys = keys[:-1]
-                reader = csv.reader(handle, delimiter="\t")
-                for row in reader:
-                    # For each row in *.bar file copy value to corresponding
-                    # position in prepared output dict
-                    for k, v in zip(keys, row):
-                        # output[value type][file position in sorted list]
-                        output[k][num].append(float(v))
-        return self.from_dict(output)
-
-    def load_popul(self):
-        """Parses BoltzmanDistribution.txt file associated with object and
-        loads conformers' energies previously extracted from gaussian output
-        files and calculated populations.
-
-        Returns
-        -------
-        dict
-            Dictionary with extracted data.
-        """
-        keys = (
-            "filenames scfp entp gibp scfd entd gibd scf ent gib imag "
-            "stoich".split(" ")
-        )
-        output = defaultdict(list)
-        with open(os.path.join(self.path, "BoltzmanDistribution.txt")) as blz:
-            header1 = blz.readline()
-            header2 = blz.readline()
-            del header1, header2
-            for row in blz.readlines():
-                for k, v in zip(keys, self.extractor["popul"](row)):
-                    try:
-                        v = float(v)
-                    except ValueError:
-                        if "%" in v:
-                            v = float(v[:-1]) / 100
-                    output[k].append(v)
-        return self.from_dict(output)
-
-    def load_settings(self):
-        """Parses Setup.txt file associated with object and returns dict with
-        extracted values. Prefers Setup.txt file over *Setup.txt files.
-
-        Returns
-        -------
-        dict
-            Dictionary eith extracted settings data.
+            Dictionary with extracted settings data.
 
         Raises
         ------
         FileNotFoundError
-            If no or multiple setup.txt files found.
-        """
-        try:
-            f = open("Setup.txt", "r")
-        except FileNotFoundError:
-            fls = [file.endswith("Setup.txt") for file in self.files]
-            if len(fls) != 1:
-                raise FileNotFoundError("No or multiple setup files in directory.")
-            else:
-                f = open(fls[0], "r")
-        sett = self.extractor["settings"](f)
-        f.close()
-        return sett
+            If no or multiple possible setup files found.
 
-    def load_spectrum(self, filename):
-        # TO DO: add support for .spc and .csv files
-        # TO DO: add docstring
-        appended = os.path.join(self.path, filename)
-        if os.path.isfile(appended):
-            path = appended
-        elif os.path.isfile(filename):
-            path = filename
+        """
+        if source:
+            source = Path(source)
+            if not source.is_file():
+                raise FileNotFoundError(
+                    f"Specified file does not exist: {source.resolve()}."
+                )
         else:
-            raise FileNotFoundError(f"Cannot find such file: '{filename}'.")
+            fls = [
+                file
+                for file in self.all_files
+                if file.name.lower().endswith(("setup.txt", "setup.cfg"))
+            ]
+            if len(fls) != 1:
+                raise FileNotFoundError(
+                    "No or multiple setup files in directory. "
+                    "Specify source file explicitly."
+                )
+            source = fls[0]
+        return self.params_parser.parse(source)
+
+    def load_spectrum(self, source: Union[str, Path]) -> np.ndarray:
+        """Parse file containing spectral data. .txt and .csv files are accepted.
+        Returns loaded spectrum as np.ndarray of [[x_values], [y_values]].
+
+        Parameters
+        ----------
+        source : str or Path
+            Path or Path-like object to file with spectral data. Should be .txt or .csv
+
+        Returns
+        -------
+        spectrum : np.ndarray
+            np.ndarray of shape (2, N) where N is number of data points. `spectrum[0]`
+            are x-values and `spectrum[1]` are corresponding y-values.
+
+        Raises
+        ------
+        FileNotFoundError
+            If specified source was not found.
+        """
+        appended = self.path / source
+        if appended.is_file():
+            path = appended
+        elif Path(source).is_file():
+            path = Path(source)
+        else:
+            raise FileNotFoundError(f"Cannot find such file: '{source}'.")
         spectrum = self.spectra_parser.parse(path)
         return spectrum

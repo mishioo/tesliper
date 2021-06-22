@@ -73,9 +73,9 @@ class ArchiveWriter(Writer):
             handle.write(
                 self.jsonencode(
                     {
-                        "input_dir": str(input_dir),
-                        "output_dir": str(output_dir),
-                        "wanted_files": wanted_files,
+                        "input_dir": str(input_dir) if input_dir else None,
+                        "output_dir": str(output_dir) if output_dir else None,
+                        "wanted_files": list(wanted_files) if wanted_files else None,
                     }
                 )
             )
@@ -83,9 +83,9 @@ class ArchiveWriter(Writer):
     def _write_parameters(self, parameters: dict):
         # TODO: Implement more universal way of serializing fitting
         #       this won't deserialize custom fitting functions
-        to_write = parameters.copy()
-        to_write["vibra"]["fitting"] = to_write["vibra"]["fitting"].__name__
-        to_write["electr"]["fitting"] = to_write["electr"]["fitting"].__name__
+        to_write = {key: params.copy() for key, params in parameters.items()}
+        for params in to_write.values():
+            params["fitting"] = params["fitting"].__name__
         with self.root.open("parameters.json", mode="w") as handle:
             handle.write(self.jsonencode(to_write))
 

@@ -1,4 +1,6 @@
 import csv
+from typing import Optional
+
 import numpy as np
 import logging as lgg
 from .base_parser import Parser
@@ -8,13 +10,26 @@ logger = lgg.getLogger(__name__)
 
 
 class SpectraParser(Parser):
+    """Parser for files containing spectral data. It can parse .txt (in "x y" format)
+    and .csv files, returning an numpy.ndarray with loaded spectrum. Parsing process
+    may be customized by specifying what delimiter of values should be expected
+    and in which column x- and y-values are, if there are more than 2 columns of data.
+    If file contains any header, it is ignored.
+    """
+
     def __init__(self):
         super().__init__()
         self.delimiter = None
         self.xcolumn = 0
         self.ycolumn = 1
 
-    def parse(self, filename, delimiter=None, xcolumn=0, ycolumn=1):
+    def parse(
+        self,
+        filename: str,
+        delimiter: Optional[str] = None,
+        xcolumn: int = 0,
+        ycolumn: int = 1,
+    ) -> np.ndarray:
         """Loads spectral data from file to numpy.array. Currently supports
         only .txt, .xy, and .csv files.
 
@@ -35,14 +50,12 @@ class SpectraParser(Parser):
         -------
         numpy.array
             two-dimensional numpy array ([[x-values], [y-values]])
-            of data type 'float'
-
-        TO DO
-        -----
-        add type checking of passed file, consider those:
-            https://github.com/audreyr/binaryornot
-            https://eli.thegreenplace.net/2011/10/19/perls-guess-if-file-is-text-or-binary-implemented-in-python/
-        add csv and binary files support"""
+            of data type 'float'"""
+        # TODO: add type checking of passed file, consider those:
+        #     https://github.com/audreyr/binaryornot
+        #     https://eli.thegreenplace.net/2011/10/19/\
+        #       perls-guess-if-file-is-text-or-binary-implemented-in-python/
+        # TODO: add binary files support"""
         self.delimiter = delimiter
         self.xcolumn = xcolumn
         self.ycolumn = ycolumn
@@ -57,7 +70,7 @@ class SpectraParser(Parser):
 
     @Parser.state(trigger=r".+\.(?:txt|xy)$")
     def parse_txt(self, file):
-        """Loads spectral data from txt file to numpy.array.
+        """Loads spectral data from .txt or .xy file to numpy.array.
 
         Parameters
         ----------
@@ -167,5 +180,5 @@ class SpectraParser(Parser):
         -----
         NotImplementedError
             Whenever called, as this functionality is not implemented yet."""
-
+        # TODO: add support for .spc files
         raise NotImplementedError("Parsing spc files is not implemented yet.")

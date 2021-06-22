@@ -108,8 +108,9 @@ def test_bars(writer, mols, filenames):
     writer.bars(mols.arrayed("freq"), [mols.arrayed("iri")])
     assert writer.destination.exists()
     wb = oxl.load_workbook(writer.destination)
-    assert wb.sheetnames == filenames
-    for file in filenames:
+    keys = [Path(f).stem for f in filenames]
+    assert wb.sheetnames == keys
+    for file in keys:
         ws = wb[file]
         assert len(list(ws.columns)) == 2
         assert len(list(ws.rows)) == 1 + mols.arrayed("freq").values.shape[1]
@@ -150,8 +151,9 @@ def test_transitions_only_highest(writer, molstd, filenamestd):
     writer.transitions(trans, wave, only_highest=True)
     assert writer.destination.exists()
     wb = oxl.load_workbook(writer.destination)
-    assert wb.sheetnames == filenamestd
-    for file in filenamestd:
+    keys = [Path(f).stem for f in filenamestd]
+    assert wb.sheetnames == keys
+    for file in keys:
         ws = wb[file]
         assert len(list(ws.columns)) == 5
         assert len(list(ws.rows)) == 1 + trans.values.shape[1]
@@ -162,8 +164,9 @@ def test_transitions_all(writer, molstd, filenamestd):
     writer.transitions(trans, wave, only_highest=False)
     assert writer.destination.exists()
     wb = oxl.load_workbook(writer.destination)
-    assert wb.sheetnames == filenamestd
-    for num, file in enumerate(filenamestd):
+    keys = [Path(f).stem for f in filenamestd]
+    assert wb.sheetnames == keys
+    for num, file in enumerate(keys):
         ws = wb[file]
         assert len(list(ws.columns)) == 5
         assert len(list(ws.rows)) == 1 + trans.values[num].count()
