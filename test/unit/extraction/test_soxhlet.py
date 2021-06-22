@@ -7,7 +7,7 @@ import pytest
 
 @pytest.fixture
 def files():
-    return [Path(p) for p in "a.out b.out b.gjf".split()]
+    return [Path(p) for p in "a.out b.out b.gjf setup.txt".split()]
 
 
 @pytest.fixture
@@ -84,10 +84,20 @@ def test_guess_extension_mixed(sox, mixed_files, monkeypatch):
         sox.guess_extension()
 
 
+def test_output_files_mixed(sox, mixed_files, monkeypatch):
+    monkeypatch.setattr(sx.Path, "iterdir", mock.Mock(return_value=mixed_files))
+    assert sox.output_files == []
+
+
 def test_guess_extension_missing(sox, monkeypatch):
     monkeypatch.setattr(sx.Path, "iterdir", mock.Mock(return_value=[Path("b.gjf")]))
     with pytest.raises(FileNotFoundError):
         sox.guess_extension()
+
+
+def test_output_files_missing(sox, monkeypatch):
+    monkeypatch.setattr(sx.Path, "iterdir", mock.Mock(return_value=[Path("b.gjf")]))
+    assert sox.output_files == []
 
 
 def test_output_files(sox, out_files, monkeypatch):
@@ -121,8 +131,10 @@ def test_extract_iter(sox, monkeypatch, output):
 
 @pytest.fixture
 def files_tree(tmp_path):
-    tree = [tmp_path / p for p in "a.out b.out b.gjf inner/c.out inner/c.gjf".split()]
-    tree = sorted(tree)
+    tree = [
+        tmp_path / p
+        for p in "a.out b.out b.gjf inner/setup.txt inner/c.out inner/c.gjf".split()
+    ]
     for f in tree:
         f.parent.mkdir(parents=True, exist_ok=True)
         with f.open("w") as h:
@@ -136,15 +148,73 @@ def rsox(files_tree, tmp_path):
 
 
 def test_rsox_all_files(rsox, files_tree, tmp_path):
-    assert rsox.all_files == files_tree
+    assert set(rsox.all_files) == set(files_tree)
 
 
 def test_rsox_output_files(rsox, tmp_path):
-    assert rsox.output_files == [
+    assert set(rsox.output_files) == {
         tmp_path / p for p in "a.out b.out inner/c.out".split()
-    ]
+    }
 
 
 def test_rsox_no_recursive_output_files(rsox, tmp_path):
     rsox.recursive = False
-    assert rsox.output_files == [tmp_path / p for p in "a.out b.out".split()]
+    assert set(rsox.output_files) == {tmp_path / p for p in "a.out b.out".split()}
+
+
+def test_settings_file_found(sox, monkeypatch):
+    monkeypatch.setattr(sox.params_parser, "parse", mock.Mock(side_effect=lambda x: x))
+    assert sox.load_settings() == Path("setup.txt")
+
+
+def test_settings_recursive(rsox, monkeypatch, files):
+    monkeypatch.setattr(rsox.params_parser, "parse", mock.Mock(side_effect=lambda x: x))
+    assert rsox.load_settings().name == "setup.txt"
+
+
+def test_settings_file_not_found(sox, monkeypatch, mixed_files):
+    monkeypatch.setattr(sx.Path, "iterdir", mock.Mock(return_value=mixed_files))
+    with pytest.raises(FileNotFoundError):
+        sox.load_settings()
+
+
+def test_settings_multiple_files(sox, monkeypatch, mixed_files):
+    monkeypatch.setattr(
+        sx.Path,
+        "iterdir",
+        mock.Mock(
+            return_value=[Path(f) for f in ("some_setup.txt", "other_setup.cfg")]
+        ),
+    )
+    with pytest.raises(FileNotFoundError):
+        sox.load_settings()
+
+
+def test_settings_valid_given(sox, monkeypatch):
+    monkeypatch.setattr(sox.params_parser, "parse", mock.Mock(side_effect=lambda x: x))
+    setupfile = "setupfile.txt"
+    assert sox.load_settings(setupfile) == Path(setupfile)
+
+
+def test_settings_invalid_given(sox, monkeypatch):
+    monkeypatch.setattr(sx.Path, "is_file", mock.Mock(return_value=False))
+    with pytest.raises(FileNotFoundError):
+        sox.load_settings("nosetupfile.txt")
+
+
+def test_load_spectra_no_file(sox, monkeypatch):
+    monkeypatch.setattr(sx.Path, "is_file", mock.Mock(return_value=False))
+    with pytest.raises(FileNotFoundError):
+        sox.load_spectrum("nofile.txt")
+
+
+def test_load_spectra_appended_file(sox, monkeypatch):
+    monkeypatch.setattr(sox.spectra_parser, "parse", mock.Mock(side_effect=lambda x: x))
+    assert sox.load_spectrum("file.txt") == sox.path / "file.txt"
+
+
+def test_load_spectra_other_place_file(sox, monkeypatch):
+    monkeypatch.setattr(sx.Path, "is_file", mock.Mock(side_effect=[False, True]))
+    monkeypatch.setattr(sox.spectra_parser, "parse", mock.Mock(side_effect=lambda x: x))
+    path = "somewhere/else/file.txt"
+    assert sox.load_spectrum(path) == Path(path)

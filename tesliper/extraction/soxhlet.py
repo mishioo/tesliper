@@ -252,7 +252,6 @@ class Soxhlet:
             If no or multiple possible setup files found.
 
         """
-        # TODO: supplement tests after introducing call parameter and recursive search
         if source:
             source = Path(source)
             if not source.is_file():
