@@ -436,7 +436,7 @@ class ArrayProperty(property):
                 error_msg = (
                     f"{instance.__class__.__name__} of genre "
                     f"{genre} with unequal number of values "
-                    f"for molecule requested."
+                    f"for conformer requested."
                 )
                 raise InconsistentDataError(error_msg) from error
             else:

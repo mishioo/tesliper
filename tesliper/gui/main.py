@@ -185,7 +185,7 @@ class TesliperApp(tk.Tk):
 
     @guicom.WgtStateChanger
     def new_session(self):
-        if self.tslr.molecules:
+        if self.tslr.conformers:
             pop = messagebox.askokcancel(
                 message="Are you sure you want to start new session? "
                 "Any unsaved changes will be lost!",

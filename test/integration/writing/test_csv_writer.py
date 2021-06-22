@@ -8,7 +8,7 @@ import pytest
 from tesliper.writing.csv_writer import CsvWriter, CsvSerialWriter
 from tesliper.glassware import arrays as ar, SingleSpectrum, Spectra
 from tesliper.extraction import Soxhlet
-from tesliper.glassware import Molecules
+from tesliper.glassware import Conformers
 
 
 @pytest.fixture
@@ -25,7 +25,7 @@ def fixturesdir():
 def mols(filenames, fixturesdir):
     s = Soxhlet(fixturesdir)
     s.wanted_files = filenames
-    return Molecules(s.extract())
+    return Conformers(s.extract())
 
 
 @pytest.fixture
@@ -221,7 +221,7 @@ def filenamestd():
 def molstd(filenamestd, fixturesdir):
     s = Soxhlet(fixturesdir)
     s.wanted_files = filenamestd
-    return Molecules(s.extract())
+    return Conformers(s.extract())
 
 
 def test_serial_transitions_header(serial_writer, molstd):

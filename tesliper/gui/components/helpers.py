@@ -132,7 +132,7 @@ class WgtStateChanger:
 
     @property
     def changers(self):
-        molecules = WgtStateChanger.gui.tslr.molecules
+        molecules = WgtStateChanger.gui.tslr.conformers
         bars, energies = False, False
         for mol in molecules.trimmed_values():
             bars = bars or any(
@@ -167,7 +167,7 @@ class WgtStateChanger:
     def change_spectra_radio():
         tslr = WgtStateChanger.gui.tslr
         bars = {k: False for k in "dip rot vosc vrot losc lrot raman1 roa1".split()}
-        for mol in tslr.molecules.values():
+        for mol in tslr.conformers.values():
             for key in bars.keys():
                 bars[key] = bars[key] or key in mol
         spectra_available = [

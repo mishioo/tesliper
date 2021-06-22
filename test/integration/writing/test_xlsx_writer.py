@@ -7,7 +7,7 @@ from tesliper import Energies
 from tesliper.writing.xlsx_writer import XlsxWriter
 from tesliper.glassware import SingleSpectrum, Spectra
 from tesliper.extraction import Soxhlet
-from tesliper.glassware import Molecules
+from tesliper.glassware import Conformers
 
 
 @pytest.fixture
@@ -24,7 +24,7 @@ def fixturesdir():
 def mols(filenames, fixturesdir):
     s = Soxhlet(fixturesdir)
     s.wanted_files = filenames
-    return Molecules(s.extract())
+    return Conformers(s.extract())
 
 
 @pytest.fixture
@@ -143,7 +143,7 @@ def filenamestd():
 def molstd(filenamestd, fixturesdir):
     s = Soxhlet(fixturesdir)
     s.wanted_files = filenamestd
-    return Molecules(s.extract())
+    return Conformers(s.extract())
 
 
 def test_transitions_only_highest(writer, molstd, filenamestd):

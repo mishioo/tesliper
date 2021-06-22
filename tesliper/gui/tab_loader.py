@@ -194,7 +194,7 @@ class Loader(ttk.Frame):
                 g in args[0] and not len(args[0][g]) == mx for g, mx in args[2].items()
             ),
         )
-        mols = self.parent.tslr.molecules
+        mols = self.parent.tslr.conformers
         condition = overview_funcs[key]
         overview = self.overview
         best_match = []
@@ -207,14 +207,14 @@ class Loader(ttk.Frame):
                 )
                 count = [
                     [g in mol for g in wanted]
-                    for mol in self.parent.tslr.molecules.values()
+                    for mol in self.parent.tslr.conformers.values()
                 ]
                 best_match = [g for g, k in zip(wanted, max(count)) if k]
             except ValueError:
                 best_match = []
         elif key == "incons":
             sizes = {}
-            for fname, mol in self.parent.tslr.molecules.items():
+            for fname, mol in self.parent.tslr.conformers.items():
                 for genre, value in mol.items():
                     if isinstance(value, (np.ndarray, list, tuple)):
                         sizes.setdefault(genre, {})[fname] = len(value)
@@ -231,12 +231,12 @@ class Loader(ttk.Frame):
     @property
     def kept_funcs(self):
         return dict(
-            error=self.parent.tslr.molecules.trim_non_normal_termination,
-            unopt=self.parent.tslr.molecules.trim_not_optimized,
-            imag=self.parent.tslr.molecules.trim_imaginary_frequencies,
-            stoich=self.parent.tslr.molecules.trim_non_matching_stoichiometry,
-            incompl=self.parent.tslr.molecules.trim_incomplete,
-            incons=self.parent.tslr.molecules.trim_inconsistent_sizes,
+            error=self.parent.tslr.conformers.trim_non_normal_termination,
+            unopt=self.parent.tslr.conformers.trim_not_optimized,
+            imag=self.parent.tslr.conformers.trim_imaginary_frequencies,
+            stoich=self.parent.tslr.conformers.trim_non_matching_stoichiometry,
+            incompl=self.parent.tslr.conformers.trim_incomplete,
+            incons=self.parent.tslr.conformers.trim_inconsistent_sizes,
         )
 
     def not_impl(self):
@@ -334,13 +334,13 @@ class Loader(ttk.Frame):
             )
             count = [
                 [g in mol for g in wanted]
-                for mol in self.parent.tslr.molecules.values()
+                for mol in self.parent.tslr.conformers.values()
             ]
             best_match = [g for g, k in zip(wanted, max(count)) if k]
         except ValueError:
             best_match = []
         sizes = {}
-        for fname, mol in self.parent.tslr.molecules.items():
+        for fname, mol in self.parent.tslr.conformers.items():
             for genre, value in mol.items():
                 if isinstance(value, (np.ndarray, list, tuple)):
                     sizes.setdefault(genre, {})[fname] = len(value)
@@ -348,7 +348,7 @@ class Loader(ttk.Frame):
             genre: Counter(v for v in values.values()).most_common()[0][0]
             for genre, values in sizes.items()
         }
-        for num, mol in enumerate(self.parent.tslr.molecules.values()):
+        for num, mol in enumerate(self.parent.tslr.conformers.values()):
             values["file"] += 1
             values["term"] += not mol["normal_termination"]
             values["incompl"] += not all(g in mol for g in best_match)
@@ -377,13 +377,13 @@ class Loader(ttk.Frame):
             )
             count = [
                 [g in mol for g in wanted]
-                for mol in self.parent.tslr.molecules.values()
+                for mol in self.parent.tslr.conformers.values()
             ]
             best_match = [g for g, k in zip(wanted, max(count)) if k]
         except ValueError:
             best_match = []
         sizes = {}
-        for fname, mol in self.parent.tslr.molecules.items():
+        for fname, mol in self.parent.tslr.conformers.items():
             for genre, value in mol.items():
                 if isinstance(value, (np.ndarray, list, tuple)):
                     sizes.setdefault(genre, {})[fname] = len(value)
@@ -391,9 +391,9 @@ class Loader(ttk.Frame):
             genre: Counter(v for v in values.values()).most_common()[0][0]
             for genre, values in sizes.items()
         }
-        # if self.parent.tslr.molecules.trimmed_values():
+        # if self.parent.tslr.conformers.trimmed_values():
         #     import pdb; pdb.set_trace()
-        for mol in self.parent.tslr.molecules.trimmed_values():
+        for mol in self.parent.tslr.conformers.trimmed_values():
             values["file"] += 1
             values["term"] += not mol["normal_termination"]
             values["incompl"] += not all(g in mol for g in best_match)
@@ -416,13 +416,13 @@ class Loader(ttk.Frame):
 
     def discard(self, key):
         if key == "incons":
-            self.parent.tslr.molecules.allow_data_inconsistency = not self.kept_vars[
+            self.parent.tslr.conformers.allow_data_inconsistency = not self.kept_vars[
                 key
             ].get()
         if self.kept_vars[key].get():
             self.kept_funcs[key]()
             for box, kept in zip(
-                self.overview.boxes.values(), self.parent.tslr.molecules.kept
+                self.overview.boxes.values(), self.parent.tslr.conformers.kept
             ):
                 box.var.set(kept)
         self.update_overview_values()
@@ -432,7 +432,7 @@ class Loader(ttk.Frame):
             if var.get():
                 self.kept_funcs[key]()
         for box, kept in zip(
-            self.overview.boxes.values(), self.parent.tslr.molecules.kept
+            self.overview.boxes.values(), self.parent.tslr.conformers.kept
         ):
             box.var.set(kept)
 

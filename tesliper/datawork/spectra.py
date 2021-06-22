@@ -48,7 +48,7 @@ def count_imaginary(frequencies):
 
 
 def find_imaginary(frequencies):
-    """Finds all molecules with imaginary frequency values.
+    """Finds all conformers with imaginary frequency values.
 
     Parameters
     ----------

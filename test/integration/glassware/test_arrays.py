@@ -13,7 +13,7 @@ FIXTURES = Path(__file__).parent.parent / "fixtures"
 def transitions():
     tslr = Tesliper(input_dir=FIXTURES, wanted_files=["fal-td.out"])
     tslr.extract()
-    return tslr.molecules.arrayed("transitions")
+    return tslr.conformers.arrayed("transitions")
 
 
 def test_transitions_init(transitions):
