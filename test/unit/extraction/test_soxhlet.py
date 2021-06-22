@@ -100,6 +100,12 @@ def test_output_files_missing(sox, monkeypatch):
     assert sox.output_files == []
 
 
+def test_output_files_missing_explicit_ext(sox, monkeypatch):
+    sox.extension = ".out"
+    monkeypatch.setattr(sx.Path, "iterdir", mock.Mock(return_value=[Path("b.gjf")]))
+    assert sox.output_files == []
+
+
 def test_output_files(sox, out_files, monkeypatch):
     monkeypatch.setattr(sx.Soxhlet, "guess_extension", mock.Mock(return_value=".out"))
     monkeypatch.setattr(sx.Soxhlet, "filter_files", mock.Mock(return_value=out_files))
