@@ -156,9 +156,9 @@ class Conformers(OrderedDict):
         try:
             value = dict(value)
         except TypeError as error:
-            raise TypeError(f"Can't convert given value to dictionary.") from error
+            raise TypeError("Can't convert given value to dictionary.") from error
         except ValueError as error:
-            raise ValueError(f"Can't convert given value to dictionary.") from error
+            raise ValueError("Can't convert given value to dictionary.") from error
         if key in self:
             index = self._indices[key]
         else:
