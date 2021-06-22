@@ -99,6 +99,20 @@ def test_parser_missing_param(stdconfig, get_config):
     assert list(data) == ["width"]
 
 
+def test_parser_invalid_param(stdconfig, get_config):
+    file = get_config("[PARAMETERS]\nwidth = one\n")
+    p = ParametersParser()
+    data = p.parse(file)
+    assert list(data) == []
+
+
+def test_parser_unknown_param(stdconfig, get_config):
+    file = get_config("[PARAMETERS]\nother = one\n")
+    p = ParametersParser()
+    data = p.parse(file)
+    assert list(data) == ["other"]
+
+
 def test_parser_missing_header(stdconfig, get_config):
     file = get_config("\n".join(stdconfig.split("\n")[1:]))
     p = ParametersParser()
