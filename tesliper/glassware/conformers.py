@@ -3,9 +3,9 @@ import logging as lgg
 from collections import (
     OrderedDict,
     Counter,
-    _OrderedDictKeysView,
-    _OrderedDictItemsView,
-    _OrderedDictValuesView,
+    ItemsView,
+    ValuesView,
+    KeysView,
 )
 from contextlib import contextmanager
 from itertools import chain
@@ -41,7 +41,7 @@ AnyArray = Union[
 
 
 # CLASSES
-class _TrimmedItemsView(_OrderedDictItemsView):
+class _TrimmedItemsView(ItemsView):
     def __init__(self, mapping, indices=False):
         super().__init__(mapping)
         self.indices = indices
@@ -66,8 +66,13 @@ class _TrimmedItemsView(_OrderedDictItemsView):
                 value = self._mapping[key]
                 yield key, value if not indices else (idx, key, value)
 
+    def __reversed__(self):
+        # TODO: correct this implementation copied from _OrderedDictItemsView
+        for key in reversed(self._mapping):
+            yield (key, self._mapping[key])
 
-class _TrimmedValuesView(_OrderedDictValuesView):
+
+class _TrimmedValuesView(ValuesView):
     def __init__(self, mapping, indices=False):
         super().__init__(mapping)
         self.indices = indices
@@ -86,8 +91,13 @@ class _TrimmedValuesView(_OrderedDictValuesView):
                 value = self._mapping[key]
                 yield value if not indices else (idx, value)
 
+    def __reversed__(self):
+        # TODO: correct this implementation copied from _OrderedDictValuesView
+        for key in reversed(self._mapping):
+            yield self._mapping[key]
 
-class _TrimmedKeysView(_OrderedDictKeysView):
+
+class _TrimmedKeysView(KeysView):
     def __init__(self, mapping, indices=False):
         super().__init__(mapping)
         self.indices = indices
@@ -103,6 +113,10 @@ class _TrimmedKeysView(_OrderedDictKeysView):
         for idx, (key, kept) in enumerate(zip(self._mapping, self._mapping.kept)):
             if kept:
                 yield key if not indices else (idx, key)
+
+    def __reversed__(self):
+        # TODO: correct this implementation copied from _OrderedDictKeysView
+        yield from reversed(self._mapping)
 
 
 class Conformers(OrderedDict):
