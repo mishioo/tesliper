@@ -67,9 +67,7 @@ class _TrimmedItemsView(ItemsView):
                 yield key, value if not indices else (idx, key, value)
 
     def __reversed__(self):
-        # TODO: correct this implementation copied from _OrderedDictItemsView
-        for key in reversed(self._mapping):
-            yield (key, self._mapping[key])
+        yield from iter(reversed(list(self)))
 
 
 class _TrimmedValuesView(ValuesView):
@@ -92,9 +90,7 @@ class _TrimmedValuesView(ValuesView):
                 yield value if not indices else (idx, value)
 
     def __reversed__(self):
-        # TODO: correct this implementation copied from _OrderedDictValuesView
-        for key in reversed(self._mapping):
-            yield self._mapping[key]
+        yield from iter(reversed(list(self)))
 
 
 class _TrimmedKeysView(KeysView):
@@ -115,8 +111,7 @@ class _TrimmedKeysView(KeysView):
                 yield key if not indices else (idx, key)
 
     def __reversed__(self):
-        # TODO: correct this implementation copied from _OrderedDictKeysView
-        yield from reversed(self._mapping)
+        yield from iter(reversed(list(self)))
 
 
 class Conformers(OrderedDict):
