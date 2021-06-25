@@ -393,7 +393,7 @@ class Loader(ttk.Frame):
         }
         # if self.parent.tslr.conformers.trimmed_values():
         #     import pdb; pdb.set_trace()
-        for mol in self.parent.tslr.conformers.trimmed_values():
+        for mol in self.parent.tslr.conformers.kept_values():
             values["file"] += 1
             values["term"] += not mol["normal_termination"]
             values["incompl"] += not all(g in mol for g in best_match)

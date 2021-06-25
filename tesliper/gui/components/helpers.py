@@ -134,7 +134,7 @@ class WgtStateChanger:
     def changers(self):
         molecules = WgtStateChanger.gui.tslr.conformers
         bars, energies = False, False
-        for mol in molecules.trimmed_values():
+        for mol in molecules.kept_values():
             bars = bars or any(
                 key in mol for key in "dip rot vosc vrot losc lrot raman1 roa1".split()
             )

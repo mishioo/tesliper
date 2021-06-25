@@ -41,7 +41,7 @@ AnyArray = Union[
 
 
 # CLASSES
-class _TrimmedItemsView(ItemsView):
+class _KeptItemsView(ItemsView):
     def __init__(self, mapping, indices=False):
         super().__init__(mapping)
         self.indices = indices
@@ -70,7 +70,7 @@ class _TrimmedItemsView(ItemsView):
         yield from iter(reversed(list(self)))
 
 
-class _TrimmedValuesView(ValuesView):
+class _KeptValuesView(ValuesView):
     def __init__(self, mapping, indices=False):
         super().__init__(mapping)
         self.indices = indices
@@ -93,7 +93,7 @@ class _TrimmedValuesView(ValuesView):
         yield from iter(reversed(list(self)))
 
 
-class _TrimmedKeysView(KeysView):
+class _KeptKeysView(KeysView):
     def __init__(self, mapping, indices=False):
         super().__init__(mapping)
         self.indices = indices
@@ -371,10 +371,10 @@ class Conformers(OrderedDict):
             # return early if filenames requested
             return cls(
                 genre=genre,
-                filenames=list(self.trimmed_values() if not full else self.values()),
+                filenames=list(self.kept_values() if not full else self.values()),
                 allow_data_inconsistency=self.allow_data_inconsistency,
             )
-        view = self.trimmed_items() if not full else self.items()
+        view = self.kept_items() if not full else self.items()
         array = ((fname, conf, conf[genre]) for fname, conf in view if genre in conf)
         try:
             filenames, confs, values = zip(*array)
@@ -755,14 +755,80 @@ class Conformers(OrderedDict):
         """
         self._kept = [False for _ in self._kept]
 
-    def trimmed_keys(self, indices=False):
-        return _TrimmedKeysView(self, indices=indices)
+    def kept_keys(self, indices: bool = False) -> _KeptKeysView:
+        """Equivalent of `dict.keys()` but gives view only on conformers marked
+        as "kept". Returned view may also provide information on conformers index
+        in its Conformers instance if requested with `indices=True`.
 
-    def trimmed_values(self, indices=False):
-        return _TrimmedValuesView(self, indices=indices)
+        >>> c = Conformers(c1={"g": 0.1}, c2={"g": 0.2}, c3={"g": 0.3}}
+        >>> c.kept = [True, False, True]
+        >>> list(c.kept_keys())
+        ["c1", "c3"]
+        >>> list(c.kept_keys(indices=True))
+        [(0, "c1"}), (2, "c3")]
 
-    def trimmed_items(self, indices=False):
-        return _TrimmedItemsView(self, indices=indices)
+        Parameters
+        ----------
+        indices : bool
+            If resulting Conformers view should also provide index of each conformer.
+            Defaults to False.
+
+        Returns
+        -------
+        _KeptKeysView
+            View of kept conformers.
+        """
+        return _KeptKeysView(self, indices=indices)
+
+    def kept_values(self, indices: bool = False) -> _KeptValuesView:
+        """Equivalent of `dict.values()` but gives view only on conformers marked
+        as "kept". Returned view may also provide information on conformers index
+        in its Conformers instance if requested with `indices=True`.
+
+        >>> c = Conformers(c1={"g": 0.1}, c2={"g": 0.2}, c3={"g": 0.3}}
+        >>> c.kept = [True, False, True]
+        >>> list(c.kept_values())
+        [{"g": 0.1}, {"g": 0.3}]
+        >>> list(c.kept_values(indices=True))
+        [(0, {"g": 0.1}), (2,  {"g": 0.3})]
+
+        Parameters
+        ----------
+        indices : bool
+            If resulting Conformers view should also provide index of each conformer.
+            Defaults to False.
+
+        Returns
+        -------
+        _KeptValuesView
+            View of kept conformers.
+        """
+        return _KeptValuesView(self, indices=indices)
+
+    def kept_items(self, indices: bool = False) -> _KeptItemsView:
+        """Equivalent of `dict.items()` but gives view only on conformers marked
+        as "kept". Returned view may also provide information on conformers index
+        in its Conformers instance if requested with `indices=True`.
+
+        >>> c = Conformers(c1={"g": 0.1}, c2={"g": 0.2}, c3={"g": 0.3}}
+        >>> c.kept = [True, False, True]
+        >>> list(c.kept_items())
+        [("c1", {"g": 0.1}), ("c3", {"g": 0.3})]
+        >>> list(c.kept_items(indices=True))
+        [(0, "c1", {"g": 0.1}), (2, "c3", {"g": 0.3})]
+
+        Parameters
+        ----------
+        indices : bool
+            If resulting Conformers view should also provide index of each conformer.
+            Defaults to False.
+
+        Returns
+        -------
+        _KeptItemsView
+            View of kept conformers.
+        """
+        return _KeptItemsView(self, indices=indices)
 
     @property
     @contextmanager
