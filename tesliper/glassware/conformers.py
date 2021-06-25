@@ -442,7 +442,7 @@ class Conformers(OrderedDict):
         bool
             boolean value indicating if any of stored conformers contains data
             of genre in question."""
-        for conformer in self.values():
+        for conformer in self.values():  # TODO: or maybe kept_values() ?
             if genre in conformer:
                 return True
         return False
@@ -461,7 +461,7 @@ class Conformers(OrderedDict):
         bool
             boolean value indicating if any of stored conformers contains data
             of any of genres in question."""
-        for conformer in self.values():
+        for conformer in self.values():  # TODO: or maybe kept_values() ?
             for genre in genres:
                 if genre in conformer:
                     return True

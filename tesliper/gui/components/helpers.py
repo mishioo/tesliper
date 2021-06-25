@@ -133,6 +133,7 @@ class WgtStateChanger:
     @property
     def changers(self):
         conformers = WgtStateChanger.gui.tslr.conformers
+        # TODO: use has_genre() when it supports kept confs
         bars, energies = False, False
         for conf in conformers.kept_values():
             bars = bars or any(
