@@ -310,29 +310,29 @@ class ConformersOverview(CheckTree):
         # TO DO: correct wrong files counting when smaller set is extracted
         # first
         text = kw["text"]
-        mol = self.tslr.conformers[text]
+        conf = self.tslr.conformers[text]
         values = {
-            "term": "normal" if mol["normal_termination"] else "ERROR",
+            "term": "normal" if conf["normal_termination"] else "ERROR",
             "opt": "n/a"
-            if "optimization_completed" not in mol
+            if "optimization_completed" not in conf
             else "ok"
-            if mol["optimization_completed"]
+            if conf["optimization_completed"]
             else False,
-            "en": "ok" if all(e in mol for e in EnergiesView.e_keys) else False,
-            "ir": "ok" if "dip" in mol else False,
-            "vcd": "ok" if "rot" in mol else False,
-            "uv": "ok" if "vosc" in mol else False,
-            "ecd": "ok" if "vrot" in mol else False,
-            "ram": "ok" if "raman1" in mol else False,
-            "roa": "ok" if "roa1" in mol else False,
+            "en": "ok" if all(e in conf for e in EnergiesView.e_keys) else False,
+            "ir": "ok" if "dip" in conf else False,
+            "vcd": "ok" if "rot" in conf else False,
+            "uv": "ok" if "vosc" in conf else False,
+            "ecd": "ok" if "vrot" in conf else False,
+            "ram": "ok" if "raman1" in conf else False,
+            "roa": "ok" if "roa1" in conf else False,
         }
-        if "freq" in mol:
+        if "freq" in conf:
             freqs = self.tslr.conformers[text]["freq"]
             imag = str((freqs < 0).sum())
             values["imag"] = imag
         else:
             values["imag"] = False
-        values["stoich"] = mol["stoichiometry"]
+        values["stoich"] = conf["stoichiometry"]
         iid = super()._insert(parent=parent, index=index, iid=iid, **kw)
         for k, v in values.items():
             self.set(iid, k, v or "X")

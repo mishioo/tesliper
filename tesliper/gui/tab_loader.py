@@ -194,7 +194,7 @@ class Loader(ttk.Frame):
                 g in args[0] and not len(args[0][g]) == mx for g, mx in args[2].items()
             ),
         )
-        mols = self.parent.tslr.conformers
+        confs = self.parent.tslr.conformers
         condition = overview_funcs[key]
         overview = self.overview
         best_match = []
@@ -206,24 +206,24 @@ class Loader(ttk.Frame):
                     "ten gib".split()
                 )
                 count = [
-                    [g in mol for g in wanted]
-                    for mol in self.parent.tslr.conformers.values()
+                    [g in conf for g in wanted]
+                    for conf in self.parent.tslr.conformers.values()
                 ]
                 best_match = [g for g, k in zip(wanted, max(count)) if k]
             except ValueError:
                 best_match = []
         elif key == "incons":
             sizes = {}
-            for fname, mol in self.parent.tslr.conformers.items():
-                for genre, value in mol.items():
+            for fname, conf in self.parent.tslr.conformers.items():
+                for genre, value in conf.items():
                     if isinstance(value, (np.ndarray, list, tuple)):
                         sizes.setdefault(genre, {})[fname] = len(value)
             maxes = {
                 genre: Counter(v for v in values.values()).most_common()[0][0]
                 for genre, values in sizes.items()
             }
-        for n, mol in enumerate(mols.values()):
-            if condition(mol, best_match, maxes):
+        for n, conf in enumerate(confs.values()):
+            if condition(conf, best_match, maxes):
                 overview.boxes[str(n)].var.set(keep)
         self.discard_not_kept()
         self.update_overview_values()
@@ -333,38 +333,38 @@ class Loader(ttk.Frame):
                 "dip rot vosc vrot losc lrot raman1 roa1 scf zpe ent " "ten gib".split()
             )
             count = [
-                [g in mol for g in wanted]
-                for mol in self.parent.tslr.conformers.values()
+                [g in conf for g in wanted]
+                for conf in self.parent.tslr.conformers.values()
             ]
             best_match = [g for g, k in zip(wanted, max(count)) if k]
         except ValueError:
             best_match = []
         sizes = {}
-        for fname, mol in self.parent.tslr.conformers.items():
-            for genre, value in mol.items():
+        for fname, conf in self.parent.tslr.conformers.items():
+            for genre, value in conf.items():
                 if isinstance(value, (np.ndarray, list, tuple)):
                     sizes.setdefault(genre, {})[fname] = len(value)
         maxes = {
             genre: Counter(v for v in values.values()).most_common()[0][0]
             for genre, values in sizes.items()
         }
-        for num, mol in enumerate(self.parent.tslr.conformers.values()):
+        for num, conf in enumerate(self.parent.tslr.conformers.values()):
             values["file"] += 1
-            values["term"] += not mol["normal_termination"]
-            values["incompl"] += not all(g in mol for g in best_match)
+            values["term"] += not conf["normal_termination"]
+            values["incompl"] += not all(g in conf for g in best_match)
             values["opt"] += (
-                "optimization_completed" in mol and not mol["optimization_completed"]
+                "optimization_completed" in conf and not conf["optimization_completed"]
             )
-            values["imag"] += "freq" in mol and sum(v < 0 for v in mol["freq"]) > 0
-            values["en"] += "gib" in mol
-            values["ir"] += "dip" in mol
-            values["vcd"] += "rot" in mol
-            values["uv"] += "vosc" in mol
-            values["ecd"] += "vrot" in mol
-            values["ram"] += "raman1" in mol
-            values["roa"] += "roa1" in mol
+            values["imag"] += "freq" in conf and sum(v < 0 for v in conf["freq"]) > 0
+            values["en"] += "gib" in conf
+            values["ir"] += "dip" in conf
+            values["vcd"] += "rot" in conf
+            values["uv"] += "vosc" in conf
+            values["ecd"] += "vrot" in conf
+            values["ram"] += "raman1" in conf
+            values["roa"] += "roa1" in conf
             values["incons"] += any(
-                g in mol and not len(mol[g]) == mx for g, mx in maxes.items()
+                g in conf and not len(conf[g]) == mx for g, mx in maxes.items()
             )
         for key, value in values.items():
             self.overview_control[key][1].set(value)
@@ -376,15 +376,15 @@ class Loader(ttk.Frame):
                 "dip rot vosc vrot losc lrot raman1 roa1 scf zpe ent " "ten gib".split()
             )
             count = [
-                [g in mol for g in wanted]
-                for mol in self.parent.tslr.conformers.values()
+                [g in conf for g in wanted]
+                for conf in self.parent.tslr.conformers.values()
             ]
             best_match = [g for g, k in zip(wanted, max(count)) if k]
         except ValueError:
             best_match = []
         sizes = {}
-        for fname, mol in self.parent.tslr.conformers.items():
-            for genre, value in mol.items():
+        for fname, conf in self.parent.tslr.conformers.items():
+            for genre, value in conf.items():
                 if isinstance(value, (np.ndarray, list, tuple)):
                     sizes.setdefault(genre, {})[fname] = len(value)
         maxes = {
@@ -393,23 +393,23 @@ class Loader(ttk.Frame):
         }
         # if self.parent.tslr.conformers.trimmed_values():
         #     import pdb; pdb.set_trace()
-        for mol in self.parent.tslr.conformers.kept_values():
+        for conf in self.parent.tslr.conformers.kept_values():
             values["file"] += 1
-            values["term"] += not mol["normal_termination"]
-            values["incompl"] += not all(g in mol for g in best_match)
+            values["term"] += not conf["normal_termination"]
+            values["incompl"] += not all(g in conf for g in best_match)
             values["opt"] += (
-                "optimization_completed" in mol and not mol["optimization_completed"]
+                "optimization_completed" in conf and not conf["optimization_completed"]
             )
-            values["imag"] += "freq" in mol and sum(v < 0 for v in mol["freq"]) > 0
-            values["en"] += "gib" in mol
-            values["ir"] += "dip" in mol
-            values["vcd"] += "rot" in mol
-            values["uv"] += "vosc" in mol
-            values["ecd"] += "vrot" in mol
-            values["ram"] += "raman1" in mol
-            values["roa"] += "roa1" in mol
+            values["imag"] += "freq" in conf and sum(v < 0 for v in conf["freq"]) > 0
+            values["en"] += "gib" in conf
+            values["ir"] += "dip" in conf
+            values["vcd"] += "rot" in conf
+            values["uv"] += "vosc" in conf
+            values["ecd"] += "vrot" in conf
+            values["ram"] += "raman1" in conf
+            values["roa"] += "roa1" in conf
             values["incons"] += any(
-                g in mol and not len(mol[g]) == mx for g, mx in maxes.items()
+                g in conf and not len(conf[g]) == mx for g, mx in maxes.items()
             )
         for key, items in self.overview_control.items():
             items[0].set(values[key])

@@ -132,18 +132,18 @@ class WgtStateChanger:
 
     @property
     def changers(self):
-        molecules = WgtStateChanger.gui.tslr.conformers
+        conformers = WgtStateChanger.gui.tslr.conformers
         bars, energies = False, False
-        for mol in molecules.kept_values():
+        for conf in conformers.kept_values():
             bars = bars or any(
-                key in mol for key in "dip rot vosc vrot losc lrot raman1 roa1".split()
+                key in conf for key in "dip rot vosc vrot losc lrot raman1 roa1".split()
             )
             energies = energies or all(
-                key in mol for key in "zpe ent ten gib scf".split()
+                key in conf for key in "zpe ent ten gib scf".split()
             )
         spectra = bool(WgtStateChanger.gui.tslr.spectra)
         return dict(
-            tslr=self.enable if molecules else self.disable,
+            tslr=self.enable if conformers else self.disable,
             energies=self.enable if energies else self.disable,
             bars=self.enable if bars else self.disable,
             either=self.enable if (bars or energies) else self.disable,
@@ -167,9 +167,9 @@ class WgtStateChanger:
     def change_spectra_radio():
         tslr = WgtStateChanger.gui.tslr
         bars = {k: False for k in "dip rot vosc vrot losc lrot raman1 roa1".split()}
-        for mol in tslr.conformers.values():
+        for conf in tslr.conformers.values():
             for key in bars.keys():
-                bars[key] = bars[key] or key in mol
+                bars[key] = bars[key] or key in conf
         spectra_available = [
             Bars.spectra_name_ref[bar] for bar, got in bars.items() if got
         ]
