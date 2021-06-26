@@ -429,39 +429,49 @@ class Conformers(OrderedDict):
         except KeyError as error:
             raise KeyError(f"No such conformer: {key}.") from error
 
-    def has_genre(self, genre: str) -> bool:
+    def has_genre(self, genre: str, ignore_trimming: bool = False) -> bool:
         """Checks if any of stored conformers contains data of given genre.
 
         Parameters
         ----------
-        genre
-            name of genre to test
+        genre : str
+            Name of genre to test.
+        ignore_trimming : bool
+            If all known conformers should be considered (`ignore_trimming = True`)
+            or only kept ones (`ignore_trimming = False`, default).
 
         Returns
         -------
         bool
-            boolean value indicating if any of stored conformers contains data
+            Boolean value indicating if any of stored conformers contains data
             of genre in question."""
-        for conformer in self.values():  # TODO: or maybe kept_values() ?
+        conformers = self.values() if ignore_trimming else self.kept_values()
+        for conformer in conformers:
             if genre in conformer:
                 return True
         return False
 
-    def has_any_genre(self, genres: Iterable[str]) -> bool:
+    def has_any_genre(
+        self, genres: Iterable[str], ignore_trimming: bool = False
+    ) -> bool:
         """Checks if any of stored conformers contains data of any of given
         genres.
 
         Parameters
         ----------
-        genres
-            list of names of genres to test
+        genres : iterable of str
+            List of names of genres to test.
+        ignore_trimming : bool
+            If all known conformers should be considered (`ignore_trimming = True`)
+            or only kept ones (`ignore_trimming = False`, default).
 
         Returns
         -------
         bool
-            boolean value indicating if any of stored conformers contains data
+            Boolean value indicating if any of stored conformers contains data
             of any of genres in question."""
-        for conformer in self.values():  # TODO: or maybe kept_values() ?
+        conformers = self.values() if ignore_trimming else self.kept_values()
+        for conformer in conformers:
             for genre in genres:
                 if genre in conformer:
                     return True
@@ -774,7 +784,7 @@ class Conformers(OrderedDict):
             Defaults to False.
 
         Returns
-        -------
+        -------09x
         _KeptKeysView
             View of kept conformers.
         """
