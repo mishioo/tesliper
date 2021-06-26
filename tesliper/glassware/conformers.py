@@ -477,6 +477,31 @@ class Conformers(OrderedDict):
                     return True
         return False
 
+    def all_have_genres(
+        self, genres: Iterable[str], ignore_trimming: bool = False
+    ) -> bool:
+        """Checks if all stored conformers contains data of given genres.
+
+        Parameters
+        ----------
+        genres : iterable of str
+            List of names of genres to test.
+        ignore_trimming : bool
+            If all known conformers should be considered (`ignore_trimming = True`)
+            or only kept ones (`ignore_trimming = False`, default).
+
+        Returns
+        -------
+        bool
+            Boolean value indicating if each stored conformers contains data
+            of all genres in question."""
+        genres = set(genres)
+        conformers = self.values() if ignore_trimming else self.kept_values()
+        for conformer in conformers:
+            if genres - conformer.keys():
+                return False
+        return True
+
     def trim_incomplete(
         self, wanted: Optional[Iterable[str]] = None, strict: bool = False
     ) -> None:
