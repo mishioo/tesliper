@@ -867,14 +867,48 @@ class Conformers(OrderedDict):
 
     @property
     @contextmanager
-    def untrimmed(self):
+    def untrimmed(self) -> "Conformers":
+        """Temporally remove trimming. Implemented as context manager to use with
+        python's 'with' keyword.
+
+        Examples
+        --------
+        >>> c = Conformers(one={}, two={}, tree={})
+        >>> c.kept = [False, True, False]
+        >>> with c.untrimmed:
+        >>>     c.kept
+        [True, True, True]
+        >>> c.kept
+        [False, True, False]
+        """
         blade = self._kept
         self.kept = True
         yield self
         self._kept = blade
 
     @contextmanager
-    def trimmed_to(self, blade):
+    def trimmed_to(
+        self, blade: Union[Sequence[bool], Sequence[str], Sequence[int], bool]
+    ) -> "Conformers":
+        """Temporally set trimming blade to given one. Implemented as context manager
+        to use with python's 'with' keyword.
+
+        Parameters
+        ----------
+        blade : bool or sequence of bool, str, or int
+            Temporary trimming blade. To better understand how blade setting works,
+            see Conformers.kept documentation.
+
+        Examples
+        --------
+        >>> c = Conformers(one={}, two={}, tree={})
+        >>> c.kept = [True, True, False]
+        >>> with c.trimmed_to([1, 2]):
+        >>>     c.kept
+        [False, True, True]
+        >>> c.kept
+        [True, True, False]
+        """
         old_blade = self._kept
         self.kept = blade
         yield self
@@ -882,20 +916,20 @@ class Conformers(OrderedDict):
 
     @property
     @contextmanager
-    def inconsistency_allowed(self):
+    def inconsistency_allowed(self) -> "Conformers":
         """Temporally sets Conformers' 'allow_data_inconsistency' attribute
-        to true. Implemented as context manager to use with python 'with'
-        keyword.
+        to true. Implemented as context manager to use with python's 'with' keyword.
 
         Examples
         --------
-        >>> c = Conformers()
+        >>> c = Conformers(...)
         >>> with c.inconsistency_allowed:
         >>>     # do stuff here while c.allow_data_inconsistency is True
         >>>     c.allow_data_inconsistency
         True
         >>> c.allow_data_inconsistency
-        False"""
+        False
+        """
         inconsistency = self.allow_data_inconsistency
         self.allow_data_inconsistency = True
         yield self
