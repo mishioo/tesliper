@@ -286,7 +286,7 @@ class Conformers(OrderedDict):
         return self._kept
 
     @kept.setter
-    def kept(self, blade: Union[Sequence[Union[bool, str, int]], bool]):
+    def kept(self, blade: Union[Sequence[bool], Sequence[str], Sequence[int], bool]):
         if blade is True or blade is False:
             self._kept = [blade for _ in self.keys()]
             return
@@ -298,10 +298,8 @@ class Conformers(OrderedDict):
             first = bool()
         if isinstance(first, str):
             blade = set(blade)
-            if not blade.issubset(set(self.keys())):
-                raise KeyError(
-                    f"Unknown conformers: {', '.join(blade-set(self.keys()))}"
-                )
+            if not blade.issubset(self.keys()):
+                raise KeyError(f"Unknown conformers: {', '.join(blade-self.keys())}")
             else:
                 self._kept = [fnm in blade for fnm in self.keys()]
         elif isinstance(first, (bool, np.bool_)):
