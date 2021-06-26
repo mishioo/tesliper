@@ -807,7 +807,7 @@ class Conformers(OrderedDict):
             Defaults to False.
 
         Returns
-        -------09x
+        -------
         _KeptKeysView
             View of kept conformers.
         """
