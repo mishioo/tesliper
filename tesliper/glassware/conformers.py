@@ -397,7 +397,10 @@ class Conformers(OrderedDict):
                 if not confs:
                     # this is a hack to invoke except clause
                     # also when conf is an empty sequence
+                    # TODO: fix error for empty spectral genre
                     raise KeyError
+                # TODO: add kwargs passed to array constructor
+                #       or fix for single-value parameters stored for each conformer
                 params[key] = [conf[key] for conf in confs]
             except KeyError:
                 # set param to its default value
