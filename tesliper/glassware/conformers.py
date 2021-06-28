@@ -394,10 +394,11 @@ class Conformers(OrderedDict):
                 # if value for parameter is already established, move on
                 continue
             try:
-                if not confs:
+                if not confs and key in ("freq", "wavelen"):
+                    params[key] = []
+                elif not confs:
                     # this is a hack to invoke except clause
                     # also when conf is an empty sequence
-                    # TODO: fix error for empty spectral genre
                     raise KeyError
                 # TODO: add kwargs passed to array constructor
                 #       or fix for single-value parameters stored for each conformer
