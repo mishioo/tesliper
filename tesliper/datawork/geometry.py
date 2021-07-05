@@ -165,16 +165,16 @@ MoleculeOrList = Union[Sequence[Sequence[float]], Sequence[Sequence[Sequence[flo
 
 
 def center(a: MoleculeOrList) -> MoleculeOrList:
-    """Zero-center all given molecules by subtracting their centroids.
-    Accepts single molecule or list of molecules."""
+    """Zero-center all given conformers by subtracting their centroids.
+    Accepts single molecule or list of conformers."""
     a = np.asanyarray(a)
     return a - np.expand_dims(a.mean(axis=-2), -2)
 
 
 def kabsch_rotate(a: MoleculeOrList, b: MoleculeOrList) -> np.ndarray:
-    """Minimize RMSD of molecules `a` and `b` by rotating molecule `a` onto `b`.
-    Expects given representation of molecules to be zero-centered.
-    Both `a` and `b` may be a single molecule or a set of molecules.
+    """Minimize RMSD of conformers `a` and `b` by rotating molecule `a` onto `b`.
+    Expects given representation of conformers to be zero-centered.
+    Both `a` and `b` may be a single molecule or a set of conformers.
 
     Parameters
     ----------
@@ -218,7 +218,7 @@ def kabsch_rotate(a: MoleculeOrList, b: MoleculeOrList) -> np.ndarray:
 
 
 def calc_rmsd(a: MoleculeOrList, b: MoleculeOrList) -> np.ndarray:
-    """Compute RMSD (round-mean-square deviation) of two molecules (or sets of them).
+    """Compute RMSD (round-mean-square deviation) of two conformers (or sets of them).
 
     Parameters
     ----------
@@ -230,7 +230,7 @@ def calc_rmsd(a: MoleculeOrList, b: MoleculeOrList) -> np.ndarray:
     Returns
     -------
     float or numpy.ndarray
-        Value of RMSD od two molecules or list of values, if list of molecules given.
+        Value of RMSD od two conformers or list of values, if list of conformers given.
 
     Links
     -----
@@ -380,7 +380,7 @@ def rmsd_sieve(
 ):
     # TODO: Add docs
     blade = np.ones_like(energies, dtype=bool)
-    # zero-center all molecules
+    # zero-center all conformers
     geometry = center(geometry)
     windows = stretching_windows(energies, window_size, hard_bound=False)
     for window in windows:
@@ -388,7 +388,7 @@ def rmsd_sieve(
         reduced_window = window[blade[window]]
         if reduced_window.size <= 1:
             # only one molecule in the window, we keep it
-            # or no molecules at all
+            # or no conformers at all
             continue
         head, *tail = geometry[reduced_window]  # reference, other
         # find best rotation of mols in window onto first mol

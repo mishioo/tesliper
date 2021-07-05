@@ -5,7 +5,7 @@ class TesliperError(Exception):
 
 
 class InconsistentDataError(TesliperError):
-    """Raised to signalize problems with molecules' data consistency.
+    """Raised to signalize problems with conformers' data consistency.
     Subclasses TesliperError."""
 
     pass

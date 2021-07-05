@@ -14,4 +14,4 @@ from .arrays import (
     Transitions,
     Geometry,
 )
-from .molecules import Molecules
+from .conformers import Conformers

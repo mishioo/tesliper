@@ -5,7 +5,7 @@ import pytest
 from tesliper.writing.txt_writer import TxtWriter, TxtSerialWriter
 from tesliper.glassware import arrays as ar, SingleSpectrum, Spectra
 from tesliper.extraction import Soxhlet
-from tesliper.glassware import Molecules
+from tesliper.glassware import Conformers
 
 
 @pytest.fixture
@@ -27,14 +27,14 @@ def fixturesdir():
 def mols(filenames, fixturesdir):
     s = Soxhlet(fixturesdir)
     s.wanted_files = filenames
-    return Molecules(s.extract())
+    return Conformers(s.extract())
 
 
 @pytest.fixture
 def molstd(filenamestd, fixturesdir):
     s = Soxhlet(fixturesdir)
     s.wanted_files = filenamestd
-    return Molecules(s.extract())
+    return Conformers(s.extract())
 
 
 @pytest.fixture

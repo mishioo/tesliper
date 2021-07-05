@@ -73,7 +73,7 @@ class Tesliper:
         wanted_files : list, optional
             List filenames representing wanted files.
         """
-        self.molecules = gw.Molecules()
+        self.conformers = gw.Conformers()
         self.writers = {
             "txt": wr.TxtWriter,
             "xlsx": wr.XlsxWriter,
@@ -91,26 +91,26 @@ class Tesliper:
 
     def __getitem__(self, item):
         try:
-            return self.molecules.arrayed(item)
+            return self.conformers.arrayed(item)
         except ValueError:
             raise KeyError(f"Unknown genre '{item}'.")
 
     @property
     def energies(self):
         keys = "zpe ent ten gib scf".split(" ")
-        return {k: self.molecules.arrayed(k) for k in keys}
+        return {k: self.conformers.arrayed(k) for k in keys}
 
     @property
     def spectral(self):
         # TO DO: expand with other spectral data
         keys = "dip rot vosc vrot losc lrot raman1 roa1".split(" ")
-        return {k: self.molecules.arrayed(k) for k in keys}
+        return {k: self.conformers.arrayed(k) for k in keys}
 
     @property
     def bars(self):
         # TO DO: put proper keys here
         keys = "dip rot vosc vrot raman1 roa1".split(" ")
-        return {k: self.molecules.arrayed(k) for k in keys}
+        return {k: self.conformers.arrayed(k) for k in keys}
 
     @property
     def wanted_files(self) -> Optional[Set[str]]:
@@ -137,7 +137,7 @@ class Tesliper:
         return {key: params.copy() for key, params in self._standard_parameters.items()}
 
     def update(self, *args, **kwargs):
-        self.molecules.update(*args, **kwargs)
+        self.conformers.update(*args, **kwargs)
         # raise TypeError("Tesliper instance can not be updated with "
         #                 "type {}".format(type(value)))
 
@@ -207,7 +207,7 @@ class Tesliper:
         # TO DO: add error handling when no data for requested spectrum
         bar_name = gw.default_spectra_bars[spectra_name]
         is_excited = spectra_name.lower() in ("uv", "ecd")
-        conformer = self.molecules[conformer]
+        conformer = self.conformers[conformer]
         values = conformer[bar_name]
         freqs = 1e7 / conformer["wave"] if is_excited else conformer["freq"]
         inten = dw.calculate_intensities(bar_name, values, freqs)
@@ -294,14 +294,14 @@ class Tesliper:
 
     def get_averaged_spectrum(self, spectrum, energy):
         spectra = self.spectra[spectrum]
-        with self.molecules.trimmed_to(spectra.filenames):
-            en = self.molecules.arrayed(energy)
+        with self.conformers.trimmed_to(spectra.filenames):
+            en = self.conformers.arrayed(energy)
         output = spectra.average(en)
         return output
 
     def average_spectra(self):
         for genre, spectra in self.spectra.items():
-            with self.molecules.trimmed_to(spectra.filenames):
+            with self.conformers.trimmed_to(spectra.filenames):
                 for energies in self.energies.values():
                     av = spectra.average(energies)
                     self.averaged[(genre, energies.genre)] = av

@@ -701,7 +701,7 @@ class Geometry(FloatArray):
     Attributes
     ----------
     molecule_atoms : numpy.ndarray(dtype=int)
-        List of atomic numbers representing atoms in molecule, one for each coordinate.
+        List of atomic numbers representing atoms in conformer, one for each coordinate.
 
         Value given to setter should be a list of integers or list of strings, that
         can be interpreted as integers or symbols of atoms. Setter can be given a list

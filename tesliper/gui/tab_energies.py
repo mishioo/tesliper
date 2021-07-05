@@ -45,7 +45,7 @@ class Conformers(ttk.Frame):
         self.show_var = tk.StringVar()
         show_values = (
             "Energy /Hartree",
-            "Delta /(kcal/mol)",
+            "Delta /(kcal/conf)",
             "Min. Boltzmann factor",
             "Population /%",
         )
@@ -154,8 +154,8 @@ class Conformers(ttk.Frame):
         if not self.parent.main_tab.kept_vars["incompl"].get():
             logger.info("Any conformers without energy data will be discarded.")
             boxes = self.conf_list.trees["main"].boxes
-            for num, mol in enumerate(self.parent.tslr.molecules.values()):
-                if "gib" not in mol:
+            for num, conf in enumerate(self.parent.tslr.conformers.values()):
+                if "gib" not in conf:
                     boxes[str(num)].var.set(False)
 
     def refresh(self, event=None):
@@ -199,11 +199,12 @@ class Conformers(ttk.Frame):
         factor = 1e-2 if self.showing == "populations" else 1
         lower = float(self.lower_var.get()) * factor
         upper = float(self.upper_var.get()) * factor
-        self.parent.tslr.molecules.trim_to_range(
+        self.parent.tslr.conformers.trim_to_range(
             energy, minimum=lower, maximum=upper, attribute=self.showing
         )
         for box, kept in zip(
-            self.conf_list.trees["main"].boxes.values(), self.parent.tslr.molecules.kept
+            self.conf_list.trees["main"].boxes.values(),
+            self.parent.tslr.conformers.kept,
         ):
             box.var.set(kept)
         self.conf_list.refresh()

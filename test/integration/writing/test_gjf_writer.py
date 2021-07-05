@@ -70,17 +70,13 @@ def geometry(filenames):
 
 
 @pytest.fixture
-def charge(
-    filenames,
-):
+def charge(filenames,):
     values = [0] * len(filenames)
     return ar.IntegerArray(genre="charge", filenames=filenames, values=values)
 
 
 @pytest.fixture
-def multiplicity(
-    filenames,
-):
+def multiplicity(filenames,):
     values = [1] * len(filenames)
     return ar.IntegerArray(genre="multiplicity", filenames=filenames, values=values)
 
