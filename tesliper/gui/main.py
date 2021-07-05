@@ -12,7 +12,7 @@ from .tab_energies import Conformers
 from .tab_loader import Loader
 from .tab_spectra import Spectra
 
-_DEVELOPMENT = tesliper._DEVELOPMENT
+_DEVELOPMENT = "ENV" in os.environ and os.environ["ENV"] == "prod"
 
 
 # LOGGER

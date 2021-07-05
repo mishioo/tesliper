@@ -1,5 +1,6 @@
 # IMPORTS
 import logging as lgg
+import os
 from pathlib import Path
 from typing import Iterable, Optional, Set, Union
 
@@ -13,7 +14,7 @@ from . import writing as wr
 # GLOBAL VARIABLES
 __author__ = "Michał M. Więcław"
 __version__ = "0.7.4"
-_DEVELOPMENT = False
+_DEVELOPMENT = "ENV" in os.environ and os.environ["ENV"] == "prod"
 
 
 # LOGGER
