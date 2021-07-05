@@ -264,8 +264,8 @@ def test_offset_one_peak_same_size(size, peak, shift):
 
 
 @given(
-    st.floats(min_value=0.1, max_value=10),
-    st.floats(min_value=0.1, max_value=10),
+    st.floats(min_value=0.1, max_value=1),
+    st.floats(min_value=0.1, max_value=1),
     st.integers(min_value=100, max_value=1000),
     st.integers(min_value=100, max_value=1000),
     st.booleans(),
