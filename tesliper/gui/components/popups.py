@@ -4,7 +4,6 @@ import tkinter as tk
 import tkinter.ttk as ttk
 from tkinter import messagebox
 
-
 # LOGGER
 logger = lgg.getLogger(__name__)
 

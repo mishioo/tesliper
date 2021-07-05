@@ -1,6 +1,11 @@
 repos:
+-   repo: https://github.com/pycqa/isort
+    rev: 5.9.1
+    hooks:
+    - id: isort
+      args: ["--profile", "black"]
 -   repo: https://github.com/ambv/black
-    rev: stable
+    rev: 21.6b0
     hooks:
     - id: black
       language_version: python3.6
@@ -8,3 +13,4 @@ repos:
     rev: v2.3.0
     hooks:
     - id: flake8
+

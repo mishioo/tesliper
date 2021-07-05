@@ -1,6 +1,8 @@
 from enum import IntEnum
-from typing import Union, List
+from typing import List, Union
+
 import numpy as np
+
 from ..exceptions import InvalidElementError
 
 _atoms = (

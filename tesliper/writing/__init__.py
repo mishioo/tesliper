@@ -1,5 +1,5 @@
-from ._writer import Writer, SerialWriter
-from .csv_writer import CsvWriter, CsvSerialWriter
+from ._writer import SerialWriter, Writer
+from .csv_writer import CsvSerialWriter, CsvWriter
+from .serializer import ArchiveLoader, ArchiveWriter
+from .txt_writer import TxtSerialWriter, TxtWriter
 from .xlsx_writer import XlsxWriter
-from .txt_writer import TxtWriter, TxtSerialWriter
-from .serializer import ArchiveWriter, ArchiveLoader

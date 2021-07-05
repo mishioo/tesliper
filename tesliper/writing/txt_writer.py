@@ -1,23 +1,23 @@
 # IMPORTS
-from pathlib import Path
-from string import Template
-from typing import Sequence, Optional, Union, List, Iterable
-
-import numpy as np
 import logging as lgg
 from itertools import zip_longest
+from pathlib import Path
+from string import Template
+from typing import List, Optional, Sequence, Union
 
-from ._writer import Writer, SerialWriter
-from ..glassware.spectra import SingleSpectrum, Spectra
+import numpy as np
+
 from ..glassware.arrays import (
+    Bars,
     DataArray,
     Energies,
-    InfoArray,
-    FloatArray,
-    Bars,
-    Transitions,
     ExcitedStateBars,
+    FloatArray,
+    InfoArray,
+    Transitions,
 )
+from ..glassware.spectra import SingleSpectrum, Spectra
+from ._writer import SerialWriter, Writer
 
 # LOGGER
 logger = lgg.getLogger(__name__)

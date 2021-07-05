@@ -1,23 +1,11 @@
 # IMPORTS
 import inspect
 import logging as lgg
-
-from typing import (
-    Callable,
-    Optional,
-    Any,
-    Sequence,
-    Tuple,
-    Iterable,
-    Iterator,
-    Union,
-    List,
-)
+from typing import Any, Callable, Iterable, Iterator, Optional, Sequence, Tuple, Union
 
 import numpy as np
 
 from ..exceptions import InconsistentDataError
-
 
 # LOGGER
 logger = lgg.getLogger(__name__)

@@ -5,8 +5,8 @@ import tkinter.ttk as ttk
 from collections import OrderedDict
 
 import tesliper
-from .helpers import WgtStateChanger
 
+from .helpers import WgtStateChanger
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -340,8 +340,8 @@ class ConformersOverview(CheckTree):
 
     @classmethod
     def test_populate(cls, master, num=30):
-        import string
         import random
+        import string
 
         new = cls(master, columns=("b"))
         new.heading("b", text="afasdgf")

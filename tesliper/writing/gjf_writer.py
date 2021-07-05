@@ -3,11 +3,11 @@ import logging
 from itertools import cycle
 from pathlib import Path
 from string import Template
-from typing import Iterable, Union, List, Sequence, Optional, TextIO
+from typing import Iterable, List, Sequence, TextIO, Union
 
-from ._writer import SerialWriter
 from ..datawork.atoms import symbol_of_element
 from ..glassware import Geometry, IntegerArray
+from ._writer import SerialWriter
 
 # LOGGER
 logger = logging.getLogger(__name__)

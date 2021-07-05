@@ -1,9 +1,11 @@
 # IMPORTS
 import logging as lgg
-from typing import Sequence, Union, Any, Tuple
+from typing import Any, Sequence, Tuple, Union
 
 import numpy as np
+
 from .. import datawork as dw
+from ..datawork.atoms import atomic_number
 from .array_base import (
     ArrayBase,
     ArrayProperty,

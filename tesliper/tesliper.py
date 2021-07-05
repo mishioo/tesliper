@@ -1,16 +1,14 @@
 # IMPORTS
-import os
 import logging as lgg
 from pathlib import Path
-from typing import Union, Iterable, Optional, Set
+from typing import Iterable, Optional, Set, Union
 
 import numpy as np
 
-from . import glassware as gw
 from . import datawork as dw
 from . import extraction as ex
+from . import glassware as gw
 from . import writing as wr
-
 
 # GLOBAL VARIABLES
 __author__ = "Michał M. Więcław"

@@ -1,12 +1,11 @@
 # IMPORTS
 import logging as lgg
 from pathlib import Path
-import re
-from typing import Union, Tuple, Generator, Optional, List, Iterable, Set
+from typing import Generator, Iterable, List, Optional, Set, Tuple, Union
+
 import numpy as np
 
 from . import gaussian_parser, parameters_parser, spectra_parser
-
 
 # LOGGER
 logger = lgg.getLogger(__name__)

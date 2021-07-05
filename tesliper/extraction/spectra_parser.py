@@ -1,10 +1,10 @@
 import csv
+import logging as lgg
 from typing import Optional
 
 import numpy as np
-import logging as lgg
-from .base_parser import Parser
 
+from .base_parser import Parser
 
 logger = lgg.getLogger(__name__)
 

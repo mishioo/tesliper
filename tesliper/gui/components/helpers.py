@@ -1,16 +1,15 @@
 # IMPORTS
 import logging as lgg
+import queue
 import tkinter as tk
 import tkinter.ttk as ttk
-from tkinter import messagebox
-from tkinter.scrolledtext import ScrolledText
-from threading import Thread
 from copy import copy
 from functools import partial, wraps
-import queue
+from threading import Thread
+from tkinter import messagebox
+from tkinter.scrolledtext import ScrolledText
 
 from ...glassware.arrays import Bars
-
 
 # LOGGER
 logger = lgg.getLogger(__name__)
