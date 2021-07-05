@@ -4,6 +4,8 @@ import tkinter as tk
 import tkinter.ttk as ttk
 from collections import OrderedDict
 
+import numpy as np
+
 import tesliper
 
 from .helpers import WgtStateChanger
@@ -328,7 +330,7 @@ class ConformersOverview(CheckTree):
         }
         if "freq" in conf:
             freqs = self.tslr.conformers[text]["freq"]
-            imag = str((freqs < 0).sum())
+            imag = str((np.array(freqs) < 0).sum())
             values["imag"] = imag
         else:
             values["imag"] = False
