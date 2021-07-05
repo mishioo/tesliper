@@ -1,5 +1,5 @@
 # IMPORTS
-import logging as lgg
+import logging
 import os
 import tkinter as tk
 import tkinter.ttk as ttk
@@ -9,26 +9,14 @@ from tkinter import messagebox
 from .. import tesliper
 from . import components as guicom
 from .tab_energies import Conformers
-from .tab_energies import logger as energies_logger
 from .tab_loader import Loader
-from .tab_loader import logger as loader_logger
 from .tab_spectra import Spectra
-from .tab_spectra import logger as spectra_logger
 
 _DEVELOPMENT = tesliper._DEVELOPMENT
 
 
 # LOGGER
-logger = lgg.getLogger(__name__)
-loggers = [
-    logger,
-    guicom.checktree.logger,
-    guicom.helpers.logger,
-    guicom.popups.logger,
-    loader_logger,
-    spectra_logger,
-    energies_logger,
-] + tesliper.loggers
+logger = logging.getLogger(__name__)
 home_path = os.path.expanduser("~")
 ERROR_LOG_DIR = os.path.join(home_path, "tesliper")
 os.makedirs(ERROR_LOG_DIR, exist_ok=True)
@@ -37,31 +25,32 @@ error_msg = (
     'developer along with "tslr_err_log.txt" file, witch can be '
     f"found here:\n{ERROR_LOG_DIR}"
 )
-error_handler = lgg.FileHandler(
+error_handler = logging.FileHandler(
     os.path.join(ERROR_LOG_DIR, "tslr_err_log.txt"), delay=True
 )
-error_handler.setLevel(lgg.ERROR)
+error_handler.setLevel(logging.ERROR)
 error_handler.setFormatter(
-    lgg.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s\n")
+    logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s\n")
 )
 error_popup_handler = guicom.PopupHandler(title_msg="Something unexpected happened! :(")
-error_popup_handler.setLevel(lgg.ERROR)
+error_popup_handler.setLevel(logging.ERROR)
 error_popup_handler.setFormatter(
     guicom.ShortExcFormatter("%(message)s \n\n" + error_msg)
 )
 warning_popup_handler = guicom.PopupHandler(title_msg="Sorry!")
-warning_popup_handler.setLevel(lgg.WARNING)
-warning_popup_handler.addFilter(guicom.MaxLevelFilter(lgg.WARNING))
+warning_popup_handler.setLevel(logging.WARNING)
+warning_popup_handler.addFilter(guicom.MaxLevelFilter(logging.WARNING))
 warning_popup_handler.setFormatter(guicom.ShortExcFormatter("%(message)s \n\n"))
 
 handlers = [error_handler, error_popup_handler, warning_popup_handler]
-for lgr in loggers:
-    lgr.setLevel(lgg.DEBUG if _DEVELOPMENT else lgg.INFO)
-    for hdlr in handlers:
-        lgr.addHandler(hdlr)
-    if _DEVELOPMENT:
-        # for purposes of debugging
-        lgr.addHandler(tesliper.mainhandler)
+
+ROOT_LOGGER = logging.getLogger("")
+ROOT_LOGGER.setLevel(logging.DEBUG if _DEVELOPMENT else logging.INFO)
+for hdlr in handlers:
+    ROOT_LOGGER.addHandler(hdlr)
+if _DEVELOPMENT:
+    # for purposes of debugging
+    ROOT_LOGGER.addHandler(tesliper.mainhandler)
 
 
 # CLASSES
@@ -115,27 +104,28 @@ class TesliperApp(tk.Tk):
         # Logger & handlers
         self.logger = logger
         text_handler = guicom.TextHandler(self.log)
-        text_handler.setLevel(lgg.INFO)
-        text_handler.addFilter(guicom.MaxLevelFilter(lgg.INFO))
+        text_handler.setLevel(logging.INFO)
+        text_handler.addFilter(guicom.MaxLevelFilter(logging.INFO))
 
         text_warning_handler = guicom.TextHandler(self.log)
-        text_warning_handler.setLevel(lgg.WARNING)
-        text_warning_handler.addFilter(guicom.MaxLevelFilter(lgg.WARNING))
-        text_warning_handler.setFormatter(lgg.Formatter("%(levelname)s: %(message)s"))
+        text_warning_handler.setLevel(logging.WARNING)
+        text_warning_handler.addFilter(guicom.MaxLevelFilter(logging.WARNING))
+        text_warning_handler.setFormatter(
+            logging.Formatter("%(levelname)s: %(message)s")
+        )
 
         text_error_handler = guicom.TextHandler(self.log)
-        text_error_handler.setLevel(lgg.ERROR)
+        text_error_handler.setLevel(logging.ERROR)
         text_error_handler.setFormatter(
             guicom.ShortExcFormatter("ERROR! %(message)s \n" + error_msg)
         )
-        self.handlers = [
+        text_handlers = [
             text_error_handler,
             text_handler,
             text_warning_handler,
         ]
-        for lgr in loggers:
-            for hdlr in self.handlers:
-                lgr.addHandler(hdlr)
+        for handler in text_handlers:
+            ROOT_LOGGER.addHandler(handler)
 
         # WgtStateChanger
         guicom.WgtStateChanger.gui = self
