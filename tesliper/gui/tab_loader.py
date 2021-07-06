@@ -15,6 +15,9 @@ from . import components as guicom
 logger = lgg.getLogger(__name__)
 
 
+OVERVIEW_GENRES = "dip rot vosc vrot losc lrot raman1 roa1 scf zpe ent ten gib".split()
+
+
 # CLASSES
 class Loader(ttk.Frame):
     def __init__(self, parent):
@@ -198,15 +201,11 @@ class Loader(ttk.Frame):
         maxes = {}
         if key == "incompl":
             try:
-                wanted = (
-                    "dip rot vosc vrot losc lrot raman1 roa1 scf zpe ent "
-                    "ten gib".split()
-                )
                 count = [
-                    [g in conf for g in wanted]
+                    [g in conf for g in OVERVIEW_GENRES]
                     for conf in self.parent.tslr.conformers.values()
                 ]
-                best_match = [g for g, k in zip(wanted, max(count)) if k]
+                best_match = [g for g, k in zip(OVERVIEW_GENRES, max(count)) if k]
             except ValueError:
                 best_match = []
         elif key == "incons":
@@ -309,7 +308,7 @@ class Loader(ttk.Frame):
 
     @guicom.Feedback("Extracting...")
     def extract(self, path, wanted_files=None):
-        # TO DO: handle extraction errors
+        # TODO: handle extraction errors
         tslr = self.parent.tslr
         overview = self.overview
         try:
@@ -319,6 +318,8 @@ class Loader(ttk.Frame):
             logger.warning("Cannot extract from specified directory: " + err.args[0])
             return
         # self.parent.conf_tab.conf_list.refresh()
+        # TODO: set_overview_values() and update_overview_values() seem to repeat some
+        #       actions - confirm if true and refactor them
         self.set_overview_values()
         self.discard_not_kept()
         self.update_overview_values()
@@ -326,14 +327,11 @@ class Loader(ttk.Frame):
     def set_overview_values(self):
         values = {k: 0 for k in self.overview_control.keys()}
         try:
-            wanted = (
-                "dip rot vosc vrot losc lrot raman1 roa1 scf zpe ent " "ten gib".split()
-            )
             count = [
-                [g in conf for g in wanted]
+                [g in conf for g in OVERVIEW_GENRES]
                 for conf in self.parent.tslr.conformers.values()
             ]
-            best_match = [g for g, k in zip(wanted, max(count)) if k]
+            best_match = [g for g, k in zip(OVERVIEW_GENRES, max(count)) if k]
         except ValueError:
             best_match = []
         sizes = {}
@@ -369,14 +367,12 @@ class Loader(ttk.Frame):
     def update_overview_values(self):
         values = {k: 0 for k in self.overview_control.keys()}
         try:
-            wanted = (
-                "dip rot vosc vrot losc lrot raman1 roa1 scf zpe ent " "ten gib".split()
-            )
+            # TODO: extract this repeated snippet (un_check(), set_overview_values())
             count = [
-                [g in conf for g in wanted]
+                [g in conf for g in OVERVIEW_GENRES]
                 for conf in self.parent.tslr.conformers.values()
             ]
-            best_match = [g for g, k in zip(wanted, max(count)) if k]
+            best_match = [g for g, k in zip(OVERVIEW_GENRES, max(count)) if k]
         except ValueError:
             best_match = []
         sizes = {}
@@ -388,8 +384,6 @@ class Loader(ttk.Frame):
             genre: Counter(v for v in values.values()).most_common()[0][0]
             for genre, values in sizes.items()
         }
-        # if self.parent.tslr.conformers.trimmed_values():
-        #     import pdb; pdb.set_trace()
         for conf in self.parent.tslr.conformers.kept_values():
             values["file"] += 1
             values["term"] += not conf["normal_termination"]
