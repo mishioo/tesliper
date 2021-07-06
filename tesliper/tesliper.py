@@ -204,7 +204,7 @@ class Tesliper:
         fitting=None,
     ):
         # TO DO: add error handling when no data for requested spectrum
-        bar_name = gw.default_spectra_bars[spectra_name]
+        bar_name = dw.default_spectra_bars[spectra_name]
         is_excited = spectra_name.lower() in ("uv", "ecd")
         conformer = self.conformers[conformer]
         values = conformer[bar_name]
@@ -250,7 +250,7 @@ class Tesliper:
             bars = self.bars.values()
         else:
             # convert to spectra name if bar name passed
-            bar_names = gw.default_spectra_bars
+            bar_names = dw.default_spectra_bars
             genres = genres.split() if isinstance(genres, str) else genres
             query = [bar_names[v] if v in bar_names else v for v in genres]
             query_set = set(query)  # ensure no duplicates

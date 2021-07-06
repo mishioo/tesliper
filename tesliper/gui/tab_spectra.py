@@ -296,7 +296,7 @@ class Spectra(ttk.Frame):
     def spectra_chosen(self, event=None):
         tslr = self.parent.tslr
         self.visualize_settings()
-        bar = tesliper.gw.default_spectra_bars[self.s_name.get()]
+        bar = tesliper.dw.default_spectra_bars[self.s_name.get()]
         self.single_box["values"] = [k for k, v in tslr.conformers.items() if bar in v]
         self.reverse_ax.config(state="normal")
         self.load_exp.config(state="normal")
@@ -484,7 +484,7 @@ class Spectra(ttk.Frame):
 
     def single_draw(self, spectra_name, option):
         self._calculate_spectra(spectra_name, option, "single")
-        bar_name = tesliper.gw.default_spectra_bars[spectra_name]
+        bar_name = tesliper.dw.default_spectra_bars[spectra_name]
         with self.parent.tslr.conformers.trimmed_to([option]):
             bars = self.parent.tslr[bar_name]
         queue_ = self.parent.thread.queue
