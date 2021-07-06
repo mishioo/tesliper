@@ -19,17 +19,6 @@ logger = lgg.getLogger(__name__)
 logger.setLevel(lgg.DEBUG)
 
 
-# GLOBAL VARIABLES
-default_spectra_bars = {
-    "ir": "dip",
-    "vcd": "rot",
-    "uv": "vosc",
-    "ecd": "vrot",
-    "raman": "raman1",
-    "roa": "roa1",
-}
-
-
 # CLASSES
 class DataArray(ArrayBase):
     """Base class for data holding objects. It provides trimming functionality
