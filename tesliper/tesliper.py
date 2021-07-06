@@ -208,7 +208,7 @@ class Tesliper:
         is_excited = spectra_name.lower() in ("uv", "ecd")
         conformer = self.conformers[conformer]
         values = conformer[bar_name]
-        freqs = 1e7 / conformer["wave"] if is_excited else conformer["freq"]
+        freqs = 1e7 / conformer["wavelen"] if is_excited else conformer["freq"]
         inten = dw.calculate_intensities(bar_name, values, freqs)
         sett_from_args = {
             k: v
@@ -319,7 +319,7 @@ class Tesliper:
 
         TO DO
         -----
-        add checking if freq/wave/ect. passed if needed
+        add checking if freq/wavelen/ect. passed if needed
         """
         dest = dest if dest else self.output_dir
         if not dest:
@@ -356,7 +356,7 @@ class Tesliper:
         except KeyError:
             raise ValueError(f"Invalid file format: {fmt}")
         writer = writer_class(dest)
-        bands = [self["freq"], self["wave"]]
+        bands = [self["freq"], self["wavelen"]]
         data = [b for b in self.spectral.values() if b] + [b for b in bands if b]
         writer.write(data)
 
