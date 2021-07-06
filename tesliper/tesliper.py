@@ -193,6 +193,11 @@ class Tesliper:
         self.settings[spectra_type].update(settings)
         return self.settings
 
+    def _calc_spc_with_settings(self, bar: gw.Bars, settings: dict) -> gw.Spectra:
+        sett = self.parameters[bar.spectra_type].copy()
+        sett.update(settings)
+        return bar.calculate_spectra(**sett)
+
     def calculate_single_spectrum(
         self,
         spectra_name,
@@ -203,13 +208,10 @@ class Tesliper:
         width=None,
         fitting=None,
     ):
-        # TO DO: add error handling when no data for requested spectrum
+        # TODO: add error handling when no data for requested spectrum
         bar_name = dw.default_spectra_bars[spectra_name]
-        is_excited = spectra_name.lower() in ("uv", "ecd")
-        conformer = self.conformers[conformer]
-        values = conformer[bar_name]
-        freqs = 1e7 / conformer["wavelen"] if is_excited else conformer["freq"]
-        inten = dw.calculate_intensities(bar_name, values, freqs)
+        with self.conformers.trimmed_to([conformer]) as confs:
+            bar = confs.arrayed(bar_name)
         sett_from_args = {
             k: v
             for k, v in zip(
@@ -218,30 +220,18 @@ class Tesliper:
             )
             if v is not None
         }
-        sett = self.parameters[gw.Bars.spectra_type_ref[spectra_name]].copy()
-        sett.update(sett_from_args)
-        start, stop, step = [sett.pop(k) for k in ("start", "stop", "step")]
-        abscissa = np.arange(start, stop, step)
-        if not is_excited:
-            converted = sett
-            converted["abscissa"] = abscissa
-        else:
-            converted = dict(
-                width=sett["width"] / 1.23984e-4,
-                fitting=sett["fitting"],
-                abscissa=1e7 / abscissa,
-            )
-        spc = dw.calculate_spectra([freqs], [inten], **converted)
-        spc = gw.Spectra(
-            spectra_name.lower(),
-            conformer,
-            spc[0],
-            abscissa,
-            width,
-            fitting.__name__,
-            check_sizes=False,
+        spc = self._calc_spc_with_settings(bar, sett_from_args)
+        # TODO: maybe Spectra class should provide such conversion ?
+        return gw.SingleSpectrum(
+            spc.genre,
+            spc.values[0],
+            spc.abscissa,
+            spc.width,
+            spc.fitting,
+            scaling=spc.scaling,
+            offset=spc.offset,
+            filenames=spc.filenames,
         )
-        return spc
 
     def calculate_spectra(
         self, genres=(), start=None, stop=None, step=None, width=None, fitting=None
@@ -277,9 +267,7 @@ class Tesliper:
         }
         output = {}
         for bar in bars:
-            sett = self.parameters[bar.spectra_type].copy()
-            sett.update(sett_from_args)
-            spectra = bar.calculate_spectra(**sett)
+            spectra = self._calc_spc_with_settings(bar, sett_from_args)
             if spectra:
                 output[bar.spectra_name] = spectra
             else:
