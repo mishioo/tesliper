@@ -447,8 +447,7 @@ class Spectra(ttk.Frame):
                     markerfmt=" ",
                     basefmt=" ",
                 )
-                for line in stemlines:
-                    line.set_linewidth(width)
+                stemlines.set_linewidth(width)
                 bars_ax.set_ylabel(bars.units)
                 bars_ax.tick_params(axis="y", colors="b")
                 values.append(bars.values[0])
