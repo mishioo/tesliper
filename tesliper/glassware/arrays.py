@@ -335,6 +335,7 @@ class Bars(FloatArray, Averagable):
         self.laser = laser  # in nm
         # rename to raman_laser?
 
+    # TODO: move calculate_spectra here from derived classes
     # TODO: at least one, freq or wave, must be defined by subclass;
     #       include that in docstring
     @property
