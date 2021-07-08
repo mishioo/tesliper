@@ -5,7 +5,7 @@ class TesliperError(Exception):
 
 
 class InconsistentDataError(TesliperError):
-    """Raised to signalize problems with molecules' data consistency.
+    """Raised to signalize problems with conformers' data consistency.
     Subclasses TesliperError."""
 
     pass
@@ -20,6 +20,6 @@ class InvalidStateError(TesliperError, ValueError):
 
 class InvalidElementError(TesliperError, ValueError):
     """Used by tesliper to indicate, that value cannot be interpreted as an
-     element. Subclasses TesliperError and ValueError."""
+    element. Subclasses TesliperError and ValueError."""
 
     pass

@@ -1,7 +1,12 @@
 import logging as lgg
-from .array_base import ArrayProperty
-from .. import datawork as dw
+from typing import Dict, Optional, Union
 
+import numpy as np
+
+import tesliper  # absolute import to solve problem of circular imports
+
+from .. import datawork as dw
+from .array_base import ArrayProperty
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -66,40 +71,71 @@ class SingleSpectrum:
     values = ArrayProperty(check_against="abscissa")
 
     @property
-    def units(self):
+    def units(self) -> Dict[str, str]:
+        """Units in which spectral data is stored. It provides a unit for `.width`,
+        `.start`, `.stop`, `.step`, `.x`, and `.y`. `.abscissa` and `.values` are
+        stored in the same units as `.x` and `.y` respectively.
+        """
         return self._units[self.genre]
 
     @property
-    def scaling(self):
-        return self._scaling
+    def scaling(self) -> Union[int, float]:
+        """A factor for correcting the scale of spectra. Setting it to new value changes
+        the `y` attribute as well. It should be an `int` or `float`.
+        """
+        return vars(self)["scaling"]
 
     @scaling.setter
-    def scaling(self, factor):
-        self._scaling = factor
-        self._y = self.values * factor
+    def scaling(self, factor: Union[int, float]):
+        vars(self)["scaling"] = factor
+        vars(self)["y"] = self.values * factor
 
     @property
-    def offset(self):
-        return self._offset
+    def offset(self) -> Union[int, float]:
+        """A factor for correcting the shift of spectra. Setting it to new value changes
+        the `x` attribute as well. It should be an `int` or `float`.
+        """
+        return vars(self)["offset"]
 
     @offset.setter
-    def offset(self, offset):
-        self._offset = offset
-        self._x = self.abscissa + offset
+    def offset(self, offset: Union[int, float]):
+        vars(self)["offset"] = offset
+        vars(self)["x"] = self.abscissa + offset
 
     @property
-    def x(self):
-        return self._x
+    def x(self) -> np.ndarray:
+        """Spectra's x-values corrected by adding its `.offset` to `.abscissa`."""
+        return vars(self)["x"]
 
     @property
-    def y(self):
-        return self._y
+    def y(self) -> np.ndarray:
+        """Spectra's y-values corrected by multiplying its `.values` by `.scaling`."""
+        return vars(self)["y"]
+
+    def scale_to(self, spectrum: "SingleSpectrum") -> None:
+        """Establishes a scaling factor to best match a scale of the `spectrum` values.
+
+        Parameters
+        ----------
+        spectrum : SingleSpectrum
+            This spectrum's y-axis values will be treated as a reference. If `spectrum`
+            has its own scaling factor, it will be taken into account.
+        """
+        self.scaling = dw.find_scaling(spectrum.y, self.values)
+
+    def shift_to(self, spectrum: "SingleSpectrum") -> None:
+        """Establishes an offset factor to best match given `spectrum`.
+
+        Parameters
+        ----------
+        spectrum : SingleSpectrum
+            This spectrum will be treated as a reference. If `spectrum`
+            has its own offset factor, it will be taken into account.
+        """
+        self.offset = dw.find_offset(spectrum.x, spectrum.y, self.abscissa, self.values)
 
     def __len__(self):
         return len(self.abscissa)
-
-    def __bool__(self):
-        return self.abscissa.size != 0
 
 
 class Spectra(SingleSpectrum):
@@ -125,8 +161,10 @@ class Spectra(SingleSpectrum):
             self, genre, values, abscissa, width, fitting, scaling, offset, filenames
         )
 
-    def average(self, energies):
-        """A method for averaging spectra by population of conformers.
+    def average(self, energies: "tesliper.glassware.Energies") -> SingleSpectrum:
+        """A method for averaging spectra by population of conformers. If `scaling`
+        or `offset` attributes are `np.ndarray`s, they are averaged as well.
+
 
         Parameters
         ----------
@@ -137,9 +175,8 @@ class Spectra(SingleSpectrum):
 
         Returns
         -------
-        numpy.ndarray
-            2d numpy array where arr[0] is list of wavelengths/wave numbers
-            and arr[1] is list of corresponding averaged intensity values.
+        SingleSpectrum
+            Averaged spectrum.
         """
         populations = energies.populations
         energy_type = energies.genre
@@ -150,10 +187,78 @@ class Spectra(SingleSpectrum):
             self.abscissa,
             self.width,
             self.fitting,
-            self.scaling,
-            self.offset,
+            scaling=self.scaling,
+            offset=self.offset,
             filenames=self.filenames,
             averaged_by=energy_type,
         )
         logger.debug(f"{self.genre} spectrum averaged by {energy_type}.")
         return av_spec
+
+    def scale_to(
+        self,
+        spectrum: SingleSpectrum,
+        average_by: Optional["tesliper.glassware.Energies"] = None,
+    ) -> None:
+        """Establishes a scaling factor to best match a scale of the `spectrum` values.
+        An average spectrum is calculated prior to calculating the factor.
+        If `average_by` is given, it is used to average by population of each conformer.
+        Otherwise an arithmetic average of spectra is calculated, which may lead
+        to inaccurate results.
+
+        Parameters
+        ----------
+        spectrum : SingleSpectrum
+            This spectrum's y-axis values will be treated as a reference. If `spectrum`
+            has its own scaling factor, it will be taken into account.
+        average_by : Energies, optional
+            Energies object, used to calculate average spectrum prior to calculating
+            the factor. If not given, a simple arithmetic average of the spectra will
+            be calculated.
+        """
+        if average_by is not None:
+            averaged = self.average(energies=average_by)
+            averaged.scale_to(spectrum)
+            factor = averaged.scaling
+        else:
+            logger.warning(
+                "Trying to find optimal scaling factor for spectra, but no Energies "
+                "object given for averaging by population. Results may be inaccurate."
+            )
+            averaged = np.average(self.values, axis=0)
+            factor = dw.find_scaling(spectrum.y, averaged)
+        self.scaling = factor
+
+    def shift_to(
+        self,
+        spectrum: SingleSpectrum,
+        average_by: Optional["tesliper.glassware.Energies"] = None,
+    ) -> None:
+        """Establishes an offset factor to best match given `spectrum`.
+        An average spectrum is calculated prior to calculating the factor.
+        If `average_by` is given, it is used to average by population of each conformer.
+        Otherwise an arithmetic average of spectra is calculated, which may lead
+        to inaccurate results.
+
+        Parameters
+        ----------
+        spectrum : SingleSpectrum
+            This spectrum will be treated as a reference. If `spectrum`
+            has its own offset factor, it will be taken into account.
+        average_by : Energies, optional
+            Energies object, used to calculate average spectrum prior to calculating
+            the factor. If not given, a simple arithmetic average of the spectra will
+            be calculated.
+        """
+        if average_by is not None:
+            averaged = self.average(energies=average_by)
+            averaged.shift_to(spectrum)
+            factor = averaged.offset
+        else:
+            logger.warning(
+                "Trying to find optimal offset factor for spectra, but no Energies "
+                "object given for averaging by population. Results may be inaccurate."
+            )
+            averaged = np.average(self.values, axis=0)
+            factor = dw.find_offset(spectrum.x, spectrum.y, self.abscissa, averaged)
+        self.offset = factor

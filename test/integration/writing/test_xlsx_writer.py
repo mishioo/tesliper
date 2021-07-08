@@ -7,7 +7,7 @@ from tesliper import Energies
 from tesliper.writing.xlsx_writer import XlsxWriter
 from tesliper.glassware import SingleSpectrum, Spectra
 from tesliper.extraction import Soxhlet
-from tesliper.glassware import Molecules
+from tesliper.glassware import Conformers
 
 
 @pytest.fixture
@@ -24,7 +24,7 @@ def fixturesdir():
 def mols(filenames, fixturesdir):
     s = Soxhlet(fixturesdir)
     s.wanted_files = filenames
-    return Molecules(s.extract())
+    return Conformers(s.extract())
 
 
 @pytest.fixture
@@ -75,11 +75,11 @@ def test_energies(writer, mols):
     assert wb.sheetnames == ["Collective overview"] + [
         XlsxWriter._header[grn] for grn in Energies.associated_genres
     ]
-    ws = wb.get_sheet_by_name("Collective overview")
+    ws = wb["Collective overview"]
     assert len(list(ws.columns)) == 13
     assert len(list(ws.rows)) == 2 + len(list(mols.keys()))
     for grn in Energies.associated_genres:
-        ws = wb.get_sheet_by_name(XlsxWriter._header[grn])
+        ws = wb[XlsxWriter._header[grn]]
         assert len(list(ws.columns)) == 5
         assert len(list(ws.rows)) == 1 + len(list(mols.keys()))
 
@@ -95,11 +95,11 @@ def test_energies_with_corrections(writer, mols):
     assert wb.sheetnames == ["Collective overview"] + [
         XlsxWriter._header[grn] for grn in Energies.associated_genres
     ]
-    ws = wb.get_sheet_by_name("Collective overview")
+    ws = wb["Collective overview"]
     assert len(list(ws.columns)) == 11
     assert len(list(ws.rows)) == 2 + len(list(mols.keys()))
     for grn in Energies.associated_genres:
-        ws = wb.get_sheet_by_name(XlsxWriter._header[grn])
+        ws = wb[XlsxWriter._header[grn]]
         assert len(list(ws.columns)) == 5 + (grn != "scf")
         assert len(list(ws.rows)) == 1 + len(list(mols.keys()))
 
@@ -108,9 +108,10 @@ def test_bars(writer, mols, filenames):
     writer.bars(mols.arrayed("freq"), [mols.arrayed("iri")])
     assert writer.destination.exists()
     wb = oxl.load_workbook(writer.destination)
-    assert wb.sheetnames == filenames
-    for file in filenames:
-        ws = wb.get_sheet_by_name(file)
+    keys = [Path(f).stem for f in filenames]
+    assert wb.sheetnames == keys
+    for file in keys:
+        ws = wb[file]
         assert len(list(ws.columns)) == 2
         assert len(list(ws.rows)) == 1 + mols.arrayed("freq").values.shape[1]
 
@@ -119,7 +120,7 @@ def test_spectra(writer, mols, spectra):
     writer.spectra(spectra)
     assert writer.destination.exists()
     wb = oxl.load_workbook(writer.destination)
-    ws = wb.get_sheet_by_name(spectra.genre)
+    ws = wb[spectra.genre]
     assert len(list(ws.columns)) == 1 + spectra.filenames.size
     assert len(list(ws.rows)) == 1 + spectra.values.shape[1]
 
@@ -128,6 +129,44 @@ def test_single_spectrum(writer, mols, spc):
     writer.single_spectrum(spc)
     assert writer.destination.exists()
     wb = oxl.load_workbook(writer.destination)
-    ws = wb.get_sheet_by_name(f"{spc.genre}_{spc.averaged_by}")
+    ws = wb[f"{spc.genre}_{spc.averaged_by}"]
     assert len(list(ws.columns)) == 2
     assert len(list(ws.rows)) == 1 + spc.values.size
+
+
+@pytest.fixture
+def filenamestd():
+    return ["fal-td.out"]
+
+
+@pytest.fixture
+def molstd(filenamestd, fixturesdir):
+    s = Soxhlet(fixturesdir)
+    s.wanted_files = filenamestd
+    return Conformers(s.extract())
+
+
+def test_transitions_only_highest(writer, molstd, filenamestd):
+    trans, wave = molstd.arrayed("transitions"), molstd.arrayed("wavelen")
+    writer.transitions(trans, wave, only_highest=True)
+    assert writer.destination.exists()
+    wb = oxl.load_workbook(writer.destination)
+    keys = [Path(f).stem for f in filenamestd]
+    assert wb.sheetnames == keys
+    for file in keys:
+        ws = wb[file]
+        assert len(list(ws.columns)) == 5
+        assert len(list(ws.rows)) == 1 + trans.values.shape[1]
+
+
+def test_transitions_all(writer, molstd, filenamestd):
+    trans, wave = molstd.arrayed("transitions"), molstd.arrayed("wavelen")
+    writer.transitions(trans, wave, only_highest=False)
+    assert writer.destination.exists()
+    wb = oxl.load_workbook(writer.destination)
+    keys = [Path(f).stem for f in filenamestd]
+    assert wb.sheetnames == keys
+    for num, file in enumerate(keys):
+        ws = wb[file]
+        assert len(list(ws.columns)) == 5
+        assert len(list(ws.rows)) == 1 + trans.values[num].count()

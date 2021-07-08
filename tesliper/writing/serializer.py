@@ -1,14 +1,15 @@
-import zipfile
-from pathlib import Path
 import json
+import zipfile
 from json.decoder import JSONArray
 from json.scanner import py_make_scanner
-from typing import Union, List, Dict, Any
+from pathlib import Path
+from typing import Any, Dict, List, Union
 
-from ._writer import Writer
-from ..glassware import Molecules, Spectra, SingleSpectrum
+import tesliper  # absolute import to solve problem of circular imports
+
 from .. import datawork as dw
-import tesliper
+from ..glassware import Conformers, SingleSpectrum, Spectra
+from ._writer import Writer
 
 
 class ArchiveWriter(Writer):
@@ -18,7 +19,7 @@ class ArchiveWriter(Writer):
     .
     ├───arguments: {input_dir=str, output_dir=str, wanted_files=[str]}
     ├───parameters: {"vibra": {params}, "electr": {params}}
-    ├───molecules
+    ├───conformers
     │   ├───arguments: {"allow_data_inconsistency": bool}
     │   ├───filenames: [str]
     │   ├───kept: [bool]
@@ -56,7 +57,7 @@ class ArchiveWriter(Writer):
         with self:
             self._write_arguments(obj.input_dir, obj.output_dir, obj.wanted_files)
             self._write_parameters(obj.parameters)
-            self._write_molecules(obj.molecules)
+            self._write_molecules(obj.conformers)
             # self._write_experimental(tesliper.experimental)  # not supported yet
             for spc in obj.averaged.values():
                 self._write_averaged(spc)
@@ -73,9 +74,9 @@ class ArchiveWriter(Writer):
             handle.write(
                 self.jsonencode(
                     {
-                        "input_dir": str(input_dir),
-                        "output_dir": str(output_dir),
-                        "wanted_files": wanted_files,
+                        "input_dir": str(input_dir) if input_dir else None,
+                        "output_dir": str(output_dir) if output_dir else None,
+                        "wanted_files": list(wanted_files) if wanted_files else None,
                     }
                 )
             )
@@ -83,13 +84,13 @@ class ArchiveWriter(Writer):
     def _write_parameters(self, parameters: dict):
         # TODO: Implement more universal way of serializing fitting
         #       this won't deserialize custom fitting functions
-        to_write = parameters.copy()
-        to_write["vibra"]["fitting"] = to_write["vibra"]["fitting"].__name__
-        to_write["electr"]["fitting"] = to_write["electr"]["fitting"].__name__
+        to_write = {key: params.copy() for key, params in parameters.items()}
+        for params in to_write.values():
+            params["fitting"] = params["fitting"].__name__
         with self.root.open("parameters.json", mode="w") as handle:
             handle.write(self.jsonencode(to_write))
 
-    def _write_molecules(self, molecules: Molecules):
+    def _write_molecules(self, molecules: Conformers):
         self._write_molecules_arguments(
             allow_data_inconsistency=molecules.allow_data_inconsistency
         )
@@ -99,21 +100,21 @@ class ArchiveWriter(Writer):
             self._write_mol(filename=filename, mol=molecules[filename])
 
     def _write_molecules_arguments(self, allow_data_inconsistency: bool):
-        with self.root.open("molecules/arguments.json", mode="w") as handle:
+        with self.root.open("conformers/arguments.json", mode="w") as handle:
             handle.write(
                 self.jsonencode({"allow_data_inconsistency": allow_data_inconsistency})
             )
 
     def _write_filenames(self, filenames: List[str]):
-        with self.root.open("molecules/filenames.json", mode="w") as handle:
+        with self.root.open("conformers/filenames.json", mode="w") as handle:
             handle.write(self.jsonencode(filenames))
 
     def _write_mol(self, filename: str, mol: dict):
-        with self.root.open(f"molecules/data/{filename}.json", mode="w") as handle:
+        with self.root.open(f"conformers/data/{filename}.json", mode="w") as handle:
             handle.write(self.jsonencode(mol))
 
     def _write_kept(self, kept: List[bool]):
-        with self.root.open("molecules/kept.json", mode="w") as handle:
+        with self.root.open("conformers/kept.json", mode="w") as handle:
             handle.write(self.jsonencode(kept))
 
     def _write_experimental(self, spectra: Dict[str, SingleSpectrum]):
@@ -258,18 +259,20 @@ class ArchiveLoader:
         with self:
             tslr = tesliper.Tesliper(**self._load("arguments.json"))
             tslr.parameters = self._load_parameters()
-            filenames = self._load("molecules/filenames.json")
+            filenames = self._load("conformers/filenames.json")
             mols = (
                 (
                     name,
                     self.jsondecode(
-                        self.root.read(f"molecules/data/{name}.json"),
+                        self.root.read(f"conformers/data/{name}.json"),
                         cls=ConformerDecoder,
                     ),
                 )
                 for name in filenames
             )  # iterator producing key-value pairs
-            tslr.molecules = Molecules(mols, **self._load("molecules/arguments.json"))
+            tslr.conformers = Conformers(
+                mols, **self._load("conformers/arguments.json")
+            )
             for file in self.root.namelist():
                 if "experimental" in file:
                     ...  # not implemented yet

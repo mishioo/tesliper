@@ -1,5 +1,4 @@
 from .checktree import BoxVar, CheckTree, ConformersOverview, EnergiesView
-from .popups import BarsPopup, ExportPopup
 from .helpers import (
     Feedback,
     MaxLevelFilter,
@@ -9,3 +8,4 @@ from .helpers import (
     TextHandler,
     WgtStateChanger,
 )
+from .popups import BarsPopup, ExportPopup

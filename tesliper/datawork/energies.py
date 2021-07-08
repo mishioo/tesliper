@@ -1,7 +1,7 @@
 # IMPORTS
 import logging as lgg
-import numpy as np
 
+import numpy as np
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -10,29 +10,28 @@ logger.setLevel(lgg.DEBUG)
 
 # GLOBAL VARIABLES
 Boltzmann = 0.0019872041  # kcal/(mol*K)
+HARTREE_TO_KCAL_PER_MOL = 627.5095
 
 
 # MODULE FUNCTIONS
 def calculate_deltas(energies):
-    """Calculates energy difference between each conformer and lowest energy
-    conformer. Converts energy to kcal/mol.
+    """Calculates energy difference between each conformer and lowest energy conformer.
 
     Parameters
     ----------
-    energies : numpy.ndarray or iterable
-        List of conformers energies in Hartree units.
+    energies : numpy.ndarray or iterable of float
+        List of conformers energies.
 
     Returns
     -------
     numpy.ndarray
-        List of energy differences from lowest energy in kcal/mol."""
+        List of energy differences from lowest energy."""
     array = np.asanyarray(energies, dtype=float)
     if not array.shape:
         raise TypeError(f"Expected iterable, not '{type(energies)}'")
     # need to reshape if single value given instead of sequence
     try:
-        return (array - array.min()) * 627.5095
-        # convert hartree to kcal/mol by multiplying by 627.5095
+        return array - array.min()
     except ValueError:
         # if no values, return empty array.
         return np.array([])
@@ -53,7 +52,7 @@ def calculate_min_factors(energies, t=298.15):
     Parameters
     ----------
     energies : numpy.ndarray or iterable
-        List of conformers energies in Hartree units.
+        List of conformers energies in kcal/mol units.
     t : float, optional
         Temperature of the system in K, defaults to 298,15 K.
 
@@ -72,7 +71,7 @@ def calculate_populations(energies, t=298.15):
     Parameters
     ----------
     energies : numpy.ndarray or iterable
-        List of conformers energies in Hartree units.
+        List of conformers energies in kcal/mol units.
     t : float, optional
         Temperature of the system in K, defaults to 298,15 K.
 

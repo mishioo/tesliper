@@ -1,18 +1,17 @@
 # IMPORTS
+import logging as lgg
 from pathlib import Path
 from string import Template
-from typing import Union, Iterable, Dict, TextIO, Any
+from typing import Any, Dict, Iterable, TextIO, Union
 
-import logging as lgg
-
-from ..glassware.spectra import SingleSpectrum, Spectra
 from ..glassware.arrays import (
+    Bars,
     DataArray,
     Energies,
-    Bars,
-    GroundStateBars,
     ExcitedStateBars,
+    GroundStateBars,
 )
+from ..glassware.spectra import SingleSpectrum, Spectra
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -66,7 +65,7 @@ class Writer:
         roa1="ROA1",
         raman1="Raman1",
         ex_en="Excit. Energy",
-        wave="Wavelenght",
+        wavelen="Wavelength",
         vrot="Rot.(velo)",
         lrot="Rot. (len)",
         vosc="Osc.(velo)",
@@ -100,7 +99,7 @@ class Writer:
         scf="{:> 13.4f}",
         ex_en="{:> 13.4f}",
         freq="{:> 10.2f}",
-        wave="{:> 10.2f}",
+        wavelen="{:> 10.2f}",
         mass="{:> 11.4f}",
         frc="{:> 10.4f}",
         raman="{:> 11.4f}",
@@ -152,7 +151,7 @@ class Writer:
         roa1="0.000",
         raman1="0.000",
         ex_en="0.0000",
-        wave="0.0000",
+        wavelen="0.0000",
         vrot="0.0000",
         lrot="0.0000",
         vosc="0.0000",

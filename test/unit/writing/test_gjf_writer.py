@@ -21,12 +21,8 @@ def test__format_coordinates(atoms, coords):
     assert all([len(output[0]) == len(output[n]) for n in range(len(output))])
 
 
-@pytest.fixture
-def gjfwriter():
-    return GjfWriter(destination="")
-
-
-def test_writer_init(gjfwriter):
+def test_writer_init():
+    gjfwriter = GjfWriter(destination="")
     assert gjfwriter.destination == Path("")
     assert gjfwriter.mode == "x"
     assert gjfwriter.link0 == {}
@@ -37,10 +33,10 @@ def test_writer_init(gjfwriter):
 
 
 @given(st.text())
-def test_link0_unknown(gjfwriter, key):
-    assume(key.lower() not in gjfwriter._link0_commands)
+def test_link0_unknown(key):
+    assume(key.lower() not in GjfWriter._link0_commands)
     with pytest.raises(ValueError):
-        gjfwriter.link0 = {key: ""}
+        GjfWriter(destination="", link0={key: ""})
 
 
 @pytest.mark.xfail(reason="To be created")
@@ -49,29 +45,29 @@ def test_link0_unknown(gjfwriter, key):
         st.one_of(*[st.just(k) for k in GjfWriter._link0_commands]), st.text()
     )
 )
-def test_link0_known(gjfwriter, dict):
+def test_link0_known(dict):
     pytest.fail("To be created")
 
 
 @given(st.text())
-def test_route_str_not_startswith_hash(gjfwriter, commands):
+def test_route_str_not_startswith_hash(commands):
     assume(not commands.strip().startswith("#"))
-    gjfwriter.route = commands
+    gjfwriter = GjfWriter(destination="", route=commands)
     assert gjfwriter.route == " ".join(["#"] + commands.split())
     assert gjfwriter._route == ["#"] + commands.split()
 
 
 @given(st.builds(lambda s: "#" + s, st.text()))
-def test_route_str_startswith_hash(gjfwriter, commands):
-    gjfwriter.route = commands
+def test_route_str_startswith_hash(commands):
+    gjfwriter = GjfWriter(destination="", route=commands)
     assert gjfwriter.route == " ".join(commands.split())
     assert gjfwriter._route == commands.split()
 
 
 @given(st.lists(st.text()))
-def test_route_list_not_startswith_hash(gjfwriter, commands):
+def test_route_list_not_startswith_hash(commands):
     assume(not (commands[0] if commands else "").strip().startswith("#"))
-    gjfwriter.route = commands
+    gjfwriter = GjfWriter(destination="", route=commands)
     assert gjfwriter.route == " ".join(["#"] + commands)
     assert gjfwriter._route == ["#"] + commands
 
@@ -86,19 +82,19 @@ st_not_st = st.one_of(
 
 
 @given(st_not_st)
-def test_route_wrong_type(gjfwriter, commands):
+def test_route_wrong_type(commands):
     with pytest.raises(TypeError):
-        gjfwriter.route = commands
+        GjfWriter(destination="", route=commands)
 
 
 @given(st.lists(st_not_st, min_size=1))
-def test_route_sequence_wrong_type(gjfwriter, commands):
+def test_route_sequence_wrong_type(commands):
     with pytest.raises(TypeError):
-        gjfwriter.route = commands
+        GjfWriter(destination="", route=commands)
 
 
 @pytest.mark.parametrize("commands", ["", [], tuple(), set(), {}])
-def test_route_empty(gjfwriter, commands):
-    gjfwriter.route = commands
+def test_route_empty(commands):
+    gjfwriter = GjfWriter(destination="", route=commands)
     assert gjfwriter.route == "#"
     assert gjfwriter._route == ["#"]

@@ -4,6 +4,7 @@ import pytest
 import numpy as np
 
 import tesliper.glassware.arrays as ar
+import tesliper.datawork as dw
 from tesliper.exceptions import InconsistentDataError
 
 
@@ -25,7 +26,7 @@ def test_filenames_array_values():
 
 def test_dtype():
     arr = ar.FloatArray(genre="bla", filenames=["f1", "f2", "f3"], values=[3, 12, 15])
-    assert arr.values.dtype == np.float
+    assert arr.values.dtype == np.float64
 
 
 @pytest.fixture
@@ -101,38 +102,45 @@ def values_mock(monkeypatch):
 
 
 @pytest.fixture
+def convert_mock(monkeypatch):
+    mocked = mock.PropertyMock(return_value=[3, 12, 15])
+    monkeypatch.setattr(ar.Energies, "as_kcal_per_mol", mocked)
+    return mocked
+
+
+@pytest.fixture
 def en():
     return ar.Energies(
         genre="bla", filenames=["f1", "f2", "f3"], values=[3, 12, 15], t=10
     )
 
 
-def test_deltas(en, monkeypatch, filenames_mock, values_mock):
+def test_deltas(en, monkeypatch, filenames_mock, convert_mock):
     monkeypatch.setattr(ar.dw, "calculate_deltas", mock.Mock())
     _ = en.deltas
-    values_mock.assert_called()
-    ar.dw.calculate_deltas.assert_called_with(en.values)
+    convert_mock.assert_called()
+    ar.dw.calculate_deltas.assert_called_with(en.as_kcal_per_mol)
 
 
-def test_min_factors(en, monkeypatch, filenames_mock, values_mock):
+def test_min_factors(en, monkeypatch, filenames_mock, convert_mock):
     monkeypatch.setattr(ar.dw, "calculate_min_factors", mock.Mock())
     _ = en.min_factors
-    values_mock.assert_called()
-    ar.dw.calculate_min_factors.assert_called_with(en.values, en.t)
+    convert_mock.assert_called()
+    ar.dw.calculate_min_factors.assert_called_with(en.as_kcal_per_mol, en.t)
 
 
-def test_populations(en, monkeypatch, filenames_mock, values_mock):
+def test_populations(en, monkeypatch, filenames_mock, convert_mock):
     monkeypatch.setattr(ar.dw, "calculate_populations", mock.Mock())
     _ = en.populations
-    values_mock.assert_called()
-    ar.dw.calculate_populations.assert_called_with(en.values, en.t)
+    convert_mock.assert_called()
+    ar.dw.calculate_populations.assert_called_with(en.as_kcal_per_mol, en.t)
 
 
-def test_calculate_populations(en, monkeypatch, filenames_mock, values_mock):
+def test_calculate_populations(en, monkeypatch, filenames_mock, convert_mock):
     monkeypatch.setattr(ar.dw, "calculate_populations", mock.Mock())
     en.calculate_populations(20)
-    values_mock.assert_called()
-    ar.dw.calculate_populations.assert_called_with(en.values, 20)
+    convert_mock.assert_called()
+    ar.dw.calculate_populations.assert_called_with(en.as_kcal_per_mol, 20)
 
 
 @pytest.fixture
@@ -239,10 +247,13 @@ def test_molecule_values_varying_sizes_inconsistency_allowed(geom):
         [[30, 40, 60], [40, 60, 70], [50, 80, 10]],
         [[35, 45, 65], [45, 65, 75]],
     ]
-    assert geom.values.tolist() == [
-        [[30, 40, 60], [40, 60, 70], [50, 80, 10]],
-        [[35, 45, 65], [45, 65, 75], [0, 0, 0]],
-    ]
+    np.testing.assert_array_equal(
+        geom.values,
+        [
+            [[30, 40, 60], [40, 60, 70], [50, 80, 10]],
+            [[35, 45, 65], [45, 65, 75], [0, 0, 0]],
+        ],
+    )
 
 
 @pytest.mark.xfail(
@@ -265,3 +276,30 @@ def test_molecule_atoms_too_short(geom):
 def test_molecule_atoms_not_matching_num_of_conformers(geom):
     with pytest.raises(ValueError):
         geom.molecule_atoms = [[2, 2, 2]] * 3
+
+
+@pytest.fixture(scope="module")
+def transitions_values():
+    return [[[(11, 21, 0.5), (12, 22, -0.6)], [(31, 32, 0.9)]]]
+
+
+@pytest.fixture
+def transitions(transitions_values):
+    return ar.Transitions(
+        genre="transitions", filenames=["one"], values=transitions_values,
+    )
+
+
+def test_transitions_unpack(transitions_values):
+    ground, excited, coefs = ar.Transitions.unpack_values(transitions_values)
+    assert ground == [[[11, 12], [31]]]
+    assert excited == [[[21, 22], [32]]]
+    assert coefs == [[[0.5, -0.6], [0.9]]]
+
+
+def test_transitions_highest(transitions):
+    g, e, v, c = transitions.highest_contribution
+    np.testing.assert_array_equal(v, [[-0.6, 0.9]])
+    np.testing.assert_array_equal(c, [[2 * (-0.6) ** 2, 2 * 0.9 ** 2]])
+    np.testing.assert_array_equal(e, [[22, 32]])
+    np.testing.assert_array_equal(g, [[12, 31]])

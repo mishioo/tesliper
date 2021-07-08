@@ -28,8 +28,8 @@ def molecules():
 @pytest.fixture
 def teslpier(tmp_path, molecules):
     t = Tesliper(output_dir=tmp_path)
-    t.molecules.update(molecules)
-    t.molecules.kept = [0, 1]
+    t.conformers.update(molecules)
+    t.conformers.kept = [0, 1]
     return t
 
 
@@ -38,9 +38,9 @@ def test_json_serialization(teslpier, molecules, tmp_path):
     path = tmp_path / file
     teslpier.serialize(file)
     newt = Tesliper.load(path)
-    assert newt.molecules == molecules
-    assert newt.molecules.kept == teslpier.molecules.kept
+    assert newt.conformers == molecules
+    assert newt.conformers.kept == teslpier.conformers.kept
     assert (
-        newt.molecules.allow_data_inconsistency
-        == teslpier.molecules.allow_data_inconsistency
+        newt.conformers.allow_data_inconsistency
+        == teslpier.conformers.allow_data_inconsistency
     )

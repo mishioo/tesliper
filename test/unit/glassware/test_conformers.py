@@ -1,21 +1,22 @@
 from tesliper import glassware as gw
-from tesliper.glassware import molecules as ml
+from tesliper.exceptions import TesliperError
+from tesliper.glassware import conformers as cf
 import pytest
 
 
 @pytest.fixture
 def empty():
-    return ml.Molecules()
+    return cf.Conformers()
 
 
 @pytest.fixture
 def single():
-    return ml.Molecules(bla={"data": [1, 2, 3, 4]})
+    return cf.Conformers(bla={"data": [1, 2, 3, 4]})
 
 
 @pytest.fixture
-def full():
-    base = {
+def base():
+    return {
         "normal_termination": True,
         "version": "Gaussian 09, Revision E.01",
         "command": "# opt freq=vcd B3LYP/Def2TZVP",
@@ -41,22 +42,27 @@ def full():
         "zpe": -200,
         "scf": 0,
     }
-    noopt = {**base, "zpe": -210, "optimization_completed": False}
-    imag = {**base, "zpe": -220, "freq": [-1, 2, 3, 4, 5]}
-    stoich = {**base, "zpe": -230, "stoichiometry": "CH3F_other"}
-    term = {**base, "zpe": -240, "normal_termination": False}
-    size = {**base, "zpe": -250, "mass": [1, 2, 3]}
+
+
+@pytest.fixture
+def full(base):
     incom = {**base, "zpe": -260}
     del incom["scf"]
-    return ml.Molecules(
+    return cf.Conformers(
         base=base,
-        noopt=noopt,
-        imag=imag,
-        stoich=stoich,
-        term=term,
-        size=size,
+        noopt={**base, "zpe": -210, "optimization_completed": False},
+        imag={**base, "zpe": -220, "freq": [-1, 2, 3, 4, 5]},
+        stoich={**base, "zpe": -230, "stoichiometry": "CH3F_other"},
+        term={**base, "zpe": -240, "normal_termination": False},
+        size={**base, "zpe": -250, "mass": [1, 2, 3]},
         incom=incom,
     )
+
+
+@pytest.fixture
+def jagged(full):
+    full["size"]["excess"] = 1
+    return full
 
 
 def test_instantiation(empty, single):
@@ -207,6 +213,14 @@ def test_arrayd_empty(full):
     assert 298.15 == gib.t
 
 
+def test_arrayed_empty_spectral(full):
+    arr = full.arrayed("ramact")
+    assert [] == arr.filenames.tolist()
+    assert [] == arr.values.tolist()
+    assert [] == arr.frequencies.tolist()
+    assert 298.15 == arr.t
+
+
 def test_arrayed_types(full):
     zpe = full.arrayed("zpe")
     assert gw.Energies is type(zpe)
@@ -233,6 +247,17 @@ def test_arrayed_trimmed(full):
     arr = full.arrayed("zpe")
     assert arr.values.shape == (len(full) - 1,)
     assert list(arr.values) == [-200, -210, -230, -240, -250, -260]
+
+
+def test_arrayed_unknown(full):
+    with pytest.raises(ValueError):
+        full.arrayed("nohave")
+
+
+def test_arrayed_no_data(full):
+    del full["incom"]["wavelen"]
+    with pytest.raises(TesliperError):
+        full.arrayed("vdip")
 
 
 def test_trim_not_optimized(full):
@@ -321,7 +346,7 @@ def test_trim_incomplete_wanted(full):
 
 
 def test_trim_incomplete_strict(full):
-    m = gw.Molecules(
+    m = gw.Conformers(
         one={"a": 1, "b": 2}, two={"a": 1, "c": 3}, three={"a": 1, "d": 3},
     )
     assert [True, True, True] == m.kept
@@ -414,7 +439,141 @@ def test_kept(empty, full):
     assert [] == empty.kept
 
 
+def test_by_index(full):
+    for i, n in enumerate(full.filenames):
+        assert full.by_index(i) is full[n]
+
+
+def test_index_key(full):
+    for i in range(len(full)):
+        assert full.index_of(full.key_of(i)) == i
+
+
+@pytest.mark.parametrize(
+    "genre,output",
+    [("freq", True), ("scf", True), ("excess", True), ("nohave", False)],
+)
+def test_has_genre(jagged, genre, output):
+    assert jagged.has_genre(genre) == output
+
+
+@pytest.mark.parametrize(
+    "genre,output",
+    [("freq", True), ("scf", True), ("excess", False), ("nohave", False)],
+)
+def test_has_genre_trimmed(jagged, genre, output):
+    jagged.kept = list(range(4))
+    assert jagged.has_genre(genre, ignore_trimming=False) == output
+
+
+@pytest.mark.parametrize(
+    "genre,output",
+    [("freq", True), ("scf", True), ("excess", True), ("nohave", False)],
+)
+def test_has_genre_untrimmed(jagged, genre, output):
+    jagged.kept = list(range(4))
+    assert jagged.has_genre(genre, ignore_trimming=True) == output
+
+
+@pytest.mark.parametrize(
+    "genre,output",
+    [
+        (["freq", "nohave"], True),
+        (["scf", "nohave"], True),
+        (["excess", "nohave"], True),
+        (["nohave", "alsonohave"], False),
+    ],
+)
+def test_has_any_genre(jagged, genre, output):
+    assert jagged.has_any_genre(genre) == output
+
+
+@pytest.mark.parametrize(
+    "genre,output",
+    [
+        (["freq", "nohave"], True),
+        (["scf", "nohave"], True),
+        (["excess", "nohave"], False),
+        (["nohave", "alsonohave"], False),
+    ],
+)
+def test_has_any_genre_trimmed(jagged, genre, output):
+    jagged.kept = list(range(4))
+    assert jagged.has_any_genre(genre, ignore_trimming=False) == output
+
+
+@pytest.mark.parametrize(
+    "genre,output",
+    [
+        (["freq", "nohave"], True),
+        (["scf", "nohave"], True),
+        (["excess", "nohave"], True),
+        (["nohave", "alsonohave"], False),
+    ],
+)
+def test_has_any_genre_untrimmed(jagged, genre, output):
+    jagged.kept = list(range(4))
+    assert jagged.has_any_genre(genre, ignore_trimming=True) == output
+
+
+@pytest.mark.parametrize(
+    "genre,output",
+    [
+        (["freq", "iri"], True),
+        (["scf", "iri"], False),
+        (["excess", "iri"], False),
+        (["nohave", "iri"], False),
+    ],
+)
+def test_all_have_genres(jagged, genre, output):
+    assert jagged.all_have_genres(genre) == output
+
+
+@pytest.mark.parametrize(
+    "genre,output",
+    [
+        (["freq", "iri"], True),
+        (["scf", "iri"], True),
+        (["excess", "iri"], False),
+        (["nohave", "iri"], False),
+    ],
+)
+def test_all_have_genres_trimmed(jagged, genre, output):
+    jagged.kept = list(range(4))
+    assert jagged.all_have_genres(genre, ignore_trimming=False) == output
+
+
+@pytest.mark.parametrize(
+    "genre,output",
+    [
+        (["freq", "iri"], True),
+        (["scf", "iri"], False),
+        (["excess", "iri"], False),
+        (["nohave", "iri"], False),
+    ],
+)
+def test_all_have_genres_untrimmed(jagged, genre, output):
+    jagged.kept = list(range(4))
+    assert jagged.all_have_genres(genre, ignore_trimming=True) == output
+
+
 def test_inconsistency_allowed_context(single):
     with single.inconsistency_allowed:
         assert single.allow_data_inconsistency
     assert not single.allow_data_inconsistency
+
+
+def test_trimmed_to_context(full):
+    with full.trimmed_to("imag stoich term".split(" ")):
+        assert [False, False, True, True, True, False, False] == full.kept
+    assert [True] * 7 == full.kept
+
+
+def test_untrimmed_context(full):
+    full.kept = [False, False, True, True, True, False, False]
+    with full.untrimmed:
+        assert [True] * 7 == full.kept
+    assert full.kept == [False, False, True, True, True, False, False]
+
+
+# TODO: add tests for View objects

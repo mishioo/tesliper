@@ -4,6 +4,7 @@ from unittest import mock
 from tesliper.exceptions import InconsistentDataError
 import tesliper.glassware.array_base as ab
 import pytest
+import numpy as np
 
 from hypothesis import given, strategies as st
 
@@ -51,6 +52,125 @@ def test_longest_subsequences_str(values, lengths):
 )
 def test_find_best_shape(values, lengths):
     assert ab.find_best_shape(values) == lengths
+
+
+@pytest.mark.parametrize(
+    "values,depth,flatted",
+    [
+        ([[1, 2], [3]], 2, [1, 2, 3]),
+        ([[1, 2], []], 2, [1, 2]),
+        ([[1, [2]], [3]], 2, [1, [2], 3]),
+        ([[1, [2]], [3]], None, [1, 2, 3]),
+        ([[[[1]]]], 1, [[[[1]]]]),  # ndim - 3
+        ([[[[1]]]], 2, [[[1]]]),  # ndim - 2
+        ([[[[1]]]], 3, [[1]]),  # ndim - 1
+        ([[[[1]]]], 4, [1]),  # ndim
+    ],
+)
+def test_flatten(values, depth, flatted):
+    assert list(ab.flatten(values, depth)) == flatted
+
+
+@pytest.mark.parametrize(
+    "values,masked",
+    [
+        ([], []),
+        ([1], [1]),
+        ([[1, 2], [3]], [[1, 2], [3, 0]]),
+        ([[1, 2], []], [[1, 2], [0, 0]]),
+        ([[1, 2], [3], [4, 5, 6]], [[1, 2, 0], [3, 0, 0], [4, 5, 6]]),
+        ([[[1, 2], [3]]], [[[1, 2], [3, 0]]]),
+        ([[[1, 2], []]], [[[1, 2], [0, 0]]]),
+        (
+            [[[1, 2], [3]], [[1, 2, 3]]],
+            [[[1, 2, 0], [3, 0, 0]], [[1, 2, 3], [0, 0, 0]]],
+        ),
+        (
+            [[[[], [1, 2]]], [[[]], [[3]]]],
+            [
+                [[[0, 0], [1, 2]], [[0, 0], [0, 0]]],
+                [[[0, 0], [0, 0]], [[3, 0], [0, 0]]],
+            ],
+        ),
+    ],
+)
+def test_to_masked(values, masked):
+    masked = np.array(masked)
+    masked = np.ma.array(masked, mask=(masked == 0))
+    array = ab.to_masked(values)
+    np.testing.assert_array_equal(array, masked)
+    np.testing.assert_array_equal(array.mask, masked.mask)
+
+
+def test_to_masked_inconsistent_dims():
+    with pytest.raises(ValueError):
+        ab.to_masked([[1], 1])
+
+
+@pytest.mark.parametrize(
+    "values,mask",
+    [
+        ([], []),
+        ([1], [1]),
+        ([[1, 2], [3]], [[1, 1], [1, 0]]),
+        ([[1, 2], []], [[1, 1], [0, 0]]),
+        ([[1, 2], [3], [4, 5, 6]], [[1, 1, 0], [1, 0, 0], [1, 1, 1]]),
+        ([[[1, 2], [3]]], [[[1, 1], [1, 0]]]),
+        ([[[1, 2], []]], [[[1, 1], [0, 0]]]),
+        (
+            [[[1, 2], [3]], [[1, 2, 3]]],
+            [[[1, 1, 0], [1, 0, 0]], [[1, 1, 1], [0, 0, 0]]],
+        ),
+        (
+            [[[[], [1, 2]]], [[[]], [[3]]]],
+            [
+                [[[0, 0], [1, 2]], [[0, 0], [0, 0]]],
+                [[[0, 0], [0, 0]], [[1, 0], [0, 0]]],
+            ],
+        ),
+    ],
+)
+def test__mask(values, mask):
+    mask = np.array(mask, dtype=bool)
+    values = ab._mask(values, mask.shape)
+    np.testing.assert_array_equal(values, mask)
+
+
+@pytest.mark.xfail
+def test__mask_shape_more_dims():
+    shape = (1, 1, 1)
+    mask = ab._mask([[1]], shape)
+    assert mask.shape == shape
+
+
+def test__mask_shape_less_dims():
+    shape = (1, 1)
+    mask = ab._mask([[[1]]], shape)
+    assert mask.shape == shape
+
+
+@pytest.mark.parametrize("shape", [(1, 2), (2, 1), (2, 2)])
+def test__mask_shape_bigger(shape):
+    mask = ab._mask([[1]], shape)
+    assert mask.shape == shape
+
+
+@pytest.mark.xfail
+@pytest.mark.parametrize("shape", [(1, 2), (2, 1), (2, 2)])
+def test__mask_shape_smaller(shape):
+    mask = ab._mask([[1, 1], [1, 1]], shape)
+    assert mask.shape == shape
+
+
+def test_mask():
+    values = mock.Mock()
+    shape = mock.Mock()
+    with mock.patch(
+        "tesliper.glassware.array_base.find_best_shape", return_value=shape
+    ), mock.patch("tesliper.glassware.array_base._mask"):
+        ab.mask(values)
+        ab.find_best_shape.assert_called_with(values)
+        ab._mask.assert_called_with(values, shape)
 
 
 @pytest.fixture
@@ -204,40 +324,13 @@ def test_array_property_check_input_inconsistent_allowed(
     monkeypatch, class_array_check_x
 ):
     pad_mock = mock.Mock(return_value=[[1, 2], [3, 0]])
-    monkeypatch.setattr(ab.ArrayProperty, "pad", pad_mock)
+    monkeypatch.setattr(ab, "to_masked", pad_mock)
     arr = class_array_check_x()
     arr.x = [1, 2]
     arr.allow_data_inconsistency = True
     out = class_array_check_x.arr.check_input(arr, [[1, 2], [3]])
-    pad_mock.assert_called_with([[1, 2], [3]])
+    pad_mock.assert_called_with([[1, 2], [3]], dtype=int)
     assert out == [[1, 2], [3, 0]]
-
-
-@pytest.mark.parametrize(
-    "values,padded",
-    [
-        ([[1, 2], [3]], [[1, 2], [3, 0]]),
-        ([[1, 2], []], [[1, 2], [0, 0]]),
-        ([[1, 2], [3], [4, 5, 6]], [[1, 2, 0], [3, 0, 0], [4, 5, 6]]),
-    ],
-)
-def test_array_property_pad_two_dim(class_array, values, padded):
-    assert class_array.arr.pad(values).tolist() == padded
-
-
-@pytest.mark.parametrize(
-    "values,padded",
-    [
-        ([[[1, 2], [3]]], [[[1, 2], [3, 0]]]),
-        ([[[1, 2], []]], [[[1, 2], [0, 0]]]),
-        (
-            [[[1, 2], [3]], [[1, 2, 3]]],
-            [[[1, 2, 0], [3, 0, 0]], [[1, 2, 3], [0, 0, 0]]],
-        ),
-    ],
-)
-def test_array_property_pad_three_dim(class_array, values, padded):
-    assert class_array.arr.pad(values).tolist() == padded
 
 
 def test_array_property_decorator_with_dtype():
@@ -303,7 +396,7 @@ def mock_check_input(monkeypatch):
     )
 
 
-@pytest.fixture(params=(int, float, str))
+@pytest.fixture(params=(int, float, str), scope="module")
 def class_collapsable_array(request):
     class Cls:
         arr = ab.CollapsibleArrayProperty(dtype=request.param)
@@ -311,74 +404,103 @@ def class_collapsable_array(request):
     return Cls
 
 
-@pytest.fixture
-def instance():
+@pytest.fixture(params=(int, float, str), scope="module")
+def class_strict_collapsable_array(request):
+    class Cls:
+        arr = ab.CollapsibleArrayProperty(dtype=request.param, strict=True)
+
+    return Cls
+
+
+@pytest.fixture(scope="module")
+def instance_not_adi():
     return mock.Mock(allow_data_inconsistency=False)
+
+
+@pytest.fixture(scope="module")
+def instance_adi():
+    return mock.Mock(allow_data_inconsistency=True)
 
 
 @pytest.mark.usefixtures("mock_check_input")
 @given(st.data())
-def test_collapsable_single_value(class_collapsable_array, instance, data):
+def test_collapsable_single_value(class_collapsable_array, instance_not_adi, data):
     value = data.draw(single_value[class_collapsable_array.arr.dtype])
-    assert class_collapsable_array.arr.check_input(instance, value).tolist() == [value]
+    assert class_collapsable_array.arr.check_input(
+        instance_not_adi, value
+    ).tolist() == [value]
     ab.ArrayProperty.check_input.assert_not_called()
 
 
 @pytest.mark.usefixtures("mock_check_input")
 @given(st.data(), st.integers(min_value=1, max_value=10))
-def test_collapsable_list_of_identical(class_collapsable_array, instance, data, number):
+def test_collapsable_list_of_identical(
+    class_collapsable_array, instance_not_adi, data, number
+):
     value = data.draw(single_value[class_collapsable_array.arr.dtype])
     arr = [value] * number
-    assert class_collapsable_array.arr.check_input(instance, arr).tolist() == [value]
+    assert class_collapsable_array.arr.check_input(instance_not_adi, arr).tolist() == [
+        value
+    ]
     ab.ArrayProperty.check_input.assert_called()
 
 
 @pytest.mark.usefixtures("mock_check_input")
 @given(st.data())
-def test_collapsable_list_of_unique(class_collapsable_array, instance, data):
-    values = data.draw(list_of_unique[class_collapsable_array.arr.dtype])
+def test_strict_collapsable_list_of_unique(
+    class_strict_collapsable_array, instance_not_adi, data
+):
+    values = data.draw(list_of_unique[class_strict_collapsable_array.arr.dtype])
     with pytest.raises(InconsistentDataError):
-        class_collapsable_array.arr.check_input(instance, values)
+        class_strict_collapsable_array.arr.check_input(instance_not_adi, values)
 
 
 @pytest.mark.usefixtures("mock_check_input")
 @given(st.data())
-def test_collapsable_list_of_unique_allowed(class_collapsable_array, instance, data):
+def test_collapsable_list_of_unique_allowed(
+    class_collapsable_array, instance_adi, data
+):
     values = data.draw(list_of_unique[class_collapsable_array.arr.dtype])
-    instance.allow_data_inconsistency = True
-    assert class_collapsable_array.arr.check_input(instance, values).tolist() == values
+    assert (
+        class_collapsable_array.arr.check_input(instance_adi, values).tolist() == values
+    )
 
 
 @pytest.mark.usefixtures("mock_check_input")
-def test_collapsable_empty_list(class_collapsable_array, instance):
-    assert class_collapsable_array.arr.check_input(instance, []).tolist() == []
+def test_collapsable_empty_list(class_collapsable_array, instance_not_adi):
+    assert class_collapsable_array.arr.check_input(instance_not_adi, []).tolist() == []
 
 
 @pytest.mark.usefixtures("mock_check_input")
 @given(st.data())
-def test_cllapsable_list_of_identical_lists(class_collapsable_array, instance, data):
+def test_cllapsable_list_of_identical_lists(
+    class_collapsable_array, instance_not_adi, data
+):
     values = data.draw(list_of_identical_lists[class_collapsable_array.arr.dtype])
-    assert class_collapsable_array.arr.check_input(instance, values).tolist() == [
-        values[0]
-    ]
+    assert class_collapsable_array.arr.check_input(
+        instance_not_adi, values
+    ).tolist() == [values[0]]
 
 
 @pytest.mark.usefixtures("mock_check_input")
 @given(st.data())
-def test_cllapsable_list_of_unique_lists(class_collapsable_array, instance, data):
-    values = data.draw(list_of_unique_lists[class_collapsable_array.arr.dtype])
+def test_strict_cllapsable_list_of_unique_lists(
+    class_strict_collapsable_array, instance_not_adi, data
+):
+    values = data.draw(list_of_unique_lists[class_strict_collapsable_array.arr.dtype])
     with pytest.raises(InconsistentDataError):
-        class_collapsable_array.arr.check_input(instance, values)
+        class_strict_collapsable_array.arr.check_input(instance_not_adi, values)
 
 
 @pytest.mark.usefixtures("mock_check_input")
 @given(st.data())
 def test_cllapsable_list_of_unique_lists_allowed(
-    class_collapsable_array, instance, data
+    class_collapsable_array, instance_adi, data
 ):
     values = data.draw(list_of_unique_lists[class_collapsable_array.arr.dtype])
-    instance.allow_data_inconsistency = True
-    assert class_collapsable_array.arr.check_input(instance, values).tolist() == values
+    assert (
+        class_collapsable_array.arr.check_input(instance_adi, values).tolist() == values
+    )
 
 
 @pytest.fixture

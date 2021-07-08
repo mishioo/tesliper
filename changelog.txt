@@ -1,3 +1,7 @@
+v. 0.8.0
+API:
+    - added support for handling and exporting electronic transitions
+    - added RMSD-based trimming of conformers with similar geometry
 v. 0.7.4
 API:
     - Tesliper's method 'average_spectra' returns reference to dict of averaged spectra

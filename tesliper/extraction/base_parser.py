@@ -1,6 +1,7 @@
+import re
 from abc import ABC, abstractmethod
 from typing import Callable, Iterable, Union
-import re
+
 from ..exceptions import InvalidStateError
 
 

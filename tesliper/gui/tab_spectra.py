@@ -1,19 +1,17 @@
 # IMPORTS
-import math
 import logging as lgg
+import math
 import queue
 import tkinter as tk
 import tkinter.ttk as ttk
 from tkinter.filedialog import askopenfilename
 
+from matplotlib import cm
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
-from matplotlib import cm
-
-from . import components as guicom
 
 from .. import tesliper as tesliper
-
+from . import components as guicom
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -299,7 +297,7 @@ class Spectra(ttk.Frame):
         tslr = self.parent.tslr
         self.visualize_settings()
         bar = tesliper.gw.default_spectra_bars[self.s_name.get()]
-        self.single_box["values"] = [k for k, v in tslr.molecules.items() if bar in v]
+        self.single_box["values"] = [k for k, v in tslr.conformers.items() if bar in v]
         self.reverse_ax.config(state="normal")
         self.load_exp.config(state="normal")
         self.show_exp.config(state="normal")
@@ -487,7 +485,7 @@ class Spectra(ttk.Frame):
     def single_draw(self, spectra_name, option):
         self._calculate_spectra(spectra_name, option, "single")
         bar_name = tesliper.gw.default_spectra_bars[spectra_name]
-        with self.parent.tslr.molecules.trimmed_to([option]):
+        with self.parent.tslr.conformers.trimmed_to([option]):
             bars = self.parent.tslr[bar_name]
         queue_ = self.parent.thread.queue
         self._show_spectra(queue_, bars=bars)

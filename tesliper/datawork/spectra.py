@@ -1,12 +1,17 @@
 # IMPORTS
 import logging as lgg
 import math
-import numpy as np
+from typing import Sequence, Tuple, Union
 
+import numpy as np
 
 # LOGGER
 logger = lgg.getLogger(__name__)
 logger.setLevel(lgg.DEBUG)
+
+
+# TYPES
+Numbers = Sequence[Union[int, float]]
 
 
 # MODULE FUNCTIONS
@@ -42,7 +47,7 @@ def count_imaginary(frequencies):
 
 
 def find_imaginary(frequencies):
-    """Finds all molecules with imaginary frequency values.
+    """Finds all conformers with imaginary frequency values.
 
     Parameters
     ----------
@@ -228,3 +233,153 @@ def calculate_average(values, populations):
     shape = (-1,) + (1,) * (values.ndim - 1)
     popul = populations.reshape(*shape)
     return (values * popul).sum(0)
+
+
+def idx_offset(a: Numbers, b: Numbers) -> int:
+    """Calculate offset by which `b` should be shifted to best overlap with `a`.
+    Both `a` and `b` should be sets of points, interpreted as spectral data. Returned
+    offset is a number of data points, by which `b` should be moved relative to `a`,
+    to get the best overlap of given spectra.
+
+    Parameters
+    ----------
+    a : sequence of ints or floats
+        `x` values` of the first spectrum.
+    b : sequence of ints or floats
+        `x` values` of the second spectrum.
+
+    Returns
+    -------
+    int
+        Offset, in number of data points, by which spectrum `b` should be shifted
+        to best match spectrum `a`. Positive value means it should be shifted to the
+        right and negative value means it should be shifted to the left of `a`.
+
+    Notes
+    -----
+    The best overlap is found by means of cross-correlation of given spectra.
+    """
+    a, b = np.asanyarray(a), np.asanyarray(b)
+    # normalize values to be zero centered to prevent influence of padding with zeros
+    a = (a - a.mean()) / a.std()
+    b = (b - b.mean()) / b.std()
+    # calculate cross correlation array and find best overlap
+    cross = np.correlate(a, b, mode="full")
+    best = cross.argmax()
+    return best - b.size + 1
+
+
+def unify_abscissa(
+    ax: Numbers, ay: Numbers, bx: Numbers, by: Numbers, upscale: bool = True
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Interpolate one of the given spectra to have the same points density as the
+    other given spectrum.
+
+    Which spectra should be interpolated is determined based on the density of points
+    of both spectra, by default more loosely spaced spectrum is interpolated to match
+    spacing of the other spectrum. This may be changed by passing `upscale=False`
+    to the function call.
+
+    Parameters
+    ----------
+    ax : sequence of ints or floats
+        Abscissa of the first spectrum.
+    ay : sequence of ints or floats
+        Values of the first spectrum.
+    bx : sequence of ints or floats
+        Abscissa of the second spectrum.
+    by : sequence of ints or floats
+        Values of the second spectrum.
+    upscale : bool
+        If interpolation should be done on more loosely spaced spectrum (default).
+        When set to False, spectrum with lower resolution will be treated as reference.
+
+    Returns
+    -------
+    tuple of np.arrays of numbers
+        Spectra, one unchanged and one interpolated, as a tuple of numpy arrays
+        of x and y values. I.e. `tuple(ax, ay, new_bx, new_by)` or
+        `tuple(new_ax, new_ay, bx, by)`, depending on values of `upscale` parameter.
+    """
+    ax, ay, bx, by = (
+        np.asanyarray(ax),
+        np.asanyarray(ay),
+        np.asanyarray(bx),
+        np.asanyarray(by),
+    )
+    ad, bd = ax[1] - ax[0], bx[1] - bx[0]  # we assume both have steady step
+    if ad == bd:
+        return ax, ay, bx, by  # no need to do anything
+    elif (np.abs(ad) < np.abs(bd)) ^ upscale:  # xor on booleans
+        # `ad` is smaller than `bd`, but we don't want to upscale or vice-versa
+        nbx, nby, nax, nay = unify_abscissa(bx, by, ax, ay, upscale)  # swap spectra
+        # but return in the same order as given in parameters
+    else:
+        step = np.abs(ad) * np.sign(bd)  # ad is new step, but sign from bd
+        nbx = np.arange(bx[0], bx[-1], step)  # new abscissa
+        nby = np.interp(nbx, bx, by)  # interpolate values on new abscissa
+        nax, nay = ax, ay  # the other spectrum stays unchanged
+    return nax, nay, nbx, nby
+
+
+def find_offset(
+    ax: Numbers, ay: Numbers, bx: Numbers, by: Numbers, upscale: bool = True
+) -> float:
+    """Finds value, by which the spectrum should be shifted along x-axis to best
+    overlap with the first spectrum. If resolution of spectra is not identical,
+    one of them will be interpolated to match resolution of the other one. By default
+    interpolation is done on the lower-resolution spectra. This can be changed
+    by passing `upscale = False` to function call.
+
+    Parameters
+    ----------
+    ax : sequence of ints or floats
+        Abscissa of the first spectrum.
+    ay : sequence of ints or floats
+        Values of the first spectrum.
+    bx : sequence of ints or floats
+        Abscissa of the second spectrum.
+    by : sequence of ints or floats
+        Values of the second spectrum.
+    upscale : bool
+        If interpolation should be done on more loosely spaced spectrum (default).
+        When set to False, spectrum with lower resolution will be treated as reference
+        for density of data points.
+
+    Returns
+    -------
+    float
+        Value, by which second spectrum should be shifted, in appropriate units.
+    """
+    ax, ay, bx, by = unify_abscissa(ax, ay, bx, by, upscale=upscale)
+    shift = idx_offset(ay, by)
+    if shift < 0:
+        offset = ax[0] - bx[abs(shift)]
+    else:
+        offset = ax[shift] - bx[0]
+    return offset
+
+
+def find_scaling(a: Numbers, b: Numbers) -> float:
+    """Find factor by which values `b` should be scaled to best match values `a`.
+
+    Parameters
+    ----------
+    a : sequence of ints or floats
+        `x` values` of the first spectrum.
+    b : sequence of ints or floats
+        `x` values` of the second spectrum.
+
+    Returns
+    -------
+    float
+        Scaling factor for `b` values.
+
+    Notes
+    -----
+    If scaling factor cannot be reasonably given, i.e. when `b` is an empty list
+    or list of zeros or NaNs, `1.0` is returned.
+    """
+    scaling = np.mean(np.abs(a)) / np.mean(np.abs(b))
+    scaling = 1.0 if np.isnan(scaling) else scaling
+    return scaling

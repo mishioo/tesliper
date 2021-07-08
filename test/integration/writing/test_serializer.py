@@ -51,12 +51,12 @@ def test_serialization(tmp_path, tesliper):
     assert resurected.output_dir == tesliper.output_dir
     assert resurected.wanted_files == tesliper.wanted_files
     assert (
-        resurected.molecules.allow_data_inconsistency
-        == tesliper.molecules.allow_data_inconsistency
+        resurected.conformers.allow_data_inconsistency
+        == tesliper.conformers.allow_data_inconsistency
     )
-    assert resurected.molecules.filenames == tesliper.molecules.filenames
-    assert resurected.molecules.kept == tesliper.molecules.kept
-    assert resurected.molecules == tesliper.molecules
+    assert resurected.conformers.filenames == tesliper.conformers.filenames
+    assert resurected.conformers.kept == tesliper.conformers.kept
+    assert resurected.conformers == tesliper.conformers
     # check if all attributes are identical, including numpy arrays
     for genre, spc in resurected.spectra.items():
         for key, value in spc.__dict__.items():

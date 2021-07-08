@@ -1,8 +1,6 @@
-from io import StringIO
 from itertools import zip_longest
 
 import pytest
-from hypothesis import given, strategies as st
 
 from tesliper.writing.gjf_writer import GjfWriter
 from tesliper.glassware import arrays as ar
@@ -107,7 +105,7 @@ def gjfwriter(tmp_path):
 def test_basic(tmp_path, gjfwriter, geometry, charge, multiplicity, filenames):
     gjfwriter.write(geometry, charge, multiplicity)
     assert len(list(tmp_path.iterdir())) == 2
-    assert [f.name for f in tmp_path.iterdir()] == [f"{f}.gjf" for f in filenames]
+    assert {f.name for f in tmp_path.iterdir()} == {f"{f}.gjf" for f in filenames}
     assert tmp_path.joinpath(filenames[0] + ".gjf").open("r").read() == meoh0
     assert tmp_path.joinpath(filenames[1] + ".gjf").open("r").read() == meoh1
 
@@ -115,7 +113,7 @@ def test_basic(tmp_path, gjfwriter, geometry, charge, multiplicity, filenames):
 def test_alt_args(tmp_path, gjfwriter, geometry, altcharge, altmultiplicity, filenames):
     gjfwriter.write(geometry, altcharge, altmultiplicity)
     assert len(list(tmp_path.iterdir())) == 2
-    assert [f.name for f in tmp_path.iterdir()] == [f"{f}.gjf" for f in filenames]
+    assert {f.name for f in tmp_path.iterdir()} == {f"{f}.gjf" for f in filenames}
     assert tmp_path.joinpath(filenames[0] + ".gjf").open("r").read() == meoh0
     assert tmp_path.joinpath(filenames[1] + ".gjf").open("r").read() == meoh1
 

@@ -1,16 +1,14 @@
 # IMPORTS
-import os
 import logging as lgg
 from pathlib import Path
-from typing import Union
+from typing import Iterable, Optional, Set, Union
 
 import numpy as np
 
-from . import glassware as gw
 from . import datawork as dw
 from . import extraction as ex
+from . import glassware as gw
 from . import writing as wr
-
 
 # GLOBAL VARIABLES
 __author__ = "Michał M. Więcław"
@@ -59,6 +57,7 @@ class Tesliper:
             "fitting": dw.gaussian,
         },
     }
+    _standard_parameters["scatt"] = _standard_parameters["vibra"]
 
     def __init__(self, input_dir=".", output_dir=".", wanted_files=None):
         """
@@ -72,63 +71,71 @@ class Tesliper:
         wanted_files : list, optional
             List filenames representing wanted files.
         """
-        self.molecules = gw.Molecules()
+        self.conformers = gw.Conformers()
         self.writers = {
             "txt": wr.TxtWriter,
             "xlsx": wr.XlsxWriter,
             "csv": wr.CsvWriter,
         }
-        self.soxhlet = None if input_dir is not None else ex.Soxhlet()
-        self.wanted_files = wanted_files  # setter modifies self.soxhlet
+        self.wanted_files = wanted_files
         self.input_dir = input_dir
         self.output_dir = output_dir
         self.spectra = dict()
         self.averaged = dict()
         self.parameters = self.standard_parameters
+        self.same_vibrational_parameters = False
+        self.same_electronic_parameters = False
+        self.same_scattering_parameters = False
 
     def __getitem__(self, item):
         try:
-            return self.molecules.arrayed(item)
+            return self.conformers.arrayed(item)
         except ValueError:
             raise KeyError(f"Unknown genre '{item}'.")
 
     @property
     def energies(self):
         keys = "zpe ent ten gib scf".split(" ")
-        return {k: self.molecules.arrayed(k) for k in keys}
+        return {k: self.conformers.arrayed(k) for k in keys}
 
     @property
     def spectral(self):
         # TO DO: expand with other spectral data
         keys = "dip rot vosc vrot losc lrot raman1 roa1".split(" ")
-        return {k: self.molecules.arrayed(k) for k in keys}
+        return {k: self.conformers.arrayed(k) for k in keys}
 
     @property
     def bars(self):
         # TO DO: put proper keys here
         keys = "dip rot vosc vrot raman1 roa1".split(" ")
-        return {k: self.molecules.arrayed(k) for k in keys}
+        return {k: self.conformers.arrayed(k) for k in keys}
 
     @property
-    def wanted_files(self):
-        return self.__wanted_files
+    def wanted_files(self) -> Optional[Set[str]]:
+        """Set of files that are desired for data extraction, stored as filenames
+        without an extension. Any iterable of strings or Path objects is transformed
+        to this form.
+
+        >>> tslr = Tesliper()
+        >>> tslr.wanted_files = [Path("./dir/file_one.out"), Path("./dir/file_two.out")]
+        >>> tslr.wanted_files
+        {"file_one", "file_two"}
+
+        May also be set to `None` or other "falsy" value, in such case it is ignored.
+        """
+        # TODO: reuse Soxhlet.wanted_files property
+        return self._wanted_files
 
     @wanted_files.setter
-    def wanted_files(self, wanted_files):
-        self.__wanted_files = wanted_files
-        if self.soxhlet is not None:
-            self.soxhlet.wanted_files = wanted_files
-        logger.info("New list of wanted_files established.")
+    def wanted_files(self, files: Optional[Iterable[Union[str, Path]]]):
+        self._wanted_files = None if not files else {Path(f).stem for f in files}
 
     @property
     def standard_parameters(self):
-        return {
-            "vibra": self._standard_parameters["vibra"].copy(),
-            "electr": self._standard_parameters["electr"].copy(),
-        }
+        return {key: params.copy() for key, params in self._standard_parameters.items()}
 
     def update(self, *args, **kwargs):
-        self.molecules.update(*args, **kwargs)
+        self.conformers.update(*args, **kwargs)
         # raise TypeError("Tesliper instance can not be updated with "
         #                 "type {}".format(type(value)))
 
@@ -143,7 +150,6 @@ class Tesliper:
             raise FileNotFoundError(
                 "Invalid path or directory not found: {}".format(path)
             )
-        self.soxhlet = ex.Soxhlet(path, self.wanted_files)
         logger.info("Current working directory is: {}".format(path))
         self.__input_dir = path
 
@@ -159,49 +165,28 @@ class Tesliper:
         self.__output_dir = path
 
     def extract_iterate(self, path=None, wanted_files=None):
-        files = wanted_files or self.wanted_files
-        soxhlet = ex.Soxhlet(path, files) if path else self.soxhlet
+        soxhlet = ex.Soxhlet(path or self.input_dir, wanted_files or self.wanted_files)
         for file, data in soxhlet.extract_iter():
             self.update(((file, data),))
             yield file, data
 
     def extract(self, path=None, wanted_files=None):
-        files = wanted_files or self.wanted_files
-        soxhlet = ex.Soxhlet(path, files) if path else self.soxhlet
+        for f, d in self.extract_iterate(path, wanted_files):
+            _ = f, d
+
+    def smart_extract(self, deep_search=True):
+        # TODO: should also parse settings
+        soxhlet = ex.Soxhlet(self.input_dir, self.wanted_files, recursive=deep_search)
         for file, data in soxhlet.extract_iter():
             self.update(((file, data),))
 
-    def smart_extract(self, deep_search=True, with_load=True):
-        # TO DO: add deep search and loading
-        soxhlet = self.soxhlet
-        args = soxhlet.parse_command()
-        return self.extract(*args)
-
     def smart_calculate(self, average=True):
-        # TO DO: do it
+        # TODO: implement it
         pass
 
-    def load_bars(self, path=None, spectra_type=None):
-        soxhlet = ex.Soxhlet(path) if path else self.soxhlet
-        data = soxhlet.load_bars(spectra_type)
-        self.update(data)
-        return data
-
-    def load_populations(self, path=None):
-        soxhlet = ex.Soxhlet(path) if path else self.soxhlet
-        data = soxhlet.load_popul()
-        self.update(data)
-        return data
-
-    def load_spectra(self, path=None):
-        soxhlet = ex.Soxhlet(path) if path else self.soxhlet
-        data = soxhlet.load_spectra()
-        self.update(data)
-        return data
-
     def load_settings(self, path=None, spectra_type=None):
-        # TO DO: remove soxhlet.spectra_type dependence
-        soxhlet = ex.Soxhlet(path) if path else self.soxhlet
+        # TODO: remove soxhlet.spectra_type dependence
+        soxhlet = ex.Soxhlet(path or self.input_dir)
         spectra_type = spectra_type if spectra_type else soxhlet.spectra_type
         settings = soxhlet.load_settings()
         self.settings[spectra_type].update(settings)
@@ -220,7 +205,7 @@ class Tesliper:
         # TO DO: add error handling when no data for requested spectrum
         bar_name = gw.default_spectra_bars[spectra_name]
         is_excited = spectra_name.lower() in ("uv", "ecd")
-        conformer = self.molecules[conformer]
+        conformer = self.conformers[conformer]
         values = conformer[bar_name]
         freqs = 1e7 / conformer["wave"] if is_excited else conformer["freq"]
         inten = dw.calculate_intensities(bar_name, values, freqs)
@@ -307,14 +292,14 @@ class Tesliper:
 
     def get_averaged_spectrum(self, spectrum, energy):
         spectra = self.spectra[spectrum]
-        with self.molecules.trimmed_to(spectra.filenames):
-            en = self.molecules.arrayed(energy)
+        with self.conformers.trimmed_to(spectra.filenames):
+            en = self.conformers.arrayed(energy)
         output = spectra.average(en)
         return output
 
     def average_spectra(self):
         for genre, spectra in self.spectra.items():
-            with self.molecules.trimmed_to(spectra.filenames):
+            with self.conformers.trimmed_to(spectra.filenames):
                 for energies in self.energies.values():
                     av = spectra.average(energies)
                     self.averaged[(genre, energies.genre)] = av

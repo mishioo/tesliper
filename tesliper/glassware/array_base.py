@@ -1,13 +1,11 @@
 # IMPORTS
 import inspect
 import logging as lgg
-
-from typing import Callable, Optional, Any, Sequence, Tuple, Iterable, Union, List
+from typing import Any, Callable, Iterable, Iterator, Optional, Sequence, Tuple, Union
 
 import numpy as np
 
 from ..exceptions import InconsistentDataError
-
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -94,6 +92,169 @@ def find_best_shape(jagged: NestedSequence) -> Tuple[int, ...]:
     return (len(jagged), *longest_subsequences(jagged))
 
 
+def flatten(items: NestedSequence, depth: Optional[int] = None) -> Iterator:
+    """Yield items from any nested iterable as chain of values up to given `depth`.
+    If `depth` is `None`, yielded sequence is completely flat.
+
+    Parameters
+    ----------
+    items : NestedSequence
+        Arbitrarily deep, nested sequence of sequences.
+    depth : int, optional
+        How deep should fattening be.
+
+    Yields
+    ------
+    Any
+        Values from `items` as flatted sequence."""
+    depth = float("inf") if depth is None else depth
+    for x in items:
+        should_iter = isinstance(x, Iterable) and not isinstance(x, (str, bytes))
+        if should_iter and depth > 1:
+            yield from flatten(x, depth - 1)
+        else:
+            yield x
+
+
+def _mask(jagged: NestedSequence, shape: tuple) -> np.ndarray:
+    """A workhorse of `mask` function, see there.
+
+    Parameters
+    ----------
+    jagged : sequence [of sequences [of...]]
+        Arbitrarily deep, nested sequence of sequences.
+    shape : tuple of int
+        Shape of an array that would fit `jagged`.
+
+    Returns
+    -------
+    numpy.array
+    Array of booleans, of given shape, indicating if value of same index exist
+    in `jagged`.
+
+    Notes
+    -----
+    Current implementation does not support shapes other than best fitting
+    (see `find_best_shape`).
+    """
+    if len(shape) == 0:
+        mask = np.array([])
+    elif len(shape) == 1:
+        mask = np.arange(shape[0]) < len(jagged)
+    else:
+        jagged = [_mask(v, shape[1:]) for v in jagged]
+        padding = ((0, shape[0] - len(jagged)),) + ((0, 0),) * (len(shape) - 1)
+        mask = np.pad(jagged, padding, "constant", constant_values=False)
+    return mask
+
+
+def mask(jagged: NestedSequence) -> np.ndarray:
+    """Returns a numpy.array of booleans, of shape that best fits given jagged nested
+    sequence `jagged`. Each boolean value of the output indicates if corresponding value
+    exists in `jagged`.
+
+    Parameters
+    ----------
+    jagged : sequence [of sequences [of...]]
+        Arbitrarily deep, nested sequence of sequences.
+
+    Returns
+    -------
+    numpy.array of bool
+        Array of booleans, of shape that best fits `jagged`, indicating if value of
+        same index exist in `jagged`.
+
+    Notes
+    -----
+    To use output as a mask of numpy.ma.masked_array, it should be inverted.
+    >>> np.ma.array(values, mask=~mask(jagged))
+
+    Examples
+    --------
+    >>> mask([[1, 2], [1]])
+    array([[True, True], [True, False]])
+    >>> mask([[1, 2], []])
+    array([[True, True], [False, False]])
+    >>> mask([[[1], []], [[2, 3]]])
+    array([[[True, False], [False, False]], [[True, True], [False, False]]])
+
+    """
+    return _mask(jagged, find_best_shape(jagged))
+
+
+def to_masked(
+    jagged: NestedSequence,
+    dtype: Optional[type] = None,
+    fill_value: Optional[Any] = None,
+) -> np.ma.core.MaskedArray:
+    """Convert jagged, arbitrarily deep, nested sequence to numpy.ma.masked_array
+    with missing entries masked.
+
+    Parameters
+    ----------
+    jagged : sequence [of sequences [of...]]
+        Arbitrarily deep, nested sequence of sequences.
+    dtype : type, optional
+        Data type of the output. If `dtype` is `None`, the type of the data is figured
+        out by numpy machinery.
+    fill_value : scalar, optional
+        Value used to fill in the masked values when necessary. If `None`, a default
+        based on the data-type is used.
+
+    Returns
+    -------
+    numpy.ma.core.MaskedArray
+        Given `jagged` converted to numpy.ma.masked_array with missing entries masked.
+
+    Raises
+    ------
+    ValueError
+        If jagged sequence has inconsistent number of dimensions.
+
+    Examples
+    --------
+    >>> to_masked([[1, 2], [1]])
+    array(data=[[1, 2], [1, --]], mask=[[True, True], [True, False]])
+    >>> to_masked([1, [1]])
+    Traceback (most recent call last):
+    ValueError: Cannot convert to masked array: jagged sequence has inconsistent
+    number of dimensions.
+    """
+    if not jagged:
+        return np.ma.array([])
+    array, shape, done, lengths = jagged, (len(jagged),), False, []
+    while not done:
+        # iterate over each level of nesting, accumulating partially flatted array
+        each_is_vector = all(
+            isinstance(x, Iterable) and not isinstance(x, (str, bytes)) for x in array
+        )
+        each_is_scalar = all(
+            not isinstance(x, Iterable) or isinstance(x, (str, bytes)) for x in array
+        )
+        if each_is_vector:
+            # if each entry is vector, find these vectors' length
+            lengths = [len(x) for x in array]
+            # longest vector defines current dimension's shape
+            shape = shape + (max(lengths),)
+            # flatten one level
+            array = [v for x in array for v in x]
+        elif each_is_scalar:
+            # if each entry is scalar, we're done
+            done = True
+        else:
+            # if scalar and vector entries mixed, we raise an error
+            raise ValueError(
+                "Cannot convert to masked array: jagged sequence has inconsistent "
+                "number of dimensions."
+            )
+    mask = _mask(jagged, shape)
+    output = np.ma.zeros(shape, dtype=dtype)
+    # fill output with values
+    output[mask] = array
+    # mask for numpy.ma.masked_array must be inverted (`True` masks value)
+    return np.ma.array(output, mask=~mask, dtype=dtype, fill_value=fill_value)
+
+
 # CLASSES
 class ArrayProperty(property):
     """
@@ -110,14 +271,14 @@ class ArrayProperty(property):
         dtype: type = float,
         check_against: Optional[str] = None,
         check_depth: int = 1,
-        pad_value: Any = 0,
+        fill_value: Any = 0,
         fsan: Optional[Callable[[Sequence], Sequence]] = None,
     ):
         super().__init__(fget=fget, fset=fset, fdel=fdel, doc=doc)
         self.dtype = dtype
         self.check_against = check_against
         self.check_depth = check_depth
-        self.pad_value = pad_value
+        self.fill_value = fill_value
         self.fsan = fsan
 
     def __set_name__(self, objtype, name):
@@ -155,7 +316,7 @@ class ArrayProperty(property):
             self.__doc__,
             self.dtype,
             self.check_against,
-            self.pad_value,
+            self.fill_value,
             self.fsan,
         )
 
@@ -168,7 +329,7 @@ class ArrayProperty(property):
             self.__doc__,
             self.dtype,
             self.check_against,
-            self.pad_value,
+            self.fill_value,
             self.fsan,
         )
 
@@ -181,7 +342,7 @@ class ArrayProperty(property):
             self.__doc__,
             self.dtype,
             self.check_against,
-            self.pad_value,
+            self.fill_value,
             self.fsan,
         )
 
@@ -198,7 +359,7 @@ class ArrayProperty(property):
             self.__doc__,
             self.dtype,
             self.check_against,
-            self.pad_value,
+            self.fill_value,
             fsan,
         )
 
@@ -263,47 +424,57 @@ class ArrayProperty(property):
                 error_msg = (
                     f"{instance.__class__.__name__} of genre "
                     f"{genre} with unequal number of values "
-                    f"for molecule requested."
+                    f"for conformer requested."
                 )
                 raise InconsistentDataError(error_msg) from error
             else:
-                values = self.pad(values)
+                values = to_masked(values, dtype=self.dtype)
                 logger.info(
                     f"{genre} values' lists were appended with zeros to "
                     f"match length of longest entry."
                 )
                 return values
 
-    def pad(self, values: Sequence) -> np.ndarray:
-        """Appends each subsequence of given sequence to match the length
-        of the longest subsequence on given level of nesting depth, using
-        `self.pad_value` as a filler.
 
-        Parameters
-        ----------
-        values : sequence [of sequences [of...]]
-            Arbitrarily deep nested sequence of sequences.
+class JaggedArrayProperty(ArrayProperty):
+    """ArrayProperty for storing intentionally jagged arrays of data.
+    InconsistentDataError is only raised if `check_shape()` fails. Given values are
+    converted to masked array and expanded as needed, regardless value of
+    `allow_data_inconsistency` attribute."""
 
-        Returns
-        -------
-        numpy.ndarray
-            Array formed from `values`, with missing values filled.
-        """
-
-        def _pad(vals, lens, padval=self.pad_value):
-            padding = ((0, lens[0] - len(vals)),) + ((0, 0),) * (len(lens) - 1)
-            if len(lens) > 1:
-                vals = [_pad(v, lens[1:]) for v in vals]
-            return np.pad(vals, padding, "constant", constant_values=padval)
-
-        longest = longest_subsequences(values)
-        values = [_pad(v, longest) for v in values]
-        return np.array(values, dtype=self.dtype)
+    def check_input(self, instance: Any, values: Sequence) -> np.ndarray:
+        self.check_shape(instance, values)
+        return to_masked(values, dtype=self.dtype, fill_value=self.fill_value)
 
 
 class CollapsibleArrayProperty(ArrayProperty):
-    """ArrayProperty, that stores only one value, if all entries are identical.
-    """
+    """ArrayProperty that stores only one value, if all entries are identical."""
+
+    def __init__(
+        self,
+        fget: Optional[Callable[[Any], np.ndarray]] = None,
+        fset: Optional[Callable[[Any, Sequence], None]] = None,
+        fdel: Optional[Callable[[Any], None]] = None,
+        doc: str = None,
+        dtype: type = float,
+        check_against: Optional[str] = None,
+        check_depth: int = 1,
+        fill_value: Any = 0,
+        fsan: Optional[Callable[[Sequence], Sequence]] = None,
+        strict: bool = False,
+    ):
+        self.strict = strict
+        super().__init__(
+            fget=fget,
+            fset=fset,
+            fdel=fdel,
+            doc=doc,
+            dtype=dtype,
+            check_against=check_against,
+            check_depth=check_depth,
+            fill_value=fill_value,
+            fsan=fsan,
+        )
 
     def check_shape(self, instance: Any, values: Sequence):
         """Raises an error if `values` have different shape than attribute specified
@@ -357,7 +528,8 @@ class CollapsibleArrayProperty(ArrayProperty):
         InconsistentDataError
             If `values` is list of lists of varying size and instance doesn't allow
             data inconsistency.
-            If values are non-uniform and instance doesn't allow data inconsistency.
+            If property is declared as strict, given `values` are non-uniform
+            and instance doesn't allow data inconsistency.
         """
         if not isinstance(values, Iterable) or isinstance(values, str):
             return np.array([values], dtype=self.dtype)
@@ -370,7 +542,7 @@ class CollapsibleArrayProperty(ArrayProperty):
         if all_same:
             # return only first element, but keep dimensionality
             return values[np.newaxis, 0]
-        elif not allow:
+        elif self.strict and not allow:
             raise InconsistentDataError(
                 "List of non-uniform values given to CollapsibleArrayProperty setter."
             )
