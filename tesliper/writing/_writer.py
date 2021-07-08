@@ -18,6 +18,16 @@ logger = lgg.getLogger(__name__)
 logger.setLevel(lgg.DEBUG)
 
 
+_WRITERS = {}
+
+
+def writer(fmt: str, data, destination, mode, **kwargs) -> "Writer":
+    try:
+        return _WRITERS[fmt](data, destination, mode ** kwargs)
+    except KeyError:
+        raise ValueError(f"Unknown file format: {fmt}.")
+
+
 # CLASSES
 class Writer:
     """Base class for writers, that produce single file from multiple conformers.
@@ -165,12 +175,20 @@ class Writer:
         gib="0.000000",
         scf="0.00000000",
     )
-
     energies_order = "zpe ten ent gib scf".split(" ")
+    extension = NotImplemented
 
-    def __init__(self, destination: Union[str, Path], mode: str = "x"):
+    @classmethod
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        _WRITERS[cls.extension] = cls
+
+    def __init__(self, data, destination: Union[str, Path], mode: str = "x"):
+        # unify subclasses __init__
+        self.data = data
         self.mode = mode
         self.destination = destination
+        self.filename_template = "${conf}.${ext}"
 
     @property
     def mode(self):
@@ -193,46 +211,45 @@ class Writer:
             raise ValueError("Mode should be 'a', 'x', or 'w'.")
         self._mode = mode
 
+    def check_file(self, file: Union[str, Path]) -> Path:
+        file = Path(file)
+        if not file.exists() and self.mode == "a":
+            raise FileNotFoundError(
+                "Mode 'a' was specified, but given file doesn't exist."
+            )
+        elif file.exists() and self.mode == "x":
+            raise FileExistsError(
+                "Mode 'x' was specified, but given file already exists."
+            )
+        elif not file.parent.exists():
+            raise FileNotFoundError("Parent directory of specified file doesn't exist.")
+        else:
+            logger.debug(f"File {file} ok for writing.")
+            return file
+
     @property
     def destination(self) -> Path:
-        """pathlib.Path: File, to which data should be written.
-
-        Notes
-        -----
-        If str given, it will be converted to pathlib.Path.
+        """pathlib.Path: Directory, to which generated files should be written.
 
         Raises
         ------
         FileNotFoundError
-            If mode 'a' was specified, but given destination doesn't exist.
-        FileExistsError
-            If mode 'x' was specified, but given destination already exists.
+            If given destination doesn't exist or is not a directory.
         """
-        return self._destination
+        return vars(self)["destination"]
 
     @destination.setter
     def destination(self, destination: Union[str, Path]) -> None:
         destination = Path(destination)
-        if not destination.exists() and self.mode == "a":
+        if not destination.is_dir():
             raise FileNotFoundError(
-                "Mode 'a' was specified, but given destination doesn't exist."
+                "Given destination doesn't exist or is not a directory."
             )
-        elif destination.exists() and self.mode == "x":
-            raise FileExistsError(
-                "Mode 'x' was specified, but given destination already exists."
-            )
-        elif not destination.parent.exists():
-            raise FileNotFoundError("Parent directory of specified file doesn't exist.")
-        self._destination = destination
+        vars(self)["destination"] = destination
 
-    @staticmethod
-    def distribute_data(data: Iterable[DataArray]) -> Dict:
+    @property
+    def distributed_data(self) -> Dict:
         """Sorts given data by genre category for use by specialized writing methods.
-
-        Parameters
-        ----------
-        data: Iterable of DataArray
-            Iterable with DataArray objects to sort by genre category.
 
         Returns
         -------
@@ -242,7 +259,6 @@ class Writer:
                 energies: List of Energies,
                 vibrational: List of VibrationalBars,
                 electronic: List of ElectronicBars,
-                other_bars: List of Bars,
                 spectra: List of Spectra,
                 single: List of SingleSpectrum,
                 other: List of DataArray,
@@ -255,7 +271,6 @@ class Writer:
             energies=[],
             vibrational=[],
             electronic=[],
-            other_bars=[],
             spectra=[],
             single=[],
             other=[],
@@ -264,7 +279,7 @@ class Writer:
             wavelengths=None,
             stoichiometry=None,
         )
-        for obj in data:
+        for obj in self.data:
             if isinstance(obj, Energies):
                 distr["energies"].append(obj)
             elif obj.genre.endswith("corr"):
@@ -279,8 +294,6 @@ class Writer:
                 distr["vibrational"].append(obj)
             elif isinstance(obj, ElectronicBars):
                 distr["electronic"].append(obj)
-            elif isinstance(obj, Bars):
-                distr["other_bars"].append(obj)
             elif isinstance(obj, Spectra):
                 distr["spectra"].append(obj)
             elif isinstance(obj, SingleSpectrum):
@@ -288,60 +301,6 @@ class Writer:
             else:
                 distr["other"].append(obj)
         return distr
-
-
-class SerialWriter(Writer):
-    """Base class for writers, that produce multiple files.
-
-    Parameters
-    ----------
-    destination: str or pathlib.Path
-        Directory, to which generated files should be written.
-    filename_template: str or string.Template
-        Template for names of generated files, defaults to  '${filename}.${ext}'.
-
-    Attributes
-    ----------
-    destination
-    mode
-    filename_template
-
-    Class Attributes
-    ----------------
-    extension: str
-        Default extension of generated files.
-    """
-
-    extension = ""
-
-    def __init__(
-        self,
-        destination: Union[str, Path],
-        mode: str = "x",
-        filename_template: Union[str, Template] = "${filename}.${ext}",
-    ):
-        super().__init__(destination, mode)
-        self.filename_template = filename_template
-
-    @property
-    def destination(self) -> Path:
-        """pathlib.Path: Directory, to which generated files should be written.
-
-        Raises
-        ------
-        FileNotFoundError
-            If given destination doesn't exist or is not a directory.
-        """
-        return self._destination
-
-    @destination.setter
-    def destination(self, destination: Union[str, Path]) -> None:
-        destination = Path(destination)
-        if not destination.is_dir():
-            raise FileNotFoundError(
-                "Given destination doesn't exist or is not a directory."
-            )
-        self._destination = destination
 
     @property
     def filename_template(self) -> Template:
@@ -400,3 +359,7 @@ class SerialWriter(Writer):
                 self.mode, **kwargs
             ) as handle:
                 yield handle
+
+    def write(self):
+        # should dispatch self.distributed_data to appropriate writing methods
+        return NotImplemented

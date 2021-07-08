@@ -128,6 +128,6 @@ def test_serial_writer_init_no_dest(writer_class, mode):
 
 @pytest.mark.parametrize("arraytype,array", tuple(arrays_by_type.items()))
 def test_distribution(arraytype, array):
-    output = Writer.distribute_data([array])
+    output = Writer([array]).distributed_data
     assert isinstance(output, dict)
     assert output[arraytype], f"arraytype: {arraytype}, output: {output}"
