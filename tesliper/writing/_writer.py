@@ -23,7 +23,7 @@ _WRITERS = {}
 
 def writer(fmt: str, data, destination, mode, **kwargs) -> "Writer":
     try:
-        return _WRITERS[fmt](data, destination, mode ** kwargs)
+        return _WRITERS[fmt](data, destination, mode, **kwargs)
     except KeyError:
         raise ValueError(f"Unknown file format: {fmt}.")
 
