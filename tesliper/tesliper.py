@@ -43,14 +43,14 @@ class Tesliper:
     """
 
     _standard_parameters = {
-        "vibra": {
+        "vibrational": {
             "width": 6,
             "start": 800,
             "stop": 2900,
             "step": 2,
             "fitting": dw.lorentzian,
         },
-        "electr": {
+        "electronic": {
             "width": 0.35,
             "start": 150,
             "stop": 800,
@@ -58,7 +58,7 @@ class Tesliper:
             "fitting": dw.gaussian,
         },
     }
-    _standard_parameters["scatt"] = _standard_parameters["vibra"]
+    _standard_parameters["scatt"] = _standard_parameters["vibrational"]
 
     def __init__(self, input_dir=".", output_dir=".", wanted_files=None):
         """

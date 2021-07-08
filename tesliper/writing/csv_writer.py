@@ -8,7 +8,7 @@ from typing import Dict, List, Optional, Union
 
 import numpy as np
 
-from ..glassware.arrays import Bars, Energies, ExcitedStateBars, FloatArray, Transitions
+from ..glassware.arrays import Bars, ElectronicBars, Energies, FloatArray, Transitions
 from ..glassware.spectra import SingleSpectrum, Spectra
 from ._writer import SerialWriter, Writer
 
@@ -277,7 +277,7 @@ class CsvSerialWriter(_CsvMixin, SerialWriter):
         logger.info("Spectra export to csv files done.")
 
     def transitions(
-        self, transitions: Transitions, wavelengths: ExcitedStateBars, only_highest=True
+        self, transitions: Transitions, wavelengths: ElectronicBars, only_highest=True
     ):
         """Writes electronic transitions data to CSV files (one for each conformer).
 
@@ -285,7 +285,7 @@ class CsvSerialWriter(_CsvMixin, SerialWriter):
         ----------
         transitions : glassware.Transitions
             Electronic transitions data that should be serialized.
-        wavelengths : glassware.ExcitedStateBars
+        wavelengths : glassware.ElectronicBars
             Object containing information about wavelength at which transitions occur.
         only_highest : bool
             Specifies if only transition of highest contribution to given band should

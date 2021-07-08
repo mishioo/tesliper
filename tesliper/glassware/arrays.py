@@ -297,7 +297,12 @@ class Bars(FloatArray, Averagable):
         losc="uv",
     )
     spectra_type_ref = dict(
-        vcd="vibra", ir="vibra", roa="vibra", raman="vibra", ecd="electr", uv="electr"
+        vcd="vibrational",
+        ir="vibrational",
+        roa="vibrational",
+        raman="vibrational",
+        ecd="electronic",
+        uv="electronic",
     )
     _units = dict(
         freq="Frequency / cm^(-1)",
@@ -385,7 +390,7 @@ class Bars(FloatArray, Averagable):
         return intensities
 
 
-class GroundStateBars(Bars):
+class VibrationalBars(Bars):
     associated_genres = (
         "freq",
         "iri",
@@ -482,7 +487,7 @@ class GroundStateBars(Bars):
         return spectra
 
 
-class ExcitedStateBars(Bars):
+class ElectronicBars(Bars):
     associated_genres = (
         "wavelen",
         "ex_en",

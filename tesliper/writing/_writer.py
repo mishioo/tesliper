@@ -7,9 +7,9 @@ from typing import Any, Dict, Iterable, TextIO, Union
 from ..glassware.arrays import (
     Bars,
     DataArray,
+    ElectronicBars,
     Energies,
-    ExcitedStateBars,
-    GroundStateBars,
+    VibrationalBars,
 )
 from ..glassware.spectra import SingleSpectrum, Spectra
 
@@ -240,21 +240,21 @@ class Writer:
             Dictionary with DataArray objects sorted by genre category.
             Available key: value pairs are:
                 energies: List of Energies,
-                vibra: List of GroundStateBars,
-                electr: List of ExcitedStateBars,
+                vibrational: List of VibrationalBars,
+                electronic: List of ElectronicBars,
                 other_bars: List of Bars,
                 spectra: List of Spectra,
                 single: List of SingleSpectrum,
                 other: List of DataArray,
                 corrections = dict of genre: FloatArray,
-                frequencies = ExcitedStateBars or None,
-                wavelenghts = GroundStateBars or None,
+                frequencies = ElectronicBars or None,
+                wavelenghts = VibrationalBars or None,
                 stoichiometry = InfoArray or None
         """
         distr = dict(
             energies=[],
-            vibra=[],
-            electr=[],
+            vibrational=[],
+            electronic=[],
             other_bars=[],
             spectra=[],
             single=[],
@@ -275,10 +275,10 @@ class Writer:
                 distr["wavelengths"] = obj
             elif obj.genre == "stoichiometry":
                 distr["stoichiometry"] = obj
-            elif isinstance(obj, GroundStateBars):
-                distr["vibra"].append(obj)
-            elif isinstance(obj, ExcitedStateBars):
-                distr["electr"].append(obj)
+            elif isinstance(obj, VibrationalBars):
+                distr["vibrational"].append(obj)
+            elif isinstance(obj, ElectronicBars):
+                distr["electronic"].append(obj)
             elif isinstance(obj, Bars):
                 distr["other_bars"].append(obj)
             elif isinstance(obj, Spectra):

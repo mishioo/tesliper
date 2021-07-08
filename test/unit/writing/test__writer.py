@@ -5,14 +5,14 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from tesliper import Energies, Spectra, InfoArray
+from tesliper import Energies, InfoArray, Spectra
 from tesliper.glassware import (
-    GroundStateBars,
-    ExcitedStateBars,
-    SingleSpectrum,
+    ElectronicBars,
     FloatArray,
+    SingleSpectrum,
+    VibrationalBars,
 )
-from tesliper.writing import Writer, SerialWriter
+from tesliper.writing import SerialWriter, Writer
 
 normal_writers = [Writer]
 serial_writers = [SerialWriter]
@@ -59,14 +59,14 @@ def no_parent_dir(monkeypatch):
 
 arrays_by_type = dict(
     energies=Energies("gib", [""], [1]),
-    vibra=GroundStateBars("iri", [""], [[1]], [[1]]),
-    electr=ExcitedStateBars("ex_en", [""], [[1]], [[1]]),
+    vibrational=VibrationalBars("iri", [""], [[1]], [[1]]),
+    electronic=ElectronicBars("ex_en", [""], [[1]], [[1]]),
     spectra=Spectra("ir", [""], [[1, 2]], [1, 2]),
     single=SingleSpectrum("ir", [1, 2], [1, 2]),
     other=InfoArray("command", [""], [""]),
     corrections=FloatArray("gibcorr", [""], [1]),
-    frequencies=GroundStateBars("freq", [""], [[1]], [[1]]),
-    wavelengths=ExcitedStateBars("wave", [""], [[1]], [[1]]),
+    frequencies=VibrationalBars("freq", [""], [[1]], [[1]]),
+    wavelengths=ElectronicBars("wave", [""], [[1]], [[1]]),
     stoichiometry=InfoArray("stoichiometry", [""], [""]),
 )
 

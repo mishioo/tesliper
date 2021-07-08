@@ -3,15 +3,15 @@ from .arrays import (
     Bars,
     BooleanArray,
     DataArray,
+    ElectronicBars,
     Energies,
-    ExcitedStateBars,
     FilenamesArray,
     FloatArray,
     Geometry,
-    GroundStateBars,
     InfoArray,
     IntegerArray,
     Transitions,
+    VibrationalBars,
 )
 from .conformers import Conformers
 from .spectra import SingleSpectrum, Spectra

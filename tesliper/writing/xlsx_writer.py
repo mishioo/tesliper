@@ -10,8 +10,8 @@ import openpyxl as oxl
 from ..glassware.arrays import (
     Bars,
     DataArray,
+    ElectronicBars,
     Energies,
-    ExcitedStateBars,
     FloatArray,
     InfoArray,
     Transitions,
@@ -244,7 +244,7 @@ class XlsxWriter(Writer):
         logger.info("Spectrum export to xlsx files done.")
 
     def transitions(
-        self, transitions: Transitions, wavelengths: ExcitedStateBars, only_highest=True
+        self, transitions: Transitions, wavelengths: ElectronicBars, only_highest=True
     ):
         transtions_data = (
             transitions.highest_contribution

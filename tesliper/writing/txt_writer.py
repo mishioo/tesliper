@@ -10,8 +10,8 @@ import numpy as np
 from ..glassware.arrays import (
     Bars,
     DataArray,
+    ElectronicBars,
     Energies,
-    ExcitedStateBars,
     FloatArray,
     InfoArray,
     Transitions,
@@ -283,7 +283,7 @@ class TxtSerialWriter(SerialWriter):
         logger.info("Spectra export to text files done.")
 
     def transitions(
-        self, transitions: Transitions, wavelengths: ExcitedStateBars, only_highest=True
+        self, transitions: Transitions, wavelengths: ElectronicBars, only_highest=True
     ):
         """Writes electronic transitions data to text files (one for each conformer).
 
@@ -291,7 +291,7 @@ class TxtSerialWriter(SerialWriter):
         ----------
         transitions : glassware.Transitions
             Electronic transitions data that should be serialized.
-        wavelengths : glassware.ExcitedStateBars
+        wavelengths : glassware.ElectronicBars
             Object containing information about wavelength at which transitions occur.
         only_highest : bool
             Specifies if only transition of highest contribution to given band should

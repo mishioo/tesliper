@@ -14,14 +14,14 @@ logger = lgg.getLogger(__name__)
 
 class SingleSpectrum:
 
-    _vibra_units = {
+    _vibrational_units = {
         "width": "cm-1",
         "start": "cm-1",
         "stop": "cm-1",
         "step": "cm-1",
         "x": "Frequency / cm^(-1)",
     }
-    _electr_units = {
+    _electronic_units = {
         "width": "eV",
         "start": "nm",
         "stop": "nm",
@@ -37,9 +37,9 @@ class SingleSpectrum:
         "roa": {"y": "I(R)-I(L)"},
     }
     for u in "ir vcd raman roa".split(" "):
-        _units[u].update(_vibra_units)
+        _units[u].update(_vibrational_units)
     for u in ("uv", "ecd"):
-        _units[u].update(_electr_units)
+        _units[u].update(_electronic_units)
 
     def __init__(
         self,

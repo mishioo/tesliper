@@ -18,7 +18,7 @@ class ArchiveWriter(Writer):
     Structure of the produced archive:
     .
     ├───arguments: {input_dir=str, output_dir=str, wanted_files=[str]}
-    ├───parameters: {"vibra": {params}, "electr": {params}}
+    ├───parameters: {"vibrational": {params}, "electronic": {params}}
     ├───conformers
     │   ├───arguments: {"allow_data_inconsistency": bool}
     │   ├───filenames: [str]
@@ -289,8 +289,8 @@ class ArchiveLoader:
 
     def _load_parameters(self):
         params = self._load("parameters.json")
-        params["vibra"]["fitting"] = getattr(dw, params["vibra"]["fitting"])
-        params["electr"]["fitting"] = getattr(dw, params["electr"]["fitting"])
+        params["vibrational"]["fitting"] = getattr(dw, params["vibrational"]["fitting"])
+        params["electronic"]["fitting"] = getattr(dw, params["electronic"]["fitting"])
         return params
 
     def jsondecode(
