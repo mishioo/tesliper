@@ -1,14 +1,20 @@
 # IMPORTS
 import logging as lgg
+from abc import ABC, abstractmethod
 from pathlib import Path
 from string import Template
-from typing import Any, Dict, Iterable, TextIO, Union
+from typing import Any, Dict, Iterable, List, Optional, Sequence, TextIO, Tuple, Union
 
 from ..glassware.arrays import (
     Bars,
     DataArray,
     ElectronicBars,
     Energies,
+    FloatArray,
+    Geometry,
+    InfoArray,
+    IntegerArray,
+    Transitions,
     VibrationalBars,
 )
 from ..glassware.spectra import SingleSpectrum, Spectra
@@ -18,7 +24,7 @@ logger = lgg.getLogger(__name__)
 logger.setLevel(lgg.DEBUG)
 
 
-_WRITERS = {}
+_WRITERS: Dict[str, type] = {}
 
 
 def writer(fmt: str, data, destination, mode, **kwargs) -> "Writer":
@@ -29,7 +35,7 @@ def writer(fmt: str, data, destination, mode, **kwargs) -> "Writer":
 
 
 # CLASSES
-class Writer:
+class Writer(ABC):
     """Base class for writers, that produce single file from multiple conformers.
 
     Parameters
@@ -176,19 +182,25 @@ class Writer:
         scf="0.00000000",
     )
     energies_order = "zpe ten ent gib scf".split(" ")
-    extension = NotImplemented
+    default_template = "${conf}.${ext}"
+
+    @property
+    @classmethod
+    @abstractmethod
+    def extension(cls) -> str:
+        return ""
 
     @classmethod
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
         _WRITERS[cls.extension] = cls
 
-    def __init__(self, data, destination: Union[str, Path], mode: str = "x"):
-        # unify subclasses __init__
-        self.data = data
+    def __init__(self, destination: Union[str, Path], mode: str = "x"):
+        # TODO: unify subclasses __init__
         self.mode = mode
         self.destination = destination
-        self.filename_template = "${conf}.${ext}"
+        # TODO: make all handlers in subclasses use filename_template
+        self.filename_template = self.default_template
 
     @property
     def mode(self):
@@ -247,8 +259,8 @@ class Writer:
             )
         vars(self)["destination"] = destination
 
-    @property
-    def distributed_data(self) -> Dict:
+    @staticmethod
+    def distribute_data(data: List) -> Tuple[Dict[str, List], Dict[str, Any]]:
         """Sorts given data by genre category for use by specialized writing methods.
 
         Returns
@@ -267,40 +279,26 @@ class Writer:
                 wavelenghts = VibrationalBars or None,
                 stoichiometry = InfoArray or None
         """
-        distr = dict(
-            energies=[],
-            vibrational=[],
-            electronic=[],
-            spectra=[],
-            single=[],
-            other=[],
-            corrections={},
-            frequencies=None,
-            wavelengths=None,
-            stoichiometry=None,
-        )
-        for obj in self.data:
-            if isinstance(obj, Energies):
-                distr["energies"].append(obj)
-            elif obj.genre.endswith("corr"):
-                distr["corrections"][obj.genre[:3]] = obj
+        # TODO: correct docstring
+        distr: Dict[str, List] = dict()
+        extras: Dict[str, Any] = dict()
+        for obj in data:
+            if obj.genre.endswith("corr"):
+                extras.get("corrections", dict())[obj.genre[:3]] = obj
             elif obj.genre == "freq":
-                distr["frequencies"] = obj
+                extras["frequencies"] = obj
             elif obj.genre == "wave":
-                distr["wavelengths"] = obj
+                extras["wavelengths"] = obj
             elif obj.genre == "stoichiometry":
-                distr["stoichiometry"] = obj
-            elif isinstance(obj, VibrationalBars):
-                distr["vibrational"].append(obj)
-            elif isinstance(obj, ElectronicBars):
-                distr["electronic"].append(obj)
-            elif isinstance(obj, Spectra):
-                distr["spectra"].append(obj)
-            elif isinstance(obj, SingleSpectrum):
-                distr["single"].append(obj)
+                extras["stoichiometry"] = obj
+            elif obj.genre == "charge":
+                extras["charge"] = obj
+            elif obj.genre == "multiplicity":
+                extras["multiplicity"] = obj
             else:
-                distr["other"].append(obj)
-        return distr
+                name = type(obj).__name__.lower()
+                distr.get(name, list()).append(obj)
+        return distr, extras
 
     @property
     def filename_template(self) -> Template:
@@ -360,6 +358,82 @@ class Writer:
             ) as handle:
                 yield handle
 
-    def write(self):
-        # should dispatch self.distributed_data to appropriate writing methods
-        return NotImplemented
+    def _energies_handler(self, data, extras):
+        self.overview(
+            data,
+            frequencies=extras.get("frequencies"),
+            stoichiometry=extras.get("stoichiometry"),
+        )
+        for en in data:
+            self.energies(
+                en, corrections=extras.get("corrections", dict()).get(en.genre)
+            )
+
+    def _vibrationalbars_handler(self, data, extras):
+        self.bars(band=extras["frequencies"], bars=data)
+
+    def _electronicbars_handler(self, data, extras):
+        self.bars(band=extras["wavelengths"], bars=data)
+
+    def _transitions_handler(self, data, extras):
+        self.transitions(transitions=data, wavelengths=extras["wavelengths"])
+
+    def _geometry_handler(self, data, extras):
+        self.geometry(
+            data,
+            charge=extras.get("charge"),
+            multiplicity=extras.get("multiplicity"),
+        )
+
+    def _spectra_handler(self, data, _extras):
+        for spc in data:
+            self.spectra(spc)
+
+    def _singlespectrum_handler(self, data, _extras):
+        for spc in data:
+            self.spectrum(spc)
+
+    def write(self, data: List) -> None:
+        distributed, extras = self.distribute_data(data)
+        for name, data_ in distributed.items():
+            try:
+                handler = getattr(self, f"_handler_{name}")
+                handler(data_, extras)
+            except (NotImplementedError, AttributeError):
+                logger.warning(f"{type(self)} does not handle '{name}' type data.")
+
+    def overview(
+        self,
+        energies: Sequence[Energies],
+        frequencies: Optional[DataArray] = None,
+        stoichiometry: Optional[InfoArray] = None,
+    ):
+        raise NotImplementedError(f"Class {type(self)} does not implement this method.")
+
+    def energies(self, energies: Energies, corrections: Optional[FloatArray] = None):
+        raise NotImplementedError(f"Class {type(self)} does not implement this method.")
+
+    def spectrum(self, spectrum: SingleSpectrum):
+        raise NotImplementedError(f"Class {type(self)} does not implement this method.")
+
+    def bars(self, band: Bars, bars: List[Bars]):
+        raise NotImplementedError(f"Class {type(self)} does not implement this method.")
+
+    def spectra(self, spectra: Spectra):
+        raise NotImplementedError(f"Class {type(self)} does not implement this method.")
+
+    def transitions(
+        self,
+        transitions: Transitions,
+        wavelengths: ElectronicBars,
+        only_highest: bool = True,
+    ):
+        raise NotImplementedError(f"Class {type(self)} does not implement this method.")
+
+    def geometry(
+        self,
+        geometry: Geometry,
+        charge: Optional[Union[IntegerArray, Sequence[int], int]] = None,
+        multiplicity: Optional[Union[IntegerArray, Sequence[int], int]] = None,
+    ):
+        raise NotImplementedError(f"Class {type(self)} does not implement this method.")
