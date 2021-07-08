@@ -221,7 +221,7 @@ class TxtSerialWriter(SerialWriter):
         self,
         destination: Union[str, Path],
         mode: str = "x",
-        filename_template: Union[str, Template] = "${filename}.${genre}.${ext}",
+        filename_template: Union[str, Template] = "${conf}.${genre}.${ext}",
     ):
         super().__init__(
             destination=destination, mode=mode, filename_template=filename_template

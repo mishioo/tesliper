@@ -349,9 +349,9 @@ class SerialWriter(Writer):
         produced by this object. It is stored as a `string.Template` object, if string
         is given instead, it will be converted. Only predefined identifiers may be used
         and they are as follows:
-            ${filename} - base name of the file (without extension);
+            ${conf} - name of the conformer;
             ${ext} - appropriate file extension, stored in `extension` class attribute;
-            ${num} - number of file according to internal counter;
+            ${num} - number of the file according to internal counter;
             ${genre} - genre of exported data.
 
         Raises
@@ -366,7 +366,7 @@ class SerialWriter(Writer):
         if isinstance(filename_template, str):
             filename_template = Template(filename_template)
         try:
-            filename_template.substitute(filename="", ext="", num="", genre="")
+            filename_template.substitute(conf="", ext="", num="", genre="")
         except ValueError as error:
             # TODO: add list of unexpected identifiers given
             raise ValueError("Unexpected identifiers given.") from error
@@ -394,7 +394,7 @@ class SerialWriter(Writer):
         """
         for num, fnm in enumerate(filenames):
             filename = self.filename_template.substitute(
-                filename=Path(fnm).stem, ext=self.extension, num=num, genre=genre
+                conf=fnm, ext=self.extension, num=num, genre=genre
             )
             with self.destination.joinpath(filename).open(
                 self.mode, **kwargs

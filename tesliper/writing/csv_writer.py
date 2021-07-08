@@ -216,7 +216,7 @@ class CsvSerialWriter(_CsvMixin, SerialWriter):
         self,
         destination: Union[str, Path],
         mode: str = "x",
-        filename_template: Union[str, Template] = "${filename}.${genre}.${ext}",
+        filename_template: Union[str, Template] = "${conf}.${genre}.${ext}",
         include_header: bool = True,
         dialect: Union[str, csv.Dialect] = "excel",
         **fmtparams,

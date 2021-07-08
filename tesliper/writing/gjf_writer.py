@@ -54,7 +54,7 @@ class GjfWriter(SerialWriter):
         route: Union[str, List[str]] = "",
         comment: str = "No information provided.",
         post_spec: str = "",
-        filename_template: Union[str, Template] = "${filename}.${ext}",
+        filename_template: Union[str, Template] = "${conf}.${ext}",
     ):
         super().__init__(
             destination=destination, mode=mode, filename_template=filename_template
