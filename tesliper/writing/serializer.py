@@ -1,18 +1,19 @@
 import json
+import logging
 import zipfile
 from json.decoder import JSONArray
 from json.scanner import py_make_scanner
 from pathlib import Path
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, Iterable, List, Union
 
 import tesliper  # absolute import to solve problem of circular imports
+from tesliper import datawork as dw
+from tesliper.glassware import Conformers, SingleSpectrum, Spectra
 
-from .. import datawork as dw
-from ..glassware import Conformers, SingleSpectrum, Spectra
-from ._writer import Writer
+logger = logging.getLogger(__name__)
 
 
-class ArchiveWriter(Writer):
+class ArchiveWriter:
     """Class for serialization of Tesliper objects.
 
     Structure of the produced archive:
@@ -36,7 +37,8 @@ class ArchiveWriter(Writer):
     def __init__(
         self, destination: Union[str, Path], mode: str = "x", encoding: str = "utf-8"
     ):
-        super().__init__(destination=destination, mode=mode)
+        self.mode = mode
+        self.destination = destination
         self.encoding = encoding
         self.root = None
 
@@ -45,6 +47,55 @@ class ArchiveWriter(Writer):
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
+
+    @property
+    def mode(self):
+        """Specifies how writing to file should be handled. Should be one of characters:
+        "a", "x", or "w".
+        "a" - append to existing file;
+        "x" - only write if file doesn't exist yet;
+        "w" - overwrite file if it already exists.
+
+        Raises
+        ------
+        ValueError
+            If given anything other than "a", "x", or "w".
+        """
+        return self._mode
+
+    @mode.setter
+    def mode(self, mode):
+        if mode not in ("a", "x", "w"):
+            raise ValueError("Mode should be 'a', 'x', or 'w'.")
+        self._mode = mode
+
+    @property
+    def destination(self) -> Path:
+        """pathlib.Path: Directory, to which generated files should be written.
+
+        Raises
+        ------
+        FileNotFoundError
+            If given destination doesn't exist or is not a directory.
+        """
+        return vars(self)["destination"]
+
+    @destination.setter
+    def destination(self, destination: Union[str, Path]) -> None:
+        destination = Path(destination)
+        if not destination.exists() and self.mode == "a":
+            raise FileNotFoundError(
+                "Mode 'a' was specified, but given file doesn't exist."
+            )
+        elif destination.exists() and self.mode == "x":
+            raise FileExistsError(
+                "Mode 'x' was specified, but given file already exists."
+            )
+        elif not destination.parent.exists():
+            raise FileNotFoundError("Parent directory of specified file doesn't exist.")
+        else:
+            logger.debug(f"File {destination} ok for writing.")
+        vars(self)["destination"] = destination
 
     def open(self):
         self.root = zipfile.ZipFile(self.destination, mode=self.mode)
@@ -68,7 +119,7 @@ class ArchiveWriter(Writer):
         self,
         input_dir: Union[Path, str] = None,
         output_dir: Union[Path, str] = None,
-        wanted_files: List[str] = None,
+        wanted_files: Iterable[str] = None,
     ):
         with self.root.open("arguments.json", mode="w") as handle:
             handle.write(
