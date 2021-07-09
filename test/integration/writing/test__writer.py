@@ -137,6 +137,25 @@ def test_get_handle(writer_class, tmp_path):
     assert handle.closed
 
 
+def test_get_handle_exlusive_create(writer_class, tmp_path):
+    # genre not used by default filename template
+    file = tmp_path / "a.ext"
+    with file.open("w") as handle:
+        handle.write("")
+    wrt = writer_class(destination=tmp_path, mode="x")
+    with pytest.raises(FileExistsError):
+        with wrt._get_handle("a", "grn"):
+            pass  # shouldn't be reached anyway
+
+
+def test_get_handle_append_no_file(writer_class, tmp_path):
+    # genre not used by default filename template
+    wrt = writer_class(destination=tmp_path, mode="a")
+    with pytest.raises(FileNotFoundError):
+        with wrt._get_handle("a", "grn"):
+            pass  # shouldn't be reached anyway
+
+
 def test_not_implemented_write(writer_class, arrays, tmp_path, monkeypatch):
     monkeypatch.setattr(Logger, "warning", Mock())
     wrt = writer_class(tmp_path)

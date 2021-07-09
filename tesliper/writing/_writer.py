@@ -10,6 +10,7 @@ from typing import (
     AnyStr,
     Dict,
     Iterable,
+    Iterator,
     List,
     Optional,
     Sequence,
@@ -346,7 +347,9 @@ class Writer(ABC):
         self._filename_template = filename_template
 
     @contextmanager
-    def _get_handle(self, name: str, genre: str, num: int = 0, **kwargs) -> IO[AnyStr]:
+    def _get_handle(
+        self, name: str, genre: str, num: int = 0, **kwargs
+    ) -> Iterator[IO[AnyStr]]:
         """Helper method for creating files. Given additional kwargs will be passed to
         `open()` method. Implemented as context manager for use with `with` statement.
 
@@ -369,13 +372,14 @@ class Writer(ABC):
         filename = self.filename_template.substitute(
             conf=name, ext=self.extension, num=num, genre=genre
         )
-        with self.destination.joinpath(filename).open(self.mode, **kwargs) as handle:
+        file = self.check_file(self.destination.joinpath(filename))
+        with file.open(self.mode, **kwargs) as handle:
             self._handle = handle
             yield handle
 
     def _iter_handles(
         self, filenames: Iterable[str], genre: str, **kwargs
-    ) -> IO[AnyStr]:
+    ) -> Iterator[IO[AnyStr]]:
         """Helper method for iteration over generated files. Given additional kwargs
         will be passed to `open()` method.
 
@@ -400,9 +404,8 @@ class Writer(ABC):
             filename = self.filename_template.substitute(
                 conf=fnm, ext=self.extension, num=num, genre=genre
             )
-            with self.destination.joinpath(filename).open(
-                self.mode, **kwargs
-            ) as handle:
+            file = self.check_file(self.destination.joinpath(filename))
+            with file.open(self.mode, **kwargs) as handle:
                 yield handle
 
     def _energies_handler(self, data: List[Energies], extras: Dict[str, Any]) -> None:
