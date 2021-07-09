@@ -1,13 +1,12 @@
 from pathlib import Path
 
-import pytest
 import openpyxl as oxl
+import pytest
 
 from tesliper import Energies
-from tesliper.writing.xlsx_writer import XlsxWriter
-from tesliper.glassware import SingleSpectrum, Spectra
 from tesliper.extraction import Soxhlet
-from tesliper.glassware import Conformers
+from tesliper.glassware import Conformers, SingleSpectrum, Spectra
+from tesliper.writing.xlsx_writer import XlsxWriter
 
 
 @pytest.fixture
@@ -54,60 +53,58 @@ def spectra(filenames):
 
 @pytest.fixture
 def writer(tmp_path):
-    return XlsxWriter(tmp_path.joinpath("output.xlsx"))
+    return XlsxWriter(tmp_path)
 
 
 def test_start_with_existing_file(tmp_path):
-    file = tmp_path.joinpath("output.xlsx")
+    file = tmp_path.joinpath("tesliper-output.xlsx")
     wb = oxl.Workbook()
     wb.save(file)
-    XlsxWriter(file, mode="a")
+    XlsxWriter(tmp_path, mode="a")
 
 
 def test_energies(writer, mols):
-    writer.energies(
+    grn = "scf"
+    writer.energies(mols.arrayed(grn))
+    assert writer.file.exists()
+    wb = oxl.load_workbook(writer.file)
+    assert wb.sheetnames == [XlsxWriter._header[grn]]
+    ws = wb[XlsxWriter._header[grn]]
+    assert len(list(ws.columns)) == 5
+    assert len(list(ws.rows)) == 1 + len(list(mols.keys()))
+
+
+def test_overview(writer, mols):
+    writer.overview(
         [mols.arrayed(grn) for grn in Energies.associated_genres],
         frequencies=mols.arrayed("freq"),
         stoichiometry=mols.arrayed("stoichiometry"),
     )
-    assert writer.destination.exists()
-    wb = oxl.load_workbook(writer.destination)
-    assert wb.sheetnames == ["Collective overview"] + [
-        XlsxWriter._header[grn] for grn in Energies.associated_genres
-    ]
+    assert writer.file.exists()
+    wb = oxl.load_workbook(writer.file)
+    assert wb.sheetnames == ["Collective overview"]
     ws = wb["Collective overview"]
     assert len(list(ws.columns)) == 13
     assert len(list(ws.rows)) == 2 + len(list(mols.keys()))
-    for grn in Energies.associated_genres:
-        ws = wb[XlsxWriter._header[grn]]
-        assert len(list(ws.columns)) == 5
-        assert len(list(ws.rows)) == 1 + len(list(mols.keys()))
 
 
 def test_energies_with_corrections(writer, mols):
-    corrs = [
-        mols.arrayed(f"{grn}corr") for grn in Energies.associated_genres if grn != "scf"
-    ]
-    ens = [mols.arrayed(grn) for grn in Energies.associated_genres]
+    grn = "gib"
+    corrs = mols.arrayed(f"{grn}corr")
+    ens = mols.arrayed(grn)
     writer.energies(ens, corrections=corrs)
-    assert writer.destination.exists()
-    wb = oxl.load_workbook(writer.destination)
-    assert wb.sheetnames == ["Collective overview"] + [
-        XlsxWriter._header[grn] for grn in Energies.associated_genres
-    ]
-    ws = wb["Collective overview"]
-    assert len(list(ws.columns)) == 11
-    assert len(list(ws.rows)) == 2 + len(list(mols.keys()))
-    for grn in Energies.associated_genres:
-        ws = wb[XlsxWriter._header[grn]]
-        assert len(list(ws.columns)) == 5 + (grn != "scf")
-        assert len(list(ws.rows)) == 1 + len(list(mols.keys()))
+    assert writer.file.exists()
+    wb = oxl.load_workbook(writer.file)
+    assert wb.sheetnames == [XlsxWriter._header[grn]]
+    ws = wb[XlsxWriter._header[grn]]
+    assert len(list(ws.columns)) == 6
+    assert len(list(ws.rows)) == 1 + len(list(mols.keys()))
 
 
 def test_bars(writer, mols, filenames):
     writer.bars(mols.arrayed("freq"), [mols.arrayed("iri")])
-    assert writer.destination.exists()
-    wb = oxl.load_workbook(writer.destination)
+    assert writer.file.exists()
+    wb = oxl.load_workbook(writer.file)
     keys = [Path(f).stem for f in filenames]
     assert wb.sheetnames == keys
     for file in keys:
@@ -118,8 +115,8 @@ def test_bars(writer, mols, filenames):
 
 def test_spectra(writer, mols, spectra):
     writer.spectra(spectra)
-    assert writer.destination.exists()
-    wb = oxl.load_workbook(writer.destination)
+    assert writer.file.exists()
+    wb = oxl.load_workbook(writer.file)
     ws = wb[spectra.genre]
     assert len(list(ws.columns)) == 1 + spectra.filenames.size
     assert len(list(ws.rows)) == 1 + spectra.values.shape[1]
@@ -127,8 +124,8 @@ def test_spectra(writer, mols, spectra):
 
 def test_single_spectrum(writer, mols, spc):
     writer.single_spectrum(spc)
-    assert writer.destination.exists()
-    wb = oxl.load_workbook(writer.destination)
+    assert writer.file.exists()
+    wb = oxl.load_workbook(writer.file)
     ws = wb[f"{spc.genre}_{spc.averaged_by}"]
     assert len(list(ws.columns)) == 2
     assert len(list(ws.rows)) == 1 + spc.values.size
@@ -149,8 +146,8 @@ def molstd(filenamestd, fixturesdir):
 def test_transitions_only_highest(writer, molstd, filenamestd):
     trans, wave = molstd.arrayed("transitions"), molstd.arrayed("wavelen")
     writer.transitions(trans, wave, only_highest=True)
-    assert writer.destination.exists()
-    wb = oxl.load_workbook(writer.destination)
+    assert writer.file.exists()
+    wb = oxl.load_workbook(writer.file)
     keys = [Path(f).stem for f in filenamestd]
     assert wb.sheetnames == keys
     for file in keys:
@@ -162,8 +159,8 @@ def test_transitions_only_highest(writer, molstd, filenamestd):
 def test_transitions_all(writer, molstd, filenamestd):
     trans, wave = molstd.arrayed("transitions"), molstd.arrayed("wavelen")
     writer.transitions(trans, wave, only_highest=False)
-    assert writer.destination.exists()
-    wb = oxl.load_workbook(writer.destination)
+    assert writer.file.exists()
+    wb = oxl.load_workbook(writer.file)
     keys = [Path(f).stem for f in filenamestd]
     assert wb.sheetnames == keys
     for num, file in enumerate(keys):
