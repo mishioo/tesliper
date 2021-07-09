@@ -296,7 +296,8 @@ class Writer(ABC):
         extras: Dict[str, Any] = dict()
         for obj in data:
             if obj.genre.endswith("corr"):
-                extras.get("corrections", dict())[obj.genre[:3]] = obj
+                corrs = extras["corrections"] = extras.get("corrections", dict())
+                corrs[obj.genre[:3]] = obj
             elif obj.genre == "freq":
                 extras["frequencies"] = obj
             elif obj.genre == "wave":
@@ -309,7 +310,8 @@ class Writer(ABC):
                 extras["multiplicity"] = obj
             else:
                 name = type(obj).__name__.lower()
-                distr.get(name, list()).append(obj)
+                values = distr[name] = distr.get(name, list())
+                values.append(obj)
         return distr, extras
 
     @property
