@@ -17,7 +17,7 @@ from ..glassware.arrays import (
     Transitions,
 )
 from ..glassware.spectra import SingleSpectrum, Spectra
-from ._writer import SerialWriter, Writer
+from ._writer import Writer
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -198,7 +198,8 @@ class TxtWriter(Writer):
         logger.info("Spectrum export to text files done.")
 
 
-class TxtSerialWriter(SerialWriter):
+class TxtSerialWriter:
+    # TODO: unify with TxtWriter
     """Writes extracted data in .txt format, generates separate file or set of files for
     each given conformer.
 
