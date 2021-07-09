@@ -147,3 +147,34 @@ def test_distribution_extras(writer_class, arraytype, array):
     assert isinstance(extras, dict)
     assert arraytype in extras
     assert extras[arraytype] is not None
+
+
+writer_methods = {
+    "overview": dict(
+        energies=None,
+        frequencies=None,
+        stoichiometry=None,
+    ),
+    "energies": dict(energies=None, corrections=None),
+    "spectrum": dict(spectrum=None),
+    "bars": dict(band=None, bars=None),
+    "spectra": dict(spectra=None),
+    "transitions": dict(
+        transitions=None,
+        wavelengths=None,
+        only_highest=True,
+    ),
+    "geometry": dict(
+        geometry=None,
+        charge=None,
+        multiplicity=None,
+    ),
+}
+
+
+@pytest.mark.parametrize("method,signature", tuple(writer_methods.items()))
+def test_not_implemented_methods(writer_class, method, signature):
+    wrt = writer_class(destination="")
+    m = getattr(wrt, method)
+    with pytest.raises(NotImplementedError):
+        m(**signature)

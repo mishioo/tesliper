@@ -417,7 +417,7 @@ class Writer(ABC):
         distributed, extras = self.distribute_data(data)
         for name, data_ in distributed.items():
             try:
-                handler = getattr(self, f"_handler_{name}")
+                handler = getattr(self, f"_{name}_handler")
                 handler(data_, extras)
             except (NotImplementedError, AttributeError):
                 logger.warning(f"{type(self)} does not handle '{name}' type data.")
