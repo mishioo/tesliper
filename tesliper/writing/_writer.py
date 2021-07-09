@@ -197,6 +197,7 @@ class Writer(ABC):
     )
     energies_order = "zpe ten ent gib scf".split(" ")
     default_template = "${conf}.${ext}"
+    # TODO: add separate template for single-file methods ?
 
     @property
     @classmethod
@@ -210,10 +211,8 @@ class Writer(ABC):
         _WRITERS[cls.extension] = cls
 
     def __init__(self, destination: Union[str, Path], mode: str = "x"):
-        # TODO: unify subclasses __init__
         self.mode = mode
         self.destination = destination
-        # TODO: make all handlers in subclasses use filename_template
         self.filename_template = self.default_template
         self._handle = None
 
@@ -337,6 +336,7 @@ class Writer(ABC):
 
     @filename_template.setter
     def filename_template(self, filename_template: Union[str, Template]) -> None:
+        # TODO: add ${name} identifier for type of produced summary
         if isinstance(filename_template, str):
             filename_template = Template(filename_template)
         try:

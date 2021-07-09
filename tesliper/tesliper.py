@@ -306,6 +306,9 @@ class Tesliper:
                     self.averaged[(genre, energies.genre)] = av
         return self.averaged
 
+    # TODO: remove "dest" parameter from export methods; tesliper.output_dir is enough
+    # TODO: adapt export methods to new Writer interface
+    # TODO: supplement docstrings
     def export_data(self, genres, dest="", fmt="txt"):
         """
         Parameters
@@ -347,6 +350,7 @@ class Tesliper:
         stoichiometry = self["stoichiometry"]
         writer.write(data=[*energies, frequencies, stoichiometry, *corrections])
 
+    # TODO: separate to vibrational and electronic ?
     def export_bars(self, dest="", fmt="txt"):
         dest = dest if dest else self.output_dir
         if not dest:
