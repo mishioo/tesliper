@@ -214,6 +214,7 @@ class Writer(ABC):
         self.destination = destination
         # TODO: make all handlers in subclasses use filename_template
         self.filename_template = self.default_template
+        self._handle = None
 
     @property
     def mode(self):
@@ -369,6 +370,7 @@ class Writer(ABC):
             conf=name, ext=self.extension, num=num, genre=genre
         )
         with self.destination.joinpath(filename).open(self.mode, **kwargs) as handle:
+            self._handle = handle
             yield handle
 
     def _iter_handles(
