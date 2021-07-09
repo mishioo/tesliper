@@ -3,7 +3,19 @@ import logging as lgg
 from abc import ABC, abstractmethod
 from pathlib import Path
 from string import Template
-from typing import Any, Dict, Iterable, List, Optional, Sequence, TextIO, Tuple, Union
+from typing import (
+    IO,
+    Any,
+    AnyStr,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Sequence,
+    Tuple,
+    Type,
+    Union,
+)
 
 from ..glassware.arrays import (
     Bars,
@@ -24,12 +36,12 @@ logger = lgg.getLogger(__name__)
 logger.setLevel(lgg.DEBUG)
 
 
-_WRITERS: Dict[str, type] = {}
+_WRITERS: Dict[str, Type["Writer"]] = {}
 
 
-def writer(fmt: str, data, destination, mode, **kwargs) -> "Writer":
+def writer(fmt: str, destination, mode, **kwargs) -> "Writer":
     try:
-        return _WRITERS[fmt](data, destination, mode, **kwargs)
+        return _WRITERS[fmt](destination, mode, **kwargs)
     except KeyError:
         raise ValueError(f"Unknown file format: {fmt}.")
 
@@ -331,7 +343,7 @@ class Writer(ABC):
 
     def _iter_handles(
         self, filenames: Iterable[str], genre: str, **kwargs
-    ) -> (TextIO, Any):
+    ) -> (IO[AnyStr], Any):
         """Helper method for iteration over generated files. Given additional kwargs
         will be passed to `open()` method.
 
@@ -358,7 +370,7 @@ class Writer(ABC):
             ) as handle:
                 yield handle
 
-    def _energies_handler(self, data, extras):
+    def _energies_handler(self, data: List[Energies], extras: Dict[str, Any]) -> None:
         self.overview(
             data,
             frequencies=extras.get("frequencies"),
@@ -369,27 +381,33 @@ class Writer(ABC):
                 en, corrections=extras.get("corrections", dict()).get(en.genre)
             )
 
-    def _vibrationalbars_handler(self, data, extras):
+    def _vibrationalbars_handler(
+        self, data: List[VibrationalBars], extras: Dict[str, Any]
+    ) -> None:
         self.bars(band=extras["frequencies"], bars=data)
 
-    def _electronicbars_handler(self, data, extras):
+    def _electronicbars_handler(
+        self, data: List[ElectronicBars], extras: Dict[str, Any]
+    ) -> None:
         self.bars(band=extras["wavelengths"], bars=data)
 
-    def _transitions_handler(self, data, extras):
+    def _transitions_handler(
+        self, data: List[Transitions], extras: Dict[str, Any]
+    ) -> None:
         self.transitions(transitions=data, wavelengths=extras["wavelengths"])
 
-    def _geometry_handler(self, data, extras):
+    def _geometry_handler(self, data: List[Geometry], extras: Dict[str, Any]) -> None:
         self.geometry(
             data,
             charge=extras.get("charge"),
             multiplicity=extras.get("multiplicity"),
         )
 
-    def _spectra_handler(self, data, _extras):
+    def _spectra_handler(self, data: List[Spectra], _extras) -> None:
         for spc in data:
             self.spectra(spc)
 
-    def _singlespectrum_handler(self, data, _extras):
+    def _singlespectrum_handler(self, data: List[SingleSpectrum], _extras) -> None:
         for spc in data:
             self.spectrum(spc)
 
