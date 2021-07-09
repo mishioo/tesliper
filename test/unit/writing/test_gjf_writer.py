@@ -1,7 +1,8 @@
 from pathlib import Path
 
 import pytest
-from hypothesis import given, strategies as st, assume
+from hypothesis import assume, given
+from hypothesis import strategies as st
 
 from tesliper.writing.gjf_writer import GjfWriter, _format_coordinates
 
@@ -29,7 +30,7 @@ def test_writer_init():
     assert gjfwriter.route == "#"
     assert gjfwriter.comment == "No information provided."
     assert gjfwriter.post_spec == ""
-    assert gjfwriter.filename_template.template == "${filename}.${ext}"
+    assert gjfwriter.filename_template.template == "${conf}.${ext}"
 
 
 @given(st.text())

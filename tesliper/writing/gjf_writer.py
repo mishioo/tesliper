@@ -2,12 +2,11 @@
 import logging
 from itertools import cycle
 from pathlib import Path
-from string import Template
 from typing import Iterable, List, Sequence, TextIO, Union
 
 from ..datawork.atoms import symbol_of_element
 from ..glassware import Geometry, IntegerArray
-from ._writer import SerialWriter
+from ._writer import Writer
 
 # LOGGER
 logger = logging.getLogger(__name__)
@@ -21,12 +20,13 @@ def _format_coordinates(coords: Sequence[Sequence[float]], atoms: Sequence[int])
 
 
 # CLASSES
-class GjfWriter(SerialWriter):
+class GjfWriter(Writer):
     """"""
 
     # TODO: Add per-file parametrization of link0 commands
 
     extension = "gjf"
+    default_template = "${conf}.${ext}"
     _link0_commands = {
         "Mem",  # str specifying required memory
         "Chk",  # str with file path
@@ -54,17 +54,14 @@ class GjfWriter(SerialWriter):
         route: Union[str, List[str]] = "",
         comment: str = "No information provided.",
         post_spec: str = "",
-        filename_template: Union[str, Template] = "${conf}.${ext}",
     ):
-        super().__init__(
-            destination=destination, mode=mode, filename_template=filename_template
-        )
+        super().__init__(destination=destination, mode=mode)
         self.link0 = link0 or {}
         self.route = route
         self.comment = comment
         self.post_spec = post_spec
 
-    def write(
+    def geometry(
         self,
         geometry: Geometry,
         charge: Union[IntegerArray, Sequence[int], int] = (0,),
