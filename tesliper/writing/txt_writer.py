@@ -1,7 +1,6 @@
 # IMPORTS
 import logging as lgg
 from itertools import zip_longest
-from pathlib import Path
 from string import Template
 from typing import List, Optional, Sequence, Union
 
@@ -9,12 +8,12 @@ import numpy as np
 
 from ..glassware.arrays import (
     Bars,
-    DataArray,
     ElectronicBars,
     Energies,
     FloatArray,
     InfoArray,
     Transitions,
+    VibrationalBars,
 )
 from ..glassware.spectra import SingleSpectrum, Spectra
 from ._writer import Writer
@@ -38,10 +37,13 @@ class TxtWriter(Writer):
          or 'w' (overwrite file if it already exists).
     """
 
+    extension = "txt"
+    default_template: Union[str, Template] = "${conf}.${genre}.${ext}"
+
     def overview(
         self,
         energies: Sequence[Energies],
-        frequencies: Optional[DataArray] = None,
+        frequencies: Optional[VibrationalBars] = None,
         stoichiometry: Optional[InfoArray] = None,
     ):
         """Writes essential information from multiple Energies objects to
@@ -101,7 +103,7 @@ class TxtWriter(Writer):
             f"{' | {:^ 4}' if frequencies is not None else '{}'}"
             f"{f' | {{:<{max_stoich}}}' if max_stoich else '{}'}\n"
         )
-        with self.destination.open(self.mode) as file:
+        with self._get_handle("overwiew", "general") as file:
             file.write(header + "\n")
             file.write(names_line + "\n")
             file.write("-" * len(header) + "\n")
@@ -156,7 +158,7 @@ class TxtWriter(Writer):
             corrections,
             fillvalue=None,
         )
-        with self.destination.open(self.mode) as file:
+        with self._get_handle("populations", energies.genre) as file:
             file.write(header + "\n")
             file.write("-" * len(header) + "\n")
             for row in rows:
@@ -182,7 +184,7 @@ class TxtWriter(Writer):
             f'{spectrum.fitting} fitting, shown as {spectrum.units["x"]} '
             f'vs. {spectrum.units["y"]}'
         )
-        with self.destination.open(self.mode) as file:
+        with self._get_handle("spectrum", spectrum.genre) as file:
             file.write(title + "\n")
             if spectrum.averaged_by:
                 file.write(
@@ -196,37 +198,6 @@ class TxtWriter(Writer):
                 )
             )
         logger.info("Spectrum export to text files done.")
-
-
-class TxtSerialWriter:
-    # TODO: unify with TxtWriter
-    """Writes extracted data in .txt format, generates separate file or set of files for
-    each given conformer.
-
-    Parameters
-    ----------
-    destination: str or pathlib.Path
-        Directory, to which generated files should be written.
-    mode: str
-        Specifies how writing to file should be handled. Should be one of characters:
-         'a' (append to existing file), 'x' (only write if file does'nt exist yet),
-         or 'w' (overwrite file if it already exists).
-    filename_template: str or string.Template
-        Template for names of generated files, defaults to
-        '${filename}.${genre}.${ext}'.
-    """
-
-    extension = "txt"
-
-    def __init__(
-        self,
-        destination: Union[str, Path],
-        mode: str = "x",
-        filename_template: Union[str, Template] = "${conf}.${genre}.${ext}",
-    ):
-        super().__init__(
-            destination=destination, mode=mode, filename_template=filename_template
-        )
 
     def bars(self, band: Bars, bars: List[Bars]):
         """Writes Bars objects to txt files (one for each conformer).
