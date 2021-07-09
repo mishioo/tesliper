@@ -127,6 +127,16 @@ def test_iter_handles(writer_class, tmp_path):
         pytest.fail("file handle should be closed")
 
 
+def test_get_handle(writer_class, tmp_path):
+    wrt = writer_class(destination=tmp_path, mode="w")
+    name = "a"
+    with wrt._get_handle(name, "grn") as handle:
+        assert not handle.closed
+    # genre not used by default filename template
+    assert f"{name}.ext" == Path(handle.name).name
+    assert handle.closed
+
+
 def test_not_implemented_write(writer_class, arrays, tmp_path, monkeypatch):
     monkeypatch.setattr(Logger, "warning", Mock())
     wrt = writer_class(tmp_path)

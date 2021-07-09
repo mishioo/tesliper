@@ -1,6 +1,7 @@
 # IMPORTS
 import logging as lgg
 from abc import ABC, abstractmethod
+from contextlib import contextmanager
 from pathlib import Path
 from string import Template
 from typing import (
@@ -343,25 +344,55 @@ class Writer(ABC):
             raise ValueError("Unexpected identifiers given.") from error
         self._filename_template = filename_template
 
+    @contextmanager
+    def _get_handle(self, name: str, genre: str, num: int = 0, **kwargs) -> IO[AnyStr]:
+        """Helper method for creating files. Given additional kwargs will be passed to
+        `open()` method. Implemented as context manager for use with `with` statement.
+
+        Parameters
+        ----------
+        name: str
+            value for `${conf}` placeholder in `filename_template`
+        genre: str
+            genre name for `${genre}` placeholder in `filename_template`
+        num: int
+            number for `${num}` placeholder in `filename_template`
+        kwargs
+            arguments for `Path.open()` used to open file
+
+        Yields
+        ------
+        IO
+            file handle, will be closed automatically after `with` statement exits
+        """
+        filename = self.filename_template.substitute(
+            conf=name, ext=self.extension, num=num, genre=genre
+        )
+        with self.destination.joinpath(filename).open(self.mode, **kwargs) as handle:
+            yield handle
+
     def _iter_handles(
         self, filenames: Iterable[str], genre: str, **kwargs
-    ) -> (IO[AnyStr], Any):
+    ) -> IO[AnyStr]:
         """Helper method for iteration over generated files. Given additional kwargs
         will be passed to `open()` method.
 
         Parameters
         ----------
         filenames: list of str
-            list of source filenames
+            list of source filenames, used as value for `${conf}` placeholder
+            in `filename_template`
         genre: str
-            genre name for filename_template
+            genre name for `${genre}` placeholder in `filename_template`
+        genre: str
+            genre name for `${genre}` placeholder in `filename_template`
+        kwargs
+            arguments for `Path.open()` used to open file
 
         Yields
         ------
         TextIO
             file handle, will be closed automatically
-        any
-            values corresponding to particular filename, given in `values` parameter
         """
         for num, fnm in enumerate(filenames):
             filename = self.filename_template.substitute(
