@@ -324,6 +324,7 @@ class ArchiveLoader:
             tslr.conformers = Conformers(
                 mols, **self._load("conformers/arguments.json")
             )
+            tslr.conformers.kept = self._load("conformers/kept.json")
             for file in self.root.namelist():
                 if "experimental" in file:
                     ...  # not implemented yet

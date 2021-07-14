@@ -1,6 +1,10 @@
+import copy
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import pytest
+from hypothesis import given
+from hypothesis import strategies as st
 
 from tesliper import Tesliper, Spectra
 from tesliper.glassware import SingleSpectrum
@@ -40,13 +44,31 @@ with_spectra.averaged["ir"] = SingleSpectrum(
 )
 
 
-@pytest.mark.parametrize("tesliper", [empty, with_args, with_mols, with_spectra])
-def test_serialization(tmp_path, tesliper):
-    path = tmp_path / "archive.tslr"
+def resurect(tesliper, path):
     writer = ArchiveWriter(destination=path)
     writer.write(tesliper)
     loader = ArchiveLoader(source=path)
-    resurected = loader.load()
+    return loader.load()
+
+
+@given(
+    blade=st.lists(
+        st.booleans(),
+        min_size=len(with_mols.conformers),
+        max_size=len(with_mols.conformers),
+    )
+)
+def test_serialization_kept(blade):
+    tslr = copy.deepcopy(with_mols)
+    with TemporaryDirectory() as temppath:
+        with tslr.conformers.trimmed_to(blade):
+            resurected = resurect(tslr, Path(temppath) / "archive.tslr")
+            assert resurected.conformers.kept == tslr.conformers.kept
+
+
+@pytest.mark.parametrize("tesliper", [empty, with_args, with_mols, with_spectra])
+def test_serialization(tmp_path, tesliper):
+    resurected = resurect(tesliper, tmp_path / "archive.tslr")
     assert resurected.input_dir == tesliper.input_dir
     assert resurected.output_dir == tesliper.output_dir
     assert resurected.wanted_files == tesliper.wanted_files
