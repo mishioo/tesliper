@@ -279,21 +279,20 @@ class Writer(ABC):
 
         Returns
         -------
-        dict
-            Dictionary with DataArray objects sorted by genre category.
-            Available key: value pairs are:
-                energies: List of Energies,
-                vibrational: List of VibrationalBars,
-                electronic: List of ElectronicBars,
-                spectra: List of Spectra,
-                single: List of SingleSpectrum,
-                other: List of DataArray,
-                corrections = dict of genre: FloatArray,
-                frequencies = ElectronicBars or None,
-                wavelenghts = VibrationalBars or None,
-                stoichiometry = InfoArray or None
+        distr : dict
+            Dictionary with DataArray objects sorted by their type.
+            Each {key: value} pair is {name of the type in lowercase format:
+            list of DataArray objects of this type}.
+        extras : dict
+            Spacial-case genres: extra information used by some writer methods
+            when exporting data. Available {key: value} pairs are:
+                corrections: dict of {energy genre: FloatArray},
+                frequencies: ElectronicBars or None,
+                wavelenghts: VibrationalBars or None,
+                stoichiometry: InfoArray or None,
+                charge: IntegerArray or None,
+                multiplicity: IntegerArray or None
         """
-        # TODO: correct docstring
         distr: Dict[str, List] = dict()
         extras: Dict[str, Any] = dict()
         for obj in data:
