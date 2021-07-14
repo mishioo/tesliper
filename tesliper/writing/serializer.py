@@ -108,7 +108,7 @@ class ArchiveWriter:
         with self:
             self._write_arguments(obj.input_dir, obj.output_dir, obj.wanted_files)
             self._write_parameters(obj.parameters)
-            self._write_molecules(obj.conformers)
+            self._write_conformers(obj.conformers)
             # self._write_experimental(tesliper.experimental)  # not supported yet
             for spc in obj.averaged.values():
                 self._write_averaged(spc)
@@ -141,16 +141,16 @@ class ArchiveWriter:
         with self.root.open("parameters.json", mode="w") as handle:
             handle.write(self.jsonencode(to_write))
 
-    def _write_molecules(self, molecules: Conformers):
-        self._write_molecules_arguments(
-            allow_data_inconsistency=molecules.allow_data_inconsistency
+    def _write_conformers(self, conformers: Conformers):
+        self._write_conformers_arguments(
+            allow_data_inconsistency=conformers.allow_data_inconsistency
         )
-        self._write_filenames(molecules.filenames)
-        self._write_kept(molecules.kept)
-        for filename in molecules.filenames:
-            self._write_mol(filename=filename, mol=molecules[filename])
+        self._write_filenames(conformers.filenames)
+        self._write_kept(conformers.kept)
+        for filename in conformers.filenames:
+            self._write_mol(filename=filename, mol=conformers[filename])
 
-    def _write_molecules_arguments(self, allow_data_inconsistency: bool):
+    def _write_conformers_arguments(self, allow_data_inconsistency: bool):
         with self.root.open("conformers/arguments.json", mode="w") as handle:
             handle.write(
                 self.jsonencode({"allow_data_inconsistency": allow_data_inconsistency})
