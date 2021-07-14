@@ -428,6 +428,58 @@ class Tesliper:
         data = [s for s in self.averaged.values() if s]
         wrt.write(data)
 
+    def export_geometry(
+        self,
+        fmt: str = "gjf",
+        mode: str = "x",
+        route: str = "# hf 3-21g",
+        link0: Optional[dict] = None,
+        comment: str = "No information provided.",
+        post_spec: str = "",
+    ):
+        """Saves geometry of conformers to disk in given file format.
+
+        Currently only "gjf" format is available by default.
+        Files produced are written to `Tesliper.output_dir` directory with filenames
+        automatically generated using adequate genre's name and conformers' identifiers.
+
+        Parameters
+        ----------
+        fmt : str
+            File format of output files, defaults to "txt".
+        mode : str
+            Specifies how writing to file should be handled. May be one of:
+            "a" (append to existing file), "x" (only write if file doesn't exist yet),
+            "w" (overwrite file if it already exists). Defaults to "x".
+        route : str
+            List of space-separated keywords specifying calculations directives
+            for Gaussian software.
+        link0 : dict
+            Dictionary with link0 commands, where key is command's name and value is
+            str with parameters. For any non-parametric link0 command value is not
+            important (may be `None`), key's presence is enough to record, that it was
+            requested.
+        comment : str
+            Contents of title section, i.e. a comment about the calculations.
+        post_spec :
+            Anything that should be placed after conformers geometry specification.
+            Will be writen to file as given.
+        """
+        wrt = wr.writer(
+            fmt=fmt,
+            destination=self.output_dir,
+            mode=mode,
+            link0=link0,
+            route=route,
+            comment=comment,
+            post_spec=post_spec,
+        )
+        wrt.geometry(
+            geometry=self["geometry"],
+            multiplicity=self["multiplicity"],
+            charge=self["charge"],
+        )
+
     def serialize(self, filename: str = ".tslr", mode: str = "x") -> None:
         """Serialize instance of Tesliper object to a file in `self.output_dir`.
 
