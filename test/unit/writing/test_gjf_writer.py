@@ -65,14 +65,6 @@ def test_route_str_startswith_hash(commands):
     assert gjfwriter._route == commands.split()
 
 
-@given(st.lists(st.text()))
-def test_route_list_not_startswith_hash(commands):
-    assume(not (commands[0] if commands else "").strip().startswith("#"))
-    gjfwriter = GjfWriter(destination="", route=commands)
-    assert gjfwriter.route == " ".join(["#"] + commands)
-    assert gjfwriter._route == ["#"] + commands
-
-
 st_not_st = st.one_of(
     st.none(),
     st.integers(),
@@ -94,8 +86,7 @@ def test_route_sequence_wrong_type(commands):
         GjfWriter(destination="", route=commands)
 
 
-@pytest.mark.parametrize("commands", ["", [], tuple(), set(), {}])
-def test_route_empty(commands):
-    gjfwriter = GjfWriter(destination="", route=commands)
+def test_route_empty():
+    gjfwriter = GjfWriter(destination="", route="")
     assert gjfwriter.route == "#"
     assert gjfwriter._route == ["#"]
