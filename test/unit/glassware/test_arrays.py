@@ -1,10 +1,10 @@
 from unittest import mock
 
-import pytest
 import numpy as np
+import pytest
 
-import tesliper.glassware.arrays as ar
 import tesliper.datawork as dw
+import tesliper.glassware.arrays as ar
 from tesliper.exceptions import InconsistentDataError
 
 
@@ -181,7 +181,7 @@ def bars():
 def test_intensieties(bars, inten, fnms, vals, freq):
     _ = bars.intensities
     inten.assert_called_with(
-        bars.genre, bars.values, bars.frequencies, bars.t, bars.laser,
+        bars.genre, bars.values, bars.frequencies, bars.t, bars.laser
     )
 
 
@@ -286,7 +286,9 @@ def transitions_values():
 @pytest.fixture
 def transitions(transitions_values):
     return ar.Transitions(
-        genre="transitions", filenames=["one"], values=transitions_values,
+        genre="transitions",
+        filenames=["one"],
+        values=transitions_values,
     )
 
 
