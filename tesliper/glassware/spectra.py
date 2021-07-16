@@ -162,9 +162,8 @@ class Spectra(SingleSpectrum):
         )
 
     def average(self, energies: "tesliper.glassware.Energies") -> SingleSpectrum:
-        """A method for averaging spectra by population of conformers. If `scaling`
-        or `offset` attributes are `np.ndarray`s, they are averaged as well.
-
+        """A method for averaging spectra by population of conformers. If this object
+        is empty, averaged spectrum will be a flat line at 0.0 intensity.
 
         Parameters
         ----------
@@ -181,6 +180,8 @@ class Spectra(SingleSpectrum):
         populations = energies.populations
         energy_type = energies.genre
         av_spec = dw.calculate_average(self.values, populations)
+        if not av_spec.size:
+            av_spec = np.zeros(self.abscissa.shape)
         av_spec = SingleSpectrum(
             self.genre,
             av_spec,

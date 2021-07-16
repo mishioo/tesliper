@@ -226,6 +226,8 @@ def calculate_average(values, populations):
         raise ValueError(
             "Exactly one population value for each conformer must be provided."
         )
+    if not values.size:
+        return np.zeros([0])  # just return an empty array if `values` is empty
     popsum = populations.sum()
     if not np.isclose(popsum, 1):
         # normalize population data, if needed
