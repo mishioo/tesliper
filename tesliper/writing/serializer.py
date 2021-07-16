@@ -340,10 +340,10 @@ class ArchiveLoader:
         return self.jsondecode(self.root.read(dest))
 
     def _load_parameters(self):
-        params = self._load("parameters.json")
-        params["vibrational"]["fitting"] = getattr(dw, params["vibrational"]["fitting"])
-        params["electronic"]["fitting"] = getattr(dw, params["electronic"]["fitting"])
-        return params
+        parameters = self._load("parameters.json")
+        for params in parameters.values():
+            params["fitting"] = getattr(dw, params["fitting"])
+        return parameters
 
     def jsondecode(
         self,
