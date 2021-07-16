@@ -19,6 +19,12 @@ default_spectra_bars = {
 }
 
 
+# TODO: refactor this module:
+#       - remove generic calculate_intensities function
+#       - bind other functions more closely to corresponding `DataArray`s
+#       - figure out how to handle intensities genres like "iri" and "raman"
+
+
 # MODULE FUNCTIONS
 def dip_to_ir(values, frequencies, *args, **kwargs):
     """Calculates signal intensity of IR spectrum.

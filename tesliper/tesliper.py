@@ -57,7 +57,10 @@ class Tesliper:
             "fitting": dw.gaussian,
         },
     }
-    _standard_parameters["scatt"] = _standard_parameters["vibra"]
+    # TODO: introduce more sophisticated parameters proxy that enables using
+    #       same or different params for genres of same type (e.g. "ir" and "vcd")
+    # TODO: add separate parameters for scattering spectra, as e.g.
+    #       _standard_parameters["scattering"] = _standard_parameters["vibrational"]
 
     def __init__(self, input_dir=".", output_dir=".", wanted_files=None):
         """
@@ -83,9 +86,6 @@ class Tesliper:
         self.spectra = dict()
         self.averaged = dict()
         self.parameters = self.standard_parameters
-        self.same_vibrational_parameters = False
-        self.same_electronic_parameters = False
-        self.same_scattering_parameters = False
 
     def __getitem__(self, item):
         try:
@@ -95,18 +95,20 @@ class Tesliper:
 
     @property
     def energies(self):
+        # TODO: use appropriate DataArray.associated_genres instead of hard-coded value
         keys = "zpe ent ten gib scf".split(" ")
         return {k: self.conformers.arrayed(k) for k in keys}
 
     @property
     def spectral(self):
-        # TO DO: expand with other spectral data
+        # TODO: expand with other spectral data
+        # TODO: use appropriate DataArray.associated_genres instead of hard-coded value
         keys = "dip rot vosc vrot losc lrot raman1 roa1".split(" ")
         return {k: self.conformers.arrayed(k) for k in keys}
 
     @property
     def bars(self):
-        # TO DO: put proper keys here
+        # TODO: put proper keys here
         keys = "dip rot vosc vrot raman1 roa1".split(" ")
         return {k: self.conformers.arrayed(k) for k in keys}
 

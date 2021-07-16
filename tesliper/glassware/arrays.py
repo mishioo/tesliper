@@ -293,6 +293,9 @@ class Averagable:
         return averaged
 
 
+# TODO: rename to something more recognizable (Activities or smth)
+# TODO: remove `.t` parameter from this class and subclasses that doesn't need it
+#       after refactoring datawork.intensities
 class Bars(FloatArray, Averagable):
 
     associated_genres = ()
@@ -396,6 +399,9 @@ class Bars(FloatArray, Averagable):
         return intensities
 
 
+# TODO: rename "Bars" part to something more recognizable
+# TODO: create `Scattering...` class to separate scattering data
+#       preferably as subclass of this class
 class GroundStateBars(Bars):
     associated_genres = (
         "freq",
@@ -493,6 +499,7 @@ class GroundStateBars(Bars):
         return spectra
 
 
+# TODO: rename "Bars" part to something more recognizable
 class ExcitedStateBars(Bars):
     associated_genres = (
         "wavelen",
