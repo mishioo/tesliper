@@ -1,6 +1,7 @@
 from itertools import chain
 from pathlib import Path
 
+import numpy as np
 import pytest
 
 from tesliper import Tesliper
@@ -34,13 +35,14 @@ def extracted(tesliper):
 
 @pytest.fixture
 def trimmed(extracted):
-    extracted.extract()
+    extracted.conformers.kept = [False, True]
     return extracted
 
 
 @pytest.fixture
 def calculated(extracted):
-    extracted.conformers.kept = [False, True]
+    # FIXME: no relevant spectral data in test set, returns empty Spectra object
+    extracted.calculate_spectra(["ir"])
     return extracted
 
 
@@ -90,16 +92,24 @@ def test_serialization_inconsistent(inconsistent, tmp_path):
     )
 
 
-@pytest.mark.xfail(reason="Can't compare Spectra objects for equality.")
 def test_serialization_spectra(calculated, tmp_path):
     resurrected = resurect(calculated, tmp_path)
-    assert resurrected.spectra == calculated.spectra
+    for genre, spc in resurrected.spectra.items():
+        for key, value in spc.__dict__.items():
+            if not isinstance(value, np.ndarray):
+                assert value == calculated.spectra[genre].__dict__[key]
+            else:
+                assert np.array(value == calculated.spectra[genre].__dict__[key]).all()
 
 
-@pytest.mark.xfail(reason="Can't compare Spectra objects for equality.")
 def test_serialization_averaged(averaged, tmp_path):
     resurrected = resurect(averaged, tmp_path)
-    assert resurrected.averaged == averaged.averaged
+    for genre, spc in resurrected.averaged.items():
+        for key, value in spc.__dict__.items():
+            if not isinstance(value, np.ndarray):
+                assert value == averaged.averaged[genre].__dict__[key]
+            else:
+                assert np.array(value == averaged.averaged[genre].__dict__[key]).all()
 
 
 @pytest.mark.xfail(reason="Not implemented yet.")

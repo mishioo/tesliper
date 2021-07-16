@@ -2,6 +2,7 @@ import copy
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+import numpy as np
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
@@ -64,8 +65,8 @@ def with_spectra(extracted):
 
 
 @pytest.fixture
-def with_averaged(empty):
-    empty.averaged["ir"] = SingleSpectrum(
+def with_averaged(extracted):
+    extracted.averaged["ir"] = SingleSpectrum(
         "ir",
         [0.3, 0.2, 10, 300, 2],
         [10, 20, 30, 40, 50],
@@ -76,7 +77,7 @@ def with_averaged(empty):
         filenames=["meoh-1.out", "meoh-2.out"],
         averaged_by="gib",
     )
-    return empty
+    return extracted
 
 
 def resurect(tesliper, path):
@@ -135,20 +136,24 @@ def test_serialization(tmp_path, trimmed):
 
 
 def test_serialization_spectra(with_spectra, tmp_path):
-    resurected = resurect(with_spectra, tmp_path)
-    for genre, spc in resurected.spectra.items():
+    resurrected = resurect(with_spectra, tmp_path)
+    for genre, spc in resurrected.spectra.items():
         for key, value in spc.__dict__.items():
-            try:
+            if not isinstance(value, np.ndarray):
                 assert value == with_spectra.spectra[genre].__dict__[key]
-            except ValueError:
-                assert (value == with_spectra.spectra[genre].__dict__[key]).all()
+            else:
+                assert np.array(
+                    value == with_spectra.spectra[genre].__dict__[key]
+                ).all()
 
 
 def test_serialization_averaged(with_averaged, tmp_path):
-    resurected = resurect(with_averaged, tmp_path)
-    for genre, spc in resurected.averaged.items():
+    resurrected = resurect(with_averaged, tmp_path)
+    for genre, spc in resurrected.averaged.items():
         for key, value in spc.__dict__.items():
-            try:
+            if not isinstance(value, np.ndarray):
                 assert value == with_averaged.averaged[genre].__dict__[key]
-            except ValueError:
-                assert (value == with_averaged.averaged[genre].__dict__[key]).all()
+            else:
+                assert np.array(
+                    value == with_averaged.averaged[genre].__dict__[key]
+                ).all()
