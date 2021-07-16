@@ -190,6 +190,8 @@ def calculate_spectra(frequencies, intensities, abscissa, width, fitting):
         If `intensities` and `frequencies` are not of the same shape."""
     if intensities.shape != frequencies.shape:
         raise ValueError("`intensities` and `frequencies` must be of same shape!")
+    if not intensities.size:
+        return np.zeros(0)  # return early to avoid (0, N) shape of output array
     spectra = np.zeros([len(frequencies), abscissa.shape[0]])  # template
     for inten, freq, spr in zip(intensities, frequencies, spectra):
         spr[...] = fitting(inten, freq, abscissa, width)
