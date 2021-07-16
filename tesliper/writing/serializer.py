@@ -29,9 +29,15 @@ class ArchiveWriter:
     |       ...
     │       └───filename_N: {genre=str: data}
     └───spectra
-        ├───experimental: {genre=str: SingleSpectrum}
-        ├───calculated: {genre=str: Spectra}
-        └───averaged: {genre=str: SingleSpectrum}
+        ├───experimental  # not implemented yet
+        ├───calculated
+        │   ├───spectra_genre_1: {attr_name: Spectra.attr}
+        |   ...
+        │   └───spectra_genre_N: {attr_name: Spectra.attr}
+        └───averaged
+            ├───spectra_genre_1-energies-genre-1: {attr_name: SingleSpectrum.attr}
+            ...
+            └───spectra_genre_N-energies-genre-N: {attr_name: SingleSpectrum.attr}
     """
 
     def __init__(
@@ -169,6 +175,7 @@ class ArchiveWriter:
             handle.write(self.jsonencode(kept))
 
     def _write_experimental(self, spectra: Dict[str, SingleSpectrum]):
+        # TODO: implement this
         raise NotImplementedError
         # "spectra/experimental.json"
 
@@ -192,7 +199,7 @@ class ArchiveWriter:
             )
 
     def _write_averaged(self, spectrum: SingleSpectrum):
-        path = f"spectra/averaged/{spectrum.genre}.json"
+        path = f"spectra/averaged/{spectrum.genre}-{spectrum.averaged_by}.json"
         with self.root.open(path, mode="w") as handle:
             handle.write(
                 self.jsonencode(
@@ -327,13 +334,16 @@ class ArchiveLoader:
             tslr.conformers.kept = self._load("conformers/kept.json")
             for file in self.root.namelist():
                 if "experimental" in file:
+                    # TODO: implement this
                     ...  # not implemented yet
                 elif "calculated" in file:
                     params = self._load(file)
                     tslr.spectra[params["genre"]] = Spectra(**params)
                 elif "averaged" in file:
                     params = self._load(file)
-                    tslr.averaged[params["genre"]] = SingleSpectrum(**params)
+                    tslr.averaged[
+                        (params["genre"], params["averaged_by"])
+                    ] = SingleSpectrum(**params)
         return tslr
 
     def _load(self, dest):

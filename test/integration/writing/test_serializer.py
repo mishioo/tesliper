@@ -65,8 +65,23 @@ def with_spectra(extracted):
 
 
 @pytest.fixture
+def empty_spectra(empty):
+    empty.spectra["ir"] = Spectra(
+        genre="ir",
+        values=[],
+        abscissa=[10, 20, 30, 40, 50],
+        width=5,
+        fitting="gaussian",
+        scaling=2.0,
+        offset=70,
+        filenames=[],
+    )
+    return empty
+
+
+@pytest.fixture
 def with_averaged(extracted):
-    extracted.averaged["ir"] = SingleSpectrum(
+    extracted.averaged[("ir", "gib")] = SingleSpectrum(
         "ir",
         [0.3, 0.2, 10, 300, 2],
         [10, 20, 30, 40, 50],
@@ -135,25 +150,27 @@ def test_serialization(tmp_path, trimmed):
     assert resurected.conformers == trimmed.conformers
 
 
+def assert_spectra_equal(new, old):
+    for key, value in new.__dict__.items():
+        if not isinstance(value, np.ndarray):
+            assert value == getattr(old, key)
+        else:
+            assert np.array(value == getattr(old, key)).all()
+
+
 def test_serialization_spectra(with_spectra, tmp_path):
     resurrected = resurect(with_spectra, tmp_path)
     for genre, spc in resurrected.spectra.items():
-        for key, value in spc.__dict__.items():
-            if not isinstance(value, np.ndarray):
-                assert value == with_spectra.spectra[genre].__dict__[key]
-            else:
-                assert np.array(
-                    value == with_spectra.spectra[genre].__dict__[key]
-                ).all()
+        assert_spectra_equal(spc, with_spectra.spectra[genre])
+
+
+def test_serialization_spectra_empty(empty_spectra, tmp_path):
+    resurrected = resurect(empty_spectra, tmp_path)
+    for genre, spc in resurrected.spectra.items():
+        assert_spectra_equal(spc, empty_spectra.spectra[genre])
 
 
 def test_serialization_averaged(with_averaged, tmp_path):
     resurrected = resurect(with_averaged, tmp_path)
     for genre, spc in resurrected.averaged.items():
-        for key, value in spc.__dict__.items():
-            if not isinstance(value, np.ndarray):
-                assert value == with_averaged.averaged[genre].__dict__[key]
-            else:
-                assert np.array(
-                    value == with_averaged.averaged[genre].__dict__[key]
-                ).all()
+        assert_spectra_equal(spc, with_averaged.averaged[genre])

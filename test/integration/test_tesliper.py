@@ -42,6 +42,7 @@ def trimmed(extracted):
 @pytest.fixture
 def calculated(extracted):
     # FIXME: no relevant spectral data in test set, returns empty Spectra object
+    #        should be one empty and one with data
     extracted.calculate_spectra(["ir"])
     return extracted
 
@@ -92,24 +93,24 @@ def test_serialization_inconsistent(inconsistent, tmp_path):
     )
 
 
+def assert_spectra_equal(new, old):
+    for key, value in new.__dict__.items():
+        if not isinstance(value, np.ndarray):
+            assert value == getattr(old, key)
+        else:
+            assert np.array(value == getattr(old, key)).all()
+
+
 def test_serialization_spectra(calculated, tmp_path):
     resurrected = resurect(calculated, tmp_path)
     for genre, spc in resurrected.spectra.items():
-        for key, value in spc.__dict__.items():
-            if not isinstance(value, np.ndarray):
-                assert value == calculated.spectra[genre].__dict__[key]
-            else:
-                assert np.array(value == calculated.spectra[genre].__dict__[key]).all()
+        assert_spectra_equal(spc, calculated.spectra[genre])
 
 
 def test_serialization_averaged(averaged, tmp_path):
     resurrected = resurect(averaged, tmp_path)
-    for genre, spc in resurrected.averaged.items():
-        for key, value in spc.__dict__.items():
-            if not isinstance(value, np.ndarray):
-                assert value == averaged.averaged[genre].__dict__[key]
-            else:
-                assert np.array(value == averaged.averaged[genre].__dict__[key]).all()
+    for key, spc in resurrected.averaged.items():
+        assert_spectra_equal(spc, averaged.averaged[key])
 
 
 @pytest.mark.xfail(reason="Not implemented yet.")
