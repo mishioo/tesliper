@@ -289,7 +289,8 @@ class Conformers(OrderedDict):
         except (TypeError, KeyError):
             raise TypeError(f"Excepted sequence or boolean, got: {type(blade)}.")
         except IndexError:
-            first = False  # empty sequence is understood as "keep nothing"
+            self._kept = [False for _ in self.keys()]
+            return  # empty sequence is understood as "keep nothing"
         if isinstance(first, (str, np.str_)):
             blade = set(blade)
             if not blade.issubset(self.keys()):
