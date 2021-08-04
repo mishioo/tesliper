@@ -428,7 +428,7 @@ class Tesliper:
         data = [s for s in self.averaged.values() if s]
         wrt.write(data)
 
-    def export_geometry(
+    def export_job_file(
         self,
         fmt: str = "gjf",
         mode: str = "x",
@@ -437,16 +437,17 @@ class Tesliper:
         comment: str = "No information provided.",
         post_spec: str = "",
     ):
-        """Saves geometry of conformers to disk in given file format.
+        """Saves conformers to disk as job files for quantum chemistry software
+        in given file format.
 
-        Currently only "gjf" format is available by default.
+        Currently only "gjf" format is provided, used by Gaussian software.
         Files produced are written to `Tesliper.output_dir` directory with filenames
-        automatically generated using adequate genre's name and conformers' identifiers.
+        automatically generated using conformers' identifiers.
 
         Parameters
         ----------
         fmt : str
-            File format of output files, defaults to "txt".
+            File format of output files, defaults to "gjf".
         mode : str
             Specifies how writing to file should be handled. May be one of:
             "a" (append to existing file), "x" (only write if file doesn't exist yet),
