@@ -407,8 +407,6 @@ def test_kept_raises(empty, full):
     with pytest.raises(KeyError):
         full.kept = ["zero"]
     with pytest.raises(ValueError):
-        full.kept = []
-    with pytest.raises(ValueError):
         full.kept = [True] * 2
     with pytest.raises(ValueError):
         empty.kept = [True] * 2
