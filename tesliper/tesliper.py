@@ -461,7 +461,7 @@ class Tesliper:
             requested.
         comment : str
             Contents of title section, i.e. a comment about the calculations.
-        post_spec :
+        post_spec : str
             Anything that should be placed after conformers geometry specification.
             Will be writen to file as given.
         """
