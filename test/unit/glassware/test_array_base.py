@@ -1,12 +1,13 @@
 import sys
 from unittest import mock
 
-from tesliper.exceptions import InconsistentDataError
-import tesliper.glassware.array_base as ab
-import pytest
 import numpy as np
+import pytest
+from hypothesis import given
+from hypothesis import strategies as st
 
-from hypothesis import given, strategies as st
+import tesliper.glassware.array_base as ab
+from tesliper.exceptions import InconsistentDataError
 
 
 @pytest.mark.parametrize(
@@ -29,7 +30,7 @@ def test_longest_subsequences(values, lengths):
 
 
 @pytest.mark.parametrize(
-    "values,lengths", [(["a"], ()), ([["a"]], (1,)), ([["aa"]], (1,))],
+    "values,lengths", [(["a"], ()), ([["a"]], (1,)), ([["aa"]], (1,))]
 )
 def test_longest_subsequences_str(values, lengths):
     assert ab.longest_subsequences(values) == lengths
@@ -566,7 +567,12 @@ def test_array_base_get_args_not_stored_arg(filenames_mock, values_mock):
 def test_array_base_get_args_not_stored_arg_with_default(filenames_mock, values_mock):
     class Sub(ab.ArrayBase):
         def __init__(
-            self, genre, filenames, values, other="foo", allow_data_inconsistency=False,
+            self,
+            genre,
+            filenames,
+            values,
+            other="foo",
+            allow_data_inconsistency=False,
         ):
             super().__init__(genre, filenames, values, allow_data_inconsistency)
 

@@ -2,9 +2,8 @@ from itertools import zip_longest
 
 import pytest
 
-from tesliper.writing.gjf_writer import GjfWriter
 from tesliper.glassware import arrays as ar
-
+from tesliper.writing.gjf_writer import GjfWriter
 
 meoh0 = """# hf/sto-3g
 
@@ -103,7 +102,7 @@ def gjfwriter(tmp_path):
 
 
 def test_basic(tmp_path, gjfwriter, geometry, charge, multiplicity, filenames):
-    gjfwriter.write(geometry, charge, multiplicity)
+    gjfwriter.geometry(geometry, charge, multiplicity)
     assert len(list(tmp_path.iterdir())) == 2
     assert {f.name for f in tmp_path.iterdir()} == {f"{f}.gjf" for f in filenames}
     assert tmp_path.joinpath(filenames[0] + ".gjf").open("r").read() == meoh0
@@ -111,7 +110,7 @@ def test_basic(tmp_path, gjfwriter, geometry, charge, multiplicity, filenames):
 
 
 def test_alt_args(tmp_path, gjfwriter, geometry, altcharge, altmultiplicity, filenames):
-    gjfwriter.write(geometry, altcharge, altmultiplicity)
+    gjfwriter.geometry(geometry, altcharge, altmultiplicity)
     assert len(list(tmp_path.iterdir())) == 2
     assert {f.name for f in tmp_path.iterdir()} == {f"{f}.gjf" for f in filenames}
     assert tmp_path.joinpath(filenames[0] + ".gjf").open("r").read() == meoh0

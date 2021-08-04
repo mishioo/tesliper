@@ -2,6 +2,7 @@
 import logging as lgg
 from itertools import chain, repeat, zip_longest
 from pathlib import Path
+from string import Template
 from typing import Iterable, Optional, Sequence, Union
 
 import numpy as np
@@ -10,8 +11,8 @@ import openpyxl as oxl
 from ..glassware.arrays import (
     Bars,
     DataArray,
+    ElectronicBars,
     Energies,
-    ExcitedStateBars,
     FloatArray,
     InfoArray,
     Transitions,
@@ -38,39 +39,30 @@ class XlsxWriter(Writer):
          or 'w' (overwrite file if it already exists).
     """
 
-    def __init__(self, destination: Union[str, Path], mode: str = "x"):
+    extension = "xlsx"
+    default_template = "${conf}-${genre}"  # TODO: use it as template for sheet names
+
+    def __init__(
+        self,
+        destination: Union[str, Path],
+        mode: str = "x",
+        filename: str = "tesliper-output.${ext}",
+    ):
         super().__init__(destination=destination, mode=mode)
+        file = self.destination / Template(filename).substitute(ext=self.extension)
+        self.file = self.check_file(file)
         if self.mode == "a":
-            self.workbook = oxl.load_workbook(self.destination)
+            self.workbook = oxl.load_workbook(self.file)
         else:
             self.workbook = oxl.Workbook()
             self.workbook.remove(self.workbook.active)
 
-    def energies(
+    def overview(
         self,
         energies: Sequence[Energies],
         frequencies: Optional[DataArray] = None,
         stoichiometry: Optional[InfoArray] = None,
-        corrections: Sequence[FloatArray] = None,
     ):
-        """Writes detailed information from multiple Energies objects to xlsx file.
-        Creates "Collective overview" sheet and one "<<genre>>" sheet for each Energies
-        object provided. The former contains energy values and calculated
-        populations for each energy object given, as well as number of imaginary
-        frequencies and stoichiometry of conformers if `frequencies` and `stoichiometry`
-        are provided, respectively. The latter contains detailed information about
-        each type of energy given, including corrections, if those are provided.
-
-        Parameters
-        ----------
-        energies: list of glassware.Energies
-            Energies objects that are to be exported
-        frequencies: glassware.DataArray, optional
-            DataArray object containing frequencies
-        stoichiometry: glassware.InfoArray, optional
-            InfoArray object containing stoichiometry information
-        corrections: list of glassware.DataArray
-            DataArray objects containing energies corrections"""
         wb = self.workbook
         ws = wb.create_sheet(title="Collective overview")
         ens_no = len(energies)
@@ -123,47 +115,72 @@ class XlsxWriter(Writer):
                 width = max(len(str(cell.value)) for cell in column) + 2
             column_letter = oxl.utils.get_column_letter(column[0].column)
             ws.column_dimensions[column_letter].width = width
-        # proceed to write detailed info on separate sheet for each energy
-        corrs = {c.genre[:3]: c for c in corrections} if corrections is not None else {}
-        for en in energies:
-            genre = en.genre
-            corr = corrs.get(genre, None)
-            fmts = (
-                ["0", "0.00%"]
-                + ["0.0000"] * 2
-                + ["0.00000000" if genre == "scf" else "0.000000"] * 2
-            )
-            ws = wb.create_sheet(title=self._header[genre])
-            ws.freeze_panes = "A2"
-            header = [
-                "Gaussian output file",
-                "Population / %",
-                "Min. B. Factor",
-                "DE / (kcal/mol)",
-                "Energy / Hartree",
-            ]
-            header += ["Correction / Hartree"] if corr is not None else []
-            ws.append(header)
-            corr = corr.values if corr is not None else []
-            rows = zip_longest(
-                en.filenames, en.populations, en.min_factors, en.deltas, en.values, corr
-            )
-            for row_num, values in enumerate(rows):
-                filtered_values = (
-                    (f, v) for f, v in zip(fmts, values) if v is not None
-                )
-                for col_num, (fmt, value) in enumerate(filtered_values):
-                    cell = ws.cell(row=row_num + 2, column=col_num + 1)
-                    cell.value = value
-                    cell.number_format = fmt
-            # set cells width
-            widths = [0, 15, 14, 15, 16, 19]
-            for column, width in zip(ws.columns, widths):
-                if not width:
-                    width = max(len(str(cell.value)) for cell in column) + 2
-                column_letter = oxl.utils.get_column_letter(column[0].column)
-                ws.column_dimensions[column_letter].width = width
-        wb.save(self.destination)
+        wb.save(self.file)
+        logger.info("Overview export to xlsx files done.")
+
+    def energies(
+        self,
+        energies: Energies,
+        corrections: Optional[FloatArray] = None,
+    ):
+        """Writes detailed information from multiple Energies objects to xlsx file.
+        Creates "Collective overview" sheet and one "<<genre>>" sheet for each Energies
+        object provided. The former contains energy values and calculated
+        populations for each energy object given, as well as number of imaginary
+        frequencies and stoichiometry of conformers if `frequencies` and `stoichiometry`
+        are provided, respectively. The latter contains detailed information about
+        each type of energy given, including corrections, if those are provided.
+
+        Parameters
+        ----------
+        energies: list of glassware.Energies
+            Energies objects that are to be exported
+        frequencies: glassware.DataArray, optional
+            DataArray object containing frequencies
+        stoichiometry: glassware.InfoArray, optional
+            InfoArray object containing stoichiometry information
+        corrections: list of glassware.DataArray
+            DataArray objects containing energies corrections"""
+        wb = self.workbook
+        fmts = (
+            ["0", "0.00%"]
+            + ["0.0000"] * 2
+            + ["0.00000000" if energies.genre == "scf" else "0.000000"] * 2
+        )
+        ws = wb.create_sheet(title=self._header[energies.genre])
+        ws.freeze_panes = "A2"
+        header = [
+            "Gaussian output file",
+            "Population / %",
+            "Min. B. Factor",
+            "DE / (kcal/mol)",
+            "Energy / Hartree",
+        ]
+        header += ["Correction / Hartree"] if corrections is not None else []
+        ws.append(header)
+        corr_values = corrections.values if corrections is not None else []
+        rows = zip_longest(
+            energies.filenames,
+            energies.populations,
+            energies.min_factors,
+            energies.deltas,
+            energies.values,
+            corr_values,
+        )
+        for row_num, values in enumerate(rows):
+            filtered_values = ((f, v) for f, v in zip(fmts, values) if v is not None)
+            for col_num, (fmt, value) in enumerate(filtered_values):
+                cell = ws.cell(row=row_num + 2, column=col_num + 1)
+                cell.value = value
+                cell.number_format = fmt
+        # set cells width
+        widths = [0, 15, 14, 15, 16, 19]
+        for column, width in zip(ws.columns, widths):
+            if not width:
+                width = max(len(str(cell.value)) for cell in column) + 2
+            column_letter = oxl.utils.get_column_letter(column[0].column)
+            ws.column_dimensions[column_letter].width = width
+        wb.save(self.file)
         logger.info("Energies export to xlsx files done.")
 
     def bars(self, band: Bars, bars: Iterable[Bars]):
@@ -198,7 +215,7 @@ class XlsxWriter(Writer):
                     cell = ws.cell(row=row_num + 2, column=col_num + 1)
                     cell.value = v
                     cell.number_format = fmt
-        wb.save(self.destination)
+        wb.save(self.file)
         logger.info("Bars export to xlsx files done.")
 
     def spectra(self, spectra: Spectra):
@@ -223,7 +240,7 @@ class XlsxWriter(Writer):
         ws["A1"].comment = oxl.comments.Comment(title, "Tesliper")
         for line in zip(spectra.x, *spectra.y):
             ws.append(line)
-        wb.save(self.destination)
+        wb.save(self.file)
         logger.info("Spectra export to xlsx file done.")
 
     def single_spectrum(self, spectrum: SingleSpectrum):
@@ -240,11 +257,11 @@ class XlsxWriter(Writer):
         ws.append([spectrum.units["x"], spectrum.units["y"]])
         for row in zip(spectrum.x, spectrum.y):
             ws.append(row)
-        wb.save(self.destination)
+        wb.save(self.file)
         logger.info("Spectrum export to xlsx files done.")
 
     def transitions(
-        self, transitions: Transitions, wavelengths: ExcitedStateBars, only_highest=True
+        self, transitions: Transitions, wavelengths: ElectronicBars, only_highest=True
     ):
         transtions_data = (
             transitions.highest_contribution
@@ -295,5 +312,5 @@ class XlsxWriter(Writer):
                         cell = ws.cell(row=row_num, column=col_num)
                         cell.value = v_
                         cell.number_format = fmt
-        wb.save(self.destination)
+        wb.save(self.file)
         logger.info("Transitions export to xlsx files done.")

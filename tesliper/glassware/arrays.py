@@ -19,17 +19,6 @@ logger = lgg.getLogger(__name__)
 logger.setLevel(lgg.DEBUG)
 
 
-# GLOBAL VARIABLES
-default_spectra_bars = {
-    "ir": "dip",
-    "vcd": "rot",
-    "uv": "vosc",
-    "ecd": "vrot",
-    "raman": "raman1",
-    "roa": "roa1",
-}
-
-
 # CLASSES
 class DataArray(ArrayBase):
     """Base class for data holding objects. It provides trimming functionality
@@ -311,7 +300,12 @@ class Bars(FloatArray, Averagable):
         losc="uv",
     )
     spectra_type_ref = dict(
-        vcd="vibra", ir="vibra", roa="vibra", raman="vibra", ecd="electr", uv="electr"
+        vcd="vibrational",
+        ir="vibrational",
+        roa="vibrational",
+        raman="vibrational",
+        ecd="electronic",
+        uv="electronic",
     )
     _units = dict(
         freq="Frequency / cm^(-1)",
@@ -398,11 +392,10 @@ class Bars(FloatArray, Averagable):
         )
         return intensities
 
-
 # TODO: rename "Bars" part to something more recognizable
 # TODO: create `Scattering...` class to separate scattering data
 #       preferably as subclass of this class
-class GroundStateBars(Bars):
+class VibrationalBars(Bars):
     associated_genres = (
         "freq",
         "iri",
@@ -499,8 +492,7 @@ class GroundStateBars(Bars):
         return spectra
 
 
-# TODO: rename "Bars" part to something more recognizable
-class ExcitedStateBars(Bars):
+class ElectronicBars(Bars):
     associated_genres = (
         "wavelen",
         "ex_en",

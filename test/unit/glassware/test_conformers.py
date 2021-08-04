@@ -229,9 +229,9 @@ def test_arrayed_types(full):
     command = full.arrayed("command")
     assert gw.InfoArray is type(command)
     iri = full.arrayed("iri")
-    assert gw.GroundStateBars is type(iri)
+    assert gw.VibrationalBars is type(iri)
     vdip = full.arrayed("vdip")
-    assert gw.ExcitedStateBars is type(vdip)
+    assert gw.ElectronicBars is type(vdip)
     emang = full.arrayed("emang")
     assert gw.FloatArray is type(emang)
     charge = full.arrayed("charge")
@@ -406,8 +406,6 @@ def test_kept_raises(empty, full):
         full.kept = {"bla": 1}
     with pytest.raises(KeyError):
         full.kept = ["zero"]
-    with pytest.raises(ValueError):
-        full.kept = []
     with pytest.raises(ValueError):
         full.kept = [True] * 2
     with pytest.raises(ValueError):

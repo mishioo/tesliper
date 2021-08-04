@@ -1,15 +1,35 @@
 # IMPORTS
 import logging as lgg
+from abc import ABC, abstractmethod
+from contextlib import contextmanager
 from pathlib import Path
 from string import Template
-from typing import Any, Dict, Iterable, TextIO, Union
+from typing import (
+    IO,
+    Any,
+    AnyStr,
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    Optional,
+    Sequence,
+    Tuple,
+    Type,
+    Union,
+)
 
 from ..glassware.arrays import (
     Bars,
     DataArray,
+    ElectronicBars,
     Energies,
-    ExcitedStateBars,
-    GroundStateBars,
+    FloatArray,
+    Geometry,
+    InfoArray,
+    IntegerArray,
+    Transitions,
+    VibrationalBars,
 )
 from ..glassware.spectra import SingleSpectrum, Spectra
 
@@ -18,8 +38,18 @@ logger = lgg.getLogger(__name__)
 logger.setLevel(lgg.DEBUG)
 
 
+_WRITERS: Dict[str, Type["Writer"]] = {}
+
+
+def writer(fmt: str, destination, mode, **kwargs) -> "Writer":
+    try:
+        return _WRITERS[fmt](destination, mode, **kwargs)
+    except KeyError:
+        raise ValueError(f"Unknown file format: {fmt}.")
+
+
 # CLASSES
-class Writer:
+class Writer(ABC):
     """Base class for writers, that produce single file from multiple conformers.
 
     Parameters
@@ -165,12 +195,26 @@ class Writer:
         gib="0.000000",
         scf="0.00000000",
     )
-
     energies_order = "zpe ten ent gib scf".split(" ")
+    default_template = "${conf}.${ext}"
+    # TODO: add separate template for single-file methods ?
+
+    @property
+    @classmethod
+    @abstractmethod
+    def extension(cls) -> str:
+        return ""
+
+    @classmethod
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        _WRITERS[cls.extension] = cls
 
     def __init__(self, destination: Union[str, Path], mode: str = "x"):
         self.mode = mode
         self.destination = destination
+        self.filename_template = self.default_template
+        self._handle = None
 
     @property
     def mode(self):
@@ -193,135 +237,21 @@ class Writer:
             raise ValueError("Mode should be 'a', 'x', or 'w'.")
         self._mode = mode
 
-    @property
-    def destination(self) -> Path:
-        """pathlib.Path: File, to which data should be written.
-
-        Notes
-        -----
-        If str given, it will be converted to pathlib.Path.
-
-        Raises
-        ------
-        FileNotFoundError
-            If mode 'a' was specified, but given destination doesn't exist.
-        FileExistsError
-            If mode 'x' was specified, but given destination already exists.
-        """
-        return self._destination
-
-    @destination.setter
-    def destination(self, destination: Union[str, Path]) -> None:
-        destination = Path(destination)
-        if not destination.exists() and self.mode == "a":
+    def check_file(self, file: Union[str, Path]) -> Path:
+        file = Path(file)
+        if not file.exists() and self.mode == "a":
             raise FileNotFoundError(
-                "Mode 'a' was specified, but given destination doesn't exist."
+                "Mode 'a' was specified, but given file doesn't exist."
             )
-        elif destination.exists() and self.mode == "x":
+        elif file.exists() and self.mode == "x":
             raise FileExistsError(
-                "Mode 'x' was specified, but given destination already exists."
+                "Mode 'x' was specified, but given file already exists."
             )
-        elif not destination.parent.exists():
+        elif not file.parent.exists():
             raise FileNotFoundError("Parent directory of specified file doesn't exist.")
-        self._destination = destination
-
-    @staticmethod
-    def distribute_data(data: Iterable[DataArray]) -> Dict:
-        """Sorts given data by genre category for use by specialized writing methods.
-
-        Parameters
-        ----------
-        data: Iterable of DataArray
-            Iterable with DataArray objects to sort by genre category.
-
-        Returns
-        -------
-        dict
-            Dictionary with DataArray objects sorted by genre category.
-            Available key: value pairs are:
-                energies: List of Energies,
-                vibra: List of GroundStateBars,
-                electr: List of ExcitedStateBars,
-                other_bars: List of Bars,
-                spectra: List of Spectra,
-                single: List of SingleSpectrum,
-                other: List of DataArray,
-                corrections = dict of genre: FloatArray,
-                frequencies = ExcitedStateBars or None,
-                wavelenghts = GroundStateBars or None,
-                stoichiometry = InfoArray or None
-        """
-        distr = dict(
-            energies=[],
-            vibra=[],
-            electr=[],
-            other_bars=[],
-            spectra=[],
-            single=[],
-            other=[],
-            corrections={},
-            frequencies=None,
-            wavelengths=None,
-            stoichiometry=None,
-        )
-        for obj in data:
-            if isinstance(obj, Energies):
-                distr["energies"].append(obj)
-            elif obj.genre.endswith("corr"):
-                distr["corrections"][obj.genre[:3]] = obj
-            elif obj.genre == "freq":
-                distr["frequencies"] = obj
-            elif obj.genre == "wave":
-                distr["wavelengths"] = obj
-            elif obj.genre == "stoichiometry":
-                distr["stoichiometry"] = obj
-            elif isinstance(obj, GroundStateBars):
-                distr["vibra"].append(obj)
-            elif isinstance(obj, ExcitedStateBars):
-                distr["electr"].append(obj)
-            elif isinstance(obj, Bars):
-                distr["other_bars"].append(obj)
-            elif isinstance(obj, Spectra):
-                distr["spectra"].append(obj)
-            elif isinstance(obj, SingleSpectrum):
-                distr["single"].append(obj)
-            else:
-                distr["other"].append(obj)
-        return distr
-
-
-class SerialWriter(Writer):
-    """Base class for writers, that produce multiple files.
-
-    Parameters
-    ----------
-    destination: str or pathlib.Path
-        Directory, to which generated files should be written.
-    filename_template: str or string.Template
-        Template for names of generated files, defaults to  '${filename}.${ext}'.
-
-    Attributes
-    ----------
-    destination
-    mode
-    filename_template
-
-    Class Attributes
-    ----------------
-    extension: str
-        Default extension of generated files.
-    """
-
-    extension = ""
-
-    def __init__(
-        self,
-        destination: Union[str, Path],
-        mode: str = "x",
-        filename_template: Union[str, Template] = "${filename}.${ext}",
-    ):
-        super().__init__(destination, mode)
-        self.filename_template = filename_template
+        else:
+            logger.debug(f"File {file} ok for writing.")
+            return file
 
     @property
     def destination(self) -> Path:
@@ -332,7 +262,7 @@ class SerialWriter(Writer):
         FileNotFoundError
             If given destination doesn't exist or is not a directory.
         """
-        return self._destination
+        return vars(self)["destination"]
 
     @destination.setter
     def destination(self, destination: Union[str, Path]) -> None:
@@ -341,7 +271,49 @@ class SerialWriter(Writer):
             raise FileNotFoundError(
                 "Given destination doesn't exist or is not a directory."
             )
-        self._destination = destination
+        vars(self)["destination"] = destination
+
+    @staticmethod
+    def distribute_data(data: List) -> Tuple[Dict[str, List], Dict[str, Any]]:
+        """Sorts given data by genre category for use by specialized writing methods.
+
+        Returns
+        -------
+        distr : dict
+            Dictionary with DataArray objects sorted by their type.
+            Each {key: value} pair is {name of the type in lowercase format:
+            list of DataArray objects of this type}.
+        extras : dict
+            Spacial-case genres: extra information used by some writer methods
+            when exporting data. Available {key: value} pairs are:
+                corrections: dict of {energy genre: FloatArray},
+                frequencies: ElectronicBars or None,
+                wavelenghts: VibrationalBars or None,
+                stoichiometry: InfoArray or None,
+                charge: IntegerArray or None,
+                multiplicity: IntegerArray or None
+        """
+        distr: Dict[str, List] = dict()
+        extras: Dict[str, Any] = dict()
+        for obj in data:
+            if obj.genre.endswith("corr"):
+                corrs = extras["corrections"] = extras.get("corrections", dict())
+                corrs[obj.genre[:3]] = obj
+            elif obj.genre == "freq":
+                extras["frequencies"] = obj
+            elif obj.genre == "wave":
+                extras["wavelengths"] = obj
+            elif obj.genre == "stoichiometry":
+                extras["stoichiometry"] = obj
+            elif obj.genre == "charge":
+                extras["charge"] = obj
+            elif obj.genre == "multiplicity":
+                extras["multiplicity"] = obj
+            else:
+                name = type(obj).__name__.lower()
+                values = distr[name] = distr.get(name, list())
+                values.append(obj)
+        return distr, extras
 
     @property
     def filename_template(self) -> Template:
@@ -349,9 +321,9 @@ class SerialWriter(Writer):
         produced by this object. It is stored as a `string.Template` object, if string
         is given instead, it will be converted. Only predefined identifiers may be used
         and they are as follows:
-            ${filename} - base name of the file (without extension);
+            ${conf} - name of the conformer;
             ${ext} - appropriate file extension, stored in `extension` class attribute;
-            ${num} - number of file according to internal counter;
+            ${num} - number of the file according to internal counter;
             ${genre} - genre of exported data.
 
         Raises
@@ -363,40 +335,160 @@ class SerialWriter(Writer):
 
     @filename_template.setter
     def filename_template(self, filename_template: Union[str, Template]) -> None:
+        # TODO: add ${name} identifier for type of produced summary
         if isinstance(filename_template, str):
             filename_template = Template(filename_template)
         try:
-            filename_template.substitute(filename="", ext="", num="", genre="")
+            filename_template.substitute(conf="", ext="", num="", genre="")
         except ValueError as error:
             # TODO: add list of unexpected identifiers given
             raise ValueError("Unexpected identifiers given.") from error
         self._filename_template = filename_template
 
+    @contextmanager
+    def _get_handle(
+        self, name: str, genre: str, num: int = 0, **kwargs
+    ) -> Iterator[IO[AnyStr]]:
+        """Helper method for creating files. Given additional kwargs will be passed to
+        `open()` method. Implemented as context manager for use with `with` statement.
+
+        Parameters
+        ----------
+        name: str
+            value for `${conf}` placeholder in `filename_template`
+        genre: str
+            genre name for `${genre}` placeholder in `filename_template`
+        num: int
+            number for `${num}` placeholder in `filename_template`
+        kwargs
+            arguments for `Path.open()` used to open file
+
+        Yields
+        ------
+        IO
+            file handle, will be closed automatically after `with` statement exits
+        """
+        filename = self.filename_template.substitute(
+            conf=name, ext=self.extension, num=num, genre=genre
+        )
+        file = self.check_file(self.destination.joinpath(filename))
+        with file.open(self.mode, **kwargs) as handle:
+            self._handle = handle
+            yield handle
+
     def _iter_handles(
         self, filenames: Iterable[str], genre: str, **kwargs
-    ) -> (TextIO, Any):
+    ) -> Iterator[IO[AnyStr]]:
         """Helper method for iteration over generated files. Given additional kwargs
         will be passed to `open()` method.
 
         Parameters
         ----------
         filenames: list of str
-            list of source filenames
+            list of source filenames, used as value for `${conf}` placeholder
+            in `filename_template`
         genre: str
-            genre name for filename_template
+            genre name for `${genre}` placeholder in `filename_template`
+        genre: str
+            genre name for `${genre}` placeholder in `filename_template`
+        kwargs
+            arguments for `Path.open()` used to open file
 
         Yields
         ------
         TextIO
             file handle, will be closed automatically
-        any
-            values corresponding to particular filename, given in `values` parameter
         """
         for num, fnm in enumerate(filenames):
             filename = self.filename_template.substitute(
-                filename=Path(fnm).stem, ext=self.extension, num=num, genre=genre
+                conf=fnm, ext=self.extension, num=num, genre=genre
             )
-            with self.destination.joinpath(filename).open(
-                self.mode, **kwargs
-            ) as handle:
+            file = self.check_file(self.destination.joinpath(filename))
+            with file.open(self.mode, **kwargs) as handle:
                 yield handle
+
+    def _energies_handler(self, data: List[Energies], extras: Dict[str, Any]) -> None:
+        self.overview(
+            data,
+            frequencies=extras.get("frequencies"),
+            stoichiometry=extras.get("stoichiometry"),
+        )
+        for en in data:
+            self.energies(
+                en, corrections=extras.get("corrections", dict()).get(en.genre)
+            )
+
+    def _vibrationalbars_handler(
+        self, data: List[VibrationalBars], extras: Dict[str, Any]
+    ) -> None:
+        self.bars(band=extras["frequencies"], bars=data)
+
+    def _electronicbars_handler(
+        self, data: List[ElectronicBars], extras: Dict[str, Any]
+    ) -> None:
+        self.bars(band=extras["wavelengths"], bars=data)
+
+    def _transitions_handler(
+        self, data: List[Transitions], extras: Dict[str, Any]
+    ) -> None:
+        self.transitions(transitions=data, wavelengths=extras["wavelengths"])
+
+    def _geometry_handler(self, data: List[Geometry], extras: Dict[str, Any]) -> None:
+        self.geometry(
+            data,
+            charge=extras.get("charge"),
+            multiplicity=extras.get("multiplicity"),
+        )
+
+    def _spectra_handler(self, data: List[Spectra], _extras) -> None:
+        for spc in data:
+            self.spectra(spc)
+
+    def _singlespectrum_handler(self, data: List[SingleSpectrum], _extras) -> None:
+        for spc in data:
+            self.spectrum(spc)
+
+    def write(self, data: List) -> None:
+        distributed, extras = self.distribute_data(data)
+        for name, data_ in distributed.items():
+            try:
+                handler = getattr(self, f"_{name}_handler")
+                handler(data_, extras)
+            except (NotImplementedError, AttributeError):
+                logger.warning(f"{type(self)} does not handle '{name}' type data.")
+
+    def overview(
+        self,
+        energies: Sequence[Energies],
+        frequencies: Optional[DataArray] = None,
+        stoichiometry: Optional[InfoArray] = None,
+    ):
+        raise NotImplementedError(f"Class {type(self)} does not implement this method.")
+
+    def energies(self, energies: Energies, corrections: Optional[FloatArray] = None):
+        raise NotImplementedError(f"Class {type(self)} does not implement this method.")
+
+    def spectrum(self, spectrum: SingleSpectrum):
+        raise NotImplementedError(f"Class {type(self)} does not implement this method.")
+
+    def bars(self, band: Bars, bars: List[Bars]):
+        raise NotImplementedError(f"Class {type(self)} does not implement this method.")
+
+    def spectra(self, spectra: Spectra):
+        raise NotImplementedError(f"Class {type(self)} does not implement this method.")
+
+    def transitions(
+        self,
+        transitions: Transitions,
+        wavelengths: ElectronicBars,
+        only_highest: bool = True,
+    ):
+        raise NotImplementedError(f"Class {type(self)} does not implement this method.")
+
+    def geometry(
+        self,
+        geometry: Geometry,
+        charge: Optional[Union[IntegerArray, Sequence[int], int]] = None,
+        multiplicity: Optional[Union[IntegerArray, Sequence[int], int]] = None,
+    ):
+        raise NotImplementedError(f"Class {type(self)} does not implement this method.")

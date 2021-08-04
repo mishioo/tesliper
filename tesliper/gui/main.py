@@ -15,7 +15,7 @@ from .tab_loader import logger as loader_logger
 from .tab_spectra import Spectra
 from .tab_spectra import logger as spectra_logger
 
-_DEVELOPMENT = tesliper._DEVELOPMENT
+_DEVELOPMENT = "ENV" in os.environ and os.environ["ENV"] == "prod"
 
 
 # LOGGER
