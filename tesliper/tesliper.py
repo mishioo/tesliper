@@ -215,7 +215,7 @@ class Tesliper:
             )
             if v is not None
         }
-        sett = self.parameters[gw.Bars.spectra_type_ref[spectra_name]].copy()
+        sett = self.parameters[gw.SpectralData.spectra_type_ref[spectra_name]].copy()
         sett.update(sett_from_args)
         start, stop, step = [sett.pop(k) for k in ("start", "stop", "step")]
         abscissa = np.arange(start, stop, step)
@@ -332,7 +332,7 @@ class Tesliper:
         data = [self[g] for g in genres]
         if any(isinstance(arr, gw.arrays._Vibrational) for arr in data):
             data += [self["freq"]]
-        if any(isinstance(arr, gw.ElectronicBars) for arr in data):
+        if any(isinstance(arr, gw.ElectronicData) for arr in data):
             data += [self["wavelen"]]
         wrt.write(data)
 

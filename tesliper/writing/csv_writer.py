@@ -8,7 +8,13 @@ from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 
-from ..glassware.arrays import Bars, ElectronicBars, Energies, FloatArray, Transitions
+from ..glassware.arrays import (
+    ElectronicData,
+    Energies,
+    FloatArray,
+    SpectralData,
+    Transitions,
+)
 from ..glassware.spectra import SingleSpectrum, Spectra
 from ._writer import Writer
 
@@ -194,17 +200,17 @@ class CsvWriter(_CsvMixin, Writer):
                 csvwriter.writerow(row)
         logger.info("Spectrum export to csv files done.")
 
-    def bars(self, band: Bars, bars: List[Bars]):
-        """Writes Bars objects to csv files (one file for each conformer).
+    def bars(self, band: SpectralData, bars: List[SpectralData]):
+        """Writes SpectralData objects to csv files (one file for each conformer).
 
         Parameters
         ----------
-        band: glassware.Bars
+        band: glassware.SpectralData
             Object containing information about band at which transitions occur;
             it should be frequencies for vibrational data and wavelengths or
             excitation energies for electronic data.
-        bars: list of glassware.Bars
-            Bars objects that are to be serialized; all should contain
+        bars: list of glassware.SpectralData
+            SpectralData objects that are to be serialized; all should contain
             information for the same set of conformers and correspond to given band.
         """
         bars = [band] + bars
@@ -218,7 +224,7 @@ class CsvWriter(_CsvMixin, Writer):
                 csvwriter.writerow(headers)
             for row in zip(*values_):
                 csvwriter.writerow(row)
-        logger.info("Bars export to csv files done.")
+        logger.info("SpectralData export to csv files done.")
 
     def spectra(self, spectra: Spectra):
         """Writes Spectra object to .csv files (one file for each conformer).
@@ -241,7 +247,7 @@ class CsvWriter(_CsvMixin, Writer):
         logger.info("Spectra export to csv files done.")
 
     def transitions(
-        self, transitions: Transitions, wavelengths: ElectronicBars, only_highest=True
+        self, transitions: Transitions, wavelengths: ElectronicData, only_highest=True
     ):
         """Writes electronic transitions data to CSV files (one for each conformer).
 
@@ -249,7 +255,7 @@ class CsvWriter(_CsvMixin, Writer):
         ----------
         transitions : glassware.Transitions
             Electronic transitions data that should be serialized.
-        wavelengths : glassware.ElectronicBars
+        wavelengths : glassware.ElectronicData
             Object containing information about wavelength at which transitions occur.
         only_highest : bool
             Specifies if only transition of highest contribution to given band should

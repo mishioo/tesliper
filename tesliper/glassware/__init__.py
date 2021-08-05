@@ -1,18 +1,18 @@
 from .array_base import ArrayBase, ArrayProperty
 from .arrays import (
-    Bars,
     BooleanArray,
     DataArray,
-    ElectronicBars,
+    ElectronicData,
     Energies,
     FilenamesArray,
     FloatArray,
     Geometry,
     InfoArray,
     IntegerArray,
-    ScatteringBars,
+    ScatteringData,
+    SpectralData,
     Transitions,
-    VibrationalBars,
+    VibrationalData,
 )
 from .conformers import Conformers
 from .spectra import SingleSpectrum, Spectra

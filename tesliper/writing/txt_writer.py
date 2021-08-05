@@ -7,13 +7,13 @@ from typing import List, Optional, Sequence, Union
 import numpy as np
 
 from ..glassware.arrays import (
-    Bars,
-    ElectronicBars,
+    ElectronicData,
     Energies,
     FloatArray,
     InfoArray,
+    SpectralData,
     Transitions,
-    VibrationalBars,
+    VibrationalData,
 )
 from ..glassware.spectra import SingleSpectrum, Spectra
 from ._writer import Writer
@@ -43,7 +43,7 @@ class TxtWriter(Writer):
     def overview(
         self,
         energies: Sequence[Energies],
-        frequencies: Optional[VibrationalBars] = None,
+        frequencies: Optional[VibrationalData] = None,
         stoichiometry: Optional[InfoArray] = None,
     ):
         """Writes essential information from multiple Energies objects to
@@ -199,17 +199,17 @@ class TxtWriter(Writer):
             )
         logger.info("Spectrum export to text files done.")
 
-    def bars(self, band: Bars, bars: List[Bars]):
-        """Writes Bars objects to txt files (one for each conformer).
+    def bars(self, band: SpectralData, bars: List[SpectralData]):
+        """Writes SpectralData objects to txt files (one for each conformer).
 
         Parameters
         ----------
-        band: glassware.Bars
+        band: glassware.SpectralData
             object containing information about band at which transitions occur;
             it should be frequencies for vibrational data and wavelengths or
             excitation energies for electronic data
-        bars: list of glassware.Bars
-            Bars objects that are to be serialized; all should contain
+        bars: list of glassware.SpectralData
+            SpectralData objects that are to be serialized; all should contain
             information for the same conformers
         """
         bars = [band] + bars
@@ -228,7 +228,7 @@ class TxtWriter(Writer):
                     self._formatters[g].format(v) for v, g in zip(vals, genres)
                 )
                 handle.write(line + "\n")
-        logger.info("Bars export to text files done.")
+        logger.info("SpectralData export to text files done.")
 
     def spectra(self, spectra: Spectra):
         """Writes Spectra object to text files (one for each conformer).
@@ -255,7 +255,7 @@ class TxtWriter(Writer):
         logger.info("Spectra export to text files done.")
 
     def transitions(
-        self, transitions: Transitions, wavelengths: ElectronicBars, only_highest=True
+        self, transitions: Transitions, wavelengths: ElectronicData, only_highest=True
     ):
         """Writes electronic transitions data to text files (one for each conformer).
 
@@ -263,7 +263,7 @@ class TxtWriter(Writer):
         ----------
         transitions : glassware.Transitions
             Electronic transitions data that should be serialized.
-        wavelengths : glassware.ElectronicBars
+        wavelengths : glassware.ElectronicData
             Object containing information about wavelength at which transitions occur.
         only_highest : bool
             Specifies if only transition of highest contribution to given band should

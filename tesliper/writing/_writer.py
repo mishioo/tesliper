@@ -20,17 +20,17 @@ from typing import (
 )
 
 from ..glassware.arrays import (
-    Bars,
     DataArray,
-    ElectronicBars,
+    ElectronicData,
     Energies,
     FloatArray,
     Geometry,
     InfoArray,
     IntegerArray,
-    ScatteringBars,
+    ScatteringData,
+    SpectralData,
     Transitions,
-    VibrationalBars,
+    VibrationalData,
 )
 from ..glassware.spectra import SingleSpectrum, Spectra
 
@@ -288,8 +288,8 @@ class Writer(ABC):
             Spacial-case genres: extra information used by some writer methods
             when exporting data. Available {key: value} pairs are:
                 corrections: dict of {energy genre: FloatArray},
-                frequencies: ElectronicBars or None,
-                wavelenghts: VibrationalBars or None,
+                frequencies: ElectronicData or None,
+                wavelenghts: VibrationalData or None,
                 stoichiometry: InfoArray or None,
                 charge: IntegerArray or None,
                 multiplicity: IntegerArray or None
@@ -419,18 +419,18 @@ class Writer(ABC):
                 en, corrections=extras.get("corrections", dict()).get(en.genre)
             )
 
-    def _vibrationalbars_handler(
-        self, data: List[VibrationalBars], extras: Dict[str, Any]
+    def _vibrationaldata_handler(
+        self, data: List[VibrationalData], extras: Dict[str, Any]
     ) -> None:
         self.bars(band=extras["frequencies"], bars=data)
 
-    def _scatteringbars_handler(
-        self, data: List[ScatteringBars], extras: Dict[str, Any]
+    def _scatteringdata_handler(
+        self, data: List[ScatteringData], extras: Dict[str, Any]
     ) -> None:
         self.bars(band=extras["frequencies"], bars=data)
 
-    def _electronicbars_handler(
-        self, data: List[ElectronicBars], extras: Dict[str, Any]
+    def _electronicdata_handler(
+        self, data: List[ElectronicData], extras: Dict[str, Any]
     ) -> None:
         self.bars(band=extras["wavelengths"], bars=data)
 
@@ -477,7 +477,7 @@ class Writer(ABC):
     def spectrum(self, spectrum: SingleSpectrum):
         raise NotImplementedError(f"Class {type(self)} does not implement this method.")
 
-    def bars(self, band: Bars, bars: List[Bars]):
+    def bars(self, band: SpectralData, bars: List[SpectralData]):
         raise NotImplementedError(f"Class {type(self)} does not implement this method.")
 
     def spectra(self, spectra: Spectra):
@@ -486,7 +486,7 @@ class Writer(ABC):
     def transitions(
         self,
         transitions: Transitions,
-        wavelengths: ElectronicBars,
+        wavelengths: ElectronicData,
         only_highest: bool = True,
     ):
         raise NotImplementedError(f"Class {type(self)} does not implement this method.")

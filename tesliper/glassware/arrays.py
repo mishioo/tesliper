@@ -282,8 +282,7 @@ class Averagable:
         return averaged
 
 
-# TODO: rename to something more recognizable (Activities or smth)
-class Bars(FloatArray, Averagable):
+class SpectralData(FloatArray, Averagable):
 
     associated_genres = ()
     spectra_name_ref = dict(
@@ -399,7 +398,7 @@ def _as_is(values, *_args, **_kwargs):
     return values
 
 
-class _Vibrational(Bars):
+class _Vibrational(SpectralData):
 
     freq = ArrayProperty(check_against="filenames")
 
@@ -481,8 +480,7 @@ class _Vibrational(Bars):
         return spectra
 
 
-# TODO: rename "Bars" part to something more recognizable
-class VibrationalBars(_Vibrational):
+class VibrationalData(_Vibrational):
     associated_genres = (
         "freq",
         "iri",
@@ -497,7 +495,7 @@ class VibrationalBars(_Vibrational):
     }
 
 
-class ScatteringBars(_Vibrational):
+class ScatteringData(_Vibrational):
     associated_genres = (
         "ramact",
         "raman1",
@@ -552,7 +550,7 @@ class ScatteringBars(_Vibrational):
         return converter(self.values, self.frequencies, self.t, self.laser)
 
 
-class ElectronicBars(Bars):
+class ElectronicData(SpectralData):
     associated_genres = (
         "wavelen",
         "ex_en",

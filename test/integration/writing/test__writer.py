@@ -6,7 +6,7 @@ import pytest
 
 from tesliper import tesliper
 from tesliper.glassware import (
-    ElectronicBars,
+    ElectronicData,
     Energies,
     FloatArray,
     Geometry,
@@ -14,7 +14,7 @@ from tesliper.glassware import (
     SingleSpectrum,
     Spectra,
     Transitions,
-    VibrationalBars,
+    VibrationalData,
 )
 from tesliper.writing import Writer
 
@@ -95,13 +95,13 @@ def writer_implemented():
 def arrays():
     yield [
         Energies("gib", [""], [1]),
-        VibrationalBars("iri", [""], [[1]], [[1]]),
+        VibrationalData("iri", [""], [[1]], [[1]]),
         Spectra("ir", [""], [[1, 2]], [1, 2]),
         SingleSpectrum("ir", [1, 2], [1, 2]),
         InfoArray("command", [""], [""]),
         FloatArray("gibcorr", [""], [1]),
-        VibrationalBars("freq", [""], [[1]], [[1]]),
-        ElectronicBars("wave", [""], [[1]], [[1]]),
+        VibrationalData("freq", [""], [[1]], [[1]]),
+        ElectronicData("wave", [""], [[1]], [[1]]),
         InfoArray("stoichiometry", [""], [""]),
         Geometry("geometry", [""], [[[1, 2, 3]]], [[1]]),
         Transitions("transitions", [""], [[[(1, 2, 0.3)]]]),
