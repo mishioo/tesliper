@@ -28,6 +28,7 @@ AnyArray = Union[
     ar.BooleanArray,
     ar.IntegerArray,
     ar.VibrationalBars,
+    ar.ScatteringBars,
     ar.ElectronicBars,
     ar.Transitions,
     ar.Geometry,

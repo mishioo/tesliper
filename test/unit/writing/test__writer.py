@@ -9,6 +9,7 @@ from tesliper import Energies, InfoArray, Spectra
 from tesliper.glassware import (
     ElectronicBars,
     FloatArray,
+    ScatteringBars,
     SingleSpectrum,
     VibrationalBars,
 )
@@ -120,6 +121,7 @@ def test_writer_check_file_new_only_no_dest(writer_class):
 arrays_by_type = dict(
     energies=Energies("gib", [""], [1]),
     vibrationalbars=VibrationalBars("iri", [""], [[1]], [[1]]),
+    scatteringbars=ScatteringBars("ramact", [""], [[1]], [[1]]),
     electronicbars=ElectronicBars("ex_en", [""], [[1]], [[1]]),
     spectra=Spectra("ir", [""], [[1, 2]], [1, 2]),
     singlespectrum=SingleSpectrum("ir", [1, 2], [1, 2]),

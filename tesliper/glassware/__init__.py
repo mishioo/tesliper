@@ -10,6 +10,7 @@ from .arrays import (
     Geometry,
     InfoArray,
     IntegerArray,
+    ScatteringBars,
     Transitions,
     VibrationalBars,
 )

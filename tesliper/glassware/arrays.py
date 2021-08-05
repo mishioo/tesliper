@@ -398,36 +398,10 @@ class Bars(FloatArray, Averagable):
 def _as_is(values, *_args, **_kwargs):
     return values
 
-# TODO: rename "Bars" part to something more recognizable
-# TODO: create `Scattering...` class to separate scattering data
-#       preferably as subclass of this class
-class VibrationalBars(Bars):
-    associated_genres = (
-        "freq",
-        "iri",
-        "dip",
-        "rot",
-        "ramact",
-        "raman1",
-        "roa1",
-        "raman2 ",
-        "roa2",
-        "raman3",
-        "roa3",
-    )
 
-    _intensities_converters = {
-        "dip": dw.dip_to_ir,
-        "rot": dw.rot_to_vcd,
-        "iri": _as_is,
-        "ramact": _as_is,
-        "raman1": _as_is,
-        "roa1": _as_is,
-        "raman2 ": _as_is,
-        "roa2": _as_is,
-        "raman3": _as_is,
-        "roa3": _as_is,
-    }
+class _Vibrational(Bars):
+
+    freq = ArrayProperty(check_against="filenames")
 
     def __init__(
         self,
@@ -439,8 +413,6 @@ class VibrationalBars(Bars):
     ):
         super().__init__(genre, filenames, values, allow_data_inconsistency)
         self.freq = freq
-
-    freq = ArrayProperty(check_against="filenames")
 
     @property
     def imaginary(self):
@@ -480,7 +452,7 @@ class VibrationalBars(Bars):
         step : int or float
             Number representing step of spectral range in relevant units.
         width : int or float
-            Number representing half width of maximum peak hight.
+            Number representing half width of maximum peak height.
         fitting : function
             Function, which takes bars, freqs, abscissa, width as parameters and
             returns numpy.array of calculated, non-corrected spectrum points.
@@ -507,6 +479,77 @@ class VibrationalBars(Bars):
             spectra_name, self.filenames, values, abscissa, width, fitting_name
         )
         return spectra
+
+
+# TODO: rename "Bars" part to something more recognizable
+class VibrationalBars(_Vibrational):
+    associated_genres = (
+        "freq",
+        "iri",
+        "dip",
+        "rot",
+    )
+
+    _intensities_converters = {
+        "dip": dw.dip_to_ir,
+        "rot": dw.rot_to_vcd,
+        "iri": _as_is,
+    }
+
+
+class ScatteringBars(_Vibrational):
+    associated_genres = (
+        "ramact",
+        "raman1",
+        "roa1",
+        "raman2 ",
+        "roa2",
+        "raman3",
+        "roa3",
+    )
+    _intensities_converters = {
+        "ramact": _as_is,
+        "raman1": _as_is,
+        "roa1": _as_is,
+        "raman2 ": _as_is,
+        "roa2": _as_is,
+        "raman3": _as_is,
+        "roa3": _as_is,
+    }
+
+    def __init__(
+        self,
+        genre,
+        filenames,
+        values,
+        freq,
+        t=298.15,
+        laser=532,
+        allow_data_inconsistency=False,
+    ):
+        super().__init__(genre, filenames, values, freq, allow_data_inconsistency)
+        self.laser = laser  # in nm
+        self.t = t  # temperature in K
+
+    @property
+    def intensities(self):
+        """Converts spectral activity calculated by quantum chemistry software
+        to signal intensity.
+
+        Returns
+        -------
+        numpy.ndarray
+            Signal intensities for each conformer.
+
+        Raises
+        ------
+        NotImplementedError
+            if genre does not provide values conversion to intensities."""
+        try:
+            converter = self._intensities_converters[self.genre]
+        except KeyError:
+            return super().intensities
+        return converter(self.values, self.frequencies, self.t, self.laser)
 
 
 class ElectronicBars(Bars):
@@ -554,7 +597,7 @@ class ElectronicBars(Bars):
         step : int or float
             Number representing step of spectral range in relevant units.
         width : int or float
-            Number representing half width of maximum peak hight.
+            Number representing half width of maximum peak height.
         fitting : function
             Function, which takes bars, freqs, abscissa, width as parameters and
             returns numpy.array of calculated, non-corrected spectrum points.

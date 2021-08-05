@@ -28,6 +28,7 @@ from ..glassware.arrays import (
     Geometry,
     InfoArray,
     IntegerArray,
+    ScatteringBars,
     Transitions,
     VibrationalBars,
 )
@@ -420,6 +421,11 @@ class Writer(ABC):
 
     def _vibrationalbars_handler(
         self, data: List[VibrationalBars], extras: Dict[str, Any]
+    ) -> None:
+        self.bars(band=extras["frequencies"], bars=data)
+
+    def _scatteringbars_handler(
+        self, data: List[ScatteringBars], extras: Dict[str, Any]
     ) -> None:
         self.bars(band=extras["frequencies"], bars=data)
 

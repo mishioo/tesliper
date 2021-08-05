@@ -230,6 +230,8 @@ def test_arrayed_types(full):
     assert gw.InfoArray is type(command)
     iri = full.arrayed("iri")
     assert gw.VibrationalBars is type(iri)
+    ramact = full.arrayed("ramact")
+    assert gw.ScatteringBars is type(ramact)
     vdip = full.arrayed("vdip")
     assert gw.ElectronicBars is type(vdip)
     emang = full.arrayed("emang")
