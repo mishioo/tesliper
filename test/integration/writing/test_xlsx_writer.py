@@ -102,7 +102,7 @@ def test_energies_with_corrections(writer, mols):
 
 
 def test_bars(writer, mols, filenames):
-    writer.bars(mols.arrayed("freq"), [mols.arrayed("iri")])
+    writer.spectral_data(mols.arrayed("freq"), [mols.arrayed("iri")])
     assert writer.file.exists()
     wb = oxl.load_workbook(writer.file)
     keys = [Path(f).stem for f in filenames]

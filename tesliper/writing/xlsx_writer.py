@@ -9,12 +9,12 @@ import numpy as np
 import openpyxl as oxl
 
 from ..glassware.arrays import (
-    Bars,
     DataArray,
-    ElectronicBars,
+    ElectronicData,
     Energies,
     FloatArray,
     InfoArray,
+    SpectralData,
     Transitions,
 )
 from ..glassware.spectra import SingleSpectrum, Spectra
@@ -183,27 +183,27 @@ class XlsxWriter(Writer):
         wb.save(self.file)
         logger.info("Energies export to xlsx files done.")
 
-    def bars(self, band: Bars, bars: Iterable[Bars]):
-        """Writes Bars objects to xlsx file (one sheet for each conformer).
+    def spectral_data(self, band: SpectralData, data: Iterable[SpectralData]):
+        """Writes SpectralData objects to xlsx file (one sheet for each conformer).
 
         Parameters
         ----------
-        band: glassware.Bars
+        band: glassware.SpectralData
             object containing information about band at which transitions occur;
             it should be frequencies for vibrational data and wavelengths or
             excitation energies for electronic data
-        bars: list of glassware.Bars
-            Bars objects that are to be serialized; all should contain
+        data: list of glassware.SpectralData
+            SpectralData objects that are to be serialized; all should contain
             information for the same conformers"""
         # TODO: sort on sheets by type of DataArray class (GroundState, ExitedState...)
         wb = self.workbook
-        bars = [band] + list(bars)
-        genres = [bar.genre for bar in bars]
+        data = [band] + list(data)
+        genres = [bar.genre for bar in data]
         headers = [self._header[genre] for genre in genres]
         widths = [max(len(h), 10) for h in headers]
         fmts = [self._excel_formats[genre] for genre in genres]
-        values = list(zip(*[bar.values for bar in bars]))
-        for fname, values_ in zip(bars[0].filenames, values):
+        values = list(zip(*[bar.values for bar in data]))
+        for fname, values_ in zip(data[0].filenames, values):
             ws = wb.create_sheet(title=fname)
             ws.append(headers)
             ws.freeze_panes = "B2"
@@ -216,7 +216,7 @@ class XlsxWriter(Writer):
                     cell.value = v
                     cell.number_format = fmt
         wb.save(self.file)
-        logger.info("Bars export to xlsx files done.")
+        logger.info("SpectralData export to xlsx files done.")
 
     def spectra(self, spectra: Spectra):
         """Writes given spectral data collectively to one sheet of xlsx workbook.
@@ -261,7 +261,7 @@ class XlsxWriter(Writer):
         logger.info("Spectrum export to xlsx files done.")
 
     def transitions(
-        self, transitions: Transitions, wavelengths: ElectronicBars, only_highest=True
+        self, transitions: Transitions, wavelengths: ElectronicData, only_highest=True
     ):
         transtions_data = (
             transitions.highest_contribution

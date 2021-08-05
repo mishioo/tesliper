@@ -282,10 +282,7 @@ class Averagable:
         return averaged
 
 
-# TODO: rename to something more recognizable (Activities or smth)
-# TODO: remove `.t` parameter from this class and subclasses that doesn't need it
-#       after refactoring datawork.intensities
-class Bars(FloatArray, Averagable):
+class SpectralData(FloatArray, Averagable):
 
     associated_genres = ()
     spectra_name_ref = dict(
@@ -328,20 +325,16 @@ class Bars(FloatArray, Averagable):
         vdip="D / 10^(-44) esu^2 cm^2",
         ldip="D / 10^(-44) esu^2 cm^2",
     )
+    _intensities_converters = {}
 
     def __init__(
         self,
         genre,
         filenames,
         values,
-        t=298.15,
-        laser=532,
         allow_data_inconsistency=False,
     ):
         super().__init__(genre, filenames, values, allow_data_inconsistency)
-        self.t = t  # temperature in K
-        self.laser = laser  # in nm
-        # rename to raman_laser?
 
     # TODO: at least one, freq or wave, must be defined by subclass;
     #       include that in docstring
@@ -386,29 +379,28 @@ class Bars(FloatArray, Averagable):
         Returns
         -------
         numpy.ndarray
-            Signal intensities for each conformer."""
-        intensities = dw.calculate_intensities(
-            self.genre, self.values, self.frequencies, self.t, self.laser
-        )
-        return intensities
+            Signal intensities for each conformer.
 
-# TODO: rename "Bars" part to something more recognizable
-# TODO: create `Scattering...` class to separate scattering data
-#       preferably as subclass of this class
-class VibrationalBars(Bars):
-    associated_genres = (
-        "freq",
-        "iri",
-        "dip",
-        "rot",
-        "ramact",
-        "raman1",
-        "roa1",
-        "raman2 ",
-        "roa2",
-        "raman3",
-        "roa3",
-    )
+        Raises
+        ------
+        NotImplementedError
+            if genre does not provide values conversion to intensities."""
+        try:
+            converter = self._intensities_converters[self.genre]
+        except KeyError:
+            raise NotImplementedError(
+                f"Genre {self.genre} does not provide conversion to intensities."
+            )
+        return converter(self.values, self.frequencies)
+
+
+def _as_is(values, *_args, **_kwargs):
+    return values
+
+
+class _Vibrational(SpectralData):
+
+    freq = ArrayProperty(check_against="filenames")
 
     def __init__(
         self,
@@ -416,14 +408,10 @@ class VibrationalBars(Bars):
         filenames,
         values,
         freq,
-        t=298.15,
-        laser=532,
         allow_data_inconsistency=False,
     ):
-        super().__init__(genre, filenames, values, t, laser, allow_data_inconsistency)
+        super().__init__(genre, filenames, values, allow_data_inconsistency)
         self.freq = freq
-
-    freq = ArrayProperty(check_against="filenames")
 
     @property
     def imaginary(self):
@@ -463,10 +451,10 @@ class VibrationalBars(Bars):
         step : int or float
             Number representing step of spectral range in relevant units.
         width : int or float
-            Number representing half width of maximum peak hight.
+            Number representing half width of maximum peak height.
         fitting : function
-            Function, which takes bars, freqs, abscissa, width as parameters and
-            returns numpy.array of calculated, non-corrected spectrum points.
+            Function, which takes spectral data, freqs, abscissa, width as parameters
+            and returns numpy.array of calculated, non-corrected spectrum points.
 
         Returns
         -------
@@ -492,7 +480,77 @@ class VibrationalBars(Bars):
         return spectra
 
 
-class ElectronicBars(Bars):
+class VibrationalData(_Vibrational):
+    associated_genres = (
+        "freq",
+        "iri",
+        "dip",
+        "rot",
+    )
+
+    _intensities_converters = {
+        "dip": dw.dip_to_ir,
+        "rot": dw.rot_to_vcd,
+        "iri": _as_is,
+    }
+
+
+class ScatteringData(_Vibrational):
+    associated_genres = (
+        "ramact",
+        "raman1",
+        "roa1",
+        "raman2 ",
+        "roa2",
+        "raman3",
+        "roa3",
+    )
+    _intensities_converters = {
+        "ramact": _as_is,
+        "raman1": _as_is,
+        "roa1": _as_is,
+        "raman2 ": _as_is,
+        "roa2": _as_is,
+        "raman3": _as_is,
+        "roa3": _as_is,
+    }
+
+    def __init__(
+        self,
+        genre,
+        filenames,
+        values,
+        freq,
+        t=298.15,
+        laser=532,
+        allow_data_inconsistency=False,
+    ):
+        super().__init__(genre, filenames, values, freq, allow_data_inconsistency)
+        self.laser = laser  # in nm
+        self.t = t  # temperature in K
+
+    @property
+    def intensities(self):
+        """Converts spectral activity calculated by quantum chemistry software
+        to signal intensity.
+
+        Returns
+        -------
+        numpy.ndarray
+            Signal intensities for each conformer.
+
+        Raises
+        ------
+        NotImplementedError
+            if genre does not provide values conversion to intensities."""
+        try:
+            converter = self._intensities_converters[self.genre]
+        except KeyError:
+            return super().intensities
+        return converter(self.values, self.frequencies, self.t, self.laser)
+
+
+class ElectronicData(SpectralData):
     associated_genres = (
         "wavelen",
         "ex_en",
@@ -504,16 +562,23 @@ class ElectronicBars(Bars):
         "losc",
     )
 
+    _intensities_converters = {
+        # for "osc" ignore frequencies given by default by super().intensities
+        "vosc": lambda v, _: dw.osc_to_uv(v),
+        "losc": lambda v, _: dw.osc_to_uv(v),
+        "vrot": dw.rot_to_ecd,
+        "lrot": dw.rot_to_ecd,
+    }
+
     def __init__(
         self,
         genre,
         filenames,
         values,
         wavelen,
-        t=298.15,
         allow_data_inconsistency=False,
     ):
-        super().__init__(genre, filenames, values, t, allow_data_inconsistency)
+        super().__init__(genre, filenames, values, allow_data_inconsistency)
         self.wavelen = wavelen  # in nm
 
     wavelen = ArrayProperty(check_against="filenames")
@@ -530,10 +595,10 @@ class ElectronicBars(Bars):
         step : int or float
             Number representing step of spectral range in relevant units.
         width : int or float
-            Number representing half width of maximum peak hight.
+            Number representing half width of maximum peak height.
         fitting : function
-            Function, which takes bars, freqs, abscissa, width as parameters and
-            returns numpy.array of calculated, non-corrected spectrum points.
+            Function, which takes spectral data, freqs, abscissa, width as parameters
+            and returns numpy.array of calculated, non-corrected spectrum points.
 
         Returns
         -------
