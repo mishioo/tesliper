@@ -19,12 +19,9 @@ from .geometry import (
     take_atoms,
 )
 from .intensities import (
-    calculate_intensities,
     default_spectra_bars,
     dip_to_ir,
     osc_to_uv,
-    ramanx_to_raman,
-    roax_to_roa,
     rot_to_ecd,
     rot_to_vcd,
 )
