@@ -283,8 +283,6 @@ class Averagable:
 
 
 # TODO: rename to something more recognizable (Activities or smth)
-# TODO: remove `.t` parameter from this class and subclasses that doesn't need it
-#       after refactoring datawork.intensities
 class Bars(FloatArray, Averagable):
 
     associated_genres = ()
@@ -328,20 +326,16 @@ class Bars(FloatArray, Averagable):
         vdip="D / 10^(-44) esu^2 cm^2",
         ldip="D / 10^(-44) esu^2 cm^2",
     )
+    _intensities_converters = {}
 
     def __init__(
         self,
         genre,
         filenames,
         values,
-        t=298.15,
-        laser=532,
         allow_data_inconsistency=False,
     ):
         super().__init__(genre, filenames, values, allow_data_inconsistency)
-        self.t = t  # temperature in K
-        self.laser = laser  # in nm
-        # rename to raman_laser?
 
     # TODO: at least one, freq or wave, must be defined by subclass;
     #       include that in docstring
@@ -386,11 +380,23 @@ class Bars(FloatArray, Averagable):
         Returns
         -------
         numpy.ndarray
-            Signal intensities for each conformer."""
-        intensities = dw.calculate_intensities(
-            self.genre, self.values, self.frequencies, self.t, self.laser
-        )
-        return intensities
+            Signal intensities for each conformer.
+
+        Raises
+        ------
+        NotImplementedError
+            if genre does not provide values conversion to intensities."""
+        try:
+            converter = self._intensities_converters[self.genre]
+        except KeyError:
+            raise NotImplementedError(
+                f"Genre {self.genre} does not provide conversion to intensities."
+            )
+        return converter(self.values, self.frequencies)
+
+
+def _as_is(values, *_args, **_kwargs):
+    return values
 
 # TODO: rename "Bars" part to something more recognizable
 # TODO: create `Scattering...` class to separate scattering data
@@ -410,17 +416,28 @@ class VibrationalBars(Bars):
         "roa3",
     )
 
+    _intensities_converters = {
+        "dip": dw.dip_to_ir,
+        "rot": dw.rot_to_vcd,
+        "iri": _as_is,
+        "ramact": _as_is,
+        "raman1": _as_is,
+        "roa1": _as_is,
+        "raman2 ": _as_is,
+        "roa2": _as_is,
+        "raman3": _as_is,
+        "roa3": _as_is,
+    }
+
     def __init__(
         self,
         genre,
         filenames,
         values,
         freq,
-        t=298.15,
-        laser=532,
         allow_data_inconsistency=False,
     ):
-        super().__init__(genre, filenames, values, t, laser, allow_data_inconsistency)
+        super().__init__(genre, filenames, values, allow_data_inconsistency)
         self.freq = freq
 
     freq = ArrayProperty(check_against="filenames")
@@ -504,16 +521,23 @@ class ElectronicBars(Bars):
         "losc",
     )
 
+    _intensities_converters = {
+        # for "osc" ignore frequencies given by default by super().intensities
+        "vosc": lambda v, _: dw.osc_to_uv(v),
+        "losc": lambda v, _: dw.osc_to_uv(v),
+        "vrot": dw.rot_to_ecd,
+        "lrot": dw.rot_to_ecd,
+    }
+
     def __init__(
         self,
         genre,
         filenames,
         values,
         wavelen,
-        t=298.15,
         allow_data_inconsistency=False,
     ):
-        super().__init__(genre, filenames, values, t, allow_data_inconsistency)
+        super().__init__(genre, filenames, values, allow_data_inconsistency)
         self.wavelen = wavelen  # in nm
 
     wavelen = ArrayProperty(check_against="filenames")

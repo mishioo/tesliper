@@ -169,8 +169,20 @@ def fnms(monkeypatch):
 
 @pytest.fixture
 def inten(monkeypatch):
-    monkeypatch.setattr(ar.dw, "calculate_intensities", mock.Mock())
-    return ar.dw.calculate_intensities
+    inten_mock = mock.MagicMock()
+    inten_mock.converter = mock.Mock()
+    inten_mock.__getitem__.side_effect = lambda _k: inten_mock.converter
+    monkeypatch.setattr(ar.Bars, "_intensities_converters", inten_mock)
+    return inten_mock
+
+
+@pytest.fixture
+def inten_no_conversion(inten):
+    def no_key(_k):
+        raise KeyError
+
+    inten.__getitem__.side_effect = no_key
+    return inten
 
 
 @pytest.fixture
@@ -180,9 +192,12 @@ def bars():
 
 def test_intensieties(bars, inten, fnms, vals, freq):
     _ = bars.intensities
-    inten.assert_called_with(
-        bars.genre, bars.values, bars.frequencies, bars.t, bars.laser
-    )
+    inten.converter.assert_called_with(bars.values, bars.frequencies)
+
+
+def test_intensieties_unsupported_genre(bars, inten_no_conversion, fnms, vals, freq):
+    with pytest.raises(NotImplementedError):
+        _ = bars.intensities
 
 
 # test Geometry
