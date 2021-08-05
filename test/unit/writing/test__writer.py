@@ -159,7 +159,7 @@ writer_methods = {
     ),
     "energies": dict(energies=None, corrections=None),
     "spectrum": dict(spectrum=None),
-    "bars": dict(band=None, bars=None),
+    "spectral_data": dict(band=None, data=None),
     "spectra": dict(spectra=None),
     "transitions": dict(
         transitions=None,

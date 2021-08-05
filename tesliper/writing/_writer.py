@@ -422,17 +422,17 @@ class Writer(ABC):
     def _vibrationaldata_handler(
         self, data: List[VibrationalData], extras: Dict[str, Any]
     ) -> None:
-        self.bars(band=extras["frequencies"], bars=data)
+        self.spectral_data(band=extras["frequencies"], data=data)
 
     def _scatteringdata_handler(
         self, data: List[ScatteringData], extras: Dict[str, Any]
     ) -> None:
-        self.bars(band=extras["frequencies"], bars=data)
+        self.spectral_data(band=extras["frequencies"], data=data)
 
     def _electronicdata_handler(
         self, data: List[ElectronicData], extras: Dict[str, Any]
     ) -> None:
-        self.bars(band=extras["wavelengths"], bars=data)
+        self.spectral_data(band=extras["wavelengths"], data=data)
 
     def _transitions_handler(
         self, data: List[Transitions], extras: Dict[str, Any]
@@ -477,7 +477,7 @@ class Writer(ABC):
     def spectrum(self, spectrum: SingleSpectrum):
         raise NotImplementedError(f"Class {type(self)} does not implement this method.")
 
-    def bars(self, band: SpectralData, bars: List[SpectralData]):
+    def spectral_data(self, band: SpectralData, data: List[SpectralData]):
         raise NotImplementedError(f"Class {type(self)} does not implement this method.")
 
     def spectra(self, spectra: Spectra):

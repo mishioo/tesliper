@@ -9,7 +9,7 @@ logger.setLevel(lgg.DEBUG)
 
 
 # GLOBAL VARIABLES
-default_spectra_bars = {
+DEFAULT_ACTIVITIES = {
     "ir": "dip",
     "vcd": "rot",
     "uv": "vosc",

@@ -199,7 +199,7 @@ class TxtWriter(Writer):
             )
         logger.info("Spectrum export to text files done.")
 
-    def bars(self, band: SpectralData, bars: List[SpectralData]):
+    def spectral_data(self, band: SpectralData, data: List[SpectralData]):
         """Writes SpectralData objects to txt files (one for each conformer).
 
         Parameters
@@ -208,18 +208,18 @@ class TxtWriter(Writer):
             object containing information about band at which transitions occur;
             it should be frequencies for vibrational data and wavelengths or
             excitation energies for electronic data
-        bars: list of glassware.SpectralData
+        data: list of glassware.SpectralData
             SpectralData objects that are to be serialized; all should contain
             information for the same conformers
         """
-        bars = [band] + bars
-        genres = [bar.genre for bar in bars]
+        data = [band] + data
+        genres = [bar.genre for bar in data]
         headers = [self._header[genre] for genre in genres]
         widths = [self._formatters[genre][4:-4] for genre in genres]
         formatted = [f"{h: <{w}}" for h, w in zip(headers, widths)]
-        values = zip(*[bar.values for bar in bars])
+        values = zip(*[bar.values for bar in data])
         for handle, values_ in zip(
-            self._iter_handles(bars[0].filenames, band.genre), values
+            self._iter_handles(data[0].filenames, band.genre), values
         ):
             handle.write("\t".join(formatted))
             handle.write("\n")

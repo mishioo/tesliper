@@ -19,7 +19,7 @@ from .geometry import (
     take_atoms,
 )
 from .intensities import (
-    default_spectra_bars,
+    DEFAULT_ACTIVITIES,
     dip_to_ir,
     osc_to_uv,
     rot_to_ecd,

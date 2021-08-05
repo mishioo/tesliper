@@ -200,7 +200,7 @@ class CsvWriter(_CsvMixin, Writer):
                 csvwriter.writerow(row)
         logger.info("Spectrum export to csv files done.")
 
-    def bars(self, band: SpectralData, bars: List[SpectralData]):
+    def spectral_data(self, band: SpectralData, data: List[SpectralData]):
         """Writes SpectralData objects to csv files (one file for each conformer).
 
         Parameters
@@ -209,15 +209,15 @@ class CsvWriter(_CsvMixin, Writer):
             Object containing information about band at which transitions occur;
             it should be frequencies for vibrational data and wavelengths or
             excitation energies for electronic data.
-        bars: list of glassware.SpectralData
+        data: list of glassware.SpectralData
             SpectralData objects that are to be serialized; all should contain
             information for the same set of conformers and correspond to given band.
         """
-        bars = [band] + bars
-        headers = [self._header[bar.genre] for bar in bars]
-        values = zip(*[bar.values for bar in bars])
+        data = [band] + data
+        headers = [self._header[bar.genre] for bar in data]
+        values = zip(*[bar.values for bar in data])
         for handle, values_ in zip(
-            self._iter_handles(bars[0].filenames, band.genre, newline=""), values
+            self._iter_handles(data[0].filenames, band.genre, newline=""), values
         ):
             csvwriter = csv.writer(handle, dialect=self.dialect, **self.fmtparams)
             if self.include_header:

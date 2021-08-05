@@ -103,7 +103,7 @@ class Tesliper:
         return {k: self.conformers.arrayed(k) for k in keys}
 
     @property
-    def bars(self):
+    def activities(self):
         # TODO: put proper keys here
         keys = "dip rot vosc vrot raman1 roa1".split(" ")
         return {k: self.conformers.arrayed(k) for k in keys}
@@ -201,7 +201,7 @@ class Tesliper:
         fitting=None,
     ):
         # TO DO: add error handling when no data for requested spectrum
-        bar_name = dw.default_spectra_bars[spectra_name]
+        bar_name = dw.DEFAULT_ACTIVITIES[spectra_name]
         is_excited = spectra_name.lower() in ("uv", "ecd")
         conformer = self.conformers[conformer]
         values = conformer[bar_name]
@@ -244,10 +244,10 @@ class Tesliper:
         self, genres=(), start=None, stop=None, step=None, width=None, fitting=None
     ):
         if not genres:
-            bars = self.bars.values()
+            bars = self.activities.values()
         else:
             # convert to spectra name if bar name passed
-            bar_names = dw.default_spectra_bars
+            bar_names = dw.DEFAULT_ACTIVITIES
             genres = genres.split() if isinstance(genres, str) else genres
             query = [bar_names[v] if v in bar_names else v for v in genres]
             query_set = set(query)  # ensure no duplicates
@@ -255,12 +255,12 @@ class Tesliper:
                 *[(k, v) for k, v in self.spectral.items() if k in query_set]
             )
             unknown = query_set - set(self.spectral.keys())
-            # TO DO: change it to handle custom bars
+            # TO DO: change it to handle custom spectral data arrays
             if unknown:
                 info = (
                     "No other requests provided."
                     if not bar_names
-                    else f"Will proceed using only those bars: {bar_names}"
+                    else f"Will proceed using only these genres: {bar_names}"
                 )
                 msg = f"Don't have those bar types: {unknown}. {info}"
                 logger.warning(msg)
@@ -362,7 +362,7 @@ class Tesliper:
         wrt.write(data=[*energies, frequencies, stoichiometry, *corrections])
 
     # TODO: separate to vibrational and electronic ?
-    def export_bars(self, fmt: str = "txt", mode: str = "x"):
+    def export_spectral_data(self, fmt: str = "txt", mode: str = "x"):
         """Saves unprocessed spectral data to disk in given file format.
 
         File formats available by default are: "txt", "csv", "xlsx".

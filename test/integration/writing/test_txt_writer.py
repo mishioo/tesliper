@@ -183,7 +183,7 @@ ir calculated with peak width = 5 cm-1 and gaussian fitting, shown as Frequency 
 
 
 def test_serial_bars(writer, mols, filenames):
-    writer.bars(mols.arrayed("freq"), [mols.arrayed("iri")])
+    writer.spectral_data(mols.arrayed("freq"), [mols.arrayed("iri")])
     assert set(p.name for p in writer.destination.iterdir()) == {
         Path(f).with_suffix(".freq.txt").name for f in filenames
     }

@@ -453,8 +453,8 @@ class _Vibrational(SpectralData):
         width : int or float
             Number representing half width of maximum peak height.
         fitting : function
-            Function, which takes bars, freqs, abscissa, width as parameters and
-            returns numpy.array of calculated, non-corrected spectrum points.
+            Function, which takes spectral data, freqs, abscissa, width as parameters
+            and returns numpy.array of calculated, non-corrected spectrum points.
 
         Returns
         -------
@@ -597,8 +597,8 @@ class ElectronicData(SpectralData):
         width : int or float
             Number representing half width of maximum peak height.
         fitting : function
-            Function, which takes bars, freqs, abscissa, width as parameters and
-            returns numpy.array of calculated, non-corrected spectrum points.
+            Function, which takes spectral data, freqs, abscissa, width as parameters
+            and returns numpy.array of calculated, non-corrected spectrum points.
 
         Returns
         -------

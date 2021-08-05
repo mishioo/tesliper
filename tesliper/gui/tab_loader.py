@@ -250,7 +250,7 @@ class Loader(ttk.Frame):
     def execute_save_command(self, output, dest, fmt):
         savers = {
             "energies": self.parent.tslr.export_energies,
-            "bars": self.parent.tslr.export_bars,
+            "bars": self.parent.tslr.export_spectral_data,
             "spectra": self.parent.tslr.export_spectra,
             "averaged": self.parent.tslr.export_averaged,
         }

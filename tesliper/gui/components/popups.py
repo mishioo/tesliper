@@ -31,7 +31,7 @@ class ExportPopup(Popup):
     def __init__(self, master, *args, **kwargs):
         super().__init__(master, *args, **kwargs)
         self.title("Export...")
-        self.labels = "Energies Bars Spectra Averaged".split(" ")
+        self.labels = "Energies Data Spectra Averaged".split(" ")
         self.vars = [tk.BooleanVar() for _ in self.labels]
         checks = [
             ttk.Checkbutton(self, text=l, variable=v)
@@ -43,7 +43,7 @@ class ExportPopup(Popup):
             state="normal" if self.master.parent.tslr.energies else "disabled"
         )
         checks[1].configure(
-            state="normal" if self.master.parent.tslr.bars else "disabled"
+            state="normal" if self.master.parent.tslr.activities else "disabled"
         )
         checks[2].configure(
             state="normal" if self.master.parent.tslr.spectra else "disabled"
@@ -52,7 +52,7 @@ class ExportPopup(Popup):
             state="normal" if self.master.parent.tslr.spectra else "disabled"
         )
         self.vars[0].set(True if self.master.parent.tslr.energies else False)
-        self.vars[1].set(True if self.master.parent.tslr.bars else False)
+        self.vars[1].set(True if self.master.parent.tslr.activities else False)
         self.vars[2].set(True if self.master.parent.tslr.spectra else False)
         self.vars[3].set(True if self.master.parent.tslr.spectra else False)
         self.protocol("WM_DELETE_WINDOW", self.cancel_command)
@@ -100,10 +100,10 @@ class BarsPopup(Popup):
 
     def __init__(self, master, *args, **kwargs):
         super().__init__(master, *args, **kwargs)
-        self.title("Bars extraction")
+        self.title("Data extraction")
         tk.Grid.rowconfigure(self, 6, weight=1)
         tk.Grid.columnconfigure(self, 2, weight=1)
-        ttk.Label(self, text="Chose bars you wish to extract:").grid(
+        ttk.Label(self, text="Chose spectral data you wish to extract:").grid(
             column=0, row=0, columnspan=2, sticky="w", padx=5, pady=5
         )
         positions = [(c, r) for r in range(1, 6) for c in range(2)]
@@ -128,7 +128,7 @@ class BarsPopup(Popup):
             self.master.execute_extract_bars(query)
         else:
             messagebox.showinfo(
-                "Nothing choosen!", "You must chose which bars you want to extract."
+                "Nothing choosen!", "You must chose which data you want to extract."
             )
             self.focus_set()
 

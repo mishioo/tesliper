@@ -56,13 +56,13 @@ def writer_implemented():
             with file.open(self.mode) as handle:
                 handle.write(f"spectrum: {repr(spectrum)}\n")
 
-        def bars(self, band, bars):
+        def spectral_data(self, band, data):
             file = self.destination / self.filename_template.substitute(
                 conf="bars", genre="", ext=self.extension, num=""
             )
             with file.open(self.mode) as handle:
                 handle.write(f"band: {repr(band)}\n")
-                handle.write(f"bars: {repr(bars)}\n")
+                handle.write(f"data: {repr(data)}\n")
 
         def spectra(self, spectra):
             file = self.destination / self.filename_template.substitute(
