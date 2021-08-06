@@ -246,7 +246,7 @@ class Loader(ttk.Frame):
         return query
 
     @guicom.Feedback("Saving...")
-    def execute_save_command(self, output, dest, fmt):
+    def execute_save_command(self, output, fmt):
         savers = {
             "energies": self.parent.tslr.export_energies,
             "spectral data": self.parent.tslr.export_spectral_data,
@@ -258,13 +258,26 @@ class Loader(ttk.Frame):
             self.parent.tslr.average_spectra()
             self.parent.progtext.set("Saving...")
         for thing in output:
-            savers[thing](dest, fmt)
+            try:
+                savers[thing](fmt)
+            except FileExistsError:
+                # TODO: correct for xlsx, it uses same file for each "thing"
+                #       in effect new "thing" overrides previous one
+                #       maybe create separate handler for xlsx
+                override = messagebox.askokcancel(
+                    title=f"{thing.capitalize()} files already exist!",
+                    message="Some {thing} files already exist in this directory. "
+                    "Would you like to overwrite them?",
+                )
+                if override:
+                    savers[thing](fmt, mode="w")
 
     def save(self, output, fmt):
         dest = askdirectory()
         if dest:
+            self.parent.tslr.output_dir = dest
             logger.debug(f"Export requested: {output}; format: {fmt}")
-            self.execute_save_command(output, dest, fmt)
+            self.execute_save_command(output, fmt)
 
     def save_text(self):
         output = self.get_save_output()
