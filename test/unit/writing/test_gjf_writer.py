@@ -1,7 +1,8 @@
 from pathlib import Path
 
 import pytest
-from hypothesis import given, strategies as st, assume
+from hypothesis import assume, given
+from hypothesis import strategies as st
 
 from tesliper.writing.gjf_writer import GjfWriter, _format_coordinates
 
@@ -29,7 +30,7 @@ def test_writer_init():
     assert gjfwriter.route == "#"
     assert gjfwriter.comment == "No information provided."
     assert gjfwriter.post_spec == ""
-    assert gjfwriter.filename_template.template == "${filename}.${ext}"
+    assert gjfwriter.filename_template.template == "${conf}.${ext}"
 
 
 @given(st.text())
@@ -64,14 +65,6 @@ def test_route_str_startswith_hash(commands):
     assert gjfwriter._route == commands.split()
 
 
-@given(st.lists(st.text()))
-def test_route_list_not_startswith_hash(commands):
-    assume(not (commands[0] if commands else "").strip().startswith("#"))
-    gjfwriter = GjfWriter(destination="", route=commands)
-    assert gjfwriter.route == " ".join(["#"] + commands)
-    assert gjfwriter._route == ["#"] + commands
-
-
 st_not_st = st.one_of(
     st.none(),
     st.integers(),
@@ -93,8 +86,7 @@ def test_route_sequence_wrong_type(commands):
         GjfWriter(destination="", route=commands)
 
 
-@pytest.mark.parametrize("commands", ["", [], tuple(), set(), {}])
-def test_route_empty(commands):
-    gjfwriter = GjfWriter(destination="", route=commands)
+def test_route_empty():
+    gjfwriter = GjfWriter(destination="", route="")
     assert gjfwriter.route == "#"
     assert gjfwriter._route == ["#"]

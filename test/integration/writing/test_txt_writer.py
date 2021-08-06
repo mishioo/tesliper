@@ -2,20 +2,20 @@ from pathlib import Path
 
 import pytest
 
-from tesliper.writing.txt_writer import TxtWriter, TxtSerialWriter
-from tesliper.glassware import arrays as ar, SingleSpectrum, Spectra
 from tesliper.extraction import Soxhlet
-from tesliper.glassware import Conformers
+from tesliper.glassware import Conformers, SingleSpectrum, Spectra
+from tesliper.glassware import arrays as ar
+from tesliper.writing.txt_writer import TxtWriter
 
 
 @pytest.fixture
 def filenames():
-    return ["meoh-1.out", "meoh-2.out"]
+    return ["meoh-1", "meoh-2"]
 
 
 @pytest.fixture
 def filenamestd():
-    return ["fal-td.out"]
+    return ["fal-td"]
 
 
 @pytest.fixture
@@ -64,12 +64,7 @@ def spectra(filenames):
 
 @pytest.fixture
 def writer(tmp_path):
-    return TxtWriter(tmp_path.joinpath("overview.txt"))
-
-
-@pytest.fixture
-def serial_writer(tmp_path):
-    return TxtSerialWriter(tmp_path)
+    return TxtWriter(tmp_path)
 
 
 def test_overview_basic(writer, mols):
@@ -78,7 +73,7 @@ def test_overview_basic(writer, mols):
         frequencies=mols.arrayed("freq"),
         stoichiometry=mols.arrayed("stoichiometry"),
     )
-    with writer.destination.open("r") as outcome:
+    with Path(writer._handle.name).open("r") as outcome:
         assert (
             outcome.read()
             == """\
@@ -96,7 +91,7 @@ def test_overview_no_freqs(writer, mols):
         [mols.arrayed(grn) for grn in ar.Energies.associated_genres],
         stoichiometry=mols.arrayed("stoichiometry"),
     )
-    with writer.destination.open("r") as outcome:
+    with Path(writer._handle.name).open("r") as outcome:
         assert (
             outcome.read()
             == """\
@@ -114,7 +109,7 @@ def test_overview_no_stoichiometry(writer, mols):
         [mols.arrayed(grn) for grn in ar.Energies.associated_genres],
         frequencies=mols.arrayed("freq"),
     )
-    with writer.destination.open("r") as outcome:
+    with Path(writer._handle.name).open("r") as outcome:
         assert (
             outcome.read()
             == """\
@@ -129,7 +124,7 @@ meoh-2               |  46.3953     45.9840   45.9840   45.9840   45.9577 |  -11
 
 def test_energies_basic(writer, mols):
     writer.energies(mols.arrayed("gib"), mols.arrayed("gibcorr"))
-    with writer.destination.open("r") as outcome:
+    with Path(writer._handle.name).open("r") as outcome:
         assert (
             outcome.read()
             == """\
@@ -143,7 +138,7 @@ meoh-2               |      45.9577 |       0.8504 |        0.0960 |    -113.505
 
 def test_energies_no_corr(writer, mols):
     writer.energies(mols.arrayed("gib"))
-    with writer.destination.open("r") as outcome:
+    with Path(writer._handle.name).open("r") as outcome:
         assert (
             outcome.read()
             == """\
@@ -157,7 +152,7 @@ meoh-2               |      45.9577 |       0.8504 |        0.0960 |    -113.505
 
 def test_spectrum_basic(writer, spc):
     writer.spectrum(spc)
-    with writer.destination.open("r") as outcome:
+    with Path(writer._handle.name).open("r") as outcome:
         assert (
             outcome.read()
             == """\
@@ -174,7 +169,7 @@ ir calculated with peak width = 5 cm-1 and gaussian fitting, shown as Frequency 
 def test_spectrum_not_averaged(writer, spc):
     spc.filenames, spc.averaged_by = None, None
     writer.spectrum(spc)
-    with writer.destination.open("r") as outcome:
+    with Path(writer._handle.name).open("r") as outcome:
         assert (
             outcome.read()
             == """\
@@ -187,12 +182,12 @@ ir calculated with peak width = 5 cm-1 and gaussian fitting, shown as Frequency 
         )
 
 
-def test_serial_bars(serial_writer, mols, filenames):
-    serial_writer.bars(mols.arrayed("freq"), [mols.arrayed("iri")])
-    assert set(p.name for p in serial_writer.destination.iterdir()) == {
+def test_serial_bars(writer, mols, filenames):
+    writer.spectral_data(mols.arrayed("freq"), [mols.arrayed("iri")])
+    assert set(p.name for p in writer.destination.iterdir()) == {
         Path(f).with_suffix(".freq.txt").name for f in filenames
     }
-    with serial_writer.destination.joinpath("meoh-1.freq.txt").open("r") as handle:
+    with writer.destination.joinpath("meoh-1.freq.txt").open("r") as handle:
         cont = handle.read()
     listed = cont.split("\n")
     assert "Frequencies" in listed[0]
@@ -201,10 +196,10 @@ def test_serial_bars(serial_writer, mols, filenames):
     assert len(listed) == (len(mols["meoh-1"]["freq"]) + 2)
 
 
-def test_serial_spectra(serial_writer, spectra, filenames):
-    serial_writer.spectra(spectra)
+def test_serial_spectra(writer, spectra, filenames):
+    writer.spectra(spectra)
     for name, values in zip(spectra.filenames, spectra.values):
-        file = serial_writer.destination.joinpath(name).with_suffix(".ir.txt")
+        file = writer.destination.joinpath(name).with_suffix(".ir.txt")
         with file.open("r") as f:
             output = f.readlines()
         assert "ir calculated" in output[0]
@@ -215,11 +210,11 @@ def test_serial_spectra(serial_writer, spectra, filenames):
             assert [float(v) for v in line.split()] == [y, x]
 
 
-def test_serial_transitions_only_highest(serial_writer, molstd, filenamestd):
-    serial_writer.transitions(
+def test_serial_transitions_only_highest(writer, molstd, filenamestd):
+    writer.transitions(
         molstd.arrayed("transitions"), molstd.arrayed("wavelen"), only_highest=True
     )
-    output_file_path = serial_writer.destination.joinpath(filenamestd[0])
+    output_file_path = writer.destination.joinpath(filenamestd[0])
     output_file_path = output_file_path.with_suffix(".transitions.txt")
     with output_file_path.open("r") as handle:
         cont = iter(handle.readlines())
@@ -238,11 +233,11 @@ def test_serial_transitions_only_highest(serial_writer, molstd, filenamestd):
         assert line.split() == out
 
 
-def test_serial_transitions_all(serial_writer, molstd, filenamestd):
-    serial_writer.transitions(
+def test_serial_transitions_all(writer, molstd, filenamestd):
+    writer.transitions(
         molstd.arrayed("transitions"), molstd.arrayed("wavelen"), only_highest=False
     )
-    output_file_path = serial_writer.destination.joinpath(filenamestd[0])
+    output_file_path = writer.destination.joinpath(filenamestd[0])
     output_file_path = output_file_path.with_suffix(".transitions.txt")
     with output_file_path.open("r") as handle:
         cont = iter(handle.readlines())
@@ -262,3 +257,9 @@ def test_serial_transitions_all(serial_writer, molstd, filenamestd):
     for line, out in zip(cont, outs):
         out += [f"{2 * float(out[-1]) ** 2:.0%}"]
         assert line.split() == out
+
+
+def test_write(writer, mols, filenames):
+    data = [mols.arrayed(genre) for genre in ["freq", "iri", "gib", "zpe", "gibcorr"]]
+    writer.write(data)
+    assert len(list(writer.destination.iterdir())) == len(filenames) + 3

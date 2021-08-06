@@ -1,11 +1,11 @@
 from .extraction import Soxhlet
 from .glassware import (
-    Bars,
     BooleanArray,
     Conformers,
     DataArray,
     Energies,
     InfoArray,
     Spectra,
+    SpectralData,
 )
 from .tesliper import Tesliper

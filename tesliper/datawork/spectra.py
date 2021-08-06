@@ -190,6 +190,8 @@ def calculate_spectra(frequencies, intensities, abscissa, width, fitting):
         If `intensities` and `frequencies` are not of the same shape."""
     if intensities.shape != frequencies.shape:
         raise ValueError("`intensities` and `frequencies` must be of same shape!")
+    if not intensities.size:
+        return np.zeros(0)  # return early to avoid (0, N) shape of output array
     spectra = np.zeros([len(frequencies), abscissa.shape[0]])  # template
     for inten, freq, spr in zip(intensities, frequencies, spectra):
         spr[...] = fitting(inten, freq, abscissa, width)
@@ -224,6 +226,8 @@ def calculate_average(values, populations):
         raise ValueError(
             "Exactly one population value for each conformer must be provided."
         )
+    if not values.size:
+        return np.zeros([0])  # just return an empty array if `values` is empty
     popsum = populations.sum()
     if not np.isclose(popsum, 1):
         # normalize population data, if needed

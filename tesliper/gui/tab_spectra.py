@@ -178,7 +178,7 @@ class Spectra(ttk.Frame):
         self.show_bars = ttk.Checkbutton(
             frame,
             variable=var,
-            text="Show bars",
+            text="Show activities",
             state="disabled",
             command=self.live_preview_callback,
         )
@@ -296,7 +296,7 @@ class Spectra(ttk.Frame):
     def spectra_chosen(self, event=None):
         tslr = self.parent.tslr
         self.visualize_settings()
-        bar = tesliper.dw.default_spectra_bars[self.s_name.get()]
+        bar = tesliper.dw.DEFAULT_ACTIVITIES[self.s_name.get()]
         self.single_box["values"] = [k for k, v in tslr.conformers.items() if bar in v]
         self.reverse_ax.config(state="normal")
         self.load_exp.config(state="normal")
@@ -308,7 +308,7 @@ class Spectra(ttk.Frame):
 
     def visualize_settings(self):
         spectra_name = self.s_name.get()
-        spectra_type = tesliper.gw.Bars.spectra_type_ref[spectra_name]
+        spectra_type = tesliper.gw.SpectralData.spectra_type_ref[spectra_name]
         tslr = self.parent.tslr
         last_used = self.last_used_settings[spectra_name]
         settings = tslr.parameters[spectra_type].copy()
@@ -438,7 +438,7 @@ class Spectra(ttk.Frame):
                     else bars.frequencies[0]
                 )
                 freqs = freqs + spc.offset
-                # show only bars within range requested in calculations
+                # show only activities within range requested in calculations
                 blade = (freqs >= min(spc.x)) & (freqs <= max(spc.x))
                 markerline, stemlines, baseline = bars_ax.stem(
                     freqs[blade],
@@ -483,7 +483,7 @@ class Spectra(ttk.Frame):
 
     def single_draw(self, spectra_name, option):
         self._calculate_spectra(spectra_name, option, "single")
-        bar_name = tesliper.dw.default_spectra_bars[spectra_name]
+        bar_name = tesliper.dw.DEFAULT_ACTIVITIES[spectra_name]
         with self.parent.tslr.conformers.trimmed_to([option]):
             bars = self.parent.tslr[bar_name]
         queue_ = self.parent.thread.queue

@@ -14,14 +14,14 @@ logger = lgg.getLogger(__name__)
 
 class SingleSpectrum:
 
-    _vibra_units = {
+    _vibrational_units = {
         "width": "cm-1",
         "start": "cm-1",
         "stop": "cm-1",
         "step": "cm-1",
         "x": "Frequency / cm^(-1)",
     }
-    _electr_units = {
+    _electronic_units = {
         "width": "eV",
         "start": "nm",
         "stop": "nm",
@@ -37,9 +37,9 @@ class SingleSpectrum:
         "roa": {"y": "I(R)-I(L)"},
     }
     for u in "ir vcd raman roa".split(" "):
-        _units[u].update(_vibra_units)
+        _units[u].update(_vibrational_units)
     for u in ("uv", "ecd"):
-        _units[u].update(_electr_units)
+        _units[u].update(_electronic_units)
 
     def __init__(
         self,
@@ -162,9 +162,8 @@ class Spectra(SingleSpectrum):
         )
 
     def average(self, energies: "tesliper.glassware.Energies") -> SingleSpectrum:
-        """A method for averaging spectra by population of conformers. If `scaling`
-        or `offset` attributes are `np.ndarray`s, they are averaged as well.
-
+        """A method for averaging spectra by population of conformers. If this object
+        is empty, averaged spectrum will be a flat line at 0.0 intensity.
 
         Parameters
         ----------
@@ -181,6 +180,8 @@ class Spectra(SingleSpectrum):
         populations = energies.populations
         energy_type = energies.genre
         av_spec = dw.calculate_average(self.values, populations)
+        if not av_spec.size:
+            av_spec = np.zeros(self.abscissa.shape)
         av_spec = SingleSpectrum(
             self.genre,
             av_spec,

@@ -4,13 +4,19 @@ import logging as lgg
 from itertools import repeat, zip_longest
 from pathlib import Path
 from string import Template
-from typing import Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 
-from ..glassware.arrays import Bars, Energies, ExcitedStateBars, FloatArray, Transitions
+from ..glassware.arrays import (
+    ElectronicData,
+    Energies,
+    FloatArray,
+    SpectralData,
+    Transitions,
+)
 from ..glassware.spectra import SingleSpectrum, Spectra
-from ._writer import SerialWriter, Writer
+from ._writer import Writer
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -115,6 +121,9 @@ class CsvWriter(_CsvMixin, Writer):
         For list of valid parameters consult csv.Dialect documentation.
     """
 
+    extension = "csv"
+    default_template = "${conf}.${genre}.${ext}"
+
     def __init__(
         self,
         destination: Union[str, Path],
@@ -160,13 +169,20 @@ class CsvWriter(_CsvMixin, Writer):
             energies.values,
             corr,
         )
-        with self.destination.open(self.mode, newline="") as handle:
+        with self._get_handle("populations", energies.genre, newline="") as handle:
             csvwriter = csv.writer(handle, dialect=self.dialect, **self.fmtparams)
             if self.include_header:
                 csvwriter.writerow(header)
             for row in rows:
                 csvwriter.writerow(v for v in row if v is not None)
         logger.info("Energies export to csv files done.")
+
+    def _energies_handler(self, data: List[Energies], extras: Dict[str, Any]) -> None:
+        # TODO: return to Writer's implementation when `.overview()` added to this class
+        for en in data:
+            self.energies(
+                en, corrections=extras.get("corrections", dict()).get(en.genre)
+            )
 
     def spectrum(self, spectrum: SingleSpectrum):
         """Writes SingleSpectrum object to csv file.
@@ -176,7 +192,7 @@ class CsvWriter(_CsvMixin, Writer):
         spectrum: glassware.SingleSpectrum
             spectrum, that is to be serialized
         """
-        with self.destination.open(self.mode, newline="") as handle:
+        with self._get_handle("spectrum", spectrum.genre, newline="") as handle:
             csvwriter = csv.writer(handle, dialect=self.dialect, **self.fmtparams)
             if self.include_header:
                 csvwriter.writerow([spectrum.units["y"], spectrum.units["x"]])
@@ -184,77 +200,31 @@ class CsvWriter(_CsvMixin, Writer):
                 csvwriter.writerow(row)
         logger.info("Spectrum export to csv files done.")
 
-
-class CsvSerialWriter(_CsvMixin, SerialWriter):
-    """Writes extracted data in .csv format, generates separate file for
-    each given conformer.
-
-    Parameters
-    ----------
-    destination: str or pathlib.Path
-        Directory, to which generated files should be written.
-    mode: str
-        Specifies how writing to file should be handled. Should be one of characters:
-         'a' (append to existing file), 'x' (only write if file doesn't exist yet),
-         or 'w' (overwrite file if it already exists).
-    filename_template: str or string.Template
-        Template for names of generated files, defaults to
-        '${filename}.${genre}.${ext}'.
-     include_header: bool, optional
-        Determines if file should contain a header with column names, True by default.
-    dialect: str or csv.Dialect
-        Name of a dialect or csv.Dialect object, which will be used by underlying
-        csv.writer.
-    fmtparams: dict, optional
-        Additional formatting parameters for underlying csv.writer to use.
-        For list of valid parameters consult csv.Dialect documentation.
-    """
-
-    extension = "csv"
-
-    def __init__(
-        self,
-        destination: Union[str, Path],
-        mode: str = "x",
-        filename_template: Union[str, Template] = "${filename}.${genre}.${ext}",
-        include_header: bool = True,
-        dialect: Union[str, csv.Dialect] = "excel",
-        **fmtparams,
-    ):
-        super().__init__(
-            destination=destination,
-            mode=mode,
-            filename_template=filename_template,
-            dialect=dialect,
-            fmtparams=fmtparams,
-            include_header=include_header,
-        )
-
-    def bars(self, band: Bars, bars: List[Bars]):
-        """Writes Bars objects to csv files (one file for each conformer).
+    def spectral_data(self, band: SpectralData, data: List[SpectralData]):
+        """Writes SpectralData objects to csv files (one file for each conformer).
 
         Parameters
         ----------
-        band: glassware.Bars
+        band: glassware.SpectralData
             Object containing information about band at which transitions occur;
             it should be frequencies for vibrational data and wavelengths or
             excitation energies for electronic data.
-        bars: list of glassware.Bars
-            Bars objects that are to be serialized; all should contain
+        data: list of glassware.SpectralData
+            SpectralData objects that are to be serialized; all should contain
             information for the same set of conformers and correspond to given band.
         """
-        bars = [band] + bars
-        headers = [self._header[bar.genre] for bar in bars]
-        values = zip(*[bar.values for bar in bars])
+        data = [band] + data
+        headers = [self._header[bar.genre] for bar in data]
+        values = zip(*[bar.values for bar in data])
         for handle, values_ in zip(
-            self._iter_handles(bars[0].filenames, band.genre, newline=""), values
+            self._iter_handles(data[0].filenames, band.genre, newline=""), values
         ):
             csvwriter = csv.writer(handle, dialect=self.dialect, **self.fmtparams)
             if self.include_header:
                 csvwriter.writerow(headers)
             for row in zip(*values_):
                 csvwriter.writerow(row)
-        logger.info("Bars export to csv files done.")
+        logger.info("SpectralData export to csv files done.")
 
     def spectra(self, spectra: Spectra):
         """Writes Spectra object to .csv files (one file for each conformer).
@@ -277,7 +247,7 @@ class CsvSerialWriter(_CsvMixin, SerialWriter):
         logger.info("Spectra export to csv files done.")
 
     def transitions(
-        self, transitions: Transitions, wavelengths: ExcitedStateBars, only_highest=True
+        self, transitions: Transitions, wavelengths: ElectronicData, only_highest=True
     ):
         """Writes electronic transitions data to CSV files (one for each conformer).
 
@@ -285,7 +255,7 @@ class CsvSerialWriter(_CsvMixin, SerialWriter):
         ----------
         transitions : glassware.Transitions
             Electronic transitions data that should be serialized.
-        wavelengths : glassware.ExcitedStateBars
+        wavelengths : glassware.ElectronicData
             Object containing information about wavelength at which transitions occur.
         only_highest : bool
             Specifies if only transition of highest contribution to given band should

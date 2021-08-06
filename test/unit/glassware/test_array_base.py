@@ -30,8 +30,7 @@ def test_longest_subsequences(values, lengths):
 
 
 @pytest.mark.parametrize(
-    "values,lengths",
-    [(["a"], ()), ([["a"]], (1,)), ([["aa"]], (1,))],
+    "values,lengths", [(["a"], ()), ([["a"]], (1,)), ([["aa"]], (1,))]
 )
 def test_longest_subsequences_str(values, lengths):
     assert ab.longest_subsequences(values) == lengths

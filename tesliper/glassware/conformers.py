@@ -27,8 +27,9 @@ AnyArray = Union[
     ar.InfoArray,
     ar.BooleanArray,
     ar.IntegerArray,
-    ar.GroundStateBars,
-    ar.ExcitedStateBars,
+    ar.VibrationalData,
+    ar.ScatteringData,
+    ar.ElectronicData,
     ar.Transitions,
     ar.Geometry,
 ]
@@ -289,8 +290,9 @@ class Conformers(OrderedDict):
         except (TypeError, KeyError):
             raise TypeError(f"Excepted sequence or boolean, got: {type(blade)}.")
         except IndexError:
-            first = bool()
-        if isinstance(first, str):
+            self._kept = [False for _ in self.keys()]
+            return  # empty sequence is understood as "keep nothing"
+        if isinstance(first, (str, np.str_)):
             blade = set(blade)
             if not blade.issubset(self.keys()):
                 raise KeyError(f"Unknown conformers: {', '.join(blade-self.keys())}")
@@ -304,7 +306,7 @@ class Conformers(OrderedDict):
                 )
             else:
                 self._kept = [bool(b) for b in blade]  # convert from np.bool_
-        elif isinstance(first, int):
+        elif isinstance(first, (int, np.integer)):
             length = len(self)
             out_of_bounds = [b for b in blade if not 0 <= b < length]
             if out_of_bounds:

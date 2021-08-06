@@ -94,7 +94,7 @@ vibr_regs = {
     for k, v in vibr_dict.items()
 }
 
-# ELECTRIC
+# ELECTRONIC
 excited_grouped = re.compile(
     r"Excited State\s+(\d+).*\s+"  # beginning of pattern and state's number
     r"(-?\d+\.?\d*) eV\s+"  # state's energy, key = ex_en
@@ -112,20 +112,20 @@ transitions_ = r"(\d+)\s*->\s*(\d+)\s+(-?\d+\.\d+)"
 transitions_reg_ = re.compile(transitions_)
 numbers = 4 * number + 2 * number_group + r"?\n"
 numbers_reg = re.compile(numbers)
-electr_dict = dict(
+electronic_dict = dict(
     vdip_vosc=r"velocity dipole.*\n.*\n",
     ldip_losc=r"electric dipole.*?:\n.*\n",
     vrot_eemang=r"Rotatory Strengths.*\n.*velocity.*\n",
     lrot_=r"Rotatory Strengths.*\n.*length.*\n",
 )
-electr_regs = {
+electronic_regs = {
     k: re.compile(
         v  # core pattern
         + r"(?:"  # start of non-capturing group
         + numbers.replace(r"(", r"(?:")  # make all groups non-capturing
         + r")+"  # find all consecutive lines with numbers and terminate
     )
-    for k, v in electr_dict.items()
+    for k, v in electronic_dict.items()
 }
 shielding_reg = re.compile(
     r"(\w+)\s+Isotropic =" + number_group + r"\s+Anisotropy =" + number_group

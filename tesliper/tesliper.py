@@ -2,7 +2,7 @@
 import logging as lgg
 import os
 from pathlib import Path
-from typing import Iterable, Optional, Set, Union
+from typing import Iterable, Optional, Sequence, Set, Union
 
 import numpy as np
 
@@ -43,14 +43,14 @@ class Tesliper:
     """
 
     _standard_parameters = {
-        "vibra": {
+        "vibrational": {
             "width": 6,
             "start": 800,
             "stop": 2900,
             "step": 2,
             "fitting": dw.lorentzian,
         },
-        "electr": {
+        "electronic": {
             "width": 0.35,
             "start": 150,
             "stop": 800,
@@ -58,7 +58,9 @@ class Tesliper:
             "fitting": dw.gaussian,
         },
     }
-    _standard_parameters["scatt"] = _standard_parameters["vibra"]
+    _standard_parameters["scattering"] = _standard_parameters["vibrational"].copy()
+    # TODO: introduce more sophisticated parameters proxy that enables using
+    #       same or different params for genres of same type (e.g. "ir" and "vcd")
 
     def __init__(self, input_dir=".", output_dir=".", wanted_files=None):
         """
@@ -73,20 +75,12 @@ class Tesliper:
             List filenames representing wanted files.
         """
         self.conformers = gw.Conformers()
-        self.writers = {
-            "txt": wr.TxtWriter,
-            "xlsx": wr.XlsxWriter,
-            "csv": wr.CsvWriter,
-        }
         self.wanted_files = wanted_files
         self.input_dir = input_dir
         self.output_dir = output_dir
         self.spectra = dict()
         self.averaged = dict()
         self.parameters = self.standard_parameters
-        self.same_vibrational_parameters = False
-        self.same_electronic_parameters = False
-        self.same_scattering_parameters = False
 
     def __getitem__(self, item):
         try:
@@ -96,18 +90,20 @@ class Tesliper:
 
     @property
     def energies(self):
+        # TODO: use appropriate DataArray.associated_genres instead of hard-coded value
         keys = "zpe ent ten gib scf".split(" ")
         return {k: self.conformers.arrayed(k) for k in keys}
 
     @property
     def spectral(self):
-        # TO DO: expand with other spectral data
+        # TODO: expand with other spectral data
+        # TODO: use appropriate DataArray.associated_genres instead of hard-coded value
         keys = "dip rot vosc vrot losc lrot raman1 roa1".split(" ")
         return {k: self.conformers.arrayed(k) for k in keys}
 
     @property
-    def bars(self):
-        # TO DO: put proper keys here
+    def activities(self):
+        # TODO: put proper keys here
         keys = "dip rot vosc vrot raman1 roa1".split(" ")
         return {k: self.conformers.arrayed(k) for k in keys}
 
@@ -193,10 +189,12 @@ class Tesliper:
         self.settings[spectra_type].update(settings)
         return self.settings
 
-    def _calc_spc_with_settings(self, bar: gw.Bars, settings: dict) -> gw.Spectra:
-        sett = self.parameters[bar.spectra_type].copy()
+    def _calc_spc_with_settings(
+        self, activities: gw.SpectralData, settings: dict
+    ) -> gw.Spectra:
+        sett = self.parameters[activities.spectra_type].copy()
         sett.update(settings)
-        return bar.calculate_spectra(**sett)
+        return activities.calculate_spectra(**sett)
 
     def calculate_single_spectrum(
         self,
@@ -209,7 +207,7 @@ class Tesliper:
         fitting=None,
     ):
         # TODO: add error handling when no data for requested spectrum
-        bar_name = dw.default_spectra_bars[spectra_name]
+        bar_name = dw.DEFAULT_ACTIVITIES[spectra_name]
         with self.conformers.trimmed_to([conformer]) as confs:
             bar = confs.arrayed(bar_name)
         sett_from_args = {
@@ -237,10 +235,10 @@ class Tesliper:
         self, genres=(), start=None, stop=None, step=None, width=None, fitting=None
     ):
         if not genres:
-            bars = self.bars.values()
+            bars = self.activities.values()
         else:
             # convert to spectra name if bar name passed
-            bar_names = dw.default_spectra_bars
+            bar_names = dw.DEFAULT_ACTIVITIES
             genres = genres.split() if isinstance(genres, str) else genres
             query = [bar_names[v] if v in bar_names else v for v in genres]
             query_set = set(query)  # ensure no duplicates
@@ -248,12 +246,12 @@ class Tesliper:
                 *[(k, v) for k, v in self.spectral.items() if k in query_set]
             )
             unknown = query_set - set(self.spectral.keys())
-            # TO DO: change it to handle custom bars
+            # TODO: change it to handle custom spectral data arrays
             if unknown:
                 info = (
                     "No other requests provided."
                     if not bar_names
-                    else f"Will proceed using only those bars: {bar_names}"
+                    else f"Will proceed using only these genres: {bar_names}"
                 )
                 msg = f"Don't have those bar types: {unknown}. {info}"
                 logger.warning(msg)
@@ -294,83 +292,185 @@ class Tesliper:
                     self.averaged[(genre, energies.genre)] = av
         return self.averaged
 
-    def export_data(self, genres, dest="", fmt="txt"):
-        """
+    # TODO: supplement docstrings
+    def export_data(self, genres: Sequence[str], fmt: str = "txt", mode: str = "x"):
+        """Saves specified data genres to disk in given file format.
+
+        File formats available by default are: "txt", "csv", "xlsx", "gjf". Note that
+        not all formats may are compatible with every genre (e.g. only "geometry"
+        genre may be exported fo .gjf format). In such case genres unsupported
+        by given format are ignored.
+
+        Files produced are written to `Tesliper.output_dir` directory with filenames
+        automatically generated using adequate genre's name and conformers' identifiers.
+        In case of "xlsx" format only one file is produced and different data genres are
+        written to separate sheets.
+
         Parameters
         ----------
-        genres: list of str
-            list of genre names, that are to be saved to disc
-        dest: str
-            path to destination directory
-        fmt: str
-            format of output files
-
-        TO DO
-        -----
-        add checking if freq/wavelen/ect. passed if needed
+        genres : list of str
+            List of genre names, that will be saved to disk.
+        fmt : str
+            File format of output files, defaults to "txt".
+        mode : str
+            Specifies how writing to file should be handled. May be one of:
+            "a" (append to existing file), "x" (only write if file doesn't exist yet),
+            "w" (overwrite file if it already exists). Defaults to "x".
         """
-        dest = dest if dest else self.output_dir
-        if not dest:
-            raise ValueError("No destination provided.")
-        try:
-            writer_class = self.writers[fmt]
-        except KeyError:
-            raise ValueError(f"Invalid file format: {fmt}")
-        writer = writer_class(dest)
+        wrt = wr.writer(fmt=fmt, destination=self.output_dir, mode=mode)
         data = [self[g] for g in genres]
-        writer.write(data)
+        if any(isinstance(arr, gw.arrays._Vibrational) for arr in data):
+            data += [self["freq"]]
+        if any(isinstance(arr, gw.ElectronicData) for arr in data):
+            data += [self["wavelen"]]
+        wrt.write(data)
 
-    def export_energies(self, dest="", fmt="txt"):
-        dest = dest if dest else self.output_dir
-        if not dest:
-            raise ValueError("No destination provided.")
-        try:
-            writer_class = self.writers[fmt]
-        except KeyError:
-            raise ValueError(f"Invalid file format: {fmt}")
-        writer = writer_class(dest)
+    def export_energies(self, fmt: str = "txt", mode: str = "x"):
+        """Saves energies and population data to disk in given file format.
+
+        File formats available by default are: "txt", "csv", "xlsx".
+        Files produced are written to `Tesliper.output_dir` directory with filenames
+        automatically generated using adequate genre's name and conformers' identifiers.
+        In case of "xlsx" format only one file is produced and different data genres are
+        written to separate sheets.
+
+        Parameters
+        ----------
+        fmt : str
+            File format of output files, defaults to "txt".
+        mode : str
+            Specifies how writing to file should be handled. May be one of:
+            "a" (append to existing file), "x" (only write if file doesn't exist yet),
+            "w" (overwrite file if it already exists). Defaults to "x".
+        """
+        wrt = wr.writer(fmt=fmt, destination=self.output_dir, mode=mode)
         energies = [e for e in self.energies.values() if e]
         corrections = (self[f"{e.genre}corr"] for e in energies if e.genre != "scf")
         frequencies = self["freq"]
         stoichiometry = self["stoichiometry"]
-        writer.write(data=[*energies, frequencies, stoichiometry, *corrections])
+        wrt.write(data=[*energies, frequencies, stoichiometry, *corrections])
 
-    def export_bars(self, dest="", fmt="txt"):
-        dest = dest if dest else self.output_dir
-        if not dest:
-            raise ValueError("No destination provided.")
-        try:
-            writer_class = self.writers[fmt]
-        except KeyError:
-            raise ValueError(f"Invalid file format: {fmt}")
-        writer = writer_class(dest)
+    # TODO: separate to vibrational and electronic ?
+    def export_spectral_data(self, fmt: str = "txt", mode: str = "x"):
+        """Saves unprocessed spectral data to disk in given file format.
+
+        File formats available by default are: "txt", "csv", "xlsx".
+        Files produced are written to `Tesliper.output_dir` directory with filenames
+        automatically generated using adequate genre's name and conformers' identifiers.
+        In case of "xlsx" format only one file is produced and different data genres are
+        written to separate sheets.
+
+        Parameters
+        ----------
+        fmt : str
+            File format of output files, defaults to "txt".
+        mode : str
+            Specifies how writing to file should be handled. May be one of:
+            "a" (append to existing file), "x" (only write if file doesn't exist yet),
+            "w" (overwrite file if it already exists). Defaults to "x".
+        """
+        wrt = wr.writer(fmt=fmt, destination=self.output_dir, mode=mode)
         bands = [self["freq"], self["wavelen"]]
         data = [b for b in self.spectral.values() if b] + [b for b in bands if b]
-        writer.write(data)
+        wrt.write(data)
 
-    def export_spectra(self, dest="", fmt="txt"):
-        dest = dest if dest else self.output_dir
-        if not dest:
-            raise ValueError("No destination provided.")
-        try:
-            writer_class = self.writers[fmt]
-        except KeyError:
-            raise ValueError(f"Invalid file format: {fmt}")
-        writer = writer_class(dest)
+    def export_spectra(self, fmt: str = "txt", mode: str = "x"):
+        """Saves spectra calculated previously to disk in given file format.
+
+        File formats available by default are: "txt", "csv", "xlsx".
+        Files produced are written to `Tesliper.output_dir` directory with filenames
+        automatically generated using adequate genre's name and conformers' identifiers.
+        In case of "xlsx" format only one file is produced and different data genres are
+        written to separate sheets.
+
+        Parameters
+        ----------
+        fmt : str
+            File format of output files, defaults to "txt".
+        mode : str
+            Specifies how writing to file should be handled. May be one of:
+            "a" (append to existing file), "x" (only write if file doesn't exist yet),
+            "w" (overwrite file if it already exists). Defaults to "x".
+        """
+        wrt = wr.writer(fmt=fmt, destination=self.output_dir, mode=mode)
         data = [s for s in self.spectra.values() if s]
-        writer.write(data)
+        wrt.write(data)
 
-    def export_averaged(self, dest="", fmt="txt"):
-        dest = dest if dest else self.output_dir
-        if not dest:
-            raise ValueError("No destination provided.")
-        try:
-            writer_class = self.writers[fmt]
-        except KeyError:
-            raise ValueError(f"Invalid file format: {fmt}")
-        writer = writer_class(dest)
+    def export_averaged(self, fmt: str = "txt", mode: str = "x"):
+        """Saves spectra calculated and averaged previously to disk
+        in given file format.
+
+        File formats available by default are: "txt", "csv", "xlsx".
+        Files produced are written to `Tesliper.output_dir` directory with filenames
+        automatically generated using adequate genre's name and conformers' identifiers.
+        In case of "xlsx" format only one file is produced and different data genres are
+        written to separate sheets.
+
+        Parameters
+        ----------
+        fmt : str
+            File format of output files, defaults to "txt".
+        mode : str
+            Specifies how writing to file should be handled. May be one of:
+            "a" (append to existing file), "x" (only write if file doesn't exist yet),
+            "w" (overwrite file if it already exists). Defaults to "x".
+        """
+        wrt = wr.writer(fmt=fmt, destination=self.output_dir, mode=mode)
         data = [s for s in self.averaged.values() if s]
-        writer.write(data)
+        wrt.write(data)
+
+    def export_job_file(
+        self,
+        fmt: str = "gjf",
+        mode: str = "x",
+        route: str = "# hf 3-21g",
+        link0: Optional[dict] = None,
+        comment: str = "No information provided.",
+        post_spec: str = "",
+    ):
+        """Saves conformers to disk as job files for quantum chemistry software
+        in given file format.
+
+        Currently only "gjf" format is provided, used by Gaussian software.
+        Files produced are written to `Tesliper.output_dir` directory with filenames
+        automatically generated using conformers' identifiers.
+
+        Parameters
+        ----------
+        fmt : str
+            File format of output files, defaults to "gjf".
+        mode : str
+            Specifies how writing to file should be handled. May be one of:
+            "a" (append to existing file), "x" (only write if file doesn't exist yet),
+            "w" (overwrite file if it already exists). Defaults to "x".
+        route : str
+            List of space-separated keywords specifying calculations directives
+            for Gaussian software.
+        link0 : dict
+            Dictionary with link0 commands, where key is command's name and value is
+            str with parameters. For any non-parametric link0 command value is not
+            important (may be `None`), key's presence is enough to record, that it was
+            requested.
+        comment : str
+            Contents of title section, i.e. a comment about the calculations.
+        post_spec : str
+            Anything that should be placed after conformers geometry specification.
+            Will be writen to file as given.
+        """
+        wrt = wr.writer(
+            fmt=fmt,
+            destination=self.output_dir,
+            mode=mode,
+            link0=link0,
+            route=route,
+            comment=comment,
+            post_spec=post_spec,
+        )
+        wrt.geometry(
+            geometry=self["geometry"],
+            multiplicity=self["multiplicity"],
+            charge=self["charge"],
+        )
 
     def serialize(self, filename: str = ".tslr", mode: str = "x") -> None:
         """Serialize instance of Tesliper object to a file in `self.output_dir`.
