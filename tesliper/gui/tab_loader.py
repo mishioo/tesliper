@@ -6,6 +6,7 @@ import tkinter.ttk as ttk
 from collections import Counter, namedtuple
 from tkinter import messagebox
 from tkinter.filedialog import askdirectory, askopenfilenames
+from typing import List
 
 import numpy as np
 
@@ -16,6 +17,18 @@ logger = lgg.getLogger(__name__)
 
 
 OVERVIEW_GENRES = "dip rot vosc vrot losc lrot raman1 roa1 scf zpe ent ten gib".split()
+
+
+def join_with_and(words: List[str]) -> str:
+    """Joins list of strings with "and" between the last two."""
+    if len(words) > 2:
+        return ", ".join(words[:-1]) + ", and " + words[-1]
+    elif len(words) == 2:
+        return " and ".join(words)
+    elif len(words) == 1:
+        return words[0]
+    else:
+        return ""
 
 
 # CLASSES
@@ -246,31 +259,59 @@ class Loader(ttk.Frame):
         return query
 
     @guicom.Feedback("Saving...")
-    def execute_save_command(self, output, fmt):
+    def execute_save_command(self, categories, fmt):
+        # TODO: add auto-calculate ?
+        if "averaged" in categories:
+            self.parent.progtext.set("Averaging spectra...")
+            self.parent.tslr.average_spectra()
+            self.parent.progtext.set("Saving...")
+        existing = self._exec_save(categories, fmt, mode="x")
+        if existing:
+            joined = join_with_and(existing).capitalize()
+            title = (
+                f"{joined} files already exist!"
+                if fmt != "xlsx"
+                else ".xlsx file already exists!"
+            )
+            message = (
+                f"{joined} files already exist in this directory. "
+                "Would you like to overwrite them?"
+                if fmt != "xlsx"
+                else ".xlsx file already exists in this directory. "
+                "Would you like to overwrite it?"
+            )
+            override = messagebox.askokcancel(title=title, message=message)
+            if override:
+                # for "xlsx" retry whole process, for other retry only unsuccessful
+                cats = existing if fmt != "xlsx" else categories
+                self._exec_save(cats, fmt, mode="w")
+
+    def _exec_save(self, categories, fmt, mode):
+        """Executes save command, calling appropriate "export" methods of Tesliper
+        instance. Returns list of genres' categories, for which the associated method
+        raised `FileExistsError`.
+
+        Execution is a little different, if `fmt` is "xlsx", as only one file is
+        produced for the whole batch: if `FileExistsError` is raised on first category,
+        this method returns `["xlsx"]` and ignores the rest of `categories`.
+        """
         savers = {
             "energies": self.parent.tslr.export_energies,
             "spectral data": self.parent.tslr.export_spectral_data,
             "spectra": self.parent.tslr.export_spectra,
             "averaged": self.parent.tslr.export_averaged,
         }
-        if "averaged" in output:
-            self.parent.progtext.set("Averaging spectra...")
-            self.parent.tslr.average_spectra()
-            self.parent.progtext.set("Saving...")
-        for thing in output:
+        existing = []
+        for thing in categories:
             try:
-                savers[thing](fmt)
+                savers[thing](fmt, mode=mode)
             except FileExistsError:
-                # TODO: correct for xlsx, it uses same file for each "thing"
-                #       in effect new "thing" overrides previous one
-                #       maybe create separate handler for xlsx
-                override = messagebox.askokcancel(
-                    title=f"{thing.capitalize()} files already exist!",
-                    message="Some {thing} files already exist in this directory. "
-                    "Would you like to overwrite them?",
-                )
-                if override:
-                    savers[thing](fmt, mode="w")
+                existing.append(thing)
+                if fmt == "xlsx":
+                    return ["xlsx"]
+            # one .xlsx file for whole batch, must append next data chunks
+            mode = "a" if fmt == "xlsx" else mode
+        return existing
 
     def save(self, output, fmt):
         dest = askdirectory()
