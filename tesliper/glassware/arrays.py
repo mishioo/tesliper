@@ -299,8 +299,8 @@ class SpectralData(FloatArray, Averagable):
     spectra_type_ref = dict(
         vcd="vibrational",
         ir="vibrational",
-        roa="vibrational",
-        raman="vibrational",
+        roa="scattering",
+        raman="scattering",
         ecd="electronic",
         uv="electronic",
     )

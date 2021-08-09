@@ -58,10 +58,9 @@ class Tesliper:
             "fitting": dw.gaussian,
         },
     }
+    _standard_parameters["scattering"] = _standard_parameters["vibrational"].copy()
     # TODO: introduce more sophisticated parameters proxy that enables using
     #       same or different params for genres of same type (e.g. "ir" and "vcd")
-    # TODO: add separate parameters for scattering spectra, as e.g.
-    #       _standard_parameters["scattering"] = _standard_parameters["vibrational"]
 
     def __init__(self, input_dir=".", output_dir=".", wanted_files=None):
         """
