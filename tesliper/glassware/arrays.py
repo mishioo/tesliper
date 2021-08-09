@@ -289,12 +289,19 @@ class SpectralData(FloatArray, Averagable):
         rot="vcd",
         dip="ir",
         iri="ir",
-        roa1="roa",
+        ramact="raman",
         raman1="raman",
+        roa1="roa",
+        raman2="raman",
+        roa2="roa",
+        raman3="raman",
+        roa3="roa",
         vrot="ecd",
         lrot="ecd",
         vosc="uv",
         losc="uv",
+        vdip="uv",
+        ldip="uv",
     )
     spectra_type_ref = dict(
         vcd="vibrational",
@@ -568,6 +575,7 @@ class ElectronicData(SpectralData):
         "losc": lambda v, _: dw.osc_to_uv(v),
         "vrot": dw.rot_to_ecd,
         "lrot": dw.rot_to_ecd,
+        # TODO: add "ldip" and "vdip"
     }
 
     def __init__(
