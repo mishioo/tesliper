@@ -253,7 +253,7 @@ class Loader(ttk.Frame):
             "Sorry!", "We are sorry, but this function is not implemented yet."
         )
 
-    def get_save_output(self):
+    def get_save_query(self):
         popup = guicom.ExportPopup(self, width="220", height="130")
         query = popup.get_query()
         return query
@@ -313,30 +313,30 @@ class Loader(ttk.Frame):
             mode = "a" if fmt == "xlsx" else mode
         return existing
 
-    def save(self, output, fmt):
+    def save(self, categories, fmt):
         dest = askdirectory()
         if dest:
             self.parent.tslr.output_dir = dest
-            logger.debug(f"Export requested: {output}; format: {fmt}")
-            self.execute_save_command(output, fmt)
+            logger.debug(f"Export requested: {categories}; format: {fmt}")
+            self.execute_save_command(categories, fmt)
 
     def save_text(self):
-        output = self.get_save_output()
-        if not output:
+        categories = self.get_save_query()
+        if not categories:
             return
-        self.save(output, fmt="txt")
+        self.save(categories, fmt="txt")
 
     def save_excel(self):
-        output = self.get_save_output()
-        if not output:
+        categories = self.get_save_query()
+        if not categories:
             return
-        self.save(output, fmt="xlsx")
+        self.save(categories, fmt="xlsx")
 
     def save_csv(self):
-        output = self.get_save_output()
-        if not output:
+        categories = self.get_save_query()
+        if not categories:
             return
-        self.save(output, fmt="csv")
+        self.save(categories, fmt="csv")
 
     def from_dir(self):
         work_dir = askdirectory()
