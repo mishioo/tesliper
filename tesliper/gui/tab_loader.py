@@ -1,6 +1,7 @@
 # IMPORTS
 import logging as lgg
 import os
+from tesliper.gui.components.checktree import ConformersOverview
 import tkinter as tk
 import tkinter.ttk as ttk
 from collections import Counter, namedtuple
@@ -10,7 +11,7 @@ from typing import List
 
 import numpy as np
 
-from . import components as guicom
+from .components import WgtStateChanger, Feedback, ExportPopup, BarsPopup, Tab, ScrollableFrame
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -32,19 +33,9 @@ def join_with_and(words: List[str]) -> str:
 
 
 # CLASSES
-class Loader(ttk.Frame):
+class LoaderControls(ttk.Frame):
     def __init__(self, parent):
-        """
-        TO DO
-        -----
-        don't allow energy extraction if already extracted
-        """
         super().__init__(parent)
-        self.parent = parent
-        self.grid(column=0, row=0, sticky="nwse")
-        tk.Grid.columnconfigure(self, 2, weight=1)
-        tk.Grid.rowconfigure(self, 5, weight=1)
-        self.bind("<FocusIn>", lambda e: self.update_overview_values())
 
         # Extract data
         extract_frame = ttk.LabelFrame(self, text="Extract data...")
@@ -67,13 +58,13 @@ class Loader(ttk.Frame):
             buttons_frame, text="Clear session", command=self.parent.new_session
         )
         self.b_clear_session.grid(column=0, row=2, sticky="nwe")
-        guicom.WgtStateChanger.either.append(self.b_clear_session)
+        WgtStateChanger.either.append(self.b_clear_session)
 
         self.b_calc = ttk.Button(
             buttons_frame, text="Auto calculate", command=self.not_impl
         )
         self.b_calc.grid(column=0, row=0, sticky="nwe")
-        guicom.WgtStateChanger.bars.append(self.b_calc)
+        WgtStateChanger.bars.append(self.b_calc)
 
         self.b_text_export = ttk.Button(
             buttons_frame, text="Export as .txt", command=self.save_text
@@ -87,7 +78,7 @@ class Loader(ttk.Frame):
             buttons_frame, text="Export as .csv", command=self.save_csv
         )
         self.b_csv_export.grid(column=1, row=2, sticky="nwe")
-        guicom.WgtStateChanger.either.extend(
+        WgtStateChanger.either.extend(
             [self.b_text_export, self.b_excel_export, self.b_csv_export]
         )
 
@@ -135,7 +126,7 @@ class Loader(ttk.Frame):
                 command=lambda key=key: self.un_check(key, True),
             )
             check_butt.grid(column=4, row=i, sticky="ne")
-            guicom.WgtStateChanger.tslr.append(check_butt)
+            WgtStateChanger.tslr.append(check_butt)
             uncheck_butt = ttk.Button(
                 self.overview_control_frame,
                 text="uncheck",
@@ -143,7 +134,7 @@ class Loader(ttk.Frame):
                 command=lambda key=key: self.un_check(key, False),
             )
             uncheck_butt.grid(column=5, row=i, sticky="ne")
-            guicom.WgtStateChanger.tslr.append(uncheck_butt)
+            WgtStateChanger.tslr.append(uncheck_butt)
             self.overview_control[key] = overview_vars(
                 var_checked, var_all, check_butt, uncheck_butt
             )
@@ -178,38 +169,30 @@ class Loader(ttk.Frame):
             var.set(True)
             self.kept_buttons[key].grid(column=0, row=n, sticky="nw")
 
-        # Conformers Overview
-        self.label_overview = ttk.LabelFrame(self, text="Conformers Overview")
-        self.label_overview.grid(
-            column=2, row=0, columnspan=3, rowspan=6, sticky="nwse"
-        )
-        self.overview = None
-        tk.Grid.rowconfigure(self.label_overview, 0, weight=1)
-        tk.Grid.columnconfigure(self.label_overview, 0, weight=1)
+    _overview_funcs = dict(
+                file=lambda *args: True,
+                en=lambda *args: "gib" in args[0],
+                ir=lambda *args: "dip" in args[0],
+                vcd=lambda *args: "rot" in args[0],
+                uv=lambda *args: "vosc" in args[0],
+                ecd=lambda *args: "vrot" in args[0],
+                ram=lambda *args: "raman1" in args[0],
+                roa=lambda *args: "roa1" in args[0],
+                incompl=lambda *args: not all(g in args[0] for g in args[1]),
+                term=lambda *args: args[0]["normal_termination"],
+                opt=lambda *args: "optimization_completed" in args[0]
+                and not args[0]["optimization_completed"],
+                imag=lambda *args: "freq" in args[0]
+                and any([f < 0 for f in args[0]["freq"]]),
+                incons=lambda *args: any(
+                    g in args[0] and not len(args[0][g]) == mx for g, mx in args[2].items()
+                ),
+            )
 
     def un_check(self, key, keep):
-        overview_funcs = dict(
-            file=lambda *args: True,
-            en=lambda *args: "gib" in args[0],
-            ir=lambda *args: "dip" in args[0],
-            vcd=lambda *args: "rot" in args[0],
-            uv=lambda *args: "vosc" in args[0],
-            ecd=lambda *args: "vrot" in args[0],
-            ram=lambda *args: "raman1" in args[0],
-            roa=lambda *args: "roa1" in args[0],
-            incompl=lambda *args: not all(g in args[0] for g in args[1]),
-            term=lambda *args: args[0]["normal_termination"],
-            opt=lambda *args: "optimization_completed" in args[0]
-            and not args[0]["optimization_completed"],
-            imag=lambda *args: "freq" in args[0]
-            and any([f < 0 for f in args[0]["freq"]]),
-            incons=lambda *args: any(
-                g in args[0] and not len(args[0][g]) == mx for g, mx in args[2].items()
-            ),
-        )
         confs = self.parent.tslr.conformers
-        condition = overview_funcs[key]
-        overview = self.overview
+        condition = self._overview_funcs[key]
+        overview = self.view.tree
         best_match = []
         maxes = {}
         if key == "incompl":
@@ -234,8 +217,33 @@ class Loader(ttk.Frame):
         for n, conf in enumerate(confs.values()):
             if condition(conf, best_match, maxes):
                 overview.boxes[str(n)].var.set(keep)
-        self.discard_not_kept()
-        self.update_overview_values()
+        self.parent.discard_not_kept()
+        self.parent.update_overview_values()
+
+
+class LoaderView(ttk.LabelFrame):
+    def __init__(self, parent):
+        super().__init__(parent, text="Conformers Overview")
+        self.parent = parent
+        self.tree = ConformersOverview(self, parent_tab=self.parent)
+        self.rowconfigure(0, weight=1)
+        self.columnconfigure(0, weight=1)
+
+
+class Loader(Tab):
+    def __init__(self, parent):
+        """
+        TO DO
+        -----
+        don't allow energy extraction if already extracted
+        """
+        super().__init__(parent, view=LoaderView, controls=LoaderControls)
+        self.parent = parent
+        self.grid(column=0, row=0, sticky="nwse")
+        tk.Grid.columnconfigure(self, 2, weight=1)
+        tk.Grid.rowconfigure(self, 5, weight=1)
+        self.bind("<FocusIn>", lambda e: self.update_overview_values())
+
 
     @property
     def kept_funcs(self):
@@ -254,11 +262,11 @@ class Loader(ttk.Frame):
         )
 
     def get_save_query(self):
-        popup = guicom.ExportPopup(self, width="220", height="130")
+        popup = ExportPopup(self, width="220", height="130")
         query = popup.get_query()
         return query
 
-    @guicom.Feedback("Saving...")
+    @Feedback("Saving...")
     def execute_save_command(self, categories, fmt):
         # TODO: add auto-calculate ?
         if "averaged" in categories:
@@ -360,7 +368,7 @@ class Loader(ttk.Frame):
         filenames = list(map(lambda p: os.path.split(p)[1], files))
         self.extract(path, filenames)
 
-    @guicom.Feedback("Extracting...")
+    @Feedback("Extracting...")
     def extract(self, path, wanted_files=None):
         # TODO: handle extraction errors
         tslr = self.parent.tslr
@@ -481,20 +489,20 @@ class Loader(ttk.Frame):
         ):
             box.var.set(kept)
 
-    @guicom.Feedback("Calculating populations...")
+    @Feedback("Calculating populations...")
     def calc_popul(self):
         logger.debug("Calculating populations...")
         self.parent.tslr.calculate_populations()
 
-    @guicom.Feedback("Calculating spectra...")
+    @Feedback("Calculating spectra...")
     def calc_spectra(self):
         self.parent.tslr.calculate_spectra()
 
-    @guicom.Feedback("Averaging spectra...")
+    @Feedback("Averaging spectra...")
     def calc_average(self):
         self.parent.tslr.average_spectra()
 
     def get_wanted_bars(self):
         # TODO: check if needed, delete if it's not
-        popup = guicom.BarsPopup(self, width="250", height="190")
+        popup = BarsPopup(self, width="250", height="190")
         del popup
