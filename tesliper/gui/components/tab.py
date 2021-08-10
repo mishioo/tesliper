@@ -1,6 +1,7 @@
 import logging as lgg
 import tkinter as tk
 import tkinter.ttk as ttk
+from typing import Type
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -26,12 +27,13 @@ class AutoScrollbar(ttk.Scrollbar):
 class ScrollableFrame(ttk.Frame):
     """A frame, that allows you to scroll content vertically.
     Shows scrollbar only when it is necessary."""
-    def __init__(self, parent, *args, **kwargs):
-        super().__init__(parent, *args, **kwargs)
+    def __init__(self, parent, content_cls=None):
+        super().__init__(parent)
         self.canvas = tk.Canvas(self)
         self.scrollbar = AutoScrollbar(self, command=self.canvas.yview)
         self.canvas.configure(yscrollcommand=self.scrollbar.set)
-        self.content = ttk.Frame(self.canvas)
+        cls = content_cls or ttk.Frame
+        self.content = cls(self.canvas)
         self.content.bind(
             "<Configure>",
             lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")),
@@ -49,10 +51,10 @@ class ScrollableFrame(ttk.Frame):
 
 class Tab(ttk.Frame):
     """Base layout for ttk.Notebook tab. It has two panels:
-    left with controls, which should be a ScrollableFrame
-    and right with view area, which should be a LabelFrame.
+    left with controls class, which will be wrapped in a ScrollableFrame,
+    and right with view class area, which should be a LabelFrame subclass.
     """
-    def __init__(self, parent, view: ttk.LabelFrame, controls: ScrollableFrame):
+    def __init__(self, parent, view: Type[ttk.LabelFrame], controls: Type[tk.Frame]):
         super().__init__(parent)
         self.parent = parent
         self.grid(column=0, row=0, sticky="nwse")
@@ -60,8 +62,8 @@ class Tab(ttk.Frame):
         # only view resizes with window
         tk.Grid.columnconfigure(self, 1, weight=1)
 
-        self.controls = controls
+        self.controls = ScrollableFrame(self, content_cls=controls)
         self.controls.grid(row=0, column=0, sticky="nwse")
         
-        self.view = view
+        self.view = view(self)
         self.view.grid(row=0, column=1, sticky="nwse")
