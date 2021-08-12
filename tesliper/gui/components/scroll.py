@@ -31,23 +31,22 @@ class ScrollableFrame(ttk.Frame):
     """A frame, that allows you to scroll content vertically.
     Shows scrollbar only when it is necessary."""
 
-    def __init__(self, parent, content_cls=None):
+    def __init__(self, parent, content_cls=ttk.Frame):
         super().__init__(parent)
         self.canvas = tk.Canvas(self)
         self.scrollbar = AutoScrollbar(self, command=self.canvas.yview)
         self.canvas.configure(yscrollcommand=self.scrollbar.set)
-        cls = content_cls or ttk.Frame
-        self.content = cls(self.canvas)
-        self.content.bind(
-            "<Configure>",
-            lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")),
-        )
-        itemid = self.canvas.create_window((0, 0), window=self.content, anchor="nw")
-        # resize content frame along with canvas
-        self.canvas.bind(
-            "<Configure>", lambda e: self.canvas.itemconfig(itemid, width=e.width)
-        )
+        self.content = content_cls(self.canvas)
+        self.content.bind("<Configure>", self.on_content_configure)
+        self.canvas.create_window((0, 0), window=self.content, anchor="nw")
         self.canvas.grid(row=0, column=0, sticky="nwse")
-        self.scrollbar.grid(row=0, column=1, sticky="nwse")
-        # squeeze scrollbar inside if fixed width
-        tk.Grid.columnconfigure(self, 0, weight=1)
+        self.scrollbar.grid(row=0, column=1, sticky="nws")
+        self.columnconfigure(0, weight=1)
+        self.rowconfigure(0, weight=1)
+        self.canvas.columnconfigure(0, weight=1)
+        self.canvas.rowconfigure(0, weight=1)
+
+    def on_content_configure(self, event):
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+        # keep width of canvas as small as possible
+        self.canvas.configure(width=event.width)
