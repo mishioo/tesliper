@@ -34,7 +34,7 @@ class ScrollableFrame(ttk.Frame):
 
     def __init__(self, parent, content_cls=ttk.Frame):
         super().__init__(parent)
-        self.canvas = tk.Canvas(self)
+        self.canvas = tk.Canvas(self, highlightthickness=0)
         self.scrollbar = AutoScrollbar(self, command=self.canvas.yview)
         self.canvas.configure(yscrollcommand=self.scrollbar.set)
         self.content = content_cls(self.canvas)
