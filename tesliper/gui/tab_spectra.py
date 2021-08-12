@@ -12,6 +12,7 @@ from matplotlib.figure import Figure
 
 from .. import tesliper as tesliper
 from . import components as guicom
+from .components import ScrollableFrame
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -24,10 +25,15 @@ class Spectra(ttk.Frame):
         self.parent = parent
         self.grid(column=0, row=0, sticky="nwse")
         tk.Grid.columnconfigure(self, 1, weight=1)
-        tk.Grid.rowconfigure(self, 8, weight=1)
+        tk.Grid.rowconfigure(self, 0, weight=1)
+
+        # Controls frame
+        # ScrollableFrame.content is a ttk.Frame where actual controls go
+        controls = ScrollableFrame(parent=self)
+        controls.grid(column=0, row=0, sticky="news")
 
         # Spectra name
-        s_name_frame = ttk.LabelFrame(self, text="Spectra type:")
+        s_name_frame = ttk.LabelFrame(controls.content, text="Spectra type:")
         s_name_frame.grid(column=0, row=0)
         self.s_name = tk.StringVar()
         self.s_name_radio = {}
@@ -47,7 +53,7 @@ class Spectra(ttk.Frame):
             self.s_name_radio[v] = b
 
         # Settings
-        sett = ttk.LabelFrame(self, text="Settings:")
+        sett = ttk.LabelFrame(controls.content, text="Settings:")
         sett.grid(column=0, row=1, sticky="we")
         tk.Grid.columnconfigure(sett, (1, 2), weight=1)
         ttk.Label(sett, text="Fitting").grid(column=0, row=0)
@@ -89,7 +95,7 @@ class Spectra(ttk.Frame):
         # Calculation Mode
         self.mode = tk.StringVar()
         self.single_radio = ttk.Radiobutton(
-            self,
+            controls.content,
             text="Single file",
             variable=self.mode,
             value="single",
@@ -98,7 +104,7 @@ class Spectra(ttk.Frame):
         )
         self.single_radio.grid(column=0, row=2, sticky="w")
         self.average_radio = ttk.Radiobutton(
-            self,
+            controls.content,
             text="Average by energy",
             variable=self.mode,
             value="average",
@@ -107,7 +113,7 @@ class Spectra(ttk.Frame):
         )
         self.average_radio.grid(column=0, row=3, sticky="w")
         self.stack_radio = ttk.Radiobutton(
-            self,
+            controls.content,
             text="Stack by overview",
             variable=self.mode,
             value="stack",
@@ -118,7 +124,9 @@ class Spectra(ttk.Frame):
 
         self.single = tk.StringVar()
         self.single.set("Choose conformer...")
-        self.single_box = ttk.Combobox(self, textvariable=self.single, state="disabled")
+        self.single_box = ttk.Combobox(
+            controls.content, textvariable=self.single, state="disabled"
+        )
         self.single_box.bind(
             "<<ComboboxSelected>>",
             lambda event: self.live_preview_callback(event, mode="single"),
@@ -128,7 +136,7 @@ class Spectra(ttk.Frame):
         self.average = tk.StringVar()
         self.average.set("Choose energy...")
         self.average_box = ttk.Combobox(
-            self, textvariable=self.average, state="disabled"
+            controls.content, textvariable=self.average, state="disabled"
         )
         self.average_box.bind(
             "<<ComboboxSelected>>",
@@ -141,7 +149,9 @@ class Spectra(ttk.Frame):
         self.average_ref = {k: v for k, v in zip(average_names, average_keys)}
         self.stack = tk.StringVar()
         self.stack.set("Choose colour...")
-        self.stack_box = ttk.Combobox(self, textvariable=self.stack, state="disabled")
+        self.stack_box = ttk.Combobox(
+            controls.content, textvariable=self.stack, state="disabled"
+        )
         self.stack_box.bind("<<ComboboxSelected>>", self.change_colour)
         # self.stack_box.grid(column=0, row=7)
         self.stack_box["values"] = (
@@ -160,7 +170,7 @@ class Spectra(ttk.Frame):
 
         # Live preview
         # Recalculate
-        frame = ttk.Frame(self)
+        frame = ttk.Frame(controls.content)
         frame.grid(column=0, row=8, sticky="n")
         var = tk.BooleanVar()
         var.set(False)
@@ -219,7 +229,7 @@ class Spectra(ttk.Frame):
 
         # Spectrum
         spectra_view = ttk.LabelFrame(self, text="Spectra view")
-        spectra_view.grid(column=1, row=0, rowspan=10, sticky="nwse")
+        spectra_view.grid(column=1, row=0, sticky="nwse")
         tk.Grid.columnconfigure(spectra_view, 0, weight=1)
         tk.Grid.rowconfigure(spectra_view, 0, weight=1)
         self.figure = Figure()
