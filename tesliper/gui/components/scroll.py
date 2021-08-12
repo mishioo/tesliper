@@ -1,4 +1,5 @@
 import logging as lgg
+import sys
 import tkinter as tk
 import tkinter.ttk as ttk
 from typing import Type
@@ -37,7 +38,7 @@ class ScrollableFrame(ttk.Frame):
         self.scrollbar = AutoScrollbar(self, command=self.canvas.yview)
         self.canvas.configure(yscrollcommand=self.scrollbar.set)
         self.content = content_cls(self.canvas)
-        self.content.bind("<Configure>", self.on_content_configure)
+        self.content.bind("<Configure>", self._on_content_configure)
         self.canvas.create_window((0, 0), window=self.content, anchor="nw")
         self.canvas.grid(row=0, column=0, sticky="nwse")
         self.scrollbar.grid(row=0, column=1, sticky="nws")
@@ -46,7 +47,29 @@ class ScrollableFrame(ttk.Frame):
         self.canvas.columnconfigure(0, weight=1)
         self.canvas.rowconfigure(0, weight=1)
 
-    def on_content_configure(self, event):
+        # Scroll with mouse wheel when cursor over canvas
+        self.bind("<Enter>", self._bound_to_mousewheel)
+        self.bind("<Leave>", self._unbound_to_mousewheel)
+
+    def _bound_to_mousewheel(self, event):
+        self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
+        # For Linux
+        self.canvas.bind_all("<Button-4>", self._on_mousewheel)
+        self.canvas.bind_all("<Button-5>", self._on_mousewheel)
+
+    def _unbound_to_mousewheel(self, event):
+        self.canvas.unbind_all("<MouseWheel>")
+        self.canvas.unbind_all("<Button-4>")
+        self.canvas.unbind_all("<Button-5>")
+
+    def _on_mousewheel(self, event):
+        # TODO: prevent scrolling when fully visible
+        delta = (
+            event.delta if sys.platform == "darwin" else int(-1 * (event.delta / 120))
+        )
+        self.canvas.yview_scroll(delta, "units")
+
+    def _on_content_configure(self, event):
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
         # keep width of canvas as small as possible
         self.canvas.configure(width=event.width)
