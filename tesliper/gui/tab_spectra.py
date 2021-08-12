@@ -386,10 +386,10 @@ class Spectra(ttk.Frame):
         all_positive = min(lowers) > 0
         all_negative = max(uppers) < 0
         # reset for divide by zero issues
-        lowers = [1 if math.isclose(l, 0.0) else l for l in lowers]
+        lowers = [1 if math.isclose(L, 0.0) else L for L in lowers]
         uppers = [-1 if math.isclose(u, 0.0) else u for u in uppers]
         # pick "most centered" axis
-        res = [abs(u + l) for l, u in zip(lowers, uppers)]
+        res = [abs(u + L) for L, u in zip(lowers, uppers)]
         min_index = res.index(min(res))
         # scale positive or negative part
         multiplier1 = -abs(uppers[min_index] / lowers[min_index])
@@ -414,7 +414,7 @@ class Spectra(ttk.Frame):
             lower_lims = [0 for _ in range(len(lower_lims))]
         if all_negative:
             upper_lims = [0 for _ in range(len(upper_lims))]
-        diff = [abs(u - l) for l, u in zip(lower_lims, upper_lims)]
+        diff = [abs(u - L) for L, u in zip(lower_lims, upper_lims)]
         margin = [x * 0.05 for x in diff]
         lower_lims = [lim - m for lim, m in zip(lower_lims, margin)]
         upper_lims = [lim + m for lim, m in zip(upper_lims, margin)]
