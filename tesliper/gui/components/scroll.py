@@ -1,3 +1,4 @@
+import logging
 import logging as lgg
 import sys
 import tkinter as tk
@@ -63,11 +64,14 @@ class ScrollableFrame(ttk.Frame):
         self.canvas.unbind_all("<Button-5>")
 
     def _on_mousewheel(self, event):
-        # TODO: prevent scrolling when fully visible
-        delta = (
-            event.delta if sys.platform == "darwin" else int(-1 * (event.delta / 120))
-        )
-        self.canvas.yview_scroll(delta, "units")
+        if not self.scrollbar.get() == (0.0, 1.0):
+            # prevent scrolling when content fully visible
+            delta = (
+                event.delta
+                if sys.platform == "darwin"
+                else int(-1 * (event.delta / 120))
+            )
+            self.canvas.yview_scroll(delta, "units")
 
     def _on_content_configure(self, event):
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
