@@ -13,6 +13,8 @@ import numpy as np
 from . import components as guicom
 
 # LOGGER
+from .components import ScrollableFrame
+
 logger = lgg.getLogger(__name__)
 
 
@@ -42,12 +44,17 @@ class Loader(ttk.Frame):
         super().__init__(parent)
         self.parent = parent
         self.grid(column=0, row=0, sticky="nwse")
-        tk.Grid.columnconfigure(self, 2, weight=1)
-        tk.Grid.rowconfigure(self, 5, weight=1)
+        tk.Grid.columnconfigure(self, 1, weight=1)
+        tk.Grid.rowconfigure(self, 0, weight=1)
         self.bind("<FocusIn>", lambda e: self.update_overview_values())
 
+        # Controls frame
+        # ScrollableFrame.content is a ttk.Frame where actual controls go
+        controls = ScrollableFrame(parent=self)
+        controls.grid(column=0, row=0, sticky="news")
+
         # Extract data
-        extract_frame = ttk.LabelFrame(self, text="Extract data...")
+        extract_frame = ttk.LabelFrame(controls.content, text="Extract data...")
         extract_frame.grid(column=0, row=0, columnspan=2, sticky="nwe")
         tk.Grid.columnconfigure(extract_frame, 0, weight=1)
         self.b_auto_extract = ttk.Button(
@@ -60,7 +67,9 @@ class Loader(ttk.Frame):
         self.b_man_extract.grid(column=0, row=1, sticky="nwe")
 
         # Session control
-        buttons_frame = ttk.LabelFrame(self, text="Session control", width=90)
+        buttons_frame = ttk.LabelFrame(
+            controls.content, text="Session control", width=90
+        )
         buttons_frame.grid(column=0, row=1, columnspan=2, sticky="nwe")
         tk.Grid.columnconfigure(buttons_frame, (0, 1), weight=1)
         self.b_clear_session = ttk.Button(
@@ -95,7 +104,7 @@ class Loader(ttk.Frame):
         # TO DO: consider switching to three buttons: 'include', 'exclude',
         # 'limit to', or similar
         self.overview_control_frame = ttk.Labelframe(
-            self, text="Overview control", width=90
+            controls.content, text="Overview control", width=90
         )
         self.overview_control_frame.grid(column=0, row=2, columnspan=2, sticky="nswe")
         tk.Grid.columnconfigure(self.overview_control_frame, 4, weight=1)
@@ -149,7 +158,9 @@ class Loader(ttk.Frame):
             )
 
         # keep unchecked
-        self.keep_unchecked_frame = ttk.LabelFrame(self, text="Keep unchecked?")
+        self.keep_unchecked_frame = ttk.LabelFrame(
+            controls.content, text="Keep unchecked?"
+        )
         self.keep_unchecked_frame.grid(column=0, row=3, columnspan=2, sticky="nswe")
         self.kept_vars = {
             k: tk.BooleanVar()
@@ -180,9 +191,7 @@ class Loader(ttk.Frame):
 
         # Conformers Overview
         self.label_overview = ttk.LabelFrame(self, text="Conformers Overview")
-        self.label_overview.grid(
-            column=2, row=0, columnspan=3, rowspan=6, sticky="nwse"
-        )
+        self.label_overview.grid(column=1, row=0, sticky="nwse")
         self.overview = None
         tk.Grid.rowconfigure(self.label_overview, 0, weight=1)
         tk.Grid.columnconfigure(self.label_overview, 0, weight=1)

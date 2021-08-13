@@ -7,6 +7,8 @@ from functools import reduce
 from . import components as guicom
 
 # LOGGER
+from .components import ScrollableFrame
+
 logger = lgg.getLogger(__name__)
 
 
@@ -16,21 +18,23 @@ class Conformers(ttk.Frame):
         super().__init__(parent)
         self.parent = parent
         self.grid(column=0, row=0, sticky="nwse")
-        tk.Grid.rowconfigure(self, 5, weight=1)
-        tk.Grid.columnconfigure(self, 2, weight=1)
+        tk.Grid.rowconfigure(self, 0, weight=1)
+        tk.Grid.columnconfigure(self, 1, weight=1)
 
         self.overview = ttk.LabelFrame(self, text="Conformers overview")
-        self.overview.grid(column=2, row=0, rowspan=6, sticky="nwse")
+        self.overview.grid(column=1, row=0, sticky="nwse")
         tk.Grid.rowconfigure(self.overview, 0, weight=1)
         tk.Grid.columnconfigure(self.overview, 0, weight=1)
         self.conf_list = None  # obj is created in main.TesliperApp.new_session
         self.bind("<FocusIn>", self.refresh)
 
-        frame = ttk.Frame(self, width=200)  # left frame
-        frame.grid(column=0, row=0)
-        tk.Grid.columnconfigure(frame, 0, weight=1)
+        # Controls frame
+        # ScrollableFrame.content is a ttk.Frame where actual controls go
+        controls = ScrollableFrame(parent=self)
+        controls.grid(column=0, row=0, sticky="news")
+
         # control frame
-        control_frame = ttk.LabelFrame(frame, text="Overview control")
+        control_frame = ttk.LabelFrame(controls.content, text="Overview control")
         control_frame.grid(column=0, row=0, columnspan=2, sticky="nwe")
         tk.Grid.columnconfigure(control_frame, 0, weight=1)
 
@@ -40,7 +44,7 @@ class Conformers(ttk.Frame):
             control_frame, text="Disselect all", command=self.disselect_all
         )
         b_disselect.grid(column=0, row=1, sticky="nwe")
-        ttk.Label(frame, text="Show:").grid(column=0, row=2, sticky="nw")
+        ttk.Label(controls.content, text="Show:").grid(column=0, row=2, sticky="nw")
         self.show_var = tk.StringVar()
         show_values = (
             "Energy /Hartree",
@@ -51,7 +55,7 @@ class Conformers(ttk.Frame):
         show_id = ("values", "deltas", "min_factors", "populations")
         self.show_ref = {k: v for k, v in zip(show_values, show_id)}
         self.show_combo = ttk.Combobox(
-            frame,
+            controls.content,
             textvariable=self.show_var,
             values=show_values,
             state="readonly",  # , width=21
@@ -60,7 +64,7 @@ class Conformers(ttk.Frame):
         self.show_combo.grid(column=1, row=2, sticky="nwe")
 
         # filter
-        filter_frame = ttk.LabelFrame(frame, text="Energies range")
+        filter_frame = ttk.LabelFrame(controls.content, text="Energies range")
         filter_frame.grid(column=0, row=1, columnspan=2, sticky="nwe")
         tk.Grid.columnconfigure(filter_frame, 1, weight=1)
         ttk.Label(filter_frame, text="Minimum").grid(column=0, row=0)
