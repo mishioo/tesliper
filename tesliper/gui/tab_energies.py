@@ -14,6 +14,91 @@ logger = lgg.getLogger(__name__)
 
 
 # CLASSES
+class EnergiesChoice(ttk.Combobox):
+    """Combobox that enables choice of type of energy."""
+
+    def __init__(self, parent, **kwargs):
+        self.var = tk.StringVar()
+        values = "Thermal Enthalpy Gibbs SCF Zero-Point".split(" ")
+        genres = "ten ent gib scf zpe".split(" ")
+        self._genres_ref = {k: v for k, v in zip(values, genres)}
+        kwargs["textvariable"] = self.var
+        kwargs["values"] = values
+        kwargs["state"] = "readonly"
+        super().__init__(parent, **kwargs)
+
+    def get_genre(self):
+        """Convenience method for getting genre of the energy type chosen."""
+        return self._genres_ref[self.var.get()]
+
+
+class FilterRMSD(ttk.Frame):
+    # TODO: for now should be available only for
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.parent = parent
+
+        float_entry_validator = get_float_entry_validator(self)
+
+        ttk.Label(self, text="Window size").grid(column=0, row=0)
+        ttk.Label(self, text="Threshold").grid(column=0, row=1)
+        # TODO: add default choices
+        self.window_size = tk.StringVar()
+        self.threshold = tk.StringVar()
+        window_size = ttk.Entry(
+            self,
+            textvariable=self.window_size,
+            width=15,
+            validate="key",
+            validatecommand=float_entry_validator,
+        )
+        window_size.grid(column=1, row=0, sticky="ne")
+        window_size.bind(
+            "<FocusOut>",
+            lambda e, var=self.window_size: float_entry_out_validation(var),
+        )
+        threshold = ttk.Entry(
+            self,
+            textvariable=self.threshold,
+            width=15,
+            validate="key",
+            validatecommand=float_entry_validator,
+        )
+        threshold.grid(column=1, row=1, sticky="ne")
+        threshold.bind(
+            "<FocusOut>",
+            lambda e, var=self.threshold: float_entry_out_validation(var),
+        )
+        self.ignore_hydrogens = tk.BooleanVar(value=True)
+        ignore_hydrogens = ttk.Checkbutton(
+            self, text="Ignore H", variable=self.ignore_hydrogens
+        )
+        ignore_hydrogens.grid(column=1, row=2, sticky="ne")
+
+        # TODO: add "Energy type" label
+        self.energies_choice = EnergiesChoice(self, width=12)
+        self.energies_choice.grid(column=0, row=2, sticky="nwe")
+
+        button = ttk.Button(self, text="Filter similar", command=self._filter)
+        button.grid(column=0, row=3, columnspan=2, sticky="nwe")
+
+    def _filter(self):
+        tslr = self.parent.parent.tslr
+        tslr.conformers.trim_rmds(
+            threshold=float(self.threshold.get()),
+            window_size=float(self.window_size.get()),
+            energy_genre=self.energies_choice.get_genre(),
+            ignore_hydrogen=self.ignore_hydrogens.get(),
+        )
+        # TODO: turn below into some higher-level method
+        for box, kept in zip(
+            self.parent.conf_list.trees["main"].boxes.values(),
+            tslr.conformers.kept,
+        ):
+            box.var.set(kept)
+        self.parent.conf_list.refresh()
+
+
 class Conformers(ttk.Frame):
     def __init__(self, parent):
         super().__init__(parent)
@@ -117,6 +202,9 @@ class Conformers(ttk.Frame):
         b_filter.grid(column=0, row=3, columnspan=2, sticky="nwe")
         self.show_combo.set("Energy /Hartree")
         self.filter_combo.set("Thermal")
+
+        self.rmsd = FilterRMSD(filter_frame)
+        self.rmsd.grid(column=0, row=4, columnspan=2, sticky="nwe")
 
         # can't make it work other way
         # dummy = ttk.Frame(frame, width=185)
