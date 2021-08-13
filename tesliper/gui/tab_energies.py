@@ -8,6 +8,7 @@ from . import components as guicom
 
 # LOGGER
 from .components import ScrollableFrame
+from .components.helpers import float_entry_out_validation, get_float_entry_validator
 
 logger = lgg.getLogger(__name__)
 
@@ -77,24 +78,24 @@ class Conformers(ttk.Frame):
             textvariable=self.lower_var,
             width=15,
             validate="key",
-            validatecommand=self.parent.validate_entry,
+            validatecommand=get_float_entry_validator(self),
         )
         lentry.grid(column=1, row=0, sticky="ne")
         lentry.bind(
             "<FocusOut>",
-            lambda e, var=self.lower_var: self.parent.entry_out_validation(var),
+            lambda e, var=self.lower_var: float_entry_out_validation(var),
         )
         uentry = ttk.Entry(
             filter_frame,
             textvariable=self.upper_var,
             width=15,
             validate="key",
-            validatecommand=self.parent.validate_entry,
+            validatecommand=get_float_entry_validator(self),
         )
         uentry.grid(column=1, row=1, sticky="ne")
         uentry.bind(
             "<FocusOut>",
-            lambda e, var=self.upper_var: self.parent.entry_out_validation(var),
+            lambda e, var=self.upper_var: float_entry_out_validation(var),
         )
         self.en_filter_var = tk.StringVar()
         filter_values = "Thermal Enthalpy Gibbs SCF Zero-Point".split(" ")

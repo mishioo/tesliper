@@ -13,6 +13,7 @@ from matplotlib.figure import Figure
 from .. import tesliper as tesliper
 from . import components as guicom
 from .components import ScrollableFrame
+from .components.helpers import float_entry_out_validation, get_float_entry_validator
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -73,12 +74,12 @@ class Spectra(ttk.Frame):
                 width=10,
                 state="disabled",
                 validate="key",
-                validatecommand=self.parent.validate_entry,
+                validatecommand=get_float_entry_validator(self),
             )
             entry.bind(
                 "<FocusOut>",
                 lambda e, var=var: (
-                    self.parent.entry_out_validation(var),
+                    float_entry_out_validation(var),
                     self.live_preview_callback(),
                 ),
             )

@@ -15,6 +15,48 @@ from ...glassware.arrays import SpectralData
 logger = lgg.getLogger(__name__)
 
 
+# FUNCTIONS
+def get_float_entry_validator(widget):
+    """Generated ready to use validator for entry allowing only values that can be
+    interpreted as floats. Registration is needed to make use of tcl's special values
+    associated with changes made to entry widget.
+    """
+    return widget.register(validate_float_entry), "%S", "%P"
+
+
+def validate_float_entry(inserted, text_if_allowed):
+    """Enables only values that cen be interpreted as floats."""
+    if any(i not in "0123456789.,+-" for i in inserted):
+        return False
+    else:
+        if text_if_allowed in ".,+-":
+            return True
+        if text_if_allowed in map("".join, zip("+-+-", "..,,")):
+            # user started typing negative or explicitly positive float
+            return True
+        try:
+            if text_if_allowed:
+                # consider both, comma and dot, a decimal separator
+                float(text_if_allowed.replace(",", "."))
+        except ValueError:
+            return False
+    return True
+
+
+def float_entry_out_validation(var):
+    """Change value to form accepted by float constructor."""
+    value = var.get()
+    if "," in value:
+        value = value.replace(",", ".")
+    if value.endswith((".", "+", "-")):
+        value = value + "0"
+    if value.startswith("+"):
+        value = value[1:]
+    if value.startswith((".", "-.")):
+        value = value.replace(".", "0.")
+    var.set(value)
+
+
 # CLASSES
 class TextHandler(lgg.Handler):
     def __init__(self, widget, *args, **kwargs):

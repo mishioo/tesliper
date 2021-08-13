@@ -61,8 +61,6 @@ class TesliperApp(tk.Tk):
         self.tslr = tesliper.Tesliper()
         self.thread = Thread()
 
-        self.report_callback_exception = self.report_callback_exception
-        self.validate_entry = (self.register(self.validate_entry), "%S", "%P")
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
 
         # Notebook
@@ -72,8 +70,6 @@ class TesliperApp(tk.Tk):
         self.main_tab = None
         self.spectra_tab = None
         self.conf_tab = None
-        # self.info_tab = ttk.Frame(self)
-        # self.add(self.info_tab, text='Info')
         self.notebook.grid(column=0, row=0, sticky="nswe")
 
         # Log & Bar frame
@@ -142,33 +138,6 @@ class TesliperApp(tk.Tk):
             self.log.window.iconbitmap(os.path.join(iconpath, "tesliper.ico"))
         except tk.TclError:
             self.logger.warning("Cannot load icon.")
-
-    def validate_entry(self, inserted, text_if_allowed):
-        if any(i not in "0123456789.,+-" for i in inserted):
-            return False
-        else:
-            if text_if_allowed in ".,+-":
-                return True
-            if text_if_allowed in map("".join, zip("+-+-", "..,,")):
-                return True
-            try:
-                if text_if_allowed:
-                    float(text_if_allowed.replace(",", "."))
-            except ValueError:
-                return False
-        return True
-
-    def entry_out_validation(self, var):
-        value = var.get()
-        if "," in value:
-            value = value.replace(",", ".")
-        if value.endswith((".", "+", "-")):
-            value = value + "0"
-        if value.startswith("+"):
-            value = value[1:]
-        if value.startswith((".", "-.")):
-            value = value.replace(".", "0.")
-        var.set(value)
 
     def report_callback_exception(self, exc, val, tb):
         self.logger.critical("An unexpected error occurred.", exc_info=True)
