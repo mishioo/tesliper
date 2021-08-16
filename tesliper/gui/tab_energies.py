@@ -61,11 +61,11 @@ class EnergiesChoice(ttk.Combobox):
 
 
 class FilterRMSD(ttk.Frame):
-    # TODO: for now should be available only for
-    def __init__(self, parent, tesliper):
+    def __init__(self, parent, tesliper, tab):
         super().__init__(parent)
         self.parent = parent
         self.tesliper = tesliper
+        self.tab = tab
 
         float_entry_validator = get_float_entry_validator(self)
         self.columnconfigure(1, weight=1)
@@ -124,8 +124,7 @@ class FilterRMSD(ttk.Frame):
         )
 
     def _filter(self):
-        tslr = self.parent.parent.tslr
-        tslr.conformers.trim_rmds(
+        self.tesliper.conformers.trim_rmsd(
             threshold=float(self.threshold.get()),
             window_size=float(self.window_size.get()),
             energy_genre=self.energies_choice.get_genre(),
@@ -133,11 +132,11 @@ class FilterRMSD(ttk.Frame):
         )
         # TODO: turn below into some higher-level method
         for box, kept in zip(
-            self.parent.conf_list.trees["main"].boxes.values(),
-            tslr.conformers.kept,
+            self.tab.conf_list.trees["main"].boxes.values(),
+            self.tesliper.conformers.kept,
         ):
             box.var.set(kept)
-        self.parent.conf_list.refresh()
+        self.tab.conf_list.refresh()
 
 
 class Conformers(ttk.Frame):
@@ -247,7 +246,7 @@ class Conformers(ttk.Frame):
         rmsd_frame = ttk.LabelFrame(controls.content, text="RMSD sieve")
         rmsd_frame.grid(column=0, row=4, columnspan=2, sticky="nwe")
         rmsd_frame.columnconfigure(0, weight=1)
-        self.rmsd = FilterRMSD(rmsd_frame, tesliper=self.parent.tslr)
+        self.rmsd = FilterRMSD(rmsd_frame, tesliper=self.parent.tslr, tab=self)
         self.rmsd.grid(row=0, column=0, sticky="news")
 
         # can't make it work other way
