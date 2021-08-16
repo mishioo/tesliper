@@ -71,17 +71,19 @@ class FilterRMSD(ttk.Frame):
 
         ttk.Label(self, text="Window size").grid(column=0, row=0)
         ttk.Label(self, text="Threshold").grid(column=0, row=1)
-        # TODO: add default choices
-        self.window_size = tk.StringVar()
-        self.threshold = tk.StringVar()
+        ttk.Label(self, text="kcal/mol").grid(column=2, row=0)
+        ttk.Label(self, text="angstrom").grid(column=2, row=1)
+        ttk.Label(self, text="Energy type").grid(column=0, row=2)
+        self.window_size = tk.StringVar(value="5.0")
+        self.threshold = tk.StringVar(value="1.0")
         window_size = ttk.Entry(
             self,
             textvariable=self.window_size,
-            width=15,
+            width=4,
             validate="key",
             validatecommand=float_entry_validator,
         )
-        window_size.grid(column=1, row=0, sticky="ne")
+        window_size.grid(column=1, row=0, sticky="new")
         window_size.bind(
             "<FocusOut>",
             lambda e, var=self.window_size: float_entry_out_validation(var),
@@ -89,11 +91,11 @@ class FilterRMSD(ttk.Frame):
         threshold = ttk.Entry(
             self,
             textvariable=self.threshold,
-            width=15,
+            width=4,
             validate="key",
             validatecommand=float_entry_validator,
         )
-        threshold.grid(column=1, row=1, sticky="ne")
+        threshold.grid(column=1, row=1, sticky="new")
         threshold.bind(
             "<FocusOut>",
             lambda e, var=self.threshold: float_entry_out_validation(var),
@@ -102,14 +104,13 @@ class FilterRMSD(ttk.Frame):
         ignore_hydrogens = ttk.Checkbutton(
             self, text="Ignore H", variable=self.ignore_hydrogens
         )
-        ignore_hydrogens.grid(column=1, row=2, sticky="ne")
+        ignore_hydrogens.grid(column=1, row=3, sticky="ne")
 
-        # TODO: add "Energy type" label
         self.energies_choice = EnergiesChoice(self, tesliper=self.tesliper, width=12)
-        self.energies_choice.grid(column=0, row=2, sticky="nwe")
+        self.energies_choice.grid(column=1, row=2, columnspan=2, sticky="nwe")
 
         button = ttk.Button(self, text="Filter similar", command=self._filter)
-        button.grid(column=0, row=3, columnspan=2, sticky="nwe")
+        button.grid(column=0, row=4, columnspan=3, sticky="nwe")
 
         guicom.WgtStateChanger.energies.extend(
             [
