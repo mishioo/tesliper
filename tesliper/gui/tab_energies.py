@@ -68,6 +68,7 @@ class FilterRMSD(ttk.Frame):
         self.tesliper = tesliper
 
         float_entry_validator = get_float_entry_validator(self)
+        self.columnconfigure(1, weight=1)
 
         ttk.Label(self, text="Window size").grid(column=0, row=0)
         ttk.Label(self, text="Threshold").grid(column=0, row=1)
@@ -104,7 +105,7 @@ class FilterRMSD(ttk.Frame):
         ignore_hydrogens = ttk.Checkbutton(
             self, text="Ignore H", variable=self.ignore_hydrogens
         )
-        ignore_hydrogens.grid(column=1, row=3, sticky="ne")
+        ignore_hydrogens.grid(column=1, row=3, columnspan=2, sticky="new")
 
         self.energies_choice = EnergiesChoice(self, tesliper=self.tesliper, width=12)
         self.energies_choice.grid(column=1, row=2, columnspan=2, sticky="nwe")
@@ -243,8 +244,11 @@ class Conformers(ttk.Frame):
         self.show_combo.set("Energy /Hartree")
         self.filter_combo.set("Thermal")
 
-        self.rmsd = FilterRMSD(filter_frame, tesliper=self.parent.tslr)
-        self.rmsd.grid(column=0, row=4, columnspan=2, sticky="nwe")
+        rmsd_frame = ttk.LabelFrame(controls.content, text="RMSD sieve")
+        rmsd_frame.grid(column=0, row=4, columnspan=2, sticky="nwe")
+        rmsd_frame.columnconfigure(0, weight=1)
+        self.rmsd = FilterRMSD(rmsd_frame, tesliper=self.parent.tslr)
+        self.rmsd.grid(row=0, column=0, sticky="news")
 
         # can't make it work other way
         # dummy = ttk.Frame(frame, width=185)
