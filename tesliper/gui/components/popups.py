@@ -31,11 +31,11 @@ class ExportPopup(Popup):
     def __init__(self, master, *args, **kwargs):
         super().__init__(master, *args, **kwargs)
         self.title("Export...")
-        self.labels = "Energies Data Spectra Averaged".split(" ")
+        self.labels = ["Energies", "Spectral data", "Spectra", "Averaged"]
         self.vars = [tk.BooleanVar() for _ in self.labels]
         checks = [
-            ttk.Checkbutton(self, text=l, variable=v)
-            for l, v in zip(self.labels, self.vars)
+            ttk.Checkbutton(self, text=label, variable=var)
+            for label, var in zip(self.labels, self.vars)
         ]
         for n, check in enumerate(checks):
             check.grid(column=0, row=n, pady=2, padx=5, sticky="nw")

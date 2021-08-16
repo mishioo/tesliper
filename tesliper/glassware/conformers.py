@@ -758,6 +758,8 @@ class Conformers(OrderedDict):
         InconsistentDataError
             If requested genres does not provide the same set of conformers.
         """
+        # TODO: make sure it works well when `ignore_hydrogen=True`
+        #       because tests in GUI (Tolbutamid) always kept only one conformer
         energy = self.arrayed(energy_genre)
         geometry = self.arrayed(geometry_genre)
         if not energy.filenames.size == geometry.filenames.size:

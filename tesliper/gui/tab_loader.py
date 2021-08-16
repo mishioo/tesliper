@@ -6,13 +6,31 @@ import tkinter.ttk as ttk
 from collections import Counter, namedtuple
 from tkinter import messagebox
 from tkinter.filedialog import askdirectory, askopenfilenames
+from typing import List
 
 import numpy as np
 
 from . import components as guicom
 
 # LOGGER
+from .components import ScrollableFrame
+
 logger = lgg.getLogger(__name__)
+
+
+OVERVIEW_GENRES = "dip rot vosc vrot losc lrot raman1 roa1 scf zpe ent ten gib".split()
+
+
+def join_with_and(words: List[str]) -> str:
+    """Joins list of strings with "and" between the last two."""
+    if len(words) > 2:
+        return ", ".join(words[:-1]) + ", and " + words[-1]
+    elif len(words) == 2:
+        return " and ".join(words)
+    elif len(words) == 1:
+        return words[0]
+    else:
+        return ""
 
 
 # CLASSES
@@ -26,12 +44,17 @@ class Loader(ttk.Frame):
         super().__init__(parent)
         self.parent = parent
         self.grid(column=0, row=0, sticky="nwse")
-        tk.Grid.columnconfigure(self, 2, weight=1)
-        tk.Grid.rowconfigure(self, 5, weight=1)
+        tk.Grid.columnconfigure(self, 1, weight=1)
+        tk.Grid.rowconfigure(self, 0, weight=1)
         self.bind("<FocusIn>", lambda e: self.update_overview_values())
 
+        # Controls frame
+        # ScrollableFrame.content is a ttk.Frame where actual controls go
+        controls = ScrollableFrame(parent=self)
+        controls.grid(column=0, row=0, sticky="news")
+
         # Extract data
-        extract_frame = ttk.LabelFrame(self, text="Extract data...")
+        extract_frame = ttk.LabelFrame(controls.content, text="Extract data...")
         extract_frame.grid(column=0, row=0, columnspan=2, sticky="nwe")
         tk.Grid.columnconfigure(extract_frame, 0, weight=1)
         self.b_auto_extract = ttk.Button(
@@ -44,7 +67,9 @@ class Loader(ttk.Frame):
         self.b_man_extract.grid(column=0, row=1, sticky="nwe")
 
         # Session control
-        buttons_frame = ttk.LabelFrame(self, text="Session control", width=90)
+        buttons_frame = ttk.LabelFrame(
+            controls.content, text="Session control", width=90
+        )
         buttons_frame.grid(column=0, row=1, columnspan=2, sticky="nwe")
         tk.Grid.columnconfigure(buttons_frame, (0, 1), weight=1)
         self.b_clear_session = ttk.Button(
@@ -79,7 +104,7 @@ class Loader(ttk.Frame):
         # TO DO: consider switching to three buttons: 'include', 'exclude',
         # 'limit to', or similar
         self.overview_control_frame = ttk.Labelframe(
-            self, text="Overview control", width=90
+            controls.content, text="Overview control", width=90
         )
         self.overview_control_frame.grid(column=0, row=2, columnspan=2, sticky="nswe")
         tk.Grid.columnconfigure(self.overview_control_frame, 4, weight=1)
@@ -133,7 +158,9 @@ class Loader(ttk.Frame):
             )
 
         # keep unchecked
-        self.keep_unchecked_frame = ttk.LabelFrame(self, text="Keep unchecked?")
+        self.keep_unchecked_frame = ttk.LabelFrame(
+            controls.content, text="Keep unchecked?"
+        )
         self.keep_unchecked_frame.grid(column=0, row=3, columnspan=2, sticky="nswe")
         self.kept_vars = {
             k: tk.BooleanVar()
@@ -164,9 +191,7 @@ class Loader(ttk.Frame):
 
         # Conformers Overview
         self.label_overview = ttk.LabelFrame(self, text="Conformers Overview")
-        self.label_overview.grid(
-            column=2, row=0, columnspan=3, rowspan=6, sticky="nwse"
-        )
+        self.label_overview.grid(column=1, row=0, sticky="nwse")
         self.overview = None
         tk.Grid.rowconfigure(self.label_overview, 0, weight=1)
         tk.Grid.columnconfigure(self.label_overview, 0, weight=1)
@@ -198,15 +223,11 @@ class Loader(ttk.Frame):
         maxes = {}
         if key == "incompl":
             try:
-                wanted = (
-                    "dip rot vosc vrot losc lrot raman1 roa1 scf zpe ent "
-                    "ten gib".split()
-                )
                 count = [
-                    [g in conf for g in wanted]
+                    [g in conf for g in OVERVIEW_GENRES]
                     for conf in self.parent.tslr.conformers.values()
                 ]
-                best_match = [g for g, k in zip(wanted, max(count)) if k]
+                best_match = [g for g, k in zip(OVERVIEW_GENRES, max(count)) if k]
             except ValueError:
                 best_match = []
         elif key == "incons":
@@ -241,49 +262,90 @@ class Loader(ttk.Frame):
             "Sorry!", "We are sorry, but this function is not implemented yet."
         )
 
-    def get_save_output(self):
+    def get_save_query(self):
         popup = guicom.ExportPopup(self, width="220", height="130")
         query = popup.get_query()
         return query
 
     @guicom.Feedback("Saving...")
-    def execute_save_command(self, output, dest, fmt):
-        savers = {
-            "energies": self.parent.tslr.export_energies,
-            "bars": self.parent.tslr.export_spectral_data,
-            "spectra": self.parent.tslr.export_spectra,
-            "averaged": self.parent.tslr.export_averaged,
-        }
-        if "averaged" in output:
+    def execute_save_command(self, categories, fmt):
+        # TODO: add auto-calculate ?
+        if "averaged" in categories:
             self.parent.progtext.set("Averaging spectra...")
             self.parent.tslr.average_spectra()
             self.parent.progtext.set("Saving...")
-        for thing in output:
-            savers[thing](dest, fmt)
+        existing = self._exec_save(categories, fmt, mode="x")
+        if existing:
+            joined = join_with_and(existing).capitalize()
+            title = (
+                f"{joined} files already exist!"
+                if fmt != "xlsx"
+                else ".xlsx file already exists!"
+            )
+            message = (
+                f"{joined} files already exist in this directory. "
+                "Would you like to overwrite them?"
+                if fmt != "xlsx"
+                else ".xlsx file already exists in this directory. "
+                "Would you like to overwrite it?"
+            )
+            override = messagebox.askokcancel(title=title, message=message)
+            if override:
+                # for "xlsx" retry whole process, for other retry only unsuccessful
+                cats = existing if fmt != "xlsx" else categories
+                self._exec_save(cats, fmt, mode="w")
 
-    def save(self, output, fmt):
+    def _exec_save(self, categories, fmt, mode):
+        """Executes save command, calling appropriate "export" methods of Tesliper
+        instance. Returns list of genres' categories, for which the associated method
+        raised `FileExistsError`.
+
+        Execution is a little different, if `fmt` is "xlsx", as only one file is
+        produced for the whole batch: if `FileExistsError` is raised on first category,
+        this method returns `["xlsx"]` and ignores the rest of `categories`.
+        """
+        savers = {
+            "energies": self.parent.tslr.export_energies,
+            "spectral data": self.parent.tslr.export_spectral_data,
+            "spectra": self.parent.tslr.export_spectra,
+            "averaged": self.parent.tslr.export_averaged,
+        }
+        existing = []
+        for thing in categories:
+            try:
+                savers[thing](fmt, mode=mode)
+            except FileExistsError:
+                existing.append(thing)
+                if fmt == "xlsx":
+                    return ["xlsx"]
+            # one .xlsx file for whole batch, must append next data chunks
+            mode = "a" if fmt == "xlsx" else mode
+        return existing
+
+    def save(self, categories, fmt):
         dest = askdirectory()
         if dest:
-            logger.debug(f"Export requested: {output}; format: {fmt}")
-            self.execute_save_command(output, dest, fmt)
+            self.parent.tslr.output_dir = dest
+            logger.debug(f"Export requested: {categories}; format: {fmt}")
+            self.execute_save_command(categories, fmt)
 
     def save_text(self):
-        output = self.get_save_output()
-        if not output:
+        categories = self.get_save_query()
+        if not categories:
             return
-        self.save(output, fmt="txt")
+        self.save(categories, fmt="txt")
 
     def save_excel(self):
-        output = self.get_save_output()
-        if not output:
+        categories = self.get_save_query()
+        if not categories:
             return
-        self.save(output, fmt="xlsx")
+        self.save(categories, fmt="xlsx")
 
     def save_csv(self):
-        output = self.get_save_output()
-        if not output:
+        categories = self.get_save_query()
+        if not categories:
             return
-        self.save(output, fmt="csv")
+        self.save(categories, fmt="csv")
 
     def from_dir(self):
         work_dir = askdirectory()
@@ -309,7 +371,7 @@ class Loader(ttk.Frame):
 
     @guicom.Feedback("Extracting...")
     def extract(self, path, wanted_files=None):
-        # TO DO: handle extraction errors
+        # TODO: handle extraction errors
         tslr = self.parent.tslr
         overview = self.overview
         try:
@@ -319,6 +381,8 @@ class Loader(ttk.Frame):
             logger.warning("Cannot extract from specified directory: " + err.args[0])
             return
         # self.parent.conf_tab.conf_list.refresh()
+        # TODO: set_overview_values() and update_overview_values() seem to repeat some
+        #       actions - confirm if true and refactor them
         self.set_overview_values()
         self.discard_not_kept()
         self.update_overview_values()
@@ -326,14 +390,11 @@ class Loader(ttk.Frame):
     def set_overview_values(self):
         values = {k: 0 for k in self.overview_control.keys()}
         try:
-            wanted = (
-                "dip rot vosc vrot losc lrot raman1 roa1 scf zpe ent " "ten gib".split()
-            )
             count = [
-                [g in conf for g in wanted]
+                [g in conf for g in OVERVIEW_GENRES]
                 for conf in self.parent.tslr.conformers.values()
             ]
-            best_match = [g for g, k in zip(wanted, max(count)) if k]
+            best_match = [g for g, k in zip(OVERVIEW_GENRES, max(count)) if k]
         except ValueError:
             best_match = []
         sizes = {}
@@ -369,14 +430,12 @@ class Loader(ttk.Frame):
     def update_overview_values(self):
         values = {k: 0 for k in self.overview_control.keys()}
         try:
-            wanted = (
-                "dip rot vosc vrot losc lrot raman1 roa1 scf zpe ent " "ten gib".split()
-            )
+            # TODO: extract this repeated snippet (un_check(), set_overview_values())
             count = [
-                [g in conf for g in wanted]
+                [g in conf for g in OVERVIEW_GENRES]
                 for conf in self.parent.tslr.conformers.values()
             ]
-            best_match = [g for g, k in zip(wanted, max(count)) if k]
+            best_match = [g for g, k in zip(OVERVIEW_GENRES, max(count)) if k]
         except ValueError:
             best_match = []
         sizes = {}
@@ -388,8 +447,6 @@ class Loader(ttk.Frame):
             genre: Counter(v for v in values.values()).most_common()[0][0]
             for genre, values in sizes.items()
         }
-        # if self.parent.tslr.conformers.trimmed_values():
-        #     import pdb; pdb.set_trace()
         for conf in self.parent.tslr.conformers.kept_values():
             values["file"] += 1
             values["term"] += not conf["normal_termination"]

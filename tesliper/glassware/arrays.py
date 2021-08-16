@@ -343,6 +343,7 @@ class SpectralData(FloatArray, Averagable):
     ):
         super().__init__(genre, filenames, values, allow_data_inconsistency)
 
+    # TODO: move calculate_spectra here from derived classes
     # TODO: at least one, freq or wave, must be defined by subclass;
     #       include that in docstring
     @property
