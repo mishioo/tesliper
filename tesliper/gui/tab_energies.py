@@ -17,26 +17,56 @@ logger = lgg.getLogger(__name__)
 class EnergiesChoice(ttk.Combobox):
     """Combobox that enables choice of type of energy."""
 
-    def __init__(self, parent, **kwargs):
+    _names_ref = {
+        k: v
+        for k, v in zip(
+            "Thermal Enthalpy Gibbs SCF Zero-Point".split(),
+            "ten ent gib scf zpe".split(),
+        )
+    }
+    _genres_ref = {v: k for k, v in _names_ref.items()}
+
+    def __init__(self, parent, tesliper, **kwargs):
         self.var = tk.StringVar()
-        values = "Thermal Enthalpy Gibbs SCF Zero-Point".split(" ")
-        genres = "ten ent gib scf zpe".split(" ")
-        self._genres_ref = {k: v for k, v in zip(values, genres)}
+        self.tesliper = tesliper
         kwargs["textvariable"] = self.var
-        kwargs["values"] = values
+        kwargs["values"] = list(self._genres_ref.values())
         kwargs["state"] = "readonly"
         super().__init__(parent, **kwargs)
 
     def get_genre(self):
         """Convenience method for getting genre of the energy type chosen."""
-        return self._genres_ref[self.var.get()]
+        return self._names_ref[self.var.get()]
+
+    def update_values(self):
+        """Update displayed values to reflect currently available energy genres.
+        If previously chosen genre is no longer available, change it."""
+        current = self.var.get()
+        available_genres = [
+            genre
+            for genre in self._genres_ref
+            if self.tesliper.conformers.has_genre(genre)
+        ]
+        available = tuple(self._genres_ref[genre] for genre in available_genres)
+        self["values"] = available
+        logger.debug(f"Updated energy values with {available}.")
+        if available and current not in available:
+            self.var.set(available[0])
+            logger.info(
+                f"Energy genre '{current}' is no longer available, "
+                f"changed to {available[0]}."
+            )
+        elif not available:
+            self.var.set("")
+            logger.info("No energy genre is available, removed selection.")
 
 
 class FilterRMSD(ttk.Frame):
     # TODO: for now should be available only for
-    def __init__(self, parent):
+    def __init__(self, parent, tesliper):
         super().__init__(parent)
         self.parent = parent
+        self.tesliper = tesliper
 
         float_entry_validator = get_float_entry_validator(self)
 
@@ -76,7 +106,7 @@ class FilterRMSD(ttk.Frame):
         ignore_hydrogens.grid(column=1, row=2, sticky="ne")
 
         # TODO: add "Energy type" label
-        self.energies_choice = EnergiesChoice(self, width=12)
+        self.energies_choice = EnergiesChoice(self, tesliper=self.tesliper, width=12)
         self.energies_choice.grid(column=0, row=2, sticky="nwe")
 
         button = ttk.Button(self, text="Filter similar", command=self._filter)
@@ -203,7 +233,7 @@ class Conformers(ttk.Frame):
         self.show_combo.set("Energy /Hartree")
         self.filter_combo.set("Thermal")
 
-        self.rmsd = FilterRMSD(filter_frame)
+        self.rmsd = FilterRMSD(filter_frame, tesliper=self.parent.tslr)
         self.rmsd.grid(column=0, row=4, columnspan=2, sticky="nwe")
 
         # can't make it work other way
