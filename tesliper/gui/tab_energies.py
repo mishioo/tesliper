@@ -30,7 +30,6 @@ class EnergiesChoice(ttk.Combobox):
         self.var = tk.StringVar()
         self.tesliper = tesliper
         kwargs["textvariable"] = self.var
-        kwargs["values"] = list(self._genres_ref.values())
         kwargs["state"] = "readonly"
         super().__init__(parent, **kwargs)
 
@@ -57,7 +56,7 @@ class EnergiesChoice(ttk.Combobox):
                 f"changed to {available[0]}."
             )
         elif not available:
-            self.var.set("")
+            self.var.set("Not available.")
             logger.info("No energy genre is available, removed selection.")
 
 
@@ -111,6 +110,16 @@ class FilterRMSD(ttk.Frame):
 
         button = ttk.Button(self, text="Filter similar", command=self._filter)
         button.grid(column=0, row=3, columnspan=2, sticky="nwe")
+
+        guicom.WgtStateChanger.energies.extend(
+            [
+                window_size,
+                threshold,
+                ignore_hydrogens,
+                self.energies_choice,
+                button,
+            ]
+        )
 
     def _filter(self):
         tslr = self.parent.parent.tslr
@@ -283,6 +292,8 @@ class Conformers(ttk.Frame):
     def refresh(self, event=None):
         self.conf_list.refresh()
         self.set_upper_and_lower()
+        # TODO: figure out if there is a better way to schedule updates
+        self.rmsd.energies_choice.update_values()
 
     def select_all(self):
         for box in self.conf_list.boxes.values():
