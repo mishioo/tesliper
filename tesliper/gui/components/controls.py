@@ -2,6 +2,7 @@
 import logging as lgg
 import tkinter as tk
 import tkinter.ttk as ttk
+from abc import ABC, abstractmethod
 
 from .helpers import (
     WgtStateChanger,
@@ -14,7 +15,40 @@ logger = lgg.getLogger(__name__)
 
 
 # CLASSES
-class EnergiesChoice(ttk.Combobox):
+class AutoComboboxBase(ttk.Combobox, ABC):
+    """Combobox implementing functionality for automatically updating list of available
+    values."""
+
+    def __init__(self, parent, tesliper, **kwargs):
+        self.var = tk.StringVar()
+        self.tesliper = tesliper
+        kwargs["textvariable"] = self.var
+        kwargs["state"] = "readonly"
+        super().__init__(parent, **kwargs)
+
+    @abstractmethod
+    def get_available_values(self):
+        raise NotImplementedError
+
+    def update_values(self):
+        """Update displayed values to reflect currently available energy genres.
+        If previously chosen genre is no longer available, change it."""
+        current = self.var.get()
+        available = self.get_available_values()
+        self["values"] = available
+        logger.debug(f"Updated {self} values with {available}.")
+        if available and current not in available:
+            self.var.set(available[0])
+            logger.info(
+                f"Option '{current}' is no longer available, "
+                f"changed to {available[0]}."
+            )
+        elif not available:
+            self.var.set("Not available.")
+            logger.info("No values available, removed selection.")
+
+
+class EnergiesChoice(AutoComboboxBase):
     """Combobox that enables choice of type of energy."""
 
     _names_ref = {
@@ -26,38 +60,18 @@ class EnergiesChoice(ttk.Combobox):
     }
     _genres_ref = {v: k for k, v in _names_ref.items()}
 
-    def __init__(self, parent, tesliper, **kwargs):
-        self.var = tk.StringVar()
-        self.tesliper = tesliper
-        kwargs["textvariable"] = self.var
-        kwargs["state"] = "readonly"
-        super().__init__(parent, **kwargs)
-
     def get_genre(self):
         """Convenience method for getting genre of the energy type chosen."""
         return self._names_ref[self.var.get()]
 
-    def update_values(self):
-        """Update displayed values to reflect currently available energy genres.
-        If previously chosen genre is no longer available, change it."""
-        current = self.var.get()
+    def get_available_values(self):
         available_genres = [
             genre
             for genre in self._genres_ref
             if self.tesliper.conformers.has_genre(genre)
         ]
         available = tuple(self._genres_ref[genre] for genre in available_genres)
-        self["values"] = available
-        logger.debug(f"Updated energy values with {available}.")
-        if available and current not in available:
-            self.var.set(available[0])
-            logger.info(
-                f"Energy genre '{current}' is no longer available, "
-                f"changed to {available[0]}."
-            )
-        elif not available:
-            self.var.set("Not available.")
-            logger.info("No energy genre is available, removed selection.")
+        return available
 
 
 class FilterEnergy(ttk.Frame):
