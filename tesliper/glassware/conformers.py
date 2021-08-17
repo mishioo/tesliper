@@ -785,7 +785,7 @@ class Conformers(OrderedDict):
             if ignore_hydrogen
             else geometry.values
         )
-        wanted = dw.rmsd_sieve(geom, energy.values, window_size, threshold)
+        wanted = dw.rmsd_sieve(geom, energy.as_kcal_per_mol, window_size, threshold)
         self.kept = geometry.filenames[wanted]
 
     def select_all(self) -> None:
