@@ -125,6 +125,7 @@ class Spectra(ttk.Frame):
         self.stack_radio.grid(column=0, row=6, sticky="w")
 
         # TODO: call auto_combobox.update_values() when conformers.kept change
+        # FIXME: exception occurs when combobox is selected before s_name_radio
         self.single = ConformersChoice(
             controls.content, tesliper=self.parent.tslr, spectra_var=self.s_name
         )
