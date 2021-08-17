@@ -13,7 +13,7 @@ from matplotlib.figure import Figure
 from .. import tesliper as tesliper
 from . import components as guicom
 from .components import EnergiesChoice, ScrollableFrame
-from .components.controls import ConformersChoice
+from .components.controls import ColorsChoice, ConformersChoice
 from .components.helpers import float_entry_out_validation, get_float_entry_validator
 
 # LOGGER
@@ -145,18 +145,11 @@ class Spectra(ttk.Frame):
         )
         # self.average_box.grid(column=0, row=5)
 
-        self.stack = tk.StringVar()
-        self.stack.set("Choose colour...")
-        self.stack_box = ttk.Combobox(
-            controls.content, textvariable=self.stack, state="disabled"
-        )
+        self.stack_box = ColorsChoice(controls.content)
+        self.stack = self.stack_box.var
         self.stack_box.bind("<<ComboboxSelected>>", self.change_colour)
         # self.stack_box.grid(column=0, row=7)
-        self.stack_box["values"] = (
-            "Blues Reds Greens spring summer autumn "
-            "winter copper ocean rainbow "
-            "nipy_spectral gist_ncar".split(" ")
-        )
+        self.stack_box.update_values()
         guicom.WgtStateChanger.bars.extend(
             [self.single_radio, self.single_box, self.stack_radio, self.stack_box]
         )

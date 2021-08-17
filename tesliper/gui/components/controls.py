@@ -96,6 +96,14 @@ class ConformersChoice(AutoComboboxBase):
         return available
 
 
+class ColorsChoice(AutoComboboxBase):
+    def get_available_values(self):
+        return (
+            "viridis plasma spring summer autumn winter copper rainbow "
+            "turbo gnuplot Blues Reds Greens Greys ".split()
+        )
+
+
 class FilterEnergy(ttk.Frame):
     def __init__(self, parent, tesliper, tab):
         super().__init__(parent)
