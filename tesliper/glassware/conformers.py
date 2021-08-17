@@ -757,9 +757,10 @@ class Conformers(OrderedDict):
         ------
         InconsistentDataError
             If requested genres does not provide the same set of conformers.
+        ValueError
+            When called with `ignore_hydrogen=True` but requested
+            `Geometry.molecule_atoms` cannot be collapsed to 1-D array.
         """
-        # TODO: make sure it works well when `ignore_hydrogen=True`
-        #       because tests in GUI (Tolbutamid) always kept only one conformer
         energy = self.arrayed(energy_genre)
         geometry = self.arrayed(geometry_genre)
         if not energy.filenames.size == geometry.filenames.size:
@@ -769,11 +770,17 @@ class Conformers(OrderedDict):
             )
         elif not np.array_equal(energy.filenames, geometry.filenames):
             raise InconsistentDataError(
-                "Different conformers  in requested geometry and energy genres. "
+                "Different conformers in requested geometry and energy genres. "
                 "Trim to incomplete entries before trimming with `trim_rmds`."
             )
+        if ignore_hydrogen and geometry.molecule_atoms.shape[0] != 1:
+            # TODO: remove when dw.geometry.select_atoms supplemented
+            raise ValueError(
+                "Cannot ignore hydrogen atoms if requested conformers do not have "
+                "the same order of atoms. This functionality is not supported yet."
+            )
         geom = (
-            dw.drop_atoms(geometry.values, geometry.molecule_atoms, dw.atoms.Atom.H)
+            dw.drop_atoms(geometry.values, geometry.molecule_atoms[0], dw.atoms.Atom.H)
             if ignore_hydrogen
             else geometry.values
         )

@@ -39,9 +39,11 @@ def select_atoms(
     values: Union[Sequence, np.ndarray], indices: Union[Sequence[int], np.ndarray],
 ) -> np.ndarray:
     """Filter given values to contain values only corresponding to atoms on given
-    indices. Recognizes if given values ate list of values for one or many conformers.
+    indices. Recognizes if given values are a list of values for one or for many
+    conformers, but it must be in shape (A, N) or (C, A, N) respectively.
     """
-    if not indices.size:
+    # TODO: add support for indexing with indices shaped (1, A) and (C, A).
+    if not np.asanyarray(indices).size:
         output = np.array([])
     else:
         try:
