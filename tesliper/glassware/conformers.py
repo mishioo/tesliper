@@ -405,6 +405,7 @@ class Conformers(OrderedDict):
                 if params[key].default is not params[key].empty:
                     params[key] = params[key].default
                 else:
+                    # FIXME: this triggers for empty Geometry
                     raise TesliperError(
                         f"One or more conformers does not provide value for "
                         f"{key} genre, needed to instantiate {cls.__name__} "
