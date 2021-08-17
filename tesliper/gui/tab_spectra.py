@@ -13,6 +13,7 @@ from matplotlib.figure import Figure
 from .. import tesliper as tesliper
 from . import components as guicom
 from .components import EnergiesChoice, ScrollableFrame
+from .components.controls import ConformersChoice
 from .components.helpers import float_entry_out_validation, get_float_entry_validator
 
 # LOGGER
@@ -123,11 +124,12 @@ class Spectra(ttk.Frame):
         )
         self.stack_radio.grid(column=0, row=4, sticky="w")
 
-        self.single = tk.StringVar()
-        self.single.set("Choose conformer...")
-        self.single_box = ttk.Combobox(
-            controls.content, textvariable=self.single, state="disabled"
+        # TODO: call auto_combobox.update_values() when conformers.kept change
+        self.single_box = ConformersChoice(
+            controls.content, tesliper=self.parent.tslr, spectra_var=self.s_name
         )
+        # backwards compatibility, used dynamically by self.recalculate_command()
+        self.single = self.single_box.var
         self.single_box.bind(
             "<<ComboboxSelected>>",
             lambda event: self.live_preview_callback(event, mode="single"),
@@ -290,9 +292,12 @@ class Spectra(ttk.Frame):
             self.current_box.grid_forget()
         self.current_box = self.boxes[mode]
         self.current_box.grid(column=0, row=5)
+        # TODO: get .update_values dynamically when all comboboxes are updated
+        #       to subclass AutoComboboxBase
         if mode == "average":
             self.average_box.update_values()
         if mode == "single":
+            self.single_box.update_values()
             self.show_bars.config(state="normal")
             self.show_bars.var.set(self.show_bars.previous_value)
         else:

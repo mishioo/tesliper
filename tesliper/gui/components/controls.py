@@ -4,6 +4,7 @@ import tkinter as tk
 import tkinter.ttk as ttk
 from abc import ABC, abstractmethod
 
+from ... import datawork as dw
 from .helpers import (
     WgtStateChanger,
     float_entry_out_validation,
@@ -71,6 +72,23 @@ class EnergiesChoice(AutoComboboxBase):
             if self.tesliper.conformers.has_genre(genre)
         ]
         available = tuple(self._genres_ref[genre] for genre in available_genres)
+        return available
+
+
+class ConformersChoice(AutoComboboxBase):
+    """Combobox that enables choice of conformer for spectra calculation."""
+
+    def __init__(self, parent, tesliper, spectra_var, **kwargs):
+        super().__init__(parent, tesliper=tesliper, **kwargs)
+        self.spectra_var = spectra_var
+
+    def get_available_values(self):
+        """Returns filenames of conformers having data for chosen spectra."""
+        try:
+            activities_genre = dw.DEFAULT_ACTIVITIES[self.spectra_var.get()]
+        except KeyError:
+            return []
+        available = self.tesliper[activities_genre].filenames.tolist()
         return available
 
 
