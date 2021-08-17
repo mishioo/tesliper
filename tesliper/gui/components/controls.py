@@ -60,6 +60,97 @@ class EnergiesChoice(ttk.Combobox):
             logger.info("No energy genre is available, removed selection.")
 
 
+class FilterEnergy(ttk.Frame):
+    def __init__(self, parent, tesliper, tab):
+        super().__init__(parent)
+        self.parent = parent
+        self.tesliper = tesliper
+        self.tab = tab
+
+        self.columnconfigure(1, weight=1)
+        ttk.Label(self, text="Minimum").grid(column=0, row=0)
+        ttk.Label(self, text="Maximum").grid(column=0, row=1)
+        ttk.Label(self, text="Energy type").grid(column=0, row=2)
+        self.lower_var = tk.StringVar()
+        self.upper_var = tk.StringVar()
+        lentry = ttk.Entry(
+            self,
+            textvariable=self.lower_var,
+            width=15,
+            validate="key",
+            validatecommand=get_float_entry_validator(self),
+        )
+        lentry.grid(column=1, row=0, sticky="new")
+        lentry.bind(
+            "<FocusOut>",
+            lambda e, var=self.lower_var: float_entry_out_validation(var),
+        )
+        uentry = ttk.Entry(
+            self,
+            textvariable=self.upper_var,
+            width=15,
+            validate="key",
+            validatecommand=get_float_entry_validator(self),
+        )
+        uentry.grid(column=1, row=1, sticky="new")
+        uentry.bind(
+            "<FocusOut>",
+            lambda e, var=self.upper_var: float_entry_out_validation(var),
+        )
+
+        self.energies_choice = EnergiesChoice(self, tesliper=self.tesliper, width=12)
+        self.energies_choice.grid(column=1, row=2, sticky="new")
+        self.energies_choice.bind("<<ComboboxSelected>>", self.set_upper_and_lower)
+
+        b_filter = ttk.Button(self, text="Limit to...", command=self.filter_energy)
+        b_filter.grid(column=0, row=3, columnspan=2, sticky="new")
+
+        WgtStateChanger.energies.extend(
+            [
+                b_filter,
+                lentry,
+                uentry,
+                self.energies_choice,
+            ]
+        )
+
+    def set_upper_and_lower(self, event=None):
+        factor = 100 if self.tab.showing == "populations" else 1
+        try:
+            energy = self.energies_choice.get_genre()
+            arr = getattr(self.tesliper[energy], self.tab.showing)
+            lower, upper = arr.min(), arr.max()
+        except (KeyError, ValueError):
+            lower, upper = "0.0", "0.0"
+        else:
+            if self.tab.showing == "values":
+                n = 6
+            else:
+                n = 4
+            lower, upper = map(
+                lambda v: "{:.{}f}".format(v * factor, n), (lower, upper)
+            )
+        finally:
+            self.lower_var.set(lower)
+            self.upper_var.set(upper)
+
+    def filter_energy(self):
+        energy = self.energies_choice.get_genre()
+        factor = 1e-2 if self.tab.showing == "populations" else 1
+        lower = float(self.lower_var.get()) * factor
+        upper = float(self.upper_var.get()) * factor
+        self.tesliper.conformers.trim_to_range(
+            energy, minimum=lower, maximum=upper, attribute=self.tab.showing
+        )
+        # TODO: turn below into some higher-level method
+        for box, kept in zip(
+            self.tab.conf_list.trees["main"].boxes.values(),
+            self.tesliper.conformers.kept,
+        ):
+            box.var.set(kept)
+        self.tab.conf_list.refresh()
+
+
 class FilterRMSD(ttk.Frame):
     def __init__(self, parent, tesliper, tab):
         super().__init__(parent)

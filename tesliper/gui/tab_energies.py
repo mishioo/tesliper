@@ -2,15 +2,12 @@
 import logging as lgg
 import tkinter as tk
 import tkinter.ttk as ttk
-from functools import reduce
 
-from . import components as guicom
+from .components import ScrollableFrame
+from .components.controls import FilterEnergy, FilterRMSD
+from .components.helpers import WgtStateChanger
 
 # LOGGER
-from .components import ScrollableFrame
-from .components.controls import FilterRMSD
-from .components.helpers import float_entry_out_validation, get_float_entry_validator
-
 logger = lgg.getLogger(__name__)
 
 
@@ -46,7 +43,7 @@ class Conformers(ttk.Frame):
             control_frame, text="Disselect all", command=self.disselect_all
         )
         b_disselect.grid(column=0, row=1, sticky="nwe")
-        ttk.Label(controls.content, text="Show:").grid(column=0, row=2, sticky="nw")
+        ttk.Label(controls.content, text="Show:").grid(column=0, row=1, sticky="new")
         self.show_var = tk.StringVar()
         show_values = (
             "Energy /Hartree",
@@ -63,105 +60,43 @@ class Conformers(ttk.Frame):
             state="readonly",  # , width=21
         )
         self.show_combo.bind("<<ComboboxSelected>>", self.refresh)
-        self.show_combo.grid(column=1, row=2, sticky="nwe")
-
-        # filter
-        filter_frame = ttk.LabelFrame(controls.content, text="Energies range")
-        filter_frame.grid(column=0, row=1, columnspan=2, sticky="nwe")
-        tk.Grid.columnconfigure(filter_frame, 1, weight=1)
-        ttk.Label(filter_frame, text="Minimum").grid(column=0, row=0)
-        ttk.Label(filter_frame, text="Maximum").grid(column=0, row=1)
-        ttk.Label(filter_frame, text="Energy type").grid(column=0, row=2)
-        self.lower_var = tk.StringVar()
-        self.upper_var = tk.StringVar()
-        lentry = ttk.Entry(
-            filter_frame,
-            textvariable=self.lower_var,
-            width=15,
-            validate="key",
-            validatecommand=get_float_entry_validator(self),
-        )
-        lentry.grid(column=1, row=0, sticky="ne")
-        lentry.bind(
-            "<FocusOut>",
-            lambda e, var=self.lower_var: float_entry_out_validation(var),
-        )
-        uentry = ttk.Entry(
-            filter_frame,
-            textvariable=self.upper_var,
-            width=15,
-            validate="key",
-            validatecommand=get_float_entry_validator(self),
-        )
-        uentry.grid(column=1, row=1, sticky="ne")
-        uentry.bind(
-            "<FocusOut>",
-            lambda e, var=self.upper_var: float_entry_out_validation(var),
-        )
-        self.en_filter_var = tk.StringVar()
-        filter_values = "Thermal Enthalpy Gibbs SCF Zero-Point".split(" ")
-        filter_id = "ten ent gib scf zpe".split(" ")
-        self.filter_ref = {k: v for k, v in zip(filter_values, filter_id)}
-        self.filter_combo = ttk.Combobox(
-            filter_frame,
-            textvariable=self.en_filter_var,
-            values=filter_values,
-            state="readonly",
-            width=12,
-        )
-        self.filter_combo.grid(column=1, row=2, sticky="ne")
-        self.filter_combo.bind("<<ComboboxSelected>>", self.set_upper_and_lower)
-
-        b_filter = ttk.Button(
-            filter_frame, text="Limit to...", command=self.filter_energy
-        )
-        b_filter.grid(column=0, row=3, columnspan=2, sticky="nwe")
+        self.show_combo.grid(column=1, row=1, sticky="nwe")
         self.show_combo.set("Energy /Hartree")
-        self.filter_combo.set("Thermal")
 
+        # filter by energy value
+        filter_frame = ttk.LabelFrame(controls.content, text="Energies range")
+        filter_frame.grid(column=0, row=2, columnspan=2, sticky="nwe")
+        filter_frame.columnconfigure(0, weight=1)
+        self.filter = FilterEnergy(filter_frame, tesliper=self.parent.tslr, tab=self)
+        self.filter.grid(row=0, column=0, sticky="news")
+
+        # RMSD sieve
         rmsd_frame = ttk.LabelFrame(controls.content, text="RMSD sieve")
         rmsd_frame.grid(column=0, row=4, columnspan=2, sticky="nwe")
         rmsd_frame.columnconfigure(0, weight=1)
         self.rmsd = FilterRMSD(rmsd_frame, tesliper=self.parent.tslr, tab=self)
         self.rmsd.grid(row=0, column=0, sticky="news")
 
-        # can't make it work other way
-        # dummy = ttk.Frame(frame, width=185)
-        # dummy.grid(column=0, row=5)
-        # dummy.grid_propagate(False)
-
         self.established = False
 
-        guicom.WgtStateChanger.energies.extend(
+        WgtStateChanger.energies.extend(
             [
                 b_select,
                 b_disselect,
-                b_filter,
                 self.show_combo,
-                lentry,
-                uentry,
-                self.filter_combo,
             ]
         )
 
     def establish(self):
         self.show_combo.set("Energy /Hartree")
-        self.filter_combo.set("Thermal")
         self.established = True
-
-    @property
-    def energies(self):
-        return reduce(
-            lambda obj, attr: getattr(obj, attr, None),
-            ("tslr", "energies"),
-            self.parent,
-        )
 
     @property
     def showing(self):
         return self.show_ref[self.show_var.get()]
 
     def discard_lacking_energies(self):
+        # TODO: is it necessary?
         if not self.parent.main_tab.kept_vars["incompl"].get():
             logger.info("Any conformers without energy data will be discarded.")
             boxes = self.conf_list.trees["main"].boxes
@@ -171,9 +106,11 @@ class Conformers(ttk.Frame):
 
     def refresh(self, event=None):
         self.conf_list.refresh()
-        self.set_upper_and_lower()
-        # TODO: figure out if there is a better way to schedule updates
+        # TODO: figure out if there is a better way to schedule energies_choice updates
+        #       maybe set up custom events and bindings?
+        self.filter.energies_choice.update_values()
         self.rmsd.energies_choice.update_values()
+        self.filter.set_upper_and_lower()
 
     def select_all(self):
         for box in self.conf_list.boxes.values():
@@ -186,38 +123,3 @@ class Conformers(ttk.Frame):
         for box in self.conf_list.boxes.values():
             box.var.set(False)
         self.refresh()
-
-    def set_upper_and_lower(self, event=None):
-        energy = self.filter_ref[self.en_filter_var.get()]
-        arr = getattr(self.energies[energy], self.showing)
-        factor = 100 if self.showing == "populations" else 1
-        try:
-            lower, upper = arr.min(), arr.max()
-        except ValueError:
-            lower, upper = 0, 0
-        else:
-            if self.showing == "values":
-                n = 6
-            else:
-                n = 4
-            lower, upper = map(
-                lambda v: "{:.{}f}".format(v * factor, n), (lower, upper)
-            )
-        finally:
-            self.lower_var.set(lower)
-            self.upper_var.set(upper)
-
-    def filter_energy(self):
-        energy = self.filter_ref[self.en_filter_var.get()]
-        factor = 1e-2 if self.showing == "populations" else 1
-        lower = float(self.lower_var.get()) * factor
-        upper = float(self.upper_var.get()) * factor
-        self.parent.tslr.conformers.trim_to_range(
-            energy, minimum=lower, maximum=upper, attribute=self.showing
-        )
-        for box, kept in zip(
-            self.conf_list.trees["main"].boxes.values(),
-            self.parent.tslr.conformers.kept,
-        ):
-            box.var.set(kept)
-        self.conf_list.refresh()
