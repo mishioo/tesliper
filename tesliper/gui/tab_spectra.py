@@ -113,7 +113,7 @@ class Spectra(ttk.Frame):
             state="disabled",
             command=self.mode_chosen,
         )
-        self.average_radio.grid(column=0, row=3, sticky="w")
+        self.average_radio.grid(column=0, row=4, sticky="w")
         self.stack_radio = ttk.Radiobutton(
             controls.content,
             text="Stack by overview",
@@ -122,7 +122,7 @@ class Spectra(ttk.Frame):
             state="disabled",
             command=self.mode_chosen,
         )
-        self.stack_radio.grid(column=0, row=4, sticky="w")
+        self.stack_radio.grid(column=0, row=6, sticky="w")
 
         # TODO: call auto_combobox.update_values() when conformers.kept change
         self.single = ConformersChoice(
@@ -132,24 +132,26 @@ class Spectra(ttk.Frame):
             "<<ComboboxSelected>>",
             lambda event: self.live_preview_callback(event, mode="single"),
         )
-        # self.single.grid(column=0, row=3)
+        self.single.grid(column=0, row=3)
         self.single["values"] = ()
         self.average = EnergiesChoice(controls.content, tesliper=self.parent.tslr)
         self.average.bind(
             "<<ComboboxSelected>>",
             lambda event: self.live_preview_callback(event, mode="average"),
         )
-        # self.average.grid(column=0, row=5)
+        self.average.grid(column=0, row=5)
 
         self.stack = ColorsChoice(controls.content)
         self.stack.bind("<<ComboboxSelected>>", self.change_colour)
-        # self.stack.grid(column=0, row=7)
+        self.stack.grid(column=0, row=7)
         guicom.WgtStateChanger.bars.extend(
             [self.single_radio, self.single, self.stack_radio, self.stack]
         )
         guicom.WgtStateChanger.both.extend([self.average_radio, self.average])
         self.boxes = dict(single=self.single, average=self.average, stack=self.stack)
         self.current_box = None
+        for box in self.boxes.values():
+            box.grid_remove()
 
         # Live preview
         # Recalculate
@@ -274,9 +276,9 @@ class Spectra(ttk.Frame):
     def mode_chosen(self, event=None):
         mode = self.mode.get()
         if self.current_box is not None:
-            self.current_box.grid_forget()
+            self.current_box.grid_remove()
         self.current_box = self.boxes[mode]
-        self.current_box.grid(column=0, row=5)
+        self.current_box.grid()
         getattr(self, mode).update_values()  # update linked combobox values
         if mode == "single":
             self.show_bars.config(state="normal")
