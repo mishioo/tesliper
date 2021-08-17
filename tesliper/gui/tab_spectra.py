@@ -12,7 +12,7 @@ from matplotlib.figure import Figure
 
 from .. import tesliper as tesliper
 from . import components as guicom
-from .components import ScrollableFrame
+from .components import EnergiesChoice, ScrollableFrame
 from .components.helpers import float_entry_out_validation, get_float_entry_validator
 
 # LOGGER
@@ -134,20 +134,15 @@ class Spectra(ttk.Frame):
         )
         # self.single_box.grid(column=0, row=3)
         self.single_box["values"] = ()
-        self.average = tk.StringVar()
-        self.average.set("Choose energy...")
-        self.average_box = ttk.Combobox(
-            controls.content, textvariable=self.average, state="disabled"
-        )
+        self.average_box = EnergiesChoice(controls.content, tesliper=self.parent.tslr)
+        # backwards compatibility, used dynamically by self.recalculate_command()
+        self.average = self.average_box.var
         self.average_box.bind(
             "<<ComboboxSelected>>",
             lambda event: self.live_preview_callback(event, mode="average"),
         )
         # self.average_box.grid(column=0, row=5)
-        average_names = "Thermal Enthalpy Gibbs SCF Zero-Point".split(" ")
-        self.average_box["values"] = average_names
-        average_keys = "ten ent gib scf zpe".split(" ")
-        self.average_ref = {k: v for k, v in zip(average_names, average_keys)}
+
         self.stack = tk.StringVar()
         self.stack.set("Choose colour...")
         self.stack_box = ttk.Combobox(
@@ -295,6 +290,8 @@ class Spectra(ttk.Frame):
             self.current_box.grid_forget()
         self.current_box = self.boxes[mode]
         self.current_box.grid(column=0, row=5)
+        if mode == "average":
+            self.average_box.update_values()
         if mode == "single":
             self.show_bars.config(state="normal")
             self.show_bars.var.set(self.show_bars.previous_value)
@@ -541,7 +538,7 @@ class Spectra(ttk.Frame):
                 spectra_name
             ]  # tslr.calculate_spectra returns dictionary
             if mode == "average":
-                en_name = self.average_ref[option]
+                en_name = self.average_box.get_genre()
                 spc = tslr.get_averaged_spectrum(spectra_name, en_name)
         return spc
 
