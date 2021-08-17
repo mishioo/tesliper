@@ -20,9 +20,8 @@ class AutoComboboxBase(ttk.Combobox, ABC):
     """Combobox implementing functionality for automatically updating list of available
     values."""
 
-    def __init__(self, parent, tesliper, **kwargs):
+    def __init__(self, parent, **kwargs):
         self.var = tk.StringVar()
-        self.tesliper = tesliper
         kwargs["textvariable"] = self.var
         kwargs["state"] = "readonly"
         super().__init__(parent, **kwargs)
@@ -61,6 +60,10 @@ class EnergiesChoice(AutoComboboxBase):
     }
     _genres_ref = {v: k for k, v in _names_ref.items()}
 
+    def __init__(self, parent, tesliper, **kwargs):
+        super().__init__(parent, **kwargs)
+        self.tesliper = tesliper
+
     def get_genre(self):
         """Convenience method for getting genre of the energy type chosen."""
         return self._names_ref[self.var.get()]
@@ -79,7 +82,8 @@ class ConformersChoice(AutoComboboxBase):
     """Combobox that enables choice of conformer for spectra calculation."""
 
     def __init__(self, parent, tesliper, spectra_var, **kwargs):
-        super().__init__(parent, tesliper=tesliper, **kwargs)
+        super().__init__(parent, **kwargs)
+        self.tesliper = tesliper
         self.spectra_var = spectra_var
 
     def get_available_values(self):
