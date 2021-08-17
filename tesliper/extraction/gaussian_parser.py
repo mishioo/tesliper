@@ -18,7 +18,7 @@ cpu_time_reg = re.compile(
     r"Job cpu time:\s*(\d+)\s*days\s*(\d+)\s*hours\s*(\d+)\s*minutes"
     r"\s*(\d+\.\d)\s*seconds"
 )  # use .findall(text)
-scf = re.compile(r"SCF Done.*=\s+(-?\d+\.?\d*)")  # use .findall(text)
+SCFCRE = re.compile(r"SCF Done.*?=" + number_group)  # use .search(line).group(1)
 stoich = re.compile(r"Stoichiometry\s*(\w*)\n")  # use .findall(text)
 stoich_ = re.compile(r"^ Stoichiometry\s*(\w*(?:\(\d+[+-]\))?)\n")  # use .findall(text)
 
@@ -372,7 +372,7 @@ class GaussianParser(Parser):
         if "Error termination" in line:
             self.data["normal_termination"] = False
         elif line.startswith(" SCF Done:"):
-            self.data["scf"] = float(re.search(number, line).group())
+            self.data["scf"] = float(SCFCRE.search(line).group(1))
         elif line.startswith(" Stoichiometry"):
             self.data["stoichiometry"] = stoich_.match(line).group(1)
 
@@ -421,7 +421,7 @@ class GaussianParser(Parser):
         elif line.startswith(" Stoichiometry"):
             self.data["stoichiometry"] = stoich_.match(line).group(1)
         elif line.startswith(" SCF Done:"):
-            self.data["scf"] = float(re.search(number, line).group())
+            self.data["scf"] = float(SCFCRE.search(line).group(1))
         elif line.startswith(" Optimization completed."):
             self.data["optimization_completed"] = True
         elif line.startswith((" Error termination", " Job cpu time")):
