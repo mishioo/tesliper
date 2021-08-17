@@ -125,38 +125,30 @@ class Spectra(ttk.Frame):
         self.stack_radio.grid(column=0, row=4, sticky="w")
 
         # TODO: call auto_combobox.update_values() when conformers.kept change
-        self.single_box = ConformersChoice(
+        self.single = ConformersChoice(
             controls.content, tesliper=self.parent.tslr, spectra_var=self.s_name
         )
-        # backwards compatibility, used dynamically by self.recalculate_command()
-        self.single = self.single_box.var
-        self.single_box.bind(
+        self.single.bind(
             "<<ComboboxSelected>>",
             lambda event: self.live_preview_callback(event, mode="single"),
         )
-        # self.single_box.grid(column=0, row=3)
-        self.single_box["values"] = ()
-        self.average_box = EnergiesChoice(controls.content, tesliper=self.parent.tslr)
-        # backwards compatibility, used dynamically by self.recalculate_command()
-        self.average = self.average_box.var
-        self.average_box.bind(
+        # self.single.grid(column=0, row=3)
+        self.single["values"] = ()
+        self.average = EnergiesChoice(controls.content, tesliper=self.parent.tslr)
+        self.average.bind(
             "<<ComboboxSelected>>",
             lambda event: self.live_preview_callback(event, mode="average"),
         )
-        # self.average_box.grid(column=0, row=5)
+        # self.average.grid(column=0, row=5)
 
-        self.stack_box = ColorsChoice(controls.content)
-        self.stack = self.stack_box.var
-        self.stack_box.bind("<<ComboboxSelected>>", self.change_colour)
-        # self.stack_box.grid(column=0, row=7)
-        self.stack_box.update_values()
+        self.stack = ColorsChoice(controls.content)
+        self.stack.bind("<<ComboboxSelected>>", self.change_colour)
+        # self.stack.grid(column=0, row=7)
         guicom.WgtStateChanger.bars.extend(
-            [self.single_radio, self.single_box, self.stack_radio, self.stack_box]
+            [self.single_radio, self.single, self.stack_radio, self.stack]
         )
-        guicom.WgtStateChanger.both.extend([self.average_radio, self.average_box])
-        self.boxes = dict(
-            single=self.single_box, average=self.average_box, stack=self.stack_box
-        )
+        guicom.WgtStateChanger.both.extend([self.average_radio, self.average])
+        self.boxes = dict(single=self.single, average=self.average, stack=self.stack)
         self.current_box = None
 
         # Live preview
@@ -285,12 +277,8 @@ class Spectra(ttk.Frame):
             self.current_box.grid_forget()
         self.current_box = self.boxes[mode]
         self.current_box.grid(column=0, row=5)
-        # TODO: get .update_values dynamically when all comboboxes are updated
-        #       to subclass AutoComboboxBase
-        if mode == "average":
-            self.average_box.update_values()
+        getattr(self, mode).update_values()  # update linked combobox values
         if mode == "single":
-            self.single_box.update_values()
             self.show_bars.config(state="normal")
             self.show_bars.var.set(self.show_bars.previous_value)
         else:
@@ -303,7 +291,7 @@ class Spectra(ttk.Frame):
         tslr = self.parent.tslr
         self.visualize_settings()
         bar = tesliper.dw.DEFAULT_ACTIVITIES[self.s_name.get()]
-        self.single_box["values"] = [k for k, v in tslr.conformers.items() if bar in v]
+        self.single["values"] = [k for k, v in tslr.conformers.items() if bar in v]
         self.reverse_ax.config(state="normal")
         self.load_exp.config(state="normal")
         self.show_exp.config(state="normal")
@@ -507,7 +495,7 @@ class Spectra(ttk.Frame):
     def change_colour(self, event=None):
         if not self.tslr_ax or self.mode.get() != "stack":
             return
-        colour = self.stack.get()
+        colour = self.stack.var.get()
         col = cm.get_cmap(colour)
         self.tslr_ax.hline.remove()
         lines = self.tslr_ax.get_lines()
@@ -536,7 +524,7 @@ class Spectra(ttk.Frame):
                 spectra_name
             ]  # tslr.calculate_spectra returns dictionary
             if mode == "average":
-                en_name = self.average_box.get_genre()
+                en_name = self.average.get_genre()
                 spc = tslr.get_averaged_spectrum(spectra_name, en_name)
         return spc
 
@@ -575,8 +563,8 @@ class Spectra(ttk.Frame):
             return
         self.last_used_settings[spectra_name] = self.current_settings.copy()
         mode = self.mode.get()
-        # get value of self.single, self.average or self.stack respectively
-        option = getattr(self, mode).get()
+        # get value from self.single, self.average or self.stack respectively
+        option = getattr(self, mode).var.get()
         if option.startswith("Choose "):
             return
         logger.debug("Recalculating!")
