@@ -1,4 +1,5 @@
 from .checktree import BoxVar, CheckTree, ConformersOverview, EnergiesView
+from .collapsible_pane import CollapsiblePane
 from .controls import EnergiesChoice, FilterRMSD
 from .helpers import (
     Feedback,
