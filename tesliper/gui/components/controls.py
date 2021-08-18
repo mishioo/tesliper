@@ -3,8 +3,12 @@ import logging as lgg
 import tkinter as tk
 import tkinter.ttk as ttk
 from abc import ABC, abstractmethod
+from collections import Counter, namedtuple
+
+import numpy as np
 
 from ... import datawork as dw
+from . import CollapsiblePane
 from .helpers import (
     WgtStateChanger,
     float_entry_out_validation,
@@ -272,3 +276,124 @@ class FilterRMSD(ttk.Frame):
         ):
             box.var.set(kept)
         self.tab.conf_list.refresh()
+
+
+class SelectConformers(CollapsiblePane):
+    overview_control_ref = {
+        k: v
+        for k, v in zip(
+            "file en ir vcd uv ecd ram roa incompl term opt imag".split(" "),
+            "command gib dip rot vosc vrot raman1 roa1 command "
+            "normal_termination optimization_completed freq".split(" "),
+        )
+    }
+
+    overview_funcs = dict(
+        file=lambda *args: True,
+        en=lambda *args: "gib" in args[0],
+        ir=lambda *args: "dip" in args[0],
+        vcd=lambda *args: "rot" in args[0],
+        uv=lambda *args: "vosc" in args[0],
+        ecd=lambda *args: "vrot" in args[0],
+        ram=lambda *args: "raman1" in args[0],
+        roa=lambda *args: "roa1" in args[0],
+        incompl=lambda *args: not all(g in args[0] for g in args[1]),
+        term=lambda *args: args[0]["normal_termination"],
+        opt=lambda *args: "optimization_completed" in args[0]
+        and not args[0]["optimization_completed"],
+        imag=lambda *args: "freq" in args[0] and any([f < 0 for f in args[0]["freq"]]),
+        incons=lambda *args: any(
+            g in args[0] and not len(args[0][g]) == mx for g, mx in args[2].items()
+        ),
+    )
+
+    def __init__(self, parent, tesliper, view, **kwargs):
+        super().__init__(parent, text="Select kept conformers", **kwargs)
+        self.tesliper = tesliper
+        self.view = view
+
+        self.var_all = tk.IntVar(value=0)  # number of conformers in total
+        self.widgets = dict()
+        widgets_tuple = namedtuple(
+            "widgets", ["label", "count", "slash", "all", "check", "uncheck"]
+        )
+        for i, (name, key) in enumerate(
+            zip(
+                "Files Energy IR VCD UV ECD Raman ROA Incompl. Errors "
+                "Unopt. Imag.Freq. Incons.".split(),
+                "file en ir vcd uv ecd ram roa incompl term opt imag incons".split(),
+            )
+        ):
+            var = tk.IntVar(value=0)
+
+            label = tk.Label(self.content, text=name, anchor="w")
+            count = tk.Label(self.content, textvariable=var, bd=0, width=3)
+            slash = tk.Label(self.content, text="/", bd=0)
+            all_ = tk.Label(self.content, textvariable=self.var_all, bd=0, width=3)
+            check_butt = ttk.Button(
+                self.content,
+                text="check",
+                width=6,
+                command=lambda key=key: self.select(key, keep=True),
+            )
+            uncheck_butt = ttk.Button(
+                self.content,
+                text="uncheck",
+                width=8,
+                command=lambda key=key: self.select(key, keep=False),
+            )
+
+            count.var = var
+            all_.var = self.var_all
+
+            label.grid(column=0, row=i)
+            count.grid(column=1, row=i)
+            slash.grid(column=2, row=i)
+            all_.grid(column=3, row=i)
+            check_butt.grid(column=4, row=i, sticky="ne")
+            uncheck_butt.grid(column=5, row=i, sticky="ne")
+
+            WgtStateChanger.tslr.extend([check_butt, uncheck_butt])
+
+            self.widgets[key] = widgets_tuple(
+                label, count, slash, all_, check_butt, uncheck_butt
+            )
+
+    def select(self, key, keep):
+        confs = self.tesliper.conformers
+        condition = self.overview_funcs[key]
+        best_match = []
+        maxes = {}
+        if key == "incompl":
+            try:
+                count = [
+                    [g in conf for g in self.view.genres]
+                    for conf in self.tesliper.conformers.values()
+                ]
+                best_match = [g for g, k in zip(self.view.genres, max(count)) if k]
+            except ValueError:
+                best_match = []
+        elif key == "incons":
+            sizes = {}
+            for fname, conf in self.tesliper.conformers.items():
+                for genre, value in conf.items():
+                    if isinstance(value, (np.ndarray, list, tuple)):
+                        sizes.setdefault(genre, {})[fname] = len(value)
+            maxes = {
+                genre: Counter(v for v in values.values()).most_common()[0][0]
+                for genre, values in sizes.items()
+            }
+        for n, conf in enumerate(confs.values()):
+            if condition(conf, best_match, maxes):
+                self.view.boxes[str(n)].var.set(keep)
+        self.discard_not_kept()
+        self.update_overview_values()
+
+    def discard_not_kept(self):
+        for key, var in self.kept_vars.items():
+            if var.get():
+                self.kept_funcs[key]()
+        for box, kept in zip(
+            self.overview.boxes.values(), self.parent.tslr.conformers.kept
+        ):
+            box.var.set(kept)
