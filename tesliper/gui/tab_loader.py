@@ -11,10 +11,9 @@ from typing import List
 import numpy as np
 
 from . import components as guicom
+from .components import CollapsiblePane, ScrollableFrame
 
 # LOGGER
-from .components import ScrollableFrame
-
 logger = lgg.getLogger(__name__)
 
 
@@ -103,11 +102,9 @@ class Loader(ttk.Frame):
         # Overview control
         # TO DO: consider switching to three buttons: 'include', 'exclude',
         # 'limit to', or similar
-        self.overview_control_frame = ttk.Labelframe(
-            controls.content, text="Overview control", width=90
-        )
-        self.overview_control_frame.grid(column=0, row=2, columnspan=2, sticky="nswe")
-        tk.Grid.columnconfigure(self.overview_control_frame, 4, weight=1)
+        oc_frame = CollapsiblePane(controls.content, text="Overview control", width=90)
+        oc_frame.grid(column=0, row=2, columnspan=2, sticky="nswe")
+        tk.Grid.columnconfigure(oc_frame, 4, weight=1)
         overview_vars = namedtuple("overview", ["kept", "all", "check", "uncheck"])
         self.overview_control_ref = {
             k: v
@@ -125,20 +122,18 @@ class Loader(ttk.Frame):
                 "file en ir vcd uv ecd ram roa incompl term " "opt imag incons".split(),
             )
         ):
-            tk.Label(self.overview_control_frame, text=name, anchor="w").grid(
-                column=0, row=i
-            )
+            tk.Label(oc_frame.content, text=name, anchor="w").grid(column=0, row=i)
             var_checked = tk.IntVar(value=0)
-            tk.Label(
-                self.overview_control_frame, textvariable=var_checked, bd=0, width=3
-            ).grid(column=1, row=i)
-            tk.Label(self.overview_control_frame, text="/", bd=0).grid(column=2, row=i)
+            tk.Label(oc_frame.content, textvariable=var_checked, bd=0, width=3).grid(
+                column=1, row=i
+            )
+            tk.Label(oc_frame.content, text="/", bd=0).grid(column=2, row=i)
             var_all = tk.IntVar(value=0)
-            tk.Label(
-                self.overview_control_frame, textvariable=var_all, bd=0, width=3
-            ).grid(column=3, row=i)
+            tk.Label(oc_frame.content, textvariable=var_all, bd=0, width=3).grid(
+                column=3, row=i
+            )
             check_butt = ttk.Button(
-                self.overview_control_frame,
+                oc_frame.content,
                 text="check",
                 width=6,
                 command=lambda key=key: self.un_check(key, True),
@@ -146,7 +141,7 @@ class Loader(ttk.Frame):
             check_butt.grid(column=4, row=i, sticky="ne")
             guicom.WgtStateChanger.tslr.append(check_butt)
             uncheck_butt = ttk.Button(
-                self.overview_control_frame,
+                oc_frame.content,
                 text="uncheck",
                 width=8,
                 command=lambda key=key: self.un_check(key, False),
