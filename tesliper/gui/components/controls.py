@@ -1,15 +1,22 @@
 # IMPORTS
+import functools
 import logging as lgg
+import math
+import queue
 import tkinter as tk
 import tkinter.ttk as ttk
 from abc import ABC, abstractmethod
 from collections import Counter, namedtuple
+from tkinter.filedialog import askopenfilename
 
 import numpy as np
+from matplotlib import cm
 
 from ... import datawork as dw
+from ... import tesliper
 from . import CollapsiblePane
 from .helpers import (
+    ThreadedMethod,
     WgtStateChanger,
     float_entry_out_validation,
     get_float_entry_validator,
@@ -394,6 +401,406 @@ class SelectConformers(CollapsiblePane):
             if var.get():
                 self.kept_funcs[key]()
         for box, kept in zip(
-            self.overview.boxes.values(), self.parent.tslr.conformers.kept
+            self.overview.boxes.values(), self.tesliper.conformers.kept
         ):
             box.var.set(kept)
+
+
+class CalculateSpectra(CollapsiblePane):
+    def __init__(self, parent, tesliper, view, **kwargs):
+        super().__init__(parent, **kwargs)
+        self.tesliper = tesliper
+        self.view = view
+
+        # Spectra name
+        s_name_frame = ttk.LabelFrame(self.content, text="Spectra type:")
+        s_name_frame.grid(column=0, row=0)
+        self.s_name = tk.StringVar()
+        self.s_name_radio = {}
+        names = "IR UV Raman VCD ECD ROA".split(" ")
+        values = "ir uv raman vcd ecd roa".split(" ")
+        positions = [(c, r) for c in range(2) for r in range(3)]
+        for n, v, (c, r) in zip(names, values, positions):
+            b = ttk.Radiobutton(
+                s_name_frame,
+                text=n,
+                variable=self.s_name,
+                value=v,
+                command=lambda v=v: self.spectra_chosen(v),
+            )
+            b.configure(state="disabled")
+            b.grid(column=c, row=r, sticky="w", padx=5)
+            self.s_name_radio[v] = b
+
+        # Settings
+        sett = ttk.LabelFrame(self.content, text="Settings:")
+        sett.grid(column=0, row=1, sticky="we")
+        tk.Grid.columnconfigure(sett, (1, 2), weight=1)
+        ttk.Label(sett, text="Fitting").grid(column=0, row=0)
+        fit = tk.StringVar()
+        self.fitting = ttk.Combobox(sett, textvariable=fit, state="disabled", width=13)
+        self.fitting.bind("<<ComboboxSelected>>", self.live_preview_callback)
+        self.fitting.var = fit
+        self.fitting.grid(column=1, row=0, columnspan=2, sticky="e")
+        self.fitting["values"] = ("lorentzian", "gaussian")
+        WgtStateChanger.bars.append(self.fitting)
+        for no, name in enumerate("Start Stop Step Width Offset Scaling".split(" ")):
+            ttk.Label(sett, text=name).grid(column=0, row=no + 1)
+            var = tk.StringVar()
+            entry = ttk.Entry(
+                sett,
+                textvariable=var,
+                width=10,
+                state="disabled",
+                validate="key",
+                validatecommand=get_float_entry_validator(self),
+            )
+            entry.bind(
+                "<FocusOut>",
+                lambda e, var=var: (
+                    float_entry_out_validation(var),
+                    self.live_preview_callback(),
+                ),
+            )
+            setattr(self, name.lower(), entry)
+            entry.var = var
+            entry.grid(column=1, row=no + 1, sticky="e")
+            unit = tk.StringVar()
+            unit.set("-")
+            entry.unit = unit
+            label = ttk.Label(sett, textvariable=unit)
+            label.grid(column=2, row=no + 1, sticky="e")
+            WgtStateChanger.bars.append(entry)
+
+        # Calculation Mode
+        self.mode = tk.StringVar()
+        self.single_radio = ttk.Radiobutton(
+            self.content,
+            text="Single file",
+            variable=self.mode,
+            value="single",
+            state="disabled",
+            command=self.mode_chosen,
+        )
+        self.single_radio.grid(column=0, row=2, sticky="w")
+        self.average_radio = ttk.Radiobutton(
+            self.content,
+            text="Average by energy",
+            variable=self.mode,
+            value="average",
+            state="disabled",
+            command=self.mode_chosen,
+        )
+        self.average_radio.grid(column=0, row=4, sticky="w")
+        self.stack_radio = ttk.Radiobutton(
+            self.content,
+            text="Stack by overview",
+            variable=self.mode,
+            value="stack",
+            state="disabled",
+            command=self.mode_chosen,
+        )
+        self.stack_radio.grid(column=0, row=6, sticky="w")
+
+        # TODO: call auto_combobox.update_values() when conformers.kept change
+        # FIXME: exception occurs when combobox is selected before s_name_radio
+        self.single = ConformersChoice(
+            self.content, tesliper=self.tesliper, spectra_var=self.s_name
+        )
+        self.single.bind(
+            "<<ComboboxSelected>>",
+            lambda event: self.live_preview_callback(event, mode="single"),
+        )
+        self.single.grid(column=0, row=3)
+        self.single["values"] = ()
+        self.average = EnergiesChoice(self.content, tesliper=self.tesliper)
+        self.average.bind(
+            "<<ComboboxSelected>>",
+            lambda event: self.live_preview_callback(event, mode="average"),
+        )
+        self.average.grid(column=0, row=5)
+
+        self.stack = ColorsChoice(self.content)
+        self.stack.bind("<<ComboboxSelected>>", self.change_colour)
+        self.stack.grid(column=0, row=7)
+        WgtStateChanger.bars.extend(
+            [self.single_radio, self.single, self.stack_radio, self.stack]
+        )
+        WgtStateChanger.both.extend([self.average_radio, self.average])
+        self.boxes = dict(single=self.single, average=self.average, stack=self.stack)
+        self.current_box = None
+        for box in self.boxes.values():
+            box.grid_remove()
+
+        # Live preview
+        # Recalculate
+        frame = ttk.Frame(self.content)
+        frame.grid(column=0, row=8, sticky="n")
+        var = tk.BooleanVar()
+        var.set(False)
+        self.reverse_ax = ttk.Checkbutton(
+            frame,
+            variable=var,
+            text="Reverse x-axis",
+            state="disabled",
+            command=self.live_preview_callback,
+        )
+        self.reverse_ax.grid(column=0, row=0, sticky="w")
+        self.reverse_ax.var = var
+        var = tk.BooleanVar()
+        var.set(True)
+        self.show_bars = ttk.Checkbutton(
+            frame,
+            variable=var,
+            text="Show activities",
+            state="disabled",
+            command=self.live_preview_callback,
+        )
+        self.show_bars.grid(column=0, row=1, sticky="w")
+        self.show_bars.var = var
+        self.show_bars.previous_value = True
+        var = tk.BooleanVar()
+        var.set(False)
+        self.show_exp = ttk.Checkbutton(
+            frame,
+            variable=var,
+            text="Experimental",
+            state="disabled",
+            command=self.live_preview_callback,
+        )
+        self.show_exp.grid(column=0, row=2, sticky="w")
+        self.show_exp.var = var
+        self.load_exp = ttk.Button(
+            frame,
+            text="Load...",
+            state="disabled",
+            command=lambda: (self.load_exp_command(), self.live_preview_callback()),
+        )
+        self.load_exp.grid(column=1, row=2)
+        var = tk.BooleanVar()
+        var.set(True)
+        self.live_prev = ttk.Checkbutton(
+            frame, variable=var, text="Live preview", state="disabled"
+        )
+        self.live_prev.grid(column=0, row=3, sticky="w")
+        self.live_prev.var = var
+        # previously labeled 'Recalculate'
+        self.recalc_b = ttk.Button(
+            frame, text="Redraw", state="disabled", command=self.recalculate_command
+        )
+        self.recalc_b.grid(column=1, row=3)
+        WgtStateChanger.bars.extend([self.live_prev, self.recalc_b])
+
+        self.last_used_settings = {
+            name: {
+                "offset": 0,
+                "scaling": 1,
+                "show_bars": True,
+                "show_exp": False,
+                "reverse_ax": name not in ("uv", "ecd"),
+            }
+            for name in self.s_name_radio
+        }
+        self._exp_spc = {k: None for k in self.s_name_radio.keys()}
+
+    @property
+    def exp_spc(self):
+        return self._exp_spc[self.s_name.get()]
+
+    @exp_spc.setter
+    def exp_spc(self, value):
+        self._exp_spc[self.s_name.get()] = value
+
+    def load_exp_command(self):
+        filename = askopenfilename(
+            parent=self,
+            title="Select spectrum file.",
+            filetypes=[
+                ("text files", "*.txt"),
+                ("xy files", "*.xy"),
+                # ("spc files", "*.spc"),
+                # spc not supported yet
+                ("all files", "*.*"),
+            ],
+        )
+        if filename:
+            try:
+                # FIXME: correct to use new API
+                spc = self.tesliper.soxhlet.load_spectrum(filename)
+                self.exp_spc = spc
+            except ValueError:
+                logger.warning(
+                    "Experimental spectrum couldn't be loaded. "
+                    "Please check if format of your file is supported"
+                    " or if file is not corrupted."
+                )
+        else:
+            return
+
+    def mode_chosen(self, event=None):
+        mode = self.mode.get()
+        if self.current_box is not None:
+            self.current_box.grid_remove()
+        self.current_box = self.boxes[mode]
+        self.current_box.grid()
+        getattr(self, mode).update_values()  # update linked combobox values
+        if mode == "single":
+            self.show_bars.config(state="normal")
+            self.show_bars.var.set(self.show_bars.previous_value)
+        else:
+            self.show_bars.config(state="disabled")
+            self.show_bars.previous_value = self.show_bars.var.get()
+            self.show_bars.var.set(False)
+        self.live_preview_callback()
+
+    def spectra_chosen(self, event=None):
+        tslr = self.tesliper
+        self.visualize_settings()
+        bar = tesliper.dw.DEFAULT_ACTIVITIES[self.s_name.get()]
+        self.single["values"] = [k for k, v in tslr.conformers.items() if bar in v]
+        self.reverse_ax.config(state="normal")
+        self.load_exp.config(state="normal")
+        self.show_exp.config(state="normal")
+        if self.mode.get():
+            self.live_preview_callback()
+        else:
+            self.single_radio.invoke()
+
+    def visualize_settings(self):
+        spectra_name = self.s_name.get()
+        spectra_type = tesliper.gw.SpectralData.spectra_type_ref[spectra_name]
+        tslr = self.tesliper
+        last_used = self.last_used_settings[spectra_name]
+        settings = tslr.parameters[spectra_type].copy()
+        settings.update(last_used)
+        for name, sett in settings.items():
+            if name == "fitting":
+                try:
+                    self.fitting.var.set(settings["fitting"].__name__)
+                except AttributeError:
+                    self.fitting.var.set(settings["fitting"])
+            else:
+                entry = getattr(self, name)
+                entry.var.set(sett)
+                try:
+                    entry.unit.set(tesliper.gw.Spectra._units[spectra_name][name])
+                except AttributeError:
+                    logger.debug(f"Pass on {name}")
+                except KeyError:
+                    if name == "offset":
+                        entry.unit.set(
+                            tesliper.gw.Spectra._units[spectra_name]["start"]
+                        )
+                    elif name == "scaling":
+                        pass
+                    else:
+                        raise ValueError(f"Invalid setting name: {name}")
+
+    def live_preview_callback(self, event=None, mode=False):
+        # TO DO: separate things, that don't need recalculation
+        # TO DO: show/hide bars/experimental plots when checkbox clicked
+        # TO DO: rewrite this function with sense
+        spectra_name = self.s_name.get()
+        mode_con = self.mode.get() == mode if mode else True
+        settings_con = (
+            spectra_name not in self.last_used_settings
+            or self.current_settings != self.last_used_settings[spectra_name]
+        )
+        core = any([not self.view.tslr_ax, mode_con, settings_con])
+        if core and self.live_prev.var.get():
+            self.recalculate_command()
+
+    def draw(self, spectra_name, mode, option):
+        queue_ = self.winfo_toplevel().thread.queue
+        if mode == "single" and self.show_bars.var.get():
+            bar_name = tesliper.dw.DEFAULT_ACTIVITIES[spectra_name]
+            with self.tesliper.conformers.trimmed_to([option]):
+                bars = self.tesliper[bar_name]
+        else:
+            bars = None
+        self._draw(
+            queue_,
+            bars=bars,
+            colour=option,
+            stack=mode == "stack",
+            experimental=self.exp_spc if self.show_exp.var.get() else None,
+            reverse_ax=self.reverse_ax.var.get(),
+        )
+
+    def _draw(self, queue_, **kwargs):
+        try:
+            spc = queue_.get(0)  # data put to queue by self._calculate_spectra
+            self.view.draw_spectra(spc, **kwargs)
+        except queue.Empty:
+            func = functools.update_wrapper(
+                functools.partial(self._draw, **kwargs), self._draw
+            )
+            self.after(20, func, queue_)
+
+    def change_colour(self, event=None):
+        if self.mode.get() != "stack":
+            return
+        colour = self.stack.var.get()
+        self.view.change_colour(colour)
+
+    @ThreadedMethod(progbar_msg="Calculating...")
+    def _calculate_spectra(self, spectra_name, option, mode):
+        if mode == "single":
+            spc = self.tesliper.calculate_single_spectrum(
+                spectra_name=spectra_name, conformer=option, **self.calculation_params
+            )
+        else:
+            spc = self.tesliper.calculate_spectra(
+                spectra_name, **self.calculation_params
+            )[
+                spectra_name
+            ]  # tslr.calculate_spectra returns dictionary
+            if mode == "average":
+                en_name = self.average.get_genre()
+                spc = self.tesliper.get_averaged_spectrum(spectra_name, en_name)
+        spc.offset = float(self.offset.var.get())
+        spc.scaling = float(self.scaling.var.get())
+        return spc
+
+    @property
+    def calculation_params(self):
+        d = {
+            k: v
+            for k, v in self.current_settings.items()
+            if k in "start stop step width fitting".split(" ")
+        }
+        return d
+
+    @property
+    def current_settings(self):
+        try:
+            settings = {
+                key: float(getattr(self, key).get())
+                for key in "start stop step width offset scaling".split(" ")
+            }
+            settings.update(
+                {
+                    key: getattr(self, key).var.get()
+                    for key in "reverse_ax show_bars show_exp".split(" ")
+                }
+            )
+            fit = self.fitting.get()
+            settings["fitting"] = getattr(tesliper.dw, fit)
+        except ValueError:
+            return {}
+        return settings
+
+    def recalculate_command(self):
+        spectra_name = self.s_name.get()
+        if not spectra_name:
+            logger.debug("spectra_name not specified.")
+            return
+        self.last_used_settings[spectra_name] = self.current_settings.copy()
+        mode = self.mode.get()
+        # get value from self.single, self.average or self.stack
+        option = getattr(self, mode).var.get()
+        if option.startswith("Choose "):
+            return
+        logger.debug("Recalculating!")
+        self._calculate_spectra(spectra_name, option, mode)
+        self.draw(spectra_name=spectra_name, mode=mode, option=option)

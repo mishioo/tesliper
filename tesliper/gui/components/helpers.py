@@ -207,6 +207,7 @@ class WgtStateChanger:
 
     @staticmethod
     def change_spectra_radio():
+        # TODO: change to registering in WgtStateChanger for individual genres
         tslr = WgtStateChanger.gui.tslr
         bars = {k: False for k in "dip rot vosc vrot losc lrot raman1 roa1".split()}
         for conf in tslr.conformers.values():
@@ -215,7 +216,7 @@ class WgtStateChanger:
         spectra_available = [
             SpectralData.spectra_name_ref[bar] for bar, got in bars.items() if got
         ]
-        radio = WgtStateChanger.gui.spectra_tab.s_name_radio
+        radio = WgtStateChanger.gui.spectra_tab.controls.s_name_radio
         for option, widget in radio.items():
             state = (
                 "disabled" if not tslr or option not in spectra_available else "normal"

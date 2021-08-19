@@ -1,6 +1,8 @@
+from views import SpectraView
+
 from .checktree import BoxVar, CheckTree, ConformersOverview, EnergiesView
 from .collapsible_pane import CollapsiblePane
-from .controls import EnergiesChoice, FilterRMSD
+from .controls import CalculateSpectra, EnergiesChoice, FilterRMSD
 from .helpers import (
     MaxLevelFilter,
     PopupHandler,
