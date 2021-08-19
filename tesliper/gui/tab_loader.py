@@ -262,7 +262,7 @@ class Loader(ttk.Frame):
         query = popup.get_query()
         return query
 
-    @guicom.Feedback("Saving...")
+    @guicom.ThreadedMethod(progbar_msg="Saving...")
     def execute_save_command(self, categories, fmt):
         # TODO: add auto-calculate ?
         if "averaged" in categories:
@@ -364,7 +364,7 @@ class Loader(ttk.Frame):
         filenames = list(map(lambda p: os.path.split(p)[1], files))
         self.extract(path, filenames)
 
-    @guicom.Feedback("Extracting...")
+    @guicom.ThreadedMethod(progbar_msg="Extracting...")
     def extract(self, path, wanted_files=None):
         # TODO: handle extraction errors
         tslr = self.parent.tslr
@@ -485,16 +485,16 @@ class Loader(ttk.Frame):
         ):
             box.var.set(kept)
 
-    @guicom.Feedback("Calculating populations...")
+    @guicom.ThreadedMethod(progbar_msg="Calculating populations...")
     def calc_popul(self):
         logger.debug("Calculating populations...")
         self.parent.tslr.calculate_populations()
 
-    @guicom.Feedback("Calculating spectra...")
+    @guicom.ThreadedMethod(progbar_msg="Calculating spectra...")
     def calc_spectra(self):
         self.parent.tslr.calculate_spectra()
 
-    @guicom.Feedback("Averaging spectra...")
+    @guicom.ThreadedMethod(progbar_msg="Averaging spectra...")
     def calc_average(self):
         self.parent.tslr.average_spectra()
 

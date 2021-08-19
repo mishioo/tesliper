@@ -263,7 +263,7 @@ class FeedbackThread(Thread):
             return return_value
 
 
-class Feedback:
+class ThreadedMethod:
     def __init__(self, progbar_msg):
         self.progbar_msg = progbar_msg
 

@@ -515,7 +515,7 @@ class Spectra(ttk.Frame):
         except queue.Empty:
             self.after(20, self._show_spectra, queue_, bars, colour, width, stack)
 
-    @guicom.Feedback("Calculating...")
+    @guicom.ThreadedMethod(progbar_msg="Calculating...")
     def _calculate_spectra(self, spectra_name, option, mode):
         tslr = self.parent.tslr
         if mode == "single":
