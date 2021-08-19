@@ -7,7 +7,16 @@ from threading import Thread
 from tkinter import messagebox
 
 from .. import tesliper
-from . import components as guicom
+from .components import (
+    ConformersOverview,
+    EnergiesView,
+    MaxLevelFilter,
+    PopupHandler,
+    ReadOnlyText,
+    ShortExcFormatter,
+    TextHandler,
+    WgtStateChanger,
+)
 from .tab_energies import Conformers
 from .tab_loader import Loader
 from .tab_spectra import Spectra
@@ -32,15 +41,13 @@ error_handler.setLevel(logging.ERROR)
 error_handler.setFormatter(
     logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s\n")
 )
-error_popup_handler = guicom.PopupHandler(title_msg="Something unexpected happened! :(")
+error_popup_handler = PopupHandler(title_msg="Something unexpected happened! :(")
 error_popup_handler.setLevel(logging.ERROR)
-error_popup_handler.setFormatter(
-    guicom.ShortExcFormatter("%(message)s \n\n" + error_msg)
-)
-warning_popup_handler = guicom.PopupHandler(title_msg="Sorry!")
+error_popup_handler.setFormatter(ShortExcFormatter("%(message)s \n\n" + error_msg))
+warning_popup_handler = PopupHandler(title_msg="Sorry!")
 warning_popup_handler.setLevel(logging.WARNING)
-warning_popup_handler.addFilter(guicom.MaxLevelFilter(logging.WARNING))
-warning_popup_handler.setFormatter(guicom.ShortExcFormatter("%(message)s \n\n"))
+warning_popup_handler.addFilter(MaxLevelFilter(logging.WARNING))
+warning_popup_handler.setFormatter(ShortExcFormatter("%(message)s \n\n"))
 
 handlers = [error_handler, error_popup_handler, warning_popup_handler]
 
@@ -92,28 +99,28 @@ class TesliperApp(tk.Tk):
 
         # Log window
         # displayed in separate, optional window
-        self.log = guicom.ReadOnlyText(self, width=50, height=34, wrap=tk.WORD)
+        self.log = ReadOnlyText(self, width=50, height=34, wrap=tk.WORD)
         ttk.Button(bottom_frame, text="Display log", command=self.log.show).grid(
             column=2, row=0, sticky="se"
         )
 
         # Logger & handlers
         self.logger = logger
-        text_handler = guicom.TextHandler(self.log)
+        text_handler = TextHandler(self.log)
         text_handler.setLevel(logging.INFO)
-        text_handler.addFilter(guicom.MaxLevelFilter(logging.INFO))
+        text_handler.addFilter(MaxLevelFilter(logging.INFO))
 
-        text_warning_handler = guicom.TextHandler(self.log)
+        text_warning_handler = TextHandler(self.log)
         text_warning_handler.setLevel(logging.WARNING)
-        text_warning_handler.addFilter(guicom.MaxLevelFilter(logging.WARNING))
+        text_warning_handler.addFilter(MaxLevelFilter(logging.WARNING))
         text_warning_handler.setFormatter(
             logging.Formatter("%(levelname)s: %(message)s")
         )
 
-        text_error_handler = guicom.TextHandler(self.log)
+        text_error_handler = TextHandler(self.log)
         text_error_handler.setLevel(logging.ERROR)
         text_error_handler.setFormatter(
-            guicom.ShortExcFormatter("ERROR! %(message)s \n" + error_msg)
+            ShortExcFormatter("ERROR! %(message)s \n" + error_msg)
         )
         text_handlers = [
             text_error_handler,
@@ -124,9 +131,9 @@ class TesliperApp(tk.Tk):
             ROOT_LOGGER.addHandler(handler)
 
         # WgtStateChanger
-        guicom.WgtStateChanger.gui = self
+        WgtStateChanger.gui = self
         self.new_session()
-        guicom.WgtStateChanger.set_states()
+        WgtStateChanger.set_states()
 
         self.logger.info(
             "Welcome to Tesliper:\n" "Theoretical Spectroscopist Little Helper!"
@@ -142,7 +149,7 @@ class TesliperApp(tk.Tk):
     def report_callback_exception(self, exc, val, tb):
         self.logger.critical("An unexpected error occurred.", exc_info=True)
 
-    @guicom.WgtStateChanger
+    @WgtStateChanger
     def new_session(self):
         if self.tslr.conformers:
             pop = messagebox.askokcancel(
@@ -169,14 +176,14 @@ class TesliperApp(tk.Tk):
             for checked, _all, __ in self.main_tab.overview_control.values():
                 checked.set(0)
                 _all.set(0)
-        self.main_tab.overview = guicom.ConformersOverview(
+        self.main_tab.overview = ConformersOverview(
             self.main_tab.label_overview, self.main_tab
         )
         self.main_tab.overview.frame.grid(column=0, row=0, sticky="nswe")
         # establish new conf_list
         if self.conf_tab.conf_list is not None:
             self.conf_tab.conf_list.destroy()
-        self.conf_tab.conf_list = guicom.EnergiesView(
+        self.conf_tab.conf_list = EnergiesView(
             self.conf_tab.overview, parent_tab=self.conf_tab
         )
         self.conf_tab.conf_list.frame.grid(column=0, row=0, sticky="nswe")

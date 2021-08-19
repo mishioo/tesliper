@@ -11,10 +11,14 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 
 from .. import tesliper as tesliper
-from . import components as guicom
 from .components import EnergiesChoice, ScrollableFrame
 from .components.controls import ColorsChoice, ConformersChoice
-from .components.helpers import float_entry_out_validation, get_float_entry_validator
+from .components.helpers import (
+    ThreadedMethod,
+    WgtStateChanger,
+    float_entry_out_validation,
+    get_float_entry_validator,
+)
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -65,7 +69,7 @@ class Spectra(ttk.Frame):
         self.fitting.var = fit
         self.fitting.grid(column=1, row=0, columnspan=2, sticky="e")
         self.fitting["values"] = ("lorentzian", "gaussian")
-        guicom.WgtStateChanger.bars.append(self.fitting)
+        WgtStateChanger.bars.append(self.fitting)
         for no, name in enumerate("Start Stop Step Width Offset Scaling".split(" ")):
             ttk.Label(sett, text=name).grid(column=0, row=no + 1)
             var = tk.StringVar()
@@ -92,7 +96,7 @@ class Spectra(ttk.Frame):
             entry.unit = unit
             label = ttk.Label(sett, textvariable=unit)
             label.grid(column=2, row=no + 1, sticky="e")
-            guicom.WgtStateChanger.bars.append(entry)
+            WgtStateChanger.bars.append(entry)
 
         # Calculation Mode
         self.mode = tk.StringVar()
@@ -145,10 +149,10 @@ class Spectra(ttk.Frame):
         self.stack = ColorsChoice(controls.content)
         self.stack.bind("<<ComboboxSelected>>", self.change_colour)
         self.stack.grid(column=0, row=7)
-        guicom.WgtStateChanger.bars.extend(
+        WgtStateChanger.bars.extend(
             [self.single_radio, self.single, self.stack_radio, self.stack]
         )
-        guicom.WgtStateChanger.both.extend([self.average_radio, self.average])
+        WgtStateChanger.both.extend([self.average_radio, self.average])
         self.boxes = dict(single=self.single, average=self.average, stack=self.stack)
         self.current_box = None
         for box in self.boxes.values():
@@ -211,7 +215,7 @@ class Spectra(ttk.Frame):
             frame, text="Redraw", state="disabled", command=self.recalculate_command
         )
         self.recalc_b.grid(column=1, row=3)
-        guicom.WgtStateChanger.bars.extend([self.live_prev, self.recalc_b])
+        WgtStateChanger.bars.extend([self.live_prev, self.recalc_b])
 
         # Spectrum
         spectra_view = ttk.LabelFrame(self, text="Spectra view")
@@ -515,7 +519,7 @@ class Spectra(ttk.Frame):
         except queue.Empty:
             self.after(20, self._show_spectra, queue_, bars, colour, width, stack)
 
-    @guicom.ThreadedMethod(progbar_msg="Calculating...")
+    @ThreadedMethod(progbar_msg="Calculating...")
     def _calculate_spectra(self, spectra_name, option, mode):
         tslr = self.parent.tslr
         if mode == "single":

@@ -10,8 +10,14 @@ from typing import List
 
 import numpy as np
 
-from . import components as guicom
-from .components import CollapsiblePane, ScrollableFrame
+from .components import (
+    BarsPopup,
+    CollapsiblePane,
+    ExportPopup,
+    ScrollableFrame,
+    ThreadedMethod,
+    WgtStateChanger,
+)
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -75,13 +81,13 @@ class Loader(ttk.Frame):
             buttons_frame, text="Clear session", command=self.parent.new_session
         )
         self.b_clear_session.grid(column=0, row=2, sticky="nwe")
-        guicom.WgtStateChanger.either.append(self.b_clear_session)
+        WgtStateChanger.either.append(self.b_clear_session)
 
         self.b_calc = ttk.Button(
             buttons_frame, text="Auto calculate", command=self.not_impl
         )
         self.b_calc.grid(column=0, row=0, sticky="nwe")
-        guicom.WgtStateChanger.bars.append(self.b_calc)
+        WgtStateChanger.bars.append(self.b_calc)
 
         self.b_text_export = ttk.Button(
             buttons_frame, text="Export as .txt", command=self.save_text
@@ -95,7 +101,7 @@ class Loader(ttk.Frame):
             buttons_frame, text="Export as .csv", command=self.save_csv
         )
         self.b_csv_export.grid(column=1, row=2, sticky="nwe")
-        guicom.WgtStateChanger.either.extend(
+        WgtStateChanger.either.extend(
             [self.b_text_export, self.b_excel_export, self.b_csv_export]
         )
 
@@ -139,7 +145,7 @@ class Loader(ttk.Frame):
                 command=lambda key=key: self.un_check(key, True),
             )
             check_butt.grid(column=4, row=i, sticky="ne")
-            guicom.WgtStateChanger.tslr.append(check_butt)
+            WgtStateChanger.tslr.append(check_butt)
             uncheck_butt = ttk.Button(
                 oc_frame.content,
                 text="uncheck",
@@ -147,7 +153,7 @@ class Loader(ttk.Frame):
                 command=lambda key=key: self.un_check(key, False),
             )
             uncheck_butt.grid(column=5, row=i, sticky="ne")
-            guicom.WgtStateChanger.tslr.append(uncheck_butt)
+            WgtStateChanger.tslr.append(uncheck_butt)
             self.overview_control[key] = overview_vars(
                 var_checked, var_all, check_butt, uncheck_butt
             )
@@ -258,11 +264,11 @@ class Loader(ttk.Frame):
         )
 
     def get_save_query(self):
-        popup = guicom.ExportPopup(self, width="220", height="130")
+        popup = ExportPopup(self, width="220", height="130")
         query = popup.get_query()
         return query
 
-    @guicom.ThreadedMethod(progbar_msg="Saving...")
+    @ThreadedMethod(progbar_msg="Saving...")
     def execute_save_command(self, categories, fmt):
         # TODO: add auto-calculate ?
         if "averaged" in categories:
@@ -364,7 +370,7 @@ class Loader(ttk.Frame):
         filenames = list(map(lambda p: os.path.split(p)[1], files))
         self.extract(path, filenames)
 
-    @guicom.ThreadedMethod(progbar_msg="Extracting...")
+    @ThreadedMethod(progbar_msg="Extracting...")
     def extract(self, path, wanted_files=None):
         # TODO: handle extraction errors
         tslr = self.parent.tslr
@@ -485,20 +491,20 @@ class Loader(ttk.Frame):
         ):
             box.var.set(kept)
 
-    @guicom.ThreadedMethod(progbar_msg="Calculating populations...")
+    @ThreadedMethod(progbar_msg="Calculating populations...")
     def calc_popul(self):
         logger.debug("Calculating populations...")
         self.parent.tslr.calculate_populations()
 
-    @guicom.ThreadedMethod(progbar_msg="Calculating spectra...")
+    @ThreadedMethod(progbar_msg="Calculating spectra...")
     def calc_spectra(self):
         self.parent.tslr.calculate_spectra()
 
-    @guicom.ThreadedMethod(progbar_msg="Averaging spectra...")
+    @ThreadedMethod(progbar_msg="Averaging spectra...")
     def calc_average(self):
         self.parent.tslr.average_spectra()
 
     def get_wanted_bars(self):
         # TODO: check if needed, delete if it's not
-        popup = guicom.BarsPopup(self, width="250", height="190")
+        popup = BarsPopup(self, width="250", height="190")
         del popup
