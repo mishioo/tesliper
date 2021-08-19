@@ -268,22 +268,23 @@ class Feedback:
         self.progbar_msg = progbar_msg
 
     def __call__(self, function):
-        def wrapper(other, *args, **kwargs):
-            # other becomes self from decorated method
-            if other.parent.thread.is_alive():
+        def wrapper(widget, *args, **kwargs):
+            # widget is `self` from decorated method
+            root = widget.winfo_toplevel()
+            if root.thread.is_alive():
                 msg = "Can't start {}, while {} is still running.".format(
-                    function, other.parent.thread.target
+                    function, root.thread.target
                 )
                 logger.info(msg)
                 return  # log and do nothing
             else:
-                other.parent.thread = FeedbackThread(
-                    other.parent,
+                root.thread = FeedbackThread(
+                    root,
                     self.progbar_msg,
                     function,
-                    [other] + list(args),
+                    [widget] + list(args),
                     kwargs,
                 )
-            other.parent.thread.start()
+            root.thread.start()
 
         return wrapper
