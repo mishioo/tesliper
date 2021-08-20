@@ -52,11 +52,7 @@ class Checkbox(ttk.Checkbutton):
         logger.debug(f"box index: {self.index}")
         value = self.var.get()
         self.var.set(value)
-        self.tree.trees["main"].parent_tab.discard_not_kept()
-        self.tree.trees["main"].parent_tab.update_overview_values()
-        self.tree.trees["energies"].parent_tab.refresh()
-        # self.tree.selection_set(str(self.index))
-        WgtStateChanger.set_states()
+        self.event_generate("<<ConformerClicked>>")
 
 
 class CheckTree(ttk.Treeview):

@@ -197,6 +197,11 @@ class Loader(ttk.Frame):
         tk.Grid.rowconfigure(self.label_overview, 0, weight=1)
         tk.Grid.columnconfigure(self.label_overview, 0, weight=1)
 
+        # need to bind to root to process event from another widget
+        root = self.winfo_toplevel()
+        root.bind("<<ConformerClicked>>", self.discard_not_kept, add="+")
+        root.bind("<<ConformerClicked>>", self.update_overview_values, add="+")
+
     def un_check(self, key, keep):
         overview_funcs = dict(
             file=lambda *args: True,
@@ -428,7 +433,8 @@ class Loader(ttk.Frame):
         for key, value in values.items():
             self.overview_control[key][1].set(value)
 
-    def update_overview_values(self):
+    def update_overview_values(self, _event=None):
+        logger.debug("Called update_overview_values")
         values = {k: 0 for k in self.overview_control.keys()}
         try:
             # TODO: extract this repeated snippet (un_check(), set_overview_values())
@@ -482,7 +488,8 @@ class Loader(ttk.Frame):
                 box.var.set(kept)
         self.update_overview_values()
 
-    def discard_not_kept(self):
+    def discard_not_kept(self, _event=None):
+        logger.debug("Called discard_not_kept")
         for key, var in self.kept_vars.items():
             if var.get():
                 self.kept_funcs[key]()

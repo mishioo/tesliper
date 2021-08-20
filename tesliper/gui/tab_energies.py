@@ -79,6 +79,9 @@ class Conformers(ttk.Frame):
 
         self.established = False
 
+        # need to bind to root to process event from another widget
+        root = self.winfo_toplevel()
+        root.bind("<<ConformerClicked>>", self.refresh, "+")
         WgtStateChanger.energies.extend(
             [
                 b_select,
