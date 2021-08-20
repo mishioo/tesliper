@@ -107,8 +107,11 @@ class Conformers(ttk.Frame):
                 if "gib" not in conf:
                     boxes[str(num)].var.set(False)
 
+    def update_view_values(self, _event=None):
+        self.conf_list.refresh(show=self.showing)
+
     def refresh(self, event=None):
-        self.conf_list.refresh()
+        self.update_view_values()
         # TODO: figure out if there is a better way to schedule energies_choice updates
         #       maybe set up custom events and bindings?
         self.filter.energies_choice.update_values()

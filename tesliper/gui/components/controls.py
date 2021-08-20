@@ -203,7 +203,7 @@ class FilterEnergy(ttk.Frame):
             self.tesliper.conformers.kept,
         ):
             box.var.set(kept)
-        self.tab.conf_list.refresh()
+        self.tab.update_view_values()
 
 
 class FilterRMSD(ttk.Frame):
@@ -282,7 +282,7 @@ class FilterRMSD(ttk.Frame):
             self.tesliper.conformers.kept,
         ):
             box.var.set(kept)
-        self.tab.conf_list.refresh()
+        self.tab.update_view_values()
 
 
 class SelectConformers(CollapsiblePane):

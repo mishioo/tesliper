@@ -181,14 +181,14 @@ class TesliperApp(tk.Tk):
                 checked.set(0)
                 _all.set(0)
         self.main_tab.overview = ConformersOverview(
-            self.main_tab.label_overview, self.main_tab
+            self.main_tab.label_overview, tesliper=self.tslr
         )
         self.main_tab.overview.frame.grid(column=0, row=0, sticky="nswe")
         # establish new conf_list
         if self.conf_tab.conf_list is not None:
             self.conf_tab.conf_list.destroy()
         self.conf_tab.conf_list = EnergiesView(
-            self.conf_tab.overview, parent_tab=self.conf_tab
+            self.conf_tab.overview, tesliper=self.tslr
         )
         self.conf_tab.conf_list.frame.grid(column=0, row=0, sticky="nswe")
         self.conf_tab.established = False

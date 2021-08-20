@@ -58,10 +58,10 @@ class Checkbox(ttk.Checkbutton):
 class CheckTree(ttk.Treeview):
     trees = dict()
 
-    def __init__(self, master, name, parent_tab=None, **kwargs):
+    def __init__(self, master, name, tesliper, **kwargs):
         CheckTree.trees[name] = self
         self.frame = ttk.Frame(master)
-        self.parent_tab = parent_tab
+        self.tesliper = tesliper
         super().__init__(self.frame, **kwargs)
         self.grid(column=0, row=0, rowspan=2, columnspan=2, sticky="nwse")
         tk.Grid.columnconfigure(self.frame, 1, weight=1)
@@ -110,7 +110,8 @@ class CheckTree(ttk.Treeview):
 
     @property
     def tslr(self):
-        return self.parent_tab.parent.tslr
+        # for backwards compatibility
+        return self.tesliper
 
     @property
     def blade(self):
@@ -219,9 +220,9 @@ class EnergiesView(CheckTree):
     )
     e_keys = "ten ent gib scf zpe".split(" ")
 
-    def __init__(self, master, parent_tab=None, **kwargs):
+    def __init__(self, parent, tesliper, **kwargs):
         kwargs["columns"] = "ten ent gib scf zpe".split(" ")
-        super().__init__(master, "energies", parent_tab=parent_tab, **kwargs)
+        super().__init__(parent, "energies", tesliper=tesliper, **kwargs)
 
         # Columns
         for cid, text in zip(
@@ -240,10 +241,7 @@ class EnergiesView(CheckTree):
         iid = super()._insert(parent=parent, index=index, iid=iid, **kw)
         return iid
 
-    def refresh(self):
-        # TO DO: implement this based on table_view_update from main.Conformers
-        # super().refresh()
-        show = self.parent_tab.show_ref[self.parent_tab.show_var.get()]
+    def refresh(self, show):
         logger.debug("Going to update by showing {}.".format(show))
         if show == "values":
             # we don't want to hide energy values of non-kept conformer
@@ -270,11 +268,11 @@ class EnergiesView(CheckTree):
 
 
 class ConformersOverview(CheckTree):
-    def __init__(self, master, parent_tab=None, **kwargs):
+    def __init__(self, master, tesliper, **kwargs):
         kwargs["columns"] = "term opt en ir vcd uv ecd ram roa " "imag stoich".split(
             " "
         )
-        super().__init__(master, "main", parent_tab=parent_tab, **kwargs)
+        super().__init__(master, "main", tesliper=tesliper, **kwargs)
         self.curr_iid = 0
 
         # Columns
