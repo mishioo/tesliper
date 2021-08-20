@@ -201,12 +201,6 @@ class CheckTree(ttk.Treeview):
         # logger.debug(args)
         # logger.debug(self.canvas.yview())
 
-    def click_all(self, index, value):
-        # this is not used currently 21.11.2018
-        for tree in CheckTree.trees.values():
-            tree.boxes[index].var.set(value)
-            tree.refresh()
-
     def refresh(self):
         pass
         # logger.debug(f"Called .refresh on {type(self)}")
