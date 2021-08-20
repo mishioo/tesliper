@@ -1,5 +1,3 @@
-from views import SpectraView
-
 from .checktree import BoxVar, CheckTree, ConformersOverview, EnergiesView
 from .collapsible_pane import CollapsiblePane
 from .controls import CalculateSpectra, EnergiesChoice, FilterRMSD
@@ -14,3 +12,4 @@ from .helpers import (
 )
 from .popups import BarsPopup, ExportPopup
 from .scroll import AutoScrollbar, ScrollableFrame
+from .views import SpectraView
