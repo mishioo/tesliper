@@ -321,10 +321,10 @@ class SelectConformers(CollapsiblePane):
         ),
     )
 
-    def __init__(self, parent, tesliper, view, **kwargs):
+    def __init__(self, parent, tesliper, tab, **kwargs):
         super().__init__(parent, text="Select kept conformers", **kwargs)
         self.tesliper = tesliper
-        self.view = view
+        self.tab = tab
 
         self.widgets = dict()
         self.columnconfigure(0, weight=1)
@@ -492,7 +492,7 @@ class SelectConformers(CollapsiblePane):
             }
         for n, conf in enumerate(confs.values()):
             if condition(conf, best_match, maxes):
-                self.view.boxes[str(n)].var.set(keep)
+                self.tab.overview.boxes[str(n)].var.set(keep)
         self.event_generate("<<KeptChanged>>")
 
     def discard(self, key):
@@ -923,9 +923,9 @@ class CalculateSpectra(CollapsiblePane):
 
 
 class ExtractData(ttk.LabelFrame):
-    def __init__(self, tesliper, view, **kwargs):
+    def __init__(self, tesliper, tab, **kwargs):
         self.tesliper = tesliper
-        self.view = view
+        self.tab = tab
         super().__init__(self, text="Extract data", **kwargs)
         self.b_auto_extract = ttk.Button(
             self, text="Choose folder", command=self.from_dir
@@ -967,7 +967,7 @@ class ExtractData(ttk.LabelFrame):
         # TODO: handle extraction errors
         try:
             for file, data in self.tesliper.extract_iterate(path, wanted_files):
-                self.view.insert("", tk.END, text=file)
+                self.tab.overview.insert("", tk.END, text=file)
         except TypeError as err:
             logger.warning("Cannot extract from specified directory: " + err.args[0])
             return
