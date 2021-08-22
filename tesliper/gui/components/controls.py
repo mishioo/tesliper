@@ -15,7 +15,7 @@ from matplotlib import cm
 
 from ... import datawork as dw
 from ... import tesliper
-from . import CollapsiblePane
+from . import CollapsiblePane, LabelSeparator
 from .helpers import (
     ThreadedMethod,
     WgtStateChanger,
@@ -286,6 +286,9 @@ class FilterRMSD(ttk.Frame):
         self.tab.update_view_values()
 
 
+OVERVIEW_GENRES = "dip rot vosc vrot losc lrot raman1 roa1 scf zpe ent ten gib".split()
+
+
 class SelectConformers(CollapsiblePane):
     overview_control_ref = {
         k: v
@@ -321,6 +324,13 @@ class SelectConformers(CollapsiblePane):
         self.view = view
 
         self.widgets = dict()
+        self.columnconfigure(0, weight=1)
+        root = self.winfo_toplevel()
+        root.bind("<<KeptChanged>>", self.on_kept_changed, "+")
+        root.bind("<<DataExtracted>>", self.on_data_extracted, "+")
+
+        count_frame = ttk.Frame(self.content)
+        count_frame.grid(column=0, row=0, sticky="news")
         widgets_tuple = namedtuple(
             "widgets", ["label", "count", "slash", "all", "check", "uncheck"]
         )
@@ -334,19 +344,19 @@ class SelectConformers(CollapsiblePane):
             var = tk.IntVar(value=0)  # number of conformers selected
             var_all = tk.IntVar(value=0)  # number of conformers in total
 
-            label = tk.Label(self.content, text=name, anchor="w")
-            count = tk.Label(self.content, textvariable=var, bd=0, width=3)
-            slash = tk.Label(self.content, text="/", bd=0)
-            all_ = tk.Label(self.content, textvariable=var_all, bd=0, width=3)
+            label = tk.Label(count_frame, text=name, anchor="w")
+            count = tk.Label(count_frame, textvariable=var, bd=0, width=3)
+            slash = tk.Label(count_frame, text="/", bd=0)
+            all_ = tk.Label(count_frame, textvariable=var_all, bd=0, width=3)
             check_butt = ttk.Button(
-                self.content,
-                text="check",
+                count_frame,
+                text="select",
                 width=6,
                 command=lambda key=key: self.select(key, keep=True),
             )
             uncheck_butt = ttk.Button(
-                self.content,
-                text="uncheck",
+                count_frame,
+                text="discard",
                 width=8,
                 command=lambda key=key: self.select(key, keep=False),
             )
@@ -366,19 +376,92 @@ class SelectConformers(CollapsiblePane):
             self.widgets[key] = widgets_tuple(
                 label, count, slash, all_, check_butt, uncheck_butt
             )
-        root = self.winfo_toplevel()
-        root.bind("<<KeptChanged>>", self.on_kept_changed, "+")
-        root.bind("<<DataExtracted>>", self.on_data_extracted, "+")
+        separator = LabelSeparator(self.content, text="Always discard?")
+        separator.grid(column=0, row=1, sticky="we")
+
+        keep_unchecked_frame = ttk.Frame(self.content)
+        keep_unchecked_frame.grid(column=0, row=2, sticky="nswe")
+        self.kept_vars = {
+            k: tk.BooleanVar()
+            for k in "error unopt imag stoich incompl incons".split(" ")
+        }
+        self.kept_buttons = {
+            k: ttk.Checkbutton(
+                keep_unchecked_frame,
+                text=text,
+                variable=var,
+                command=lambda k=k: self.discard(k),
+            )
+            for (k, var), text in zip(
+                self.kept_vars.items(),
+                [
+                    "Error termination",
+                    "Unoptimised",
+                    "Imaginary frequencies",
+                    "Non-matching stoichiometry",
+                    "Incomplete entries",
+                    "Inconsistent data sizes",
+                ],
+            )
+        }
+        for n, (key, var) in enumerate(self.kept_vars.items()):
+            var.set(True)
+            self.kept_buttons[key].grid(column=0, row=n, sticky="nw")
 
     def on_data_extracted(self, _event=None):
-        # set_overview_values should only be called after extraction
-        self.set_overview_values()
+        # "all" count should only be called after extraction
+        self.update_overview_values(untrimmed=True)
 
     def on_kept_changed(self, _event=None):
         self.discard_not_kept()
         self.update_overview_values()
 
-    # TODO: implement .set_overview_values() and .update_overview_values()
+    def update_overview_values(self, untrimmed=False):
+        logger.debug("Called update_overview_values")
+        values = {k: 0 for k in self.widgets.keys()}
+        try:
+            count = [
+                [g in conf for g in OVERVIEW_GENRES]
+                for conf in self.tesliper.conformers.values()
+            ]
+            best_match = [g for g, k in zip(OVERVIEW_GENRES, max(count)) if k]
+        except ValueError:
+            best_match = []
+        sizes = {}
+        for fname, conf in self.tesliper.conformers.items():
+            for genre, value in conf.items():
+                if isinstance(value, (np.ndarray, list, tuple)):
+                    sizes.setdefault(genre, {})[fname] = len(value)
+        maxes = {
+            genre: Counter(v for v in values.values()).most_common()[0][0]
+            for genre, values in sizes.items()
+        }
+        conformers = (
+            self.tesliper.conformers.values()
+            if untrimmed
+            else self.tesliper.conformers.kept_values()
+        )
+        for conf in conformers:
+            values["file"] += 1
+            values["term"] += not conf["normal_termination"]
+            values["incompl"] += not all(g in conf for g in best_match)
+            values["opt"] += (
+                "optimization_completed" in conf and not conf["optimization_completed"]
+            )
+            values["imag"] += "freq" in conf and sum(v < 0 for v in conf["freq"]) > 0
+            values["en"] += "gib" in conf
+            values["ir"] += "dip" in conf
+            values["vcd"] += "rot" in conf
+            values["uv"] += "vosc" in conf
+            values["ecd"] += "vrot" in conf
+            values["ram"] += "raman1" in conf
+            values["roa"] += "roa1" in conf
+            values["incons"] += any(
+                g in conf and not len(conf[g]) == mx for g, mx in maxes.items()
+            )
+        category = "all" if untrimmed else "count"
+        for key, items in self.widgets.items():
+            getattr(items, category).var.set(values[key])
 
     def select(self, key, keep):
         confs = self.tesliper.conformers
@@ -409,14 +492,31 @@ class SelectConformers(CollapsiblePane):
                 self.view.boxes[str(n)].var.set(keep)
         self.event_generate("<<KeptChanged>>")
 
+    def discard(self, key):
+        value = self.kept_vars[key].get()
+        if key == "incons":
+            self.tesliper.conformers.allow_data_inconsistency = not value
+        # trigger discard_not_kept(), update_overview_values()
+        # and WgtStateChanger.set_states()
+        self.event_generate("<<KeptChanged>>")
+
     def discard_not_kept(self):
         for key, var in self.kept_vars.items():
             if var.get():
                 self.kept_funcs[key]()
-        for box, kept in zip(
-            self.overview.boxes.values(), self.tesliper.conformers.kept
-        ):
+        for box, kept in zip(self.view.boxes.values(), self.tesliper.conformers.kept):
             box.var.set(kept)
+
+    @property
+    def kept_funcs(self):
+        return dict(
+            error=self.tesliper.conformers.trim_non_normal_termination,
+            unopt=self.tesliper.conformers.trim_not_optimized,
+            imag=self.tesliper.conformers.trim_imaginary_frequencies,
+            stoich=self.tesliper.conformers.trim_non_matching_stoichiometry,
+            incompl=self.tesliper.conformers.trim_incomplete,
+            incons=self.tesliper.conformers.trim_inconsistent_sizes,
+        )
 
 
 class CalculateSpectra(CollapsiblePane):
