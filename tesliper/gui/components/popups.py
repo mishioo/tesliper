@@ -8,6 +8,12 @@ from tkinter import messagebox
 logger = lgg.getLogger(__name__)
 
 
+def not_implemented_popup():
+    messagebox.showinfo(
+        "Sorry!", "We are sorry, but this function is not implemented yet."
+    )
+
+
 # CLASSES
 class Popup(tk.Toplevel):
     def __init__(self, master, *args, **kwargs):

@@ -20,22 +20,13 @@ from .components import (
 )
 
 # LOGGER
+from .components.helpers import join_with_and
+from .components.popups import not_implemented_popup
+
 logger = lgg.getLogger(__name__)
 
 
 OVERVIEW_GENRES = "dip rot vosc vrot losc lrot raman1 roa1 scf zpe ent ten gib".split()
-
-
-def join_with_and(words: List[str]) -> str:
-    """Joins list of strings with "and" between the last two."""
-    if len(words) > 2:
-        return ", ".join(words[:-1]) + ", and " + words[-1]
-    elif len(words) == 2:
-        return " and ".join(words)
-    elif len(words) == 1:
-        return words[0]
-    else:
-        return ""
 
 
 # CLASSES
@@ -84,7 +75,7 @@ class Loader(ttk.Frame):
         WgtStateChanger.either.append(self.b_clear_session)
 
         self.b_calc = ttk.Button(
-            buttons_frame, text="Auto calculate", command=self.not_impl
+            buttons_frame, text="Auto calculate", command=not_implemented_popup
         )
         self.b_calc.grid(column=0, row=0, sticky="nwe")
         WgtStateChanger.bars.append(self.b_calc)
@@ -261,11 +252,6 @@ class Loader(ttk.Frame):
             stoich=self.parent.tslr.conformers.trim_non_matching_stoichiometry,
             incompl=self.parent.tslr.conformers.trim_incomplete,
             incons=self.parent.tslr.conformers.trim_inconsistent_sizes,
-        )
-
-    def not_impl(self):
-        messagebox.showinfo(
-            "Sorry!", "We are sorry, but this function is not implemented yet."
         )
 
     def get_save_query(self):

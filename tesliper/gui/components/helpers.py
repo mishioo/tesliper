@@ -8,6 +8,7 @@ from functools import partial, wraps
 from threading import Thread
 from tkinter import messagebox
 from tkinter.scrolledtext import ScrolledText
+from typing import List
 
 from ...glassware.arrays import SpectralData
 
@@ -55,6 +56,18 @@ def float_entry_out_validation(var):
     if value.startswith((".", "-.")):
         value = value.replace(".", "0.")
     var.set(value)
+
+
+def join_with_and(words: List[str]) -> str:
+    """Joins list of strings with "and" between the last two."""
+    if len(words) > 2:
+        return ", ".join(words[:-1]) + ", and " + words[-1]
+    elif len(words) == 2:
+        return " and ".join(words)
+    elif len(words) == 1:
+        return words[0]
+    else:
+        return ""
 
 
 # CLASSES
