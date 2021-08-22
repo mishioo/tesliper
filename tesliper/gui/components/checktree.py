@@ -52,7 +52,7 @@ class Checkbox(ttk.Checkbutton):
         logger.debug(f"box index: {self.index}")
         value = self.var.get()
         self.var.set(value)
-        self.event_generate("<<ConformerClicked>>")
+        self.event_generate("<<KeptChanged>>")
 
 
 class CheckTree(ttk.Treeview):

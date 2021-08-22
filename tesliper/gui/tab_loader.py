@@ -190,8 +190,8 @@ class Loader(ttk.Frame):
 
         # need to bind to root to process event from another widget
         root = self.winfo_toplevel()
-        root.bind("<<ConformerClicked>>", self.discard_not_kept, add="+")
-        root.bind("<<ConformerClicked>>", self.update_overview_values, add="+")
+        root.bind("<<KeptChanged>>", self.discard_not_kept, add="+")
+        root.bind("<<KeptChanged>>", self.update_overview_values, add="+")
 
     def un_check(self, key, keep):
         overview_funcs = dict(

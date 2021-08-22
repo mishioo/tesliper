@@ -155,9 +155,7 @@ class TesliperApp(tk.Tk):
         self.new_session()
         WgtStateChanger.set_states()
 
-        self.bind(
-            "<<ConformerClicked>>", lambda _: WgtStateChanger.set_states(), add="+"
-        )
+        self.bind("<<KeptChanged>>", lambda _: WgtStateChanger.set_states(), add="+")
 
         self.logger.info(
             "Welcome to Tesliper:\n" "Theoretical Spectroscopist Little Helper!"
