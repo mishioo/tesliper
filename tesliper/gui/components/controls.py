@@ -474,10 +474,10 @@ class SelectConformers(CollapsiblePane):
         if key == "incompl":
             try:
                 count = [
-                    [g in conf for g in self.view.genres]
+                    [g in conf for g in OVERVIEW_GENRES]
                     for conf in self.tesliper.conformers.values()
                 ]
-                best_match = [g for g, k in zip(self.view.genres, max(count)) if k]
+                best_match = [g for g, k in zip(OVERVIEW_GENRES, max(count)) if k]
             except ValueError:
                 best_match = []
         elif key == "incons":

@@ -328,11 +328,6 @@ class ConformersOverview(CheckTree):
             self.set(iid, k, v or "X")
         return iid
 
-    @property
-    def genres(self):
-        # TODO: instead of tab_loader.OVERVIEW_GENRES
-        raise NotImplementedError
-
     @classmethod
     def test_populate(cls, master, num=30):
         import random
