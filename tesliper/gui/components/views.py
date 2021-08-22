@@ -65,7 +65,6 @@ class SpectraView(ttk.Frame):
     def __init__(self, parent):
         super().__init__(parent)
         self.parent = parent
-        self.grid(column=0, row=0, sticky="nwse")
         self.columnconfigure(0, weight=1)
         self.rowconfigure(0, weight=1)
 
