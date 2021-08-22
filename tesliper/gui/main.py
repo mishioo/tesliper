@@ -14,6 +14,7 @@ from .components import (
     PopupHandler,
     ReadOnlyText,
     ShortExcFormatter,
+    SpectraView,
     TextHandler,
     WgtStateChanger,
 )
@@ -61,6 +62,25 @@ if _DEVELOPMENT:
 
 
 # CLASSES
+class ViewsNotebook(ttk.Notebook):
+    def __init__(self, parent, tesliper):
+        super().__init__(parent)
+        self.tesliper = tesliper
+
+        self.extract = ConformersOverview(self, tesliper)
+        self.add(self.extract, text="Extracted data")
+        self.extract.frame.grid(column=0, row=0, sticky="nswe")
+
+        self.spectra = SpectraView(self)
+        self.add(self.spectra, text="Spectra view")
+        self.grid(column=0, row=0, sticky="nwse")
+
+        self.energies = EnergiesView(self, tesliper)
+        self.add(self.energies, text="Energies list")
+        self.energies.frame.grid(column=0, row=0, sticky="nswe")
+        self.energies.established = False
+
+
 class TesliperApp(tk.Tk):
     def __init__(self):
         super().__init__()
