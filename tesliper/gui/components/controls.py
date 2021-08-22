@@ -1,7 +1,6 @@
 # IMPORTS
 import functools
 import logging as lgg
-import math
 import queue
 import tkinter as tk
 import tkinter.ttk as ttk
@@ -12,11 +11,10 @@ from tkinter import messagebox
 from tkinter.filedialog import askdirectory, askopenfilename, askopenfilenames
 
 import numpy as np
-from matplotlib import cm
 
 from ... import datawork as dw
 from ... import tesliper
-from . import CollapsiblePane, ExportPopup, LabelSeparator
+from .collapsible_pane import CollapsiblePane
 from .helpers import (
     ThreadedMethod,
     WgtStateChanger,
@@ -24,7 +22,8 @@ from .helpers import (
     get_float_entry_validator,
     join_with_and,
 )
-from .popups import not_implemented_popup
+from .label_separator import LabelSeparator
+from .popups import ExportPopup, not_implemented_popup
 
 # LOGGER
 logger = lgg.getLogger(__name__)
