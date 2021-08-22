@@ -10,6 +10,7 @@ from .helpers import (
     ThreadedMethod,
     WgtStateChanger,
 )
+from .label_separator import LabelSeparator
 from .popups import BarsPopup, ExportPopup
 from .scroll import AutoScrollbar, ScrollableFrame
 from .views import SpectraView
