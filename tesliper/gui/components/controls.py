@@ -817,3 +817,55 @@ class CalculateSpectra(CollapsiblePane):
         logger.debug("Recalculating!")
         self._calculate_spectra(spectra_name, option, mode)
         self.draw(spectra_name=spectra_name, mode=mode, option=option)
+
+
+class ExtractData(ttk.Frame):
+    def __init__(self, tesliper, view, **kwargs):
+        self.tesliper = tesliper
+        self.view = view
+        super().__init__(self, **kwargs)
+        self.b_auto_extract = ttk.Button(
+            self, text="Choose folder", command=self.from_dir
+        )
+        self.b_auto_extract.grid(column=0, row=0, sticky="nwe")
+        self.b_man_extract = ttk.Button(
+            self, text="Choose files", command=self.man_extract
+        )
+        self.b_man_extract.grid(column=0, row=1, sticky="nwe")
+
+    # TODO: add recursive smart extraction
+    # TODO: add option to ignore unknown conformers
+
+    def from_dir(self):
+        work_dir = askdirectory()
+        if not work_dir:
+            return
+        self.extract(path=work_dir)
+
+    def man_extract(self):
+        files = askopenfilenames(
+            filetypes=[
+                ("gaussian output", ("*.log", "*.out")),
+                ("log files", "*.log"),
+                ("out files", "*.out"),
+                ("all files", "*.*"),
+            ],
+            defaultextension=".log",
+        )
+        if not files:
+            return
+        paths = [Path(path) for path in files]
+        filenames = [path.name for path in paths]
+        directory = paths[0].parent
+        self.extract(directory, filenames)
+
+    @ThreadedMethod(progbar_msg="Extracting...")
+    def extract(self, path, wanted_files=None):
+        # TODO: handle extraction errors
+        try:
+            for file, data in self.tesliper.extract_iterate(path, wanted_files):
+                self.view.insert("", tk.END, text=file)
+        except TypeError as err:
+            logger.warning("Cannot extract from specified directory: " + err.args[0])
+            return
+        self.event_generate("<<DataExtracted>>")
