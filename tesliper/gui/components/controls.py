@@ -922,11 +922,11 @@ class CalculateSpectra(CollapsiblePane):
         self.draw(spectra_name=spectra_name, mode=mode, option=option)
 
 
-class ExtractData(ttk.Frame):
+class ExtractData(ttk.LabelFrame):
     def __init__(self, tesliper, view, **kwargs):
         self.tesliper = tesliper
         self.view = view
-        super().__init__(self, **kwargs)
+        super().__init__(self, text="Extract data", **kwargs)
         self.b_auto_extract = ttk.Button(
             self, text="Choose folder", command=self.from_dir
         )
