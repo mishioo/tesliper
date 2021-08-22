@@ -926,6 +926,7 @@ class ExtractData(ttk.LabelFrame):
         self.tesliper = tesliper
         self.tab = tab
         super().__init__(parent, text="Extract data", **kwargs)
+        self.columnconfigure(0, weight=1)
         self.b_auto_extract = ttk.Button(
             self, text="Choose folder", command=self.from_dir
         )
