@@ -7,7 +7,8 @@ import tkinter as tk
 import tkinter.ttk as ttk
 from abc import ABC, abstractmethod
 from collections import Counter, namedtuple
-from tkinter.filedialog import askopenfilename
+from pathlib import Path
+from tkinter.filedialog import askdirectory, askopenfilename, askopenfilenames
 
 import numpy as np
 from matplotlib import cm
@@ -319,7 +320,6 @@ class SelectConformers(CollapsiblePane):
         self.tesliper = tesliper
         self.view = view
 
-        self.var_all = tk.IntVar(value=0)  # number of conformers in total
         self.widgets = dict()
         widgets_tuple = namedtuple(
             "widgets", ["label", "count", "slash", "all", "check", "uncheck"]
@@ -331,12 +331,13 @@ class SelectConformers(CollapsiblePane):
                 "file en ir vcd uv ecd ram roa incompl term opt imag incons".split(),
             )
         ):
-            var = tk.IntVar(value=0)
+            var = tk.IntVar(value=0)  # number of conformers selected
+            var_all = tk.IntVar(value=0)  # number of conformers in total
 
             label = tk.Label(self.content, text=name, anchor="w")
             count = tk.Label(self.content, textvariable=var, bd=0, width=3)
             slash = tk.Label(self.content, text="/", bd=0)
-            all_ = tk.Label(self.content, textvariable=self.var_all, bd=0, width=3)
+            all_ = tk.Label(self.content, textvariable=var_all, bd=0, width=3)
             check_butt = ttk.Button(
                 self.content,
                 text="check",
@@ -351,7 +352,7 @@ class SelectConformers(CollapsiblePane):
             )
 
             count.var = var
-            all_.var = self.var_all
+            all_.var = var_all
 
             label.grid(column=0, row=i)
             count.grid(column=1, row=i)
@@ -365,6 +366,19 @@ class SelectConformers(CollapsiblePane):
             self.widgets[key] = widgets_tuple(
                 label, count, slash, all_, check_butt, uncheck_butt
             )
+        root = self.winfo_toplevel()
+        root.bind("<<KeptChanged>>", self.on_kept_changed, "+")
+        root.bind("<<DataExtracted>>", self.on_data_extracted, "+")
+
+    def on_data_extracted(self, _event=None):
+        # set_overview_values should only be called after extraction
+        self.set_overview_values()
+
+    def on_kept_changed(self, _event=None):
+        self.discard_not_kept()
+        self.update_overview_values()
+
+    # TODO: implement .set_overview_values() and .update_overview_values()
 
     def select(self, key, keep):
         confs = self.tesliper.conformers
@@ -393,8 +407,7 @@ class SelectConformers(CollapsiblePane):
         for n, conf in enumerate(confs.values()):
             if condition(conf, best_match, maxes):
                 self.view.boxes[str(n)].var.set(keep)
-        self.discard_not_kept()
-        self.update_overview_values()
+        self.event_generate("<<KeptChanged>>")
 
     def discard_not_kept(self):
         for key, var in self.kept_vars.items():
