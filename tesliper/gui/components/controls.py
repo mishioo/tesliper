@@ -8,6 +8,7 @@ import tkinter.ttk as ttk
 from abc import ABC, abstractmethod
 from collections import Counter, namedtuple
 from pathlib import Path
+from tkinter import messagebox
 from tkinter.filedialog import askdirectory, askopenfilename, askopenfilenames
 
 import numpy as np
@@ -15,13 +16,15 @@ from matplotlib import cm
 
 from ... import datawork as dw
 from ... import tesliper
-from . import CollapsiblePane, LabelSeparator
+from . import CollapsiblePane, ExportPopup, LabelSeparator
 from .helpers import (
     ThreadedMethod,
     WgtStateChanger,
     float_entry_out_validation,
     get_float_entry_validator,
+    join_with_and,
 )
+from .popups import not_implemented_popup
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -969,3 +972,110 @@ class ExtractData(ttk.Frame):
             logger.warning("Cannot extract from specified directory: " + err.args[0])
             return
         self.event_generate("<<DataExtracted>>")
+
+
+class ExportData(ttk.LabelFrame):
+    def __init__(self, parent, tesliper, **kwargs):
+        # Change label text
+        super().__init__(parent, text="Session control", **kwargs)
+        self.tesliper = tesliper
+
+        tk.Grid.columnconfigure(self, (0, 1), weight=1)
+        self.b_clear_session = ttk.Button(
+            self, text="Clear session", command=self.winfo_toplevel().new_session
+        )
+        self.b_clear_session.grid(column=0, row=2, sticky="nwe")
+        WgtStateChanger.either.append(self.b_clear_session)
+
+        self.b_calc = ttk.Button(
+            self, text="Auto calculate", command=not_implemented_popup
+        )
+        self.b_calc.grid(column=0, row=0, sticky="nwe")
+        WgtStateChanger.bars.append(self.b_calc)
+
+        self.b_text_export = ttk.Button(
+            self, text="Export as .txt", command=lambda _e: self.save(fmt="txt")
+        )
+        self.b_text_export.grid(column=1, row=0, sticky="nwe")
+        self.b_excel_export = ttk.Button(
+            self, text="Export as .xls", command=lambda _e: self.save(fmt="xlsx")
+        )
+        self.b_excel_export.grid(column=1, row=1, sticky="nwe")
+        self.b_csv_export = ttk.Button(
+            self, text="Export as .csv", command=lambda _e: self.save(fmt="csv")
+        )
+        self.b_csv_export.grid(column=1, row=2, sticky="nwe")
+        WgtStateChanger.either.extend(
+            [self.b_text_export, self.b_excel_export, self.b_csv_export]
+        )
+
+    def get_save_query(self):
+        popup = ExportPopup(self, width="220", height="130")
+        query = popup.get_query()
+        return query
+
+    @ThreadedMethod(progbar_msg="Saving...")
+    def execute_save_command(self, categories, fmt):
+        # TODO: add auto-calculate ?
+        root = self.winfo_toplevel()
+        if "averaged" in categories:
+            root.progtext.set("Averaging spectra...")
+            self.tesliper.average_spectra()
+            root.progtext.set("Saving...")
+        existing = self._exec_save(categories, fmt, mode="x")
+        if existing:
+            joined = join_with_and(existing).capitalize()
+            title = (
+                f"{joined} files already exist!"
+                if fmt != "xlsx"
+                else ".xlsx file already exists!"
+            )
+            message = (
+                f"{joined} files already exist in this directory. "
+                "Would you like to overwrite them?"
+                if fmt != "xlsx"
+                else ".xlsx file already exists in this directory. "
+                "Would you like to overwrite it?"
+            )
+            override = messagebox.askokcancel(title=title, message=message)
+            if override:
+                # for "xlsx" retry whole process, for other retry only unsuccessful
+                cats = existing if fmt != "xlsx" else categories
+                self._exec_save(cats, fmt, mode="w")
+
+    def _exec_save(self, categories, fmt, mode):
+        """Executes save command, calling appropriate "export" methods of Tesliper
+        instance. Returns list of genres' categories, for which the associated method
+        raised `FileExistsError`.
+
+        Execution is a little different, if `fmt` is "xlsx", as only one file is
+        produced for the whole batch: if `FileExistsError` is raised on first category,
+        this method returns `["xlsx"]` and ignores the rest of `categories`.
+        """
+        savers = {
+            "energies": self.tesliper.export_energies,
+            "spectral data": self.tesliper.export_spectral_data,
+            "spectra": self.tesliper.export_spectra,
+            "averaged": self.tesliper.export_averaged,
+        }
+        existing = []
+        for thing in categories:
+            try:
+                savers[thing](fmt, mode=mode)
+            except FileExistsError:
+                existing.append(thing)
+                if fmt == "xlsx":
+                    return ["xlsx"]
+            # one .xlsx file for whole batch, must append next data chunks
+            mode = "a" if fmt == "xlsx" else mode
+        return existing
+
+    def save(self, fmt):
+        categories = self.get_save_query()
+        if not categories:
+            return
+        dest = askdirectory()
+        if dest:
+            self.tesliper.output_dir = dest
+            logger.debug(f"Export requested: {categories}; format: {fmt}")
+            self.execute_save_command(categories, fmt)
