@@ -39,12 +39,15 @@ class AutoComboboxBase(ttk.Combobox, ABC):
         kwargs["textvariable"] = self.var
         kwargs["state"] = "readonly"
         super().__init__(parent, **kwargs)
+        root = self.winfo_toplevel()
+        root.bind("<<KeptChanged>>", self.update_values, "+")
+        root.bind("<<DataExtracted>>", self.update_values, "+")
 
     @abstractmethod
     def get_available_values(self):
         raise NotImplementedError
 
-    def update_values(self):
+    def update_values(self, _event=None):
         """Update displayed values to reflect currently available energy genres.
         If previously chosen genre is no longer available, change it."""
         current = self.var.get()
@@ -118,12 +121,13 @@ class ColorsChoice(AutoComboboxBase):
         )
 
 
-class FilterEnergy(ttk.Frame):
-    def __init__(self, parent, tesliper, tab):
+class FilterRange(ttk.Frame):
+    def __init__(self, parent, tesliper, view, show_getter):
         super().__init__(parent)
         self.parent = parent
         self.tesliper = tesliper
-        self.tab = tab
+        self.view = view
+        self.get_showing = show_getter
 
         self.columnconfigure(1, weight=1)
         ttk.Label(self, text="Minimum").grid(column=0, row=0)
@@ -163,6 +167,10 @@ class FilterEnergy(ttk.Frame):
         b_filter = ttk.Button(self, text="Limit to...", command=self.filter_energy)
         b_filter.grid(column=0, row=3, columnspan=2, sticky="new")
 
+        root = self.winfo_toplevel()
+        # root.bind("<<KeptChanged>>", self.set_upper_and_lower, "+")
+        root.bind("<<DataExtracted>>", self.set_upper_and_lower, "+")
+
         WgtStateChanger.energies.extend(
             [
                 b_filter,
@@ -173,15 +181,16 @@ class FilterEnergy(ttk.Frame):
         )
 
     def set_upper_and_lower(self, event=None):
-        factor = 100 if self.tab.showing == "populations" else 1
+        showing = self.get_showing()
+        factor = 100 if showing == "populations" else 1
         try:
             energy = self.energies_choice.get_genre()
-            arr = getattr(self.tesliper[energy], self.tab.showing)
+            arr = getattr(self.tesliper[energy], showing)
             lower, upper = arr.min(), arr.max()
         except (KeyError, ValueError):
             lower, upper = "0.0", "0.0"
         else:
-            if self.tab.showing == "values":
+            if showing == "values":
                 n = 6
             else:
                 n = 4
@@ -193,28 +202,29 @@ class FilterEnergy(ttk.Frame):
             self.upper_var.set(upper)
 
     def filter_energy(self):
+        showing = self.get_showing()
         energy = self.energies_choice.get_genre()
-        factor = 1e-2 if self.tab.showing == "populations" else 1
+        factor = 1e-2 if showing == "populations" else 1
         lower = float(self.lower_var.get()) * factor
         upper = float(self.upper_var.get()) * factor
         self.tesliper.conformers.trim_to_range(
-            energy, minimum=lower, maximum=upper, attribute=self.tab.showing
+            energy, minimum=lower, maximum=upper, attribute=showing
         )
         # TODO: turn below into some higher-level method
         for box, kept in zip(
-            self.tab.conf_list.trees["main"].boxes.values(),
+            self.view.trees["main"].boxes.values(),
             self.tesliper.conformers.kept,
         ):
             box.var.set(kept)
-        self.tab.update_view_values()
+        self.event_generate("<<KeptChanged>>")
 
 
 class FilterRMSD(ttk.Frame):
-    def __init__(self, parent, tesliper, tab):
-        super().__init__(parent)
+    def __init__(self, parent, tesliper, view, **kwargs):
+        super().__init__(parent, **kwargs)
         self.parent = parent
         self.tesliper = tesliper
-        self.tab = tab
+        self.view = view
 
         float_entry_validator = get_float_entry_validator(self)
         self.columnconfigure(1, weight=1)
@@ -281,11 +291,72 @@ class FilterRMSD(ttk.Frame):
         )
         # TODO: turn below into some higher-level method
         for box, kept in zip(
-            self.tab.conf_list.trees["main"].boxes.values(),
+            self.view.trees["main"].boxes.values(),
             self.tesliper.conformers.kept,
         ):
             box.var.set(kept)
-        self.tab.update_view_values()
+        self.event_generate("<<KeptChanged>>")
+
+
+class FilterEnergies(CollapsiblePane):
+    def __init__(self, parent, tesliper, view, **kwargs):
+        super().__init__(parent, text="Filter kept conformers", **kwargs)
+        self.tesliper = tesliper
+        self.view = view
+
+        ttk.Label(self.content, text="Show:").grid(column=0, row=0, sticky="new")
+        self.show_var = tk.StringVar()
+        show_values = (
+            "Energy /Hartree",
+            "Delta /(kcal/conf)",
+            "Min. Boltzmann factor",
+            "Population /%",
+        )
+        show_id = ("values", "deltas", "min_factors", "populations")
+        self.show_ref = {k: v for k, v in zip(show_values, show_id)}
+        self.show_combo = ttk.Combobox(
+            self.content,
+            textvariable=self.show_var,
+            values=show_values,
+            state="readonly",  # , width=21
+        )
+        self.show_combo.bind(
+            "<<ComboboxSelected>>", lambda _e: self.view.refresh(show=self.showing)
+        )
+        self.show_combo.grid(column=1, row=0, sticky="nwe")
+        self.show_combo.set("Energy /Hartree")
+
+        ttk.Label(self.content, text="Use:").grid(column=0, row=1, sticky="new")
+        self.energies_choice = EnergiesChoice(
+            self.content, tesliper=self.tesliper, width=12
+        )
+        # TODO: connect with .range and .rmsd and remove EnergiesChoice from them
+        self.energies_choice.grid(column=1, row=1, sticky="nwe")
+
+        # filter by energy value
+        LabelSeparator(self.content, text="Filter range").grid(
+            column=0, row=2, columnspan=2, sticky="nwe"
+        )
+        self.range = FilterRange(
+            self.content,
+            tesliper=self.tesliper,
+            view=self.view,
+            show_getter=lambda w=self: w.showing,
+        )
+        self.range.grid(column=0, row=3, columnspan=2, sticky="news")
+
+        # RMSD sieve
+        LabelSeparator(self.content, text="RMSD sieve").grid(
+            column=0, row=4, columnspan=2, sticky="nwe"
+        )
+        self.rmsd = FilterRMSD(self.content, tesliper=self.tesliper, view=self.view)
+        self.rmsd.grid(column=0, row=5, columnspan=2, sticky="news")
+
+        WgtStateChanger.energies.expand([self.show_combo, self.energies_choice])
+
+    @property
+    def showing(self):
+        return self.show_ref[self.show_var.get()]
 
 
 OVERVIEW_GENRES = "dip rot vosc vrot losc lrot raman1 roa1 scf zpe ent ten gib".split()
