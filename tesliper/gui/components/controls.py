@@ -507,7 +507,9 @@ class SelectConformers(CollapsiblePane):
         for key, var in self.kept_vars.items():
             if var.get():
                 self.kept_funcs[key]()
-        for box, kept in zip(self.view.boxes.values(), self.tesliper.conformers.kept):
+        for box, kept in zip(
+            self.tab.overview.boxes.values(), self.tesliper.conformers.kept
+        ):
             box.var.set(kept)
 
     @property
