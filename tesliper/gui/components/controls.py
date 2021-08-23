@@ -553,15 +553,16 @@ class CalculateSpectra(CollapsiblePane):
         # Settings
         sett = ttk.LabelFrame(self.content, text="Settings:")
         sett.grid(column=0, row=1, sticky="we")
-        tk.Grid.columnconfigure(sett, (1, 2), weight=1)
+        tk.Grid.columnconfigure(sett, 1, weight=1)
         ttk.Label(sett, text="Fitting").grid(column=0, row=0)
         fit = tk.StringVar()
         self.fitting = ttk.Combobox(sett, textvariable=fit, state="disabled", width=13)
         self.fitting.bind("<<ComboboxSelected>>", self.live_preview_callback)
         self.fitting.var = fit
-        self.fitting.grid(column=1, row=0, columnspan=2, sticky="e")
+        self.fitting.grid(column=1, row=0, columnspan=2, sticky="we")
         self.fitting["values"] = ("lorentzian", "gaussian")
         WgtStateChanger.bars.append(self.fitting)
+
         for no, name in enumerate("Start Stop Step Width Offset Scaling".split(" ")):
             ttk.Label(sett, text=name).grid(column=0, row=no + 1)
             var = tk.StringVar()
@@ -582,11 +583,11 @@ class CalculateSpectra(CollapsiblePane):
             )
             setattr(self, name.lower(), entry)
             entry.var = var
-            entry.grid(column=1, row=no + 1, sticky="e")
+            entry.grid(column=1, row=no + 1, sticky="we", padx=(0, 5))
             unit = tk.StringVar()
             unit.set("-")
             entry.unit = unit
-            label = ttk.Label(sett, textvariable=unit)
+            label = ttk.Label(sett, textvariable=unit, width=5)
             label.grid(column=2, row=no + 1, sticky="e")
             WgtStateChanger.bars.append(entry)
 
@@ -826,7 +827,10 @@ class CalculateSpectra(CollapsiblePane):
         )
         core = any([not self.view.tslr_ax, mode_con, settings_con])
         if core and self.live_prev.var.get():
+            logger.debug("Live preview on, spectra will be recalculated.")
             self.recalculate_command()
+        else:
+            logger.debug("Live preview off.")
 
     def draw(self, spectra_name, mode, option):
         queue_ = self.winfo_toplevel().thread.queue
