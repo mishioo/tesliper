@@ -44,13 +44,13 @@ class Loader(ttk.Frame):
         controls.grid(column=0, row=0, sticky="news")
 
         self.extract = ExtractData(
-            controls.content, tesliper=self.parent.tslr, tab=self
+            controls.content, tesliper=self.parent.tslr, view=self.overview
         )
         self.extract.grid(column=0, row=0, sticky="news")
         self.export = ExportData(controls.content, tesliper=self.parent.tslr)
         self.export.grid(column=0, row=1, sticky="news")
         self.select = SelectConformers(
-            controls.content, tesliper=self.parent.tslr, tab=self
+            controls.content, tesliper=self.parent.tslr, view=self.overview
         )
         self.select.grid(column=0, row=2, sticky="news")
 

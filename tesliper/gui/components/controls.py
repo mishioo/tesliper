@@ -320,10 +320,10 @@ class SelectConformers(CollapsiblePane):
         ),
     )
 
-    def __init__(self, parent, tesliper, tab, **kwargs):
+    def __init__(self, parent, tesliper, view, **kwargs):
         super().__init__(parent, text="Select kept conformers", **kwargs)
         self.tesliper = tesliper
-        self.tab = tab
+        self.view = view
 
         self.widgets = dict()
         self.columnconfigure(0, weight=1)
@@ -492,7 +492,7 @@ class SelectConformers(CollapsiblePane):
             }
         for n, conf in enumerate(confs.values()):
             if condition(conf, best_match, maxes):
-                self.tab.overview.boxes[str(n)].var.set(keep)
+                self.view.boxes[str(n)].var.set(keep)
         self.event_generate("<<KeptChanged>>")
 
     def discard(self, key):
@@ -507,9 +507,7 @@ class SelectConformers(CollapsiblePane):
         for key, var in self.kept_vars.items():
             if var.get():
                 self.kept_funcs[key]()
-        for box, kept in zip(
-            self.tab.overview.boxes.values(), self.tesliper.conformers.kept
-        ):
+        for box, kept in zip(self.view.boxes.values(), self.tesliper.conformers.kept):
             box.var.set(kept)
 
     @property
@@ -929,9 +927,9 @@ class CalculateSpectra(CollapsiblePane):
 
 
 class ExtractData(ttk.LabelFrame):
-    def __init__(self, parent, tesliper, tab, **kwargs):
+    def __init__(self, parent, tesliper, view, **kwargs):
         self.tesliper = tesliper
-        self.tab = tab
+        self.view = view
         super().__init__(parent, text="Extract data", **kwargs)
         self.columnconfigure(0, weight=1)
         self.b_auto_extract = ttk.Button(
@@ -974,7 +972,7 @@ class ExtractData(ttk.LabelFrame):
         # TODO: handle extraction errors
         try:
             for file, data in self.tesliper.extract_iterate(path, wanted_files):
-                self.tab.overview.insert("", tk.END, text=file)
+                self.view.insert("", tk.END, text=file)
         except TypeError as err:
             logger.warning("Cannot extract from specified directory: " + err.args[0])
             return
