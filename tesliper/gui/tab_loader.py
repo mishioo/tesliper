@@ -3,7 +3,7 @@ import logging as lgg
 import tkinter as tk
 import tkinter.ttk as ttk
 
-from .components import BarsPopup, ScrollableFrame, ThreadedMethod
+from .components import BarsPopup, ConformersOverview, ScrollableFrame, ThreadedMethod
 from .components.controls import ExportData, ExtractData, SelectConformers
 
 # LOGGER
@@ -31,7 +31,10 @@ class Loader(ttk.Frame):
         # Conformers Overview
         self.label_overview = ttk.LabelFrame(self, text="Conformers Overview")
         self.label_overview.grid(column=1, row=0, sticky="nwse")
-        self.overview = None
+        self.overview = ConformersOverview(
+            self.label_overview, tesliper=self.parent.tslr
+        )
+        self.overview.frame.grid(column=0, row=0, sticky="nswe")
         tk.Grid.rowconfigure(self.label_overview, 0, weight=1)
         tk.Grid.columnconfigure(self.label_overview, 0, weight=1)
 

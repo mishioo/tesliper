@@ -8,6 +8,7 @@ from tkinter import messagebox
 
 from .. import tesliper
 from .components import (
+    CheckTree,
     ConformersOverview,
     EnergiesView,
     MaxLevelFilter,
@@ -85,7 +86,7 @@ class TesliperApp(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Tesliper")
-        self.tslr = tesliper.Tesliper()
+        self.tslr = None
         self.thread = Thread()
 
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
@@ -173,7 +174,7 @@ class TesliperApp(tk.Tk):
 
     @WgtStateChanger
     def new_session(self):
-        if self.tslr.conformers:
+        if self.tslr and self.tslr.conformers:
             pop = messagebox.askokcancel(
                 message="Are you sure you want to start new session? "
                 "Any unsaved changes will be lost!",
@@ -186,30 +187,14 @@ class TesliperApp(tk.Tk):
         self.tslr = tesliper.Tesliper()
         for tab in self.notebook.tabs():
             self.notebook.forget(tab)
+            del tab
+        CheckTree.trees = dict()  # TODO: refactor to not need this
         self.main_tab = Loader(self)
         self.notebook.add(self.main_tab, text="Main")
         self.spectra_tab = Spectra(self)
         self.notebook.add(self.spectra_tab, text="Spectra")
         self.conf_tab = Conformers(self)
         self.notebook.add(self.conf_tab, text="Conformers")
-        # establish new overview
-        if self.main_tab.overview is not None:
-            self.main_tab.overview.destroy()
-            for checked, _all, __ in self.main_tab.overview_control.values():
-                checked.set(0)
-                _all.set(0)
-        self.main_tab.overview = ConformersOverview(
-            self.main_tab.label_overview, tesliper=self.tslr
-        )
-        self.main_tab.overview.frame.grid(column=0, row=0, sticky="nswe")
-        # establish new conf_list
-        if self.conf_tab.conf_list is not None:
-            self.conf_tab.conf_list.destroy()
-        self.conf_tab.conf_list = EnergiesView(
-            self.conf_tab.overview, tesliper=self.tslr
-        )
-        self.conf_tab.conf_list.frame.grid(column=0, row=0, sticky="nswe")
-        self.conf_tab.established = False
 
     def on_closing(self):
         if self.thread.is_alive():

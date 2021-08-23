@@ -3,7 +3,7 @@ import logging as lgg
 import tkinter as tk
 import tkinter.ttk as ttk
 
-from .components import ScrollableFrame
+from .components import EnergiesView, ScrollableFrame
 from .components.controls import FilterEnergy, FilterRMSD
 from .components.helpers import WgtStateChanger
 
@@ -24,7 +24,8 @@ class Conformers(ttk.Frame):
         self.overview.grid(column=1, row=0, sticky="nwse")
         tk.Grid.rowconfigure(self.overview, 0, weight=1)
         tk.Grid.columnconfigure(self.overview, 0, weight=1)
-        self.conf_list = None  # obj is created in main.TesliperApp.new_session
+        self.conf_list = EnergiesView(self.overview, tesliper=self.parent.tslr)
+        self.conf_list.frame.grid(column=0, row=0, sticky="nswe")
         self.bind("<FocusIn>", self.refresh)
 
         # Controls frame
@@ -77,8 +78,6 @@ class Conformers(ttk.Frame):
         self.rmsd = FilterRMSD(rmsd_frame, tesliper=self.parent.tslr, tab=self)
         self.rmsd.grid(row=0, column=0, sticky="news")
 
-        self.established = False
-
         # need to bind to root to process event from another widget
         root = self.winfo_toplevel()
         root.bind("<<KeptChanged>>", self.refresh, "+")
@@ -89,10 +88,6 @@ class Conformers(ttk.Frame):
                 self.show_combo,
             ]
         )
-
-    def establish(self):
-        self.show_combo.set("Energy /Hartree")
-        self.established = True
 
     @property
     def showing(self):
