@@ -413,6 +413,7 @@ class SelectConformers(CollapsiblePane):
     def on_data_extracted(self, _event=None):
         # "all" count should only be called after extraction
         self.update_overview_values(untrimmed=True)
+        self.on_kept_changed(_event)
 
     def on_kept_changed(self, _event=None):
         self.discard_not_kept()
