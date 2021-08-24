@@ -50,6 +50,8 @@ class AutoComboboxBase(ttk.Combobox, ABC):
     def update_values(self, _event=None):
         """Update displayed values to reflect currently available energy genres.
         If previously chosen genre is no longer available, change it."""
+        if _event is not None:
+            logger.debug(f"Event caught by {self}.update_values handler.")
         current = self.var.get()
         available = self.get_available_values()
         self["values"] = available
@@ -174,6 +176,8 @@ class FilterRange(ttk.Frame):
         WgtStateChanger.energies.extend([b_filter, lentry, uentry])
 
     def set_upper_and_lower(self, _event=None):
+        if _event is not None:
+            logger.debug(f"Event caught by {self}.set_upper_and_lower handler.")
         showing = self.proxy["show"]()
         units = self.proxy["units"]()
         factor = 100 if showing == "populations" else 1
@@ -344,11 +348,15 @@ class FilterEnergies(CollapsiblePane):
         self.energies_choice.bind("<<ComboboxSelected>>", self.on_energies_selected)
         WgtStateChanger.energies.extend([self.show_combo, self.energies_choice])
 
-    def on_show_selected(self, _event):
+    def on_show_selected(self, _event=None):
+        if _event is not None:
+            logger.debug(f"Event caught by {self}.on_show_selected handler.")
         self.view.refresh(show=self.show_ref[self.show_var.get()])
         self.range.set_upper_and_lower()
 
-    def on_energies_selected(self, _event):
+    def on_energies_selected(self, _event=None):
+        if _event is not None:
+            logger.debug(f"Event caught by {self}.on_energies_selected handler.")
         self.range.set_upper_and_lower()
 
 
@@ -475,11 +483,15 @@ class SelectConformers(CollapsiblePane):
             self.kept_buttons[key].grid(column=0, row=n, sticky="nw")
 
     def on_data_extracted(self, _event=None):
+        if _event is not None:
+            logger.debug(f"Event caught by {self}.on_data_extracted handler.")
         # "all" count should only be called after extraction
         self.update_overview_values(untrimmed=True)
         self.on_kept_changed(_event)
 
     def on_kept_changed(self, _event=None):
+        if _event is not None:
+            logger.debug(f"Event caught by {self}.on_kept_changed handler.")
         self.discard_not_kept()
         self.update_overview_values()
 
@@ -818,7 +830,9 @@ class CalculateSpectra(CollapsiblePane):
         else:
             return
 
-    def mode_chosen(self, event=None):
+    def mode_chosen(self, _event=None):
+        if _event is not None:
+            logger.debug(f"Event caught by {self}.mode_chosen handler.")
         mode = self.mode.get()
         if self.current_box is not None:
             self.current_box.grid_remove()
@@ -834,7 +848,9 @@ class CalculateSpectra(CollapsiblePane):
             self.show_bars.var.set(False)
         self.live_preview_callback()
 
-    def spectra_chosen(self, event=None):
+    def spectra_chosen(self, _event=None):
+        if _event is not None:
+            logger.debug(f"Event caught by {self}.spectra_chosen handler.")
         tslr = self.tesliper
         self.visualize_settings()
         bar = tesliper.dw.DEFAULT_ACTIVITIES[self.s_name.get()]
@@ -877,7 +893,9 @@ class CalculateSpectra(CollapsiblePane):
                     else:
                         raise ValueError(f"Invalid setting name: {name}")
 
-    def live_preview_callback(self, event=None, mode=False):
+    def live_preview_callback(self, _event=None, mode=False):
+        if _event is not None:
+            logger.debug(f"Event caught by {self}.live_preview_callback handler.")
         # TO DO: separate things, that don't need recalculation
         # TO DO: show/hide bars/experimental plots when checkbox clicked
         # TO DO: rewrite this function with sense
@@ -921,7 +939,9 @@ class CalculateSpectra(CollapsiblePane):
             )
             self.after(20, func, queue_)
 
-    def change_colour(self, event=None):
+    def change_colour(self, _event=None):
+        if _event is not None:
+            logger.debug(f"Event caught by {self}.change_colour handler.")
         if self.mode.get() != "stack":
             return
         colour = self.stack.var.get()
@@ -1040,6 +1060,7 @@ class ExtractData(ttk.LabelFrame):
         except TypeError as err:
             logger.warning("Cannot extract from specified directory: " + err.args[0])
             return
+        logger.debug(f"Data extracted from {path}")
         self.event_generate("<<DataExtracted>>")
 
 

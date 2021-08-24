@@ -63,4 +63,6 @@ class CollapsiblePane(ttk.LabelFrame):
         super().configure(cnf, **kwargs)
 
     def toggle(self, _event=None):
+        if _event is not None:
+            logger.debug(f"Event caught by {self}.toggle handler.")
         self.configure(collapsed=not self.collapsed)
