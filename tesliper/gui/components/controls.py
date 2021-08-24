@@ -346,6 +346,8 @@ class FilterEnergies(CollapsiblePane):
 
         self.show_combo.bind("<<ComboboxSelected>>", self.on_show_selected)
         self.energies_choice.bind("<<ComboboxSelected>>", self.on_energies_selected)
+        root = self.winfo_toplevel()
+        root.bind("<<DataExtracted>>", self.on_show_selected)
         WgtStateChanger.energies.extend([self.show_combo, self.energies_choice])
 
     def on_show_selected(self, _event=None):
