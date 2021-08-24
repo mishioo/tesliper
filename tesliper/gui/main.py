@@ -14,14 +14,19 @@ from .components import (
     MaxLevelFilter,
     PopupHandler,
     ReadOnlyText,
+    ScrollableFrame,
     ShortExcFormatter,
     SpectraView,
     TextHandler,
     WgtStateChanger,
 )
-from .tab_energies import Conformers
-from .tab_loader import Loader
-from .tab_spectra import Spectra
+from .components.controls import (
+    CalculateSpectra,
+    ExportData,
+    ExtractData,
+    FilterEnergies,
+    SelectConformers,
+)
 
 _DEVELOPMENT = "ENV" in os.environ and os.environ["ENV"] == "prod"
 
@@ -69,40 +74,59 @@ class ViewsNotebook(ttk.Notebook):
         self.tesliper = tesliper
 
         self.extract = ConformersOverview(self, tesliper)
-        self.add(self.extract, text="Extracted data")
-        self.extract.frame.grid(column=0, row=0, sticky="nswe")
+        self.add(self.extract.frame, text="Extracted data")
+
+        self.energies = EnergiesView(self, tesliper)
+        self.add(self.energies.frame, text="Energies list")
 
         self.spectra = SpectraView(self)
         self.add(self.spectra, text="Spectra view")
-        self.grid(column=0, row=0, sticky="nwse")
 
-        self.energies = EnergiesView(self, tesliper)
-        self.add(self.energies, text="Energies list")
-        self.energies.frame.grid(column=0, row=0, sticky="nswe")
-        self.energies.established = False
+
+class ControlsFrame(ScrollableFrame):
+    def __init__(
+        self, parent, tesliper, extract_view, energies_view, spectra_view, **kwargs
+    ):
+        super(ControlsFrame, self).__init__(parent, **kwargs)
+        tk.Grid.columnconfigure(self, 1, weight=1)
+
+        self.extract = ExtractData(self.content, tesliper=tesliper, view=extract_view)
+        self.extract.grid(column=0, row=0, sticky="new")
+        self.export = ExportData(self.content, tesliper=tesliper)
+        self.export.grid(column=0, row=1, sticky="new")
+        self.select = SelectConformers(
+            self.content, tesliper=tesliper, view=extract_view
+        )
+        self.select.grid(column=0, row=2, sticky="new")
+        self.filter = FilterEnergies(
+            parent=self.content, tesliper=tesliper, view=energies_view
+        )
+        self.filter.grid(column=0, row=3, sticky="new")
+        self.calculate = CalculateSpectra(
+            self.content, tesliper=tesliper, view=spectra_view
+        )
+        self.calculate.grid(column=0, row=4, sticky="new")
 
 
 class TesliperApp(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Tesliper")
-        self.tslr = None
         self.thread = Thread()
 
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
 
-        # Notebook
-        tk.Grid.columnconfigure(self, 0, weight=1)
+        tk.Grid.columnconfigure(self, 1, weight=1)
         tk.Grid.rowconfigure(self, 0, weight=1)
-        self.notebook = ttk.Notebook(self)
-        self.main_tab = None
-        self.spectra_tab = None
-        self.conf_tab = None
-        self.notebook.grid(column=0, row=0, sticky="nswe")
+
+        # created by .new_session()
+        self.tslr = None
+        self.notebook = None
+        self.controls = None
 
         # Log & Bar frame
         bottom_frame = tk.Frame(self)
-        bottom_frame.grid(column=0, row=1, sticky="nswe")
+        bottom_frame.grid(column=0, row=1, columnspan=2, sticky="nswe")
         tk.Grid.columnconfigure(bottom_frame, 1, weight=1)
         tk.Grid.rowconfigure(bottom_frame, 0, weight=1)
 
@@ -184,17 +208,26 @@ class TesliperApp(tk.Tk):
             )
             if not pop:
                 return
-        self.tslr = tesliper.Tesliper()
-        for tab in self.notebook.tabs():
-            self.notebook.forget(tab)
-            del tab
+        if self.tslr is not None:
+            del self.tslr
+        if self.notebook is not None:
+            tk.Grid.forget(self.notebook)
+            del self.notebook
+        if self.controls is not None:
+            tk.Grid.forget(self.controls)
+            del self.controls
         CheckTree.trees = dict()  # TODO: refactor to not need this
-        self.main_tab = Loader(self)
-        self.notebook.add(self.main_tab, text="Main")
-        self.spectra_tab = Spectra(self)
-        self.notebook.add(self.spectra_tab, text="Spectra")
-        self.conf_tab = Conformers(self)
-        self.notebook.add(self.conf_tab, text="Conformers")
+        self.tslr = tesliper.Tesliper()
+        self.notebook = ViewsNotebook(self, tesliper=self.tslr)
+        self.notebook.grid(column=1, row=0, sticky="nswe")
+        self.controls = ControlsFrame(
+            self,
+            tesliper=self.tslr,
+            extract_view=self.notebook.extract,
+            energies_view=self.notebook.energies,
+            spectra_view=self.notebook.spectra,
+        )
+        self.controls.grid(column=0, row=0, sticky="nswe")
 
     def on_closing(self):
         if self.thread.is_alive():

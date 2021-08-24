@@ -229,7 +229,7 @@ class WgtStateChanger:
         spectra_available = [
             SpectralData.spectra_name_ref[bar] for bar, got in bars.items() if got
         ]
-        radio = WgtStateChanger.gui.spectra_tab.controls.s_name_radio
+        radio = WgtStateChanger.gui.controls.calculate.s_name_radio
         for option, widget in radio.items():
             state = (
                 "disabled" if not tslr or option not in spectra_available else "normal"

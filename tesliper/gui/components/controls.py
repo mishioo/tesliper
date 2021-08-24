@@ -588,7 +588,7 @@ class SelectConformers(CollapsiblePane):
 
 class CalculateSpectra(CollapsiblePane):
     def __init__(self, parent, tesliper, view, **kwargs):
-        super().__init__(parent, **kwargs)
+        super().__init__(parent, text="Calculate Spectra", **kwargs)
         self.tesliper = tesliper
         self.view = view
 
