@@ -260,12 +260,12 @@ class FilterRMSD(ttk.Frame):
         )
         self.ignore_hydrogens = tk.BooleanVar(value=True)
         ignore_hydrogens = ttk.Checkbutton(
-            self, text="Ignore H", variable=self.ignore_hydrogens
+            self, text="Ignore hydrogen atoms", variable=self.ignore_hydrogens
         )
-        ignore_hydrogens.grid(column=1, row=3, columnspan=2, sticky="new")
+        ignore_hydrogens.grid(column=0, row=3, columnspan=3, sticky="new")
 
         button = ttk.Button(self, text="Filter similar", command=self._filter)
-        button.grid(column=0, row=3, columnspan=3, sticky="nwe")
+        button.grid(column=0, row=4, columnspan=3, sticky="nwe")
 
         WgtStateChanger.energies.extend(
             [window_size, threshold, ignore_hydrogens, button]
