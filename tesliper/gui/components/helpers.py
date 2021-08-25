@@ -8,6 +8,7 @@ from functools import partial, wraps
 from threading import Thread
 from tkinter import messagebox
 from tkinter.scrolledtext import ScrolledText
+from typing import List
 
 from ...glassware.arrays import SpectralData
 
@@ -55,6 +56,18 @@ def float_entry_out_validation(var):
     if value.startswith((".", "-.")):
         value = value.replace(".", "0.")
     var.set(value)
+
+
+def join_with_and(words: List[str]) -> str:
+    """Joins list of strings with "and" between the last two."""
+    if len(words) > 2:
+        return ", ".join(words[:-1]) + ", and " + words[-1]
+    elif len(words) == 2:
+        return " and ".join(words)
+    elif len(words) == 1:
+        return words[0]
+    else:
+        return ""
 
 
 # CLASSES
@@ -207,6 +220,7 @@ class WgtStateChanger:
 
     @staticmethod
     def change_spectra_radio():
+        # TODO: change to registering in WgtStateChanger for individual genres
         tslr = WgtStateChanger.gui.tslr
         bars = {k: False for k in "dip rot vosc vrot losc lrot raman1 roa1".split()}
         for conf in tslr.conformers.values():
@@ -215,7 +229,7 @@ class WgtStateChanger:
         spectra_available = [
             SpectralData.spectra_name_ref[bar] for bar, got in bars.items() if got
         ]
-        radio = WgtStateChanger.gui.spectra_tab.s_name_radio
+        radio = WgtStateChanger.gui.controls.calculate.s_name_radio
         for option, widget in radio.items():
             state = (
                 "disabled" if not tslr or option not in spectra_available else "normal"
@@ -263,27 +277,28 @@ class FeedbackThread(Thread):
             return return_value
 
 
-class Feedback:
+class ThreadedMethod:
     def __init__(self, progbar_msg):
         self.progbar_msg = progbar_msg
 
     def __call__(self, function):
-        def wrapper(other, *args, **kwargs):
-            # other becomes self from decorated method
-            if other.parent.thread.is_alive():
+        def wrapper(widget, *args, **kwargs):
+            # widget is `self` from decorated method
+            root = widget.winfo_toplevel()
+            if root.thread.is_alive():
                 msg = "Can't start {}, while {} is still running.".format(
-                    function, other.parent.thread.target
+                    function, root.thread.target
                 )
                 logger.info(msg)
                 return  # log and do nothing
             else:
-                other.parent.thread = FeedbackThread(
-                    other.parent,
+                root.thread = FeedbackThread(
+                    root,
                     self.progbar_msg,
                     function,
-                    [other] + list(args),
+                    [widget] + list(args),
                     kwargs,
                 )
-            other.parent.thread.start()
+            root.thread.start()
 
         return wrapper
