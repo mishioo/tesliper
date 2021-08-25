@@ -606,9 +606,15 @@ class CalculateSpectra(CollapsiblePane):
         self.tesliper = tesliper
         self.view = view
 
+        self.content.columnconfigure(0, weight=1)
+
         # Spectra name
-        s_name_frame = ttk.LabelFrame(self.content, text="Spectra type:")
-        s_name_frame.grid(column=0, row=0)
+        LabelSeparator(self.content, text="Spectra type:").grid(
+            column=0, row=0, sticky="we"
+        )
+        s_name_frame = ttk.Frame(self.content)
+        s_name_frame.grid(column=0, row=1, sticky="we")
+        s_name_frame.columnconfigure((0, 1), weight=1)
         self.s_name = tk.StringVar()
         self.s_name_radio = {}
         names = "IR UV Raman VCD ECD ROA".split(" ")
@@ -621,14 +627,18 @@ class CalculateSpectra(CollapsiblePane):
                 variable=self.s_name,
                 value=v,
                 command=lambda v=v: self.spectra_chosen(v),
+                width=5,
             )
             b.configure(state="disabled")
-            b.grid(column=c, row=r, sticky="w", padx=5)
+            b.grid(column=c, row=r, padx=5)
             self.s_name_radio[v] = b
 
         # Settings
-        sett = ttk.LabelFrame(self.content, text="Settings:")
-        sett.grid(column=0, row=1, sticky="we")
+        LabelSeparator(self.content, text="Settings:").grid(
+            column=0, row=2, sticky="we"
+        )
+        sett = ttk.Frame(self.content)
+        sett.grid(column=0, row=3, sticky="we")
         tk.Grid.columnconfigure(sett, 1, weight=1)
         ttk.Label(sett, text="Fitting").grid(column=0, row=0)
         fit = tk.StringVar()
@@ -677,7 +687,7 @@ class CalculateSpectra(CollapsiblePane):
             state="disabled",
             command=self.mode_chosen,
         )
-        self.single_radio.grid(column=0, row=2, sticky="w")
+        self.single_radio.grid(column=0, row=4, sticky="w")
         self.average_radio = ttk.Radiobutton(
             self.content,
             text="Average by energy",
@@ -686,7 +696,7 @@ class CalculateSpectra(CollapsiblePane):
             state="disabled",
             command=self.mode_chosen,
         )
-        self.average_radio.grid(column=0, row=4, sticky="w")
+        self.average_radio.grid(column=0, row=6, sticky="w")
         self.stack_radio = ttk.Radiobutton(
             self.content,
             text="Stack by overview",
@@ -695,7 +705,7 @@ class CalculateSpectra(CollapsiblePane):
             state="disabled",
             command=self.mode_chosen,
         )
-        self.stack_radio.grid(column=0, row=6, sticky="w")
+        self.stack_radio.grid(column=0, row=8, sticky="w")
 
         # TODO: call auto_combobox.update_values() when conformers.kept change
         # FIXME: exception occurs when combobox is selected before s_name_radio
@@ -706,18 +716,18 @@ class CalculateSpectra(CollapsiblePane):
             "<<ComboboxSelected>>",
             lambda event: self.live_preview_callback(event, mode="single"),
         )
-        self.single.grid(column=0, row=3)
+        self.single.grid(column=0, row=5)
         self.single["values"] = ()
         self.average = EnergiesChoice(self.content, tesliper=self.tesliper)
         self.average.bind(
             "<<ComboboxSelected>>",
             lambda event: self.live_preview_callback(event, mode="average"),
         )
-        self.average.grid(column=0, row=5)
+        self.average.grid(column=0, row=7)
 
         self.stack = ColorsChoice(self.content)
         self.stack.bind("<<ComboboxSelected>>", self.change_colour)
-        self.stack.grid(column=0, row=7)
+        self.stack.grid(column=0, row=9)
         WgtStateChanger.bars.extend(
             [self.single_radio, self.single, self.stack_radio, self.stack]
         )
@@ -730,7 +740,7 @@ class CalculateSpectra(CollapsiblePane):
         # Live preview
         # Recalculate
         frame = ttk.Frame(self.content)
-        frame.grid(column=0, row=8, sticky="n")
+        frame.grid(column=0, row=10, sticky="new")
         var = tk.BooleanVar()
         var.set(False)
         self.reverse_ax = ttk.Checkbutton(
