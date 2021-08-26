@@ -64,8 +64,24 @@ class ScrollableFrame(ttk.Frame):
         self.canvas.unbind_all("<Button-5>")
 
     def _on_mousewheel(self, event):
-        if not self.scrollbar.get() == (0.0, 1.0):
+        scrollable = False
+        for scrollcommand in ["xscrollcommand", "yscrollcommand"]:
+            try:
+                _ = event.widget[scrollcommand]
+            except tk.TclError:
+                pass
+            else:
+                scrollable = True
+        try:
+            disabled = str(event.widget["state"]) == tk.DISABLED
+        except tk.TclError:
+            # state irrelevant
+            disabled = False
+        stop_on_widget = scrollable and not disabled
+        if not stop_on_widget and not self.scrollbar.get() == (0.0, 1.0):
             # prevent scrolling when content fully visible
+            # or when widget generating the event is scrollable itself
+            # and this widget is not disabled
             delta = (
                 event.delta
                 if sys.platform == "darwin"
