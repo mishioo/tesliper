@@ -33,6 +33,7 @@ class NumericEntry(ttk.Entry):
         If both, scroll_rate and scroll_factor are specified.
     """
 
+    # TODO: add formatting of float value stored in StringVar
     def __init__(
         self,
         parent,
@@ -101,9 +102,7 @@ class NumericEntry(ttk.Entry):
             logger.debug(f"Event caught by {self}._on_mousewheel handler.")
         if str(self["state"]) == "disabled":
             return  # ignore event if widget is disabled
-        delta = (
-            event.delta if sys.platform == "darwin" else int(-1 * (event.delta / 120))
-        )
+        delta = event.delta if sys.platform == "darwin" else int(event.delta / 120)
         current = float(self.var.get())
         updated = self.scroll_modifier(current, delta)
         self.var.set(updated)
