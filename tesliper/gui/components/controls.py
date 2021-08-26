@@ -15,13 +15,7 @@ import numpy as np
 from ... import datawork as dw
 from ... import tesliper
 from .collapsible_pane import CollapsiblePane
-from .helpers import (
-    ThreadedMethod,
-    WgtStateChanger,
-    float_entry_out_validation,
-    get_float_entry_validator,
-    join_with_and,
-)
+from .helpers import ThreadedMethod, WgtStateChanger, join_with_and
 from .label_separator import LabelSeparator
 from .numeric_entry import NumericEntry
 from .popups import ExportPopup, not_implemented_popup
@@ -226,7 +220,6 @@ class FilterRMSD(ttk.Frame):
         self.view = view
         self.proxy = proxy  # dict with getter for "genre" combobox
 
-        float_entry_validator = get_float_entry_validator(self)
         self.columnconfigure(1, weight=1)
 
         ttk.Label(self, text="Window size").grid(column=0, row=0)
@@ -235,30 +228,14 @@ class FilterRMSD(ttk.Frame):
         ttk.Label(self, text="angstrom").grid(column=2, row=1)
         self.window_size = tk.StringVar(value="5.0")
         self.threshold = tk.StringVar(value="1.0")
-        window_size = ttk.Entry(
-            self,
-            textvariable=self.window_size,
-            width=4,
-            validate="key",
-            validatecommand=float_entry_validator,
+        window_size = NumericEntry(
+            self, textvariable=self.window_size, width=4, scroll_rate=0.5
         )
         window_size.grid(column=1, row=0, sticky="new")
-        window_size.bind(
-            "<FocusOut>",
-            lambda e, var=self.window_size: float_entry_out_validation(var),
-        )
-        threshold = ttk.Entry(
-            self,
-            textvariable=self.threshold,
-            width=4,
-            validate="key",
-            validatecommand=float_entry_validator,
+        threshold = NumericEntry(
+            self, textvariable=self.threshold, width=4, scroll_rate=0.1
         )
         threshold.grid(column=1, row=1, sticky="new")
-        threshold.bind(
-            "<FocusOut>",
-            lambda e, var=self.threshold: float_entry_out_validation(var),
-        )
         self.ignore_hydrogens = tk.BooleanVar(value=True)
         ignore_hydrogens = ttk.Checkbutton(
             self, text="Ignore hydrogen atoms", variable=self.ignore_hydrogens
@@ -650,24 +627,26 @@ class CalculateSpectra(CollapsiblePane):
         self.fitting["values"] = ("lorentzian", "gaussian")
         WgtStateChanger.bars.append(self.fitting)
 
+        scroll_param = {
+            "Start": {"scroll_rate": 50},
+            "Stop": {"scroll_rate": 50},
+            "Step": {"scroll_rate": 1},
+            "Width": {"scroll_rate": 0.05},
+            "Offset": {"scroll_rate": 10},
+            "Scaling": {"scroll_factor": 1.1},
+        }
         for no, name in enumerate("Start Stop Step Width Offset Scaling".split(" ")):
             ttk.Label(sett, text=name).grid(column=0, row=no + 1)
             var = tk.StringVar()
-            entry = ttk.Entry(
-                sett,
-                textvariable=var,
-                width=10,
-                state="disabled",
-                validate="key",
-                validatecommand=get_float_entry_validator(self),
+            # TODO: step and width must be > 0, enforce this
+            entry = NumericEntry(
+                sett, textvariable=var, width=10, state="disabled", **scroll_param[name]
             )
-            entry.bind(
-                "<FocusOut>",
-                lambda e, var=var: (
-                    float_entry_out_validation(var),
-                    self.live_preview_callback(),
-                ),
-            )
+            entry.bind("<FocusOut>", lambda e: self.live_preview_callback(), "+")
+            entry.bind("<MouseWheel>", lambda e: self.live_preview_callback(), "+")
+            entry.bind("<Button-4>", lambda e: self.live_preview_callback(), "+")
+            entry.bind("<Button-5>", lambda e: self.live_preview_callback(), "+")
+
             setattr(self, name.lower(), entry)
             entry.var = var
             entry.grid(column=1, row=no + 1, sticky="we", padx=(0, 5))
