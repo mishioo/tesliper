@@ -23,6 +23,7 @@ from .helpers import (
     join_with_and,
 )
 from .label_separator import LabelSeparator
+from .numeric_entry import NumericEntry
 from .popups import ExportPopup, not_implemented_popup
 
 # LOGGER
@@ -141,30 +142,20 @@ class FilterRange(ttk.Frame):
         ttk.Label(self, textvariable=self.units_var, width=8).grid(column=2, row=0)
         ttk.Label(self, textvariable=self.units_var, width=8).grid(column=2, row=1)
         ttk.Label(self, text="Energy type").grid(column=0, row=2)
-        lentry = ttk.Entry(
+        lentry = NumericEntry(
             self,
             textvariable=self.lower_var,
             width=15,
-            validate="key",
-            validatecommand=get_float_entry_validator(self),
+            scroll_modifier=self.scroll_modifier,
         )
         lentry.grid(column=1, row=0, sticky="new")
-        lentry.bind(
-            "<FocusOut>",
-            lambda e, var=self.lower_var: float_entry_out_validation(var),
-        )
-        uentry = ttk.Entry(
+        uentry = NumericEntry(
             self,
             textvariable=self.upper_var,
             width=15,
-            validate="key",
-            validatecommand=get_float_entry_validator(self),
+            scroll_modifier=self.scroll_modifier,
         )
         uentry.grid(column=1, row=1, sticky="new")
-        uentry.bind(
-            "<FocusOut>",
-            lambda e, var=self.upper_var: float_entry_out_validation(var),
-        )
 
         b_filter = ttk.Button(self, text="Limit to...", command=self.filter_energy)
         b_filter.grid(column=0, row=2, columnspan=3, sticky="new")
@@ -174,6 +165,22 @@ class FilterRange(ttk.Frame):
         root.bind("<<DataExtracted>>", self.set_upper_and_lower, "+")
 
         WgtStateChanger.energies.extend([b_filter, lentry, uentry])
+
+    _scroll_modifiers = {
+        "values": lambda v, d: v + 0.00001 * d,
+        "deltas": lambda v, d: v + 0.01 * d,
+        "min_factors": lambda v, d: v + 1.2 ** d,
+        "populations": lambda v, d: v + 1 * d,
+    }
+
+    def scroll_modifier(self, value, delta):
+        showing = self.proxy["show"]()
+        updated = self._scroll_modifiers[showing](value, delta)
+        return self.format_value(updated)
+
+    def format_value(self, value):
+        n = 6 if self.proxy["show"]() == "values" else 4
+        return "{:.{}f}".format(value, n)
 
     def set_upper_and_lower(self, _event=None):
         if _event is not None:
@@ -188,13 +195,7 @@ class FilterRange(ttk.Frame):
         except (KeyError, ValueError):
             lower, upper = "0.0", "0.0"
         else:
-            if showing == "values":
-                n = 6
-            else:
-                n = 4
-            lower, upper = map(
-                lambda v: "{:.{}f}".format(v * factor, n), (lower, upper)
-            )
+            lower, upper = map(lambda v: self.format_value(v * factor), (lower, upper))
         finally:
             self.lower_var.set(lower)
             self.upper_var.set(upper)
