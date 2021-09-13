@@ -3,12 +3,40 @@ import sys
 import tkinter as tk
 from tkinter import ttk
 
-from tesliper.gui.components.helpers import (
-    float_entry_out_validation,
-    get_float_entry_validator,
-)
-
 logger = logging.getLogger(__name__)
+
+
+def validate_float_entry(inserted, text_if_allowed):
+    """Enables only values that cen be interpreted as floats."""
+    if any(i not in "0123456789.,+-" for i in inserted):
+        return False
+    else:
+        if text_if_allowed in ".,+-":
+            return True
+        if text_if_allowed in map("".join, zip("+-+-", "..,,")):
+            # user started typing negative or explicitly positive float
+            return True
+        try:
+            if text_if_allowed:
+                # consider both, comma and dot, a decimal separator
+                float(text_if_allowed.replace(",", "."))
+        except ValueError:
+            return False
+    return True
+
+
+def float_entry_out_validation(var):
+    """Change value to form accepted by float constructor."""
+    value = var.get()
+    if "," in value:
+        value = value.replace(",", ".")
+    if value.endswith((".", "+", "-")):
+        value = value + "0"
+    if value.startswith("+"):
+        value = value[1:]
+    if value.startswith((".", "-.")):
+        value = value.replace(".", "0.")
+    var.set(value)
 
 
 class NumericEntry(ttk.Entry):
@@ -47,9 +75,9 @@ class NumericEntry(ttk.Entry):
         self.scroll_modifier = scroll_modifier
         kwargs["textvariable"] = kwargs.get("textvariable", None) or tk.StringVar()
         kwargs["validate"] = kwargs.get("validate", None) or "key"
-        kwargs["validatecommand"] = kwargs.get(
-            "validatecommand", None
-        ) or get_float_entry_validator(parent)
+        if "validatecommand" not in kwargs:
+            validatecommand = parent.register(validate_float_entry), "%S", "%P"
+            kwargs["validatecommand"] = validatecommand
         self.var = kwargs["textvariable"]
 
         super().__init__(parent, **kwargs)
