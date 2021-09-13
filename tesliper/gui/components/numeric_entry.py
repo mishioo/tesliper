@@ -6,39 +6,6 @@ from tkinter import ttk
 logger = logging.getLogger(__name__)
 
 
-def validate_float_entry(inserted, text_if_allowed):
-    """Enables only values that cen be interpreted as floats."""
-    if any(i not in "0123456789.,+-" for i in inserted):
-        return False
-    else:
-        if text_if_allowed in ".,+-":
-            return True
-        if text_if_allowed in map("".join, zip("+-+-", "..,,")):
-            # user started typing negative or explicitly positive float
-            return True
-        try:
-            if text_if_allowed:
-                # consider both, comma and dot, a decimal separator
-                float(text_if_allowed.replace(",", "."))
-        except ValueError:
-            return False
-    return True
-
-
-def float_entry_out_validation(var):
-    """Change value to form accepted by float constructor."""
-    value = var.get()
-    if "," in value:
-        value = value.replace(",", ".")
-    if value.endswith((".", "+", "-")):
-        value = value + "0"
-    if value.startswith("+"):
-        value = value[1:]
-    if value.startswith((".", "-.")):
-        value = value.replace(".", "0.")
-    var.set(value)
-
-
 class NumericEntry(ttk.Entry):
     """Entry that holds a numeric value. Implements validation and changing value
     on mouse wheel event.
@@ -76,15 +43,14 @@ class NumericEntry(ttk.Entry):
         kwargs["textvariable"] = kwargs.get("textvariable", None) or tk.StringVar()
         kwargs["validate"] = kwargs.get("validate", None) or "key"
         if "validatecommand" not in kwargs:
-            validatecommand = parent.register(validate_float_entry), "%S", "%P"
+            validatecommand = parent.register(self._validate), "%S", "%P"
             kwargs["validatecommand"] = validatecommand
+        if "invalidcommand" not in kwargs:
+            invalidcommand = parent.register(self._on_invalid), "%P", "%s", "%S"
+            kwargs["invalidcommand"] = invalidcommand
         self.var = kwargs["textvariable"]
 
         super().__init__(parent, **kwargs)
-        self.bind(
-            "<FocusOut>",
-            lambda e, var=self.var: float_entry_out_validation(var),
-        )
         self.bind("<MouseWheel>", self._on_mousewheel)
         # For Linux
         self.bind("<Button-4>", self._on_mousewheel)
@@ -134,3 +100,34 @@ class NumericEntry(ttk.Entry):
         current = float(self.var.get())
         updated = self.scroll_modifier(current, delta)
         self.var.set(updated)
+
+    def _validate(self, before, after, change):
+        """Enables only values that cen be interpreted as floats."""
+        if any(i not in "0123456789.,+-" for i in change):
+            return False
+        else:
+            if after in ".,+-":
+                return True
+            if after in map("".join, zip("+-+-", "..,,")):
+                # user started typing negative or explicitly positive float
+                return True
+            try:
+                if after:
+                    # consider both, comma and dot, a decimal separator
+                    float(after.replace(",", "."))
+            except ValueError:
+                return False
+        return True
+
+    def _on_invalid(self, before, after, change):
+        """Change value to form accepted by float constructor."""
+        value = self.var.get()
+        if "," in value:
+            value = value.replace(",", ".")
+        if value.endswith((".", "+", "-")):
+            value = value + "0"
+        if value.startswith("+"):
+            value = value[1:]
+        if value.startswith((".", "-.")):
+            value = value.replace(".", "0.")
+        self.var.set(value)
