@@ -41,12 +41,12 @@ class NumericEntry(ttk.Entry):
         self.scroll_rate = scroll_rate
         self.scroll_modifier = scroll_modifier
         kwargs["textvariable"] = kwargs.get("textvariable", None) or tk.StringVar()
-        kwargs["validate"] = kwargs.get("validate", None) or "key"
+        kwargs["validate"] = kwargs.get("validate", None) or "all"
         if "validatecommand" not in kwargs:
-            validatecommand = parent.register(self._validate), "%S", "%P"
+            validatecommand = parent.register(self._validate), "%S", "%P", "%s", "%V"
             kwargs["validatecommand"] = validatecommand
         if "invalidcommand" not in kwargs:
-            invalidcommand = parent.register(self._on_invalid), "%P", "%s", "%S"
+            invalidcommand = parent.register(self._on_invalid), "%S", "%P", "%s", "%V"
             kwargs["invalidcommand"] = invalidcommand
         self.var = kwargs["textvariable"]
 
@@ -101,33 +101,48 @@ class NumericEntry(ttk.Entry):
         updated = self.scroll_modifier(current, delta)
         self.var.set(updated)
 
-    def _validate(self, before, after, change):
+    def _validate(self, change, after, before, reason):
         """Enables only values that cen be interpreted as floats."""
-        if any(i not in "0123456789.,+-" for i in change):
+        logger.debug(
+            f"Input in {self} validation: change={change}, after={after}, "
+            f"before={before}, reason={reason}."
+        )
+        focus_out = reason == "focusout"
+        if any(c not in "0123456789.,+-" for c in change):
             return False
-        else:
-            if after in ".,+-":
-                return True
-            if after in map("".join, zip("+-+-", "..,,")):
-                # user started typing negative or explicitly positive float
-                return True
-            try:
-                if after:
-                    # consider both, comma and dot, a decimal separator
-                    float(after.replace(",", "."))
-            except ValueError:
-                return False
+        if any(c in ".," for c in change) and any(c in ".," for c in before):
+            return False  # do not allow double decimal separator
+        if any(c in "+-" for c in change) and any(c in "+-" for c in before):
+            return False  # do not allow double sign
+        if any(c in "+-" for c in after) and not after.startswith(("+", "-")):
+            return False  # only allow sign in the beginning
+        if after in ".,+-" or after.endswith((".", ",")):
+            # includes also unfinished negative or explicitly positive float
+            return not focus_out  # consider it invalid only when typing is over
         return True
 
-    def _on_invalid(self, before, after, change):
+    def _on_invalid(self, change, after, before, reason):
         """Change value to form accepted by float constructor."""
-        value = self.var.get()
-        if "," in value:
-            value = value.replace(",", ".")
-        if value.endswith((".", "+", "-")):
-            value = value + "0"
-        if value.startswith("+"):
-            value = value[1:]
-        if value.startswith((".", "-.")):
-            value = value.replace(".", "0.")
-        self.var.set(value)
+        logger.debug(
+            f"Input in {self} invalid: change={change}, after={after}, "
+            f"before={before}, reason={reason}."
+        )
+        if change == "-" and not before.startswith("-"):
+            after = "-" + before
+        elif change == "+" and before.startswith("-"):
+            after = before[1:]
+        if "," in after:
+            # consider both, comma and dot, a decimal separator
+            after = after.replace(",", ".")
+        if after.startswith((".", "-.")):
+            after = after.replace(".", "0.")
+        if after.endswith((".", "+", "-")):
+            after = after + "0"
+        if after.startswith("+"):
+            after = after[1:]
+        try:
+            if after:
+                float(after)
+        except ValueError:
+            return self.var.set(before)  # revert if invalid float
+        self.var.set(after)
