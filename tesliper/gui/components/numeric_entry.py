@@ -49,6 +49,7 @@ class NumericEntry(ttk.Entry):
             invalidcommand = parent.register(self._on_invalid), "%S", "%P", "%s", "%V"
             kwargs["invalidcommand"] = invalidcommand
         self.var = kwargs["textvariable"]
+        self._before_clear = ""  # used to recover after invalid "select all + paste"
 
         super().__init__(parent, **kwargs)
         self.bind("<MouseWheel>", self._on_mousewheel)
@@ -107,6 +108,8 @@ class NumericEntry(ttk.Entry):
             f"Input in {self} validation: change={change}, after={after}, "
             f"before={before}, reason={reason}."
         )
+        if not after:
+            self._before_clear = before
         focus_out = reason == "focusout"
         if any(c not in "0123456789.,+-" for c in change):
             return False
@@ -127,6 +130,8 @@ class NumericEntry(ttk.Entry):
             f"Input in {self} invalid: change={change}, after={after}, "
             f"before={before}, reason={reason}."
         )
+        if not before and len(self._before_clear) > 1:
+            after = self._before_clear
         if change == "-" and not before.startswith("-"):
             after = "-" + before
         elif change == "+" and before.startswith("-"):
