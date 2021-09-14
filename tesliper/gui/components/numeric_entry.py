@@ -120,16 +120,16 @@ class NumericEntry(ttk.Entry):
         )
         if reason == "focusin":
             self._previous = before
-        if any(c not in "0123456789.,+-" for c in change):
+        if any(c not in "0123456789.,-" for c in change):
             return False
         if any(c in ".," for c in change) and any(c in ".," for c in before):
             return False  # do not allow double decimal separator
-        if any(c in "+-" for c in change) and any(c in "+-" for c in before):
+        if "-" in change and "-" in before and "-" in after:
             return False  # do not allow double sign
-        if any(c in "+-" for c in after) and not after.startswith(("+", "-")):
+        if "-" in after and not after.startswith("-"):
             return False  # only allow sign in the beginning
-        if after in ".,+-" or after.endswith((".", ",")):
-            # includes also unfinished negative or explicitly positive float
+        if after in ".,-" or after.endswith((".", ",")):
+            # includes also unfinished negative float
             return reason != "focusout"  # consider it invalid only when typing is over
         if not after and reason == "focusout":
             return False  # do not allow no value
@@ -143,19 +143,15 @@ class NumericEntry(ttk.Entry):
             f"Input in {self} invalid: change={change}, after={after}, "
             f"before={before}, reason={reason}."
         )
-        if change == "-" and not before.startswith("-"):
+        if change == "-" and not before.startswith("-") and "-" in after:
             after = "-" + before
-        elif change == "+" and before.startswith("-"):
+        elif change == "-" and before.startswith("-") and "-" in after:
             after = before[1:]
         if "," in after:
             # consider both, comma and dot, a decimal separator
             after = after.replace(",", ".")
-        if after.startswith((".", "-.")):
-            after = after.replace(".", "0.")
-        if after.endswith((".", "+", "-")):
+        if after.endswith((".", "-")):
             after = after + "0"
-        if after.startswith("+"):
-            after = after[1:]
         try:
             float(after)
         except ValueError:
