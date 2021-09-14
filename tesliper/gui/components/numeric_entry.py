@@ -50,11 +50,10 @@ class NumericEntry(ttk.Entry):
             invalidcommand = parent.register(self._on_invalid), "%S", "%P", "%s", "%V"
             kwargs["invalidcommand"] = invalidcommand
         self.var = kwargs["textvariable"]
-        self._before_clear = ""  # used to recover after invalid "select all + paste"
+        self._previous = ""  # used to recover after invalid "select all + paste"
         self._formatter = f"{{:.{max_decimal_digits}f}}"
 
         super().__init__(parent, **kwargs)
-        self.bind("<FocusOut>", lambda _event: self.var.set(self.format()))
         self.bind("<MouseWheel>", self._on_mousewheel)
         # For Linux
         self.bind("<Button-4>", self._on_mousewheel)
@@ -119,9 +118,8 @@ class NumericEntry(ttk.Entry):
             f"Input in {self} validation: change={change}, after={after}, "
             f"before={before}, reason={reason}."
         )
-        if not after:
-            self._before_clear = before
-        focus_out = reason == "focusout"
+        if reason == "focusin":
+            self._previous = before
         if any(c not in "0123456789.,+-" for c in change):
             return False
         if any(c in ".," for c in change) and any(c in ".," for c in before):
@@ -132,7 +130,11 @@ class NumericEntry(ttk.Entry):
             return False  # only allow sign in the beginning
         if after in ".,+-" or after.endswith((".", ",")):
             # includes also unfinished negative or explicitly positive float
-            return not focus_out  # consider it invalid only when typing is over
+            return reason != "focusout"  # consider it invalid only when typing is over
+        if not after and reason == "focusout":
+            return False  # do not allow no value
+        if reason == "focusout":
+            self.var.set(self.format(after))  # format only on valid "focusout"
         return True
 
     def _on_invalid(self, change, after, before, reason):
@@ -141,8 +143,6 @@ class NumericEntry(ttk.Entry):
             f"Input in {self} invalid: change={change}, after={after}, "
             f"before={before}, reason={reason}."
         )
-        if not before and len(self._before_clear) > 1:
-            after = self._before_clear
         if change == "-" and not before.startswith("-"):
             after = "-" + before
         elif change == "+" and before.startswith("-"):
@@ -157,8 +157,11 @@ class NumericEntry(ttk.Entry):
         if after.startswith("+"):
             after = after[1:]
         try:
-            if after:
-                float(after)
+            float(after)
         except ValueError:
-            return self.var.set(before)  # revert if invalid float
+            # revert if invalid float
+            after = self._previous if reason == "focusout" else before
+        else:
+            # format only on "focusout"
+            after = self.format(after) if reason == "focusout" else after
         self.var.set(after)
