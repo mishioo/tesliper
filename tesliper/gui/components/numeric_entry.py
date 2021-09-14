@@ -122,7 +122,11 @@ class NumericEntry(ttk.Entry):
             self._previous = before
         if any(c not in "0123456789.,-" for c in change):
             return False
-        if any(c in ".," for c in change) and any(c in ".," for c in before):
+        if (
+            any(c in ".," for c in change)
+            and any(c in ".," for c in before)
+            and any(c in ".," for c in after)
+        ):
             return False  # do not allow double decimal separator
         if "-" in change and "-" in before and "-" in after:
             return False  # do not allow double sign
