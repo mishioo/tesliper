@@ -105,8 +105,14 @@ class NumericEntry(ttk.Entry):
     def _on_mousewheel(self, event):
         if event is not None:
             logger.debug(f"Event caught by {self}._on_mousewheel handler.")
-        if str(self["state"]) == "disabled":
-            return  # ignore event if widget is disabled
+        try:
+            _ = float(self.var.get())
+        except ValueError:
+            convertible = False
+        else:
+            convertible = True
+        if str(self["state"]) == "disabled" or not convertible:
+            return  # ignore event if widget is disabled or edition unfinished
         delta = event.delta if sys.platform == "darwin" else int(event.delta / 120)
         current = float(self.var.get())
         updated = self.scroll_modifier(current, delta)

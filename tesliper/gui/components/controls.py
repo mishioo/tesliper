@@ -643,6 +643,7 @@ class CalculateSpectra(CollapsiblePane):
                 sett, textvariable=var, width=10, state="disabled", **scroll_param[name]
             )
             entry.bind("<FocusOut>", lambda e: self.live_preview_callback(), "+")
+            # FIXME: unnecessarily triggers when empty NumericEntry scrolled
             entry.bind("<MouseWheel>", lambda e: self.live_preview_callback(), "+")
             entry.bind("<Button-4>", lambda e: self.live_preview_callback(), "+")
             entry.bind("<Button-5>", lambda e: self.live_preview_callback(), "+")
@@ -971,6 +972,7 @@ class CalculateSpectra(CollapsiblePane):
     def current_settings(self):
         try:
             settings = {
+                # FIXME: call to float raises when empty NumericEntry scrolled
                 key: float(getattr(self, key).get())
                 for key in "start stop step width offset scaling".split(" ")
             }
@@ -997,7 +999,7 @@ class CalculateSpectra(CollapsiblePane):
         option = getattr(self, mode).var.get()
         if option.startswith("Choose "):
             return
-        logger.debug("Recalculating!")
+        logger.debug(f"Recalculating with {self.current_settings}")
         self._calculate_spectra(spectra_name, option, mode)
         self.draw(spectra_name=spectra_name, mode=mode, option=option)
 
