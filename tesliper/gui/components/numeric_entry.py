@@ -35,6 +35,7 @@ class NumericEntry(ttk.Entry):
         scroll_rate=None,
         scroll_factor=None,
         scroll_modifier=None,
+        max_decimal_digits=4,
         **kwargs,
     ):
         self.scroll_factor = scroll_factor
@@ -50,8 +51,10 @@ class NumericEntry(ttk.Entry):
             kwargs["invalidcommand"] = invalidcommand
         self.var = kwargs["textvariable"]
         self._before_clear = ""  # used to recover after invalid "select all + paste"
+        self._formatter = f"{{:.{max_decimal_digits}f}}"
 
         super().__init__(parent, **kwargs)
+        self.bind("<FocusOut>", lambda _event: self.var.set(self.format()))
         self.bind("<MouseWheel>", self._on_mousewheel)
         # For Linux
         self.bind("<Button-4>", self._on_mousewheel)
@@ -92,6 +95,14 @@ class NumericEntry(ttk.Entry):
     def scroll_modifier(self, value):
         self._scroll_modifier = value
 
+    def format(self, value=None):
+        value = value if value is not None else self.var.get()
+        value = self._formatter.format(float(value))
+        value = value.rstrip("0")  # discard insignificant zeros
+        if value.endswith("."):
+            value += "0"  # but keep at least one decimal digit
+        return value
+
     def _on_mousewheel(self, event):
         if event is not None:
             logger.debug(f"Event caught by {self}._on_mousewheel handler.")
@@ -100,7 +111,7 @@ class NumericEntry(ttk.Entry):
         delta = event.delta if sys.platform == "darwin" else int(event.delta / 120)
         current = float(self.var.get())
         updated = self.scroll_modifier(current, delta)
-        self.var.set(updated)
+        self.var.set(self.format(updated))
 
     def _validate(self, change, after, before, reason):
         """Enables only values that cen be interpreted as floats."""
