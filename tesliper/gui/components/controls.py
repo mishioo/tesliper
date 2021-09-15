@@ -171,6 +171,23 @@ class FilterRange(ttk.Frame):
         "populations": lambda v, d: v + 1 * d,
     }
 
+    _entry_configure = {
+        "values": {
+            "min_value": float("-inf"),
+            "max_value": float("inf"),
+            "decimal_digits": 6,
+        },
+        "deltas": {"min_value": 0, "max_value": float("inf"), "decimal_digits": 4},
+        "min_factors": {"min_value": 0, "max_value": float("inf"), "decimal_digits": 4},
+        "populations": {"min_value": 0, "max_value": 100, "decimal_digits": 4},
+    }
+
+    def on_show_selected(self, _event=None):
+        config = self._entry_configure[self.proxy["show"]()]
+        self.upper_entry.configure(**config)
+        self.lower_entry.configure(**config)
+        self.set_upper_and_lower()
+
     def scroll_modifier(self, value, delta):
         showing = self.proxy["show"]()
         updated = self._scroll_modifiers[showing](value, delta)
@@ -340,7 +357,7 @@ class FilterEnergies(CollapsiblePane):
         if _event is not None:
             logger.debug(f"Event caught by {self}.on_show_selected handler.")
         self.view.refresh(show=self.show_ref[self.show_var.get()])
-        self.range.set_upper_and_lower()
+        self.range.on_show_selected()
 
     def on_energies_selected(self, _event=None):
         if _event is not None:
