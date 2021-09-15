@@ -54,10 +54,24 @@ class NumericEntry(ttk.Entry):
         kwargs["textvariable"] = kwargs.get("textvariable", None) or tk.StringVar()
         kwargs["validate"] = kwargs.get("validate", None) or "all"
         if "validatecommand" not in kwargs:
-            validatecommand = parent.register(self._validate), "%S", "%P", "%s", "%V"
+            validatecommand = (
+                parent.register(self._validate),
+                "%S",
+                "%P",
+                "%s",
+                "%V",
+                "%d",
+            )
             kwargs["validatecommand"] = validatecommand
         if "invalidcommand" not in kwargs:
-            invalidcommand = parent.register(self._on_invalid), "%S", "%P", "%s", "%V"
+            invalidcommand = (
+                parent.register(self._on_invalid),
+                "%S",
+                "%P",
+                "%s",
+                "%V",
+                "%d",
+            )
             kwargs["invalidcommand"] = invalidcommand
         self.var = kwargs["textvariable"]
 
@@ -164,7 +178,14 @@ class NumericEntry(ttk.Entry):
         if self.is_in_bounds(float(updated)):
             self.var.set(updated)
 
-    def _validate(self, change, after, before, reason):
+    @property
+    def allowed_chars(self):
+        allowed = "0123456789.,"
+        if self.min_value < 0:
+            allowed += "-"
+        return allowed
+
+    def _validate(self, change, after, before, reason, action_code):
         """Enables only values that cen be interpreted as floats."""
         logger.debug(
             f"Input in {self} validation: change={change}, after={after}, "
@@ -172,7 +193,7 @@ class NumericEntry(ttk.Entry):
         )
         if reason == "focusin":
             self._previous = before
-        if any(c not in "0123456789.,-" for c in change):
+        if action_code and any(c not in self.allowed_chars for c in change):
             return False
         if (
             any(c in ".," for c in change)
@@ -180,7 +201,7 @@ class NumericEntry(ttk.Entry):
             and any(c in ".," for c in after)
         ):
             return False  # do not allow double decimal separator
-        if "-" in change and "-" in before and "-" in after:
+        if "-" in change and "-" in before and action_code:
             return False  # do not allow double sign
         if "-" in after and not after.startswith("-"):
             return False  # only allow sign in the beginning
@@ -199,20 +220,27 @@ class NumericEntry(ttk.Entry):
             self.var.set(self.format(after))  # format only on valid "focusout"
         return True
 
-    def _on_invalid(self, change, after, before, reason):
+    def _on_invalid(self, change, after, before, reason, action_code):
         """Change value to form accepted by float constructor."""
         logger.debug(
             f"Input in {self} invalid: change={change}, after={after}, "
             f"before={before}, reason={reason}."
         )
-        if change == "-" and not before.startswith("-") and "-" in after:
+        if (
+            "-" in change
+            and not before.startswith("-")
+            and action_code  # not deletion
+            and self.min_value < 0
+        ):
             after = "-" + before
-        elif change == "-" and before.startswith("-") and "-" in after:
+        elif change == "-" and before.startswith("-") and action_code:
             after = before[1:]
         if "," in after:
             # consider both, comma and dot, a decimal separator
             after = after.replace(",", ".")
-        if after.endswith((".", "-")):
+        if after.endswith("."):
+            after = after + "0"
+        if after == "-" and self.min_value < 0:
             after = after + "0"
         try:
             converted = float(after)
