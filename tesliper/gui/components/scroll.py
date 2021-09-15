@@ -9,6 +9,23 @@ from typing import Type
 logger = lgg.getLogger(__name__)
 
 
+def is_scrollable(widget):
+    scrollable = False
+    for scrollcommand in ["xscrollcommand", "yscrollcommand"]:
+        try:
+            _ = widget[scrollcommand]
+        except tk.TclError:
+            pass
+        else:
+            scrollable = True
+    try:
+        disabled = str(widget["state"]) == tk.DISABLED
+    except tk.TclError:
+        # state irrelevant
+        disabled = False
+    return scrollable and not disabled
+
+
 # CLASSES
 class AutoScrollbar(ttk.Scrollbar):
     """A scrollbar that hides automatically when entire canvas is visible.
@@ -48,9 +65,53 @@ class ScrollableFrame(ttk.Frame):
         self.canvas.columnconfigure(0, weight=1)
         self.canvas.rowconfigure(0, weight=1)
 
+        self._scheduled = None
+        self._hold_scrolling = False
+        self._hold_delay = 500
+
         # Scroll with mouse wheel when cursor over canvas
         self.bind("<Enter>", self._bound_to_mousewheel)
         self.bind("<Leave>", self._unbound_to_mousewheel)
+
+        # Enable delayed scrolling hold on other scrollable widgets
+        self.bind_all("<Enter>", self._on_child_enter, "+")
+        self.bind_all("<Leave>", self._on_child_leave, "+")
+
+    def _on_child_enter(self, event):
+        """If entered widget is ScrollableFrame's child and scrollable,
+        schedule passing scroll control to this widget."""
+        command = self._child_reverse_bindtags(event.widget)
+        if not command:
+            self._scheduled = self.after(self._hold_delay, self._on_child_stop, event)
+
+    def _on_child_leave(self, event):
+        """If widget left before scheduled hold was executed, cancel it and revert
+        changes. Give scroll control to ScrollableFrame."""
+        if self._scheduled is not None:
+            self._child_reverse_bindtags(event.widget)
+            self.after_cancel(self._scheduled)
+            self._scheduled = None
+        self._hold_scrolling = False
+
+    def _on_child_stop(self, event):
+        """Give scroll control to widget over the mouse cursor."""
+        self._child_reverse_bindtags(event.widget)
+        self._scheduled = None
+        self._hold_scrolling = True
+
+    def _child_reverse_bindtags(self, widget):
+        """Reverse order of widget's bindtags to control if widget-specific or "all"
+        bindings are executed first. Do it only if widget is a child of ScrollableFrame.
+        """
+        if not str(widget).startswith(str(self.canvas)):
+            logger.debug(f"Bindtags reverse aborted: widget is not a child of {self}.")
+            return "ok"  # or maybe "continue"?
+        elif not is_scrollable(widget):
+            logger.debug("Bindtags reverse aborted: non-scrollable or disabled widget.")
+            return "ok"  # or maybe "continue"?
+        reversed_ = widget.bindtags()[::-1]
+        widget.bindtags(reversed_)
+        logger.debug(f"New bindtags order: {reversed_}.")
 
     def _bound_to_mousewheel(self, event):
         self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
@@ -64,30 +125,19 @@ class ScrollableFrame(ttk.Frame):
         self.canvas.unbind_all("<Button-5>")
 
     def _on_mousewheel(self, event):
-        scrollable = False
-        for scrollcommand in ["xscrollcommand", "yscrollcommand"]:
-            try:
-                _ = event.widget[scrollcommand]
-            except tk.TclError:
-                pass
-            else:
-                scrollable = True
-        try:
-            disabled = str(event.widget["state"]) == tk.DISABLED
-        except tk.TclError:
-            # state irrelevant
-            disabled = False
-        stop_on_widget = scrollable and not disabled
-        if not stop_on_widget and not self.scrollbar.get() == (0.0, 1.0):
-            # prevent scrolling when content fully visible
-            # or when widget generating the event is scrollable itself
-            # and this widget is not disabled
+        logger.debug(f"Event caught by {self}._on_mousewheel handler.")
+        # prevent scrolling when content fully visible
+        # or when scrolling is held by other scrollable widget
+        if not self._hold_scrolling and not self.scrollbar.get() == (0.0, 1.0):
             delta = (
                 event.delta
                 if sys.platform == "darwin"
                 else int(-1 * (event.delta / 120))
             )
             self.canvas.yview_scroll(delta, "units")
+            # don't propagate event to other bindtags
+            # to enable delayed hold on scrollable widgets
+            return "break"
 
     def _on_content_configure(self, event):
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
