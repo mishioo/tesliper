@@ -108,12 +108,15 @@ class NumericEntry(ttk.Entry):
         self.update()
 
     def update(self, value=None):
-        value = value if value is not None else self.var.get()
+        if value is None and not self.get():
+            logger.debug(f"Update aborted, {self} deliberately empty.")
+            return
+        value = value if value is not None else self.get()
         try:
             self.var.set(self.format(value))
         except ValueError:
             logger.warning(
-                f"Cannot update, value {repr(value)} can't be converted to float"
+                f"Cannot update {self}: {repr(value)} can't be converted to float"
             )
 
     @property
