@@ -1015,13 +1015,17 @@ class CalculateSpectra(CollapsiblePane):
     def recalculate_command(self):
         spectra_name = self.s_name.get()
         if not spectra_name:
-            logger.debug("spectra_name not specified.")
+            logger.debug("Calculation aborted: spectra_name not specified.")
+            return
+        if not self.current_settings:
+            logger.info("Calculation aborted: invalid settings provided.")
             return
         self.last_used_settings[spectra_name] = self.current_settings.copy()
         mode = self.mode.get()
         # get value from self.single, self.average or self.stack
         option = getattr(self, mode).var.get()
         if option.startswith("Choose "):
+            logger.info("Calculation aborted: option not chosen.")
             return
         logger.debug(f"Recalculating with {self.current_settings}")
         self._calculate_spectra(spectra_name, option, mode)
