@@ -1,4 +1,5 @@
 import logging
+import operator
 import sys
 import tkinter as tk
 from tkinter import ttk
@@ -37,11 +38,19 @@ class NumericEntry(ttk.Entry):
         scroll_modifier=None,
         decimal_digits=4,
         keep_trailing_zeros=False,
+        min_value=float("-inf"),
+        max_value=float("inf"),
+        include_min_value=True,
+        include_max_value=True,
         **kwargs,
     ):
         self.scroll_factor = scroll_factor
         self.scroll_rate = scroll_rate
         self.scroll_modifier = scroll_modifier
+        self.min_value = min_value
+        self.max_value = max_value
+        self.include_min_value = include_min_value
+        self.include_max_value = include_max_value
         kwargs["textvariable"] = kwargs.get("textvariable", None) or tk.StringVar()
         kwargs["validate"] = kwargs.get("validate", None) or "all"
         if "validatecommand" not in kwargs:
@@ -51,9 +60,9 @@ class NumericEntry(ttk.Entry):
             invalidcommand = parent.register(self._on_invalid), "%S", "%P", "%s", "%V"
             kwargs["invalidcommand"] = invalidcommand
         self.var = kwargs["textvariable"]
+
         self._decimal_digits = decimal_digits
         self._keep_trailing_zeros = keep_trailing_zeros
-
         self._previous = ""  # used to recover after invalid "select all + paste"
 
         super().__init__(parent, **kwargs)
@@ -61,6 +70,11 @@ class NumericEntry(ttk.Entry):
         # For Linux
         self.bind("<Button-4>", self._on_mousewheel)
         self.bind("<Button-5>", self._on_mousewheel)
+
+    def is_in_bounds(self, value):
+        upper_op = operator.le if self.include_max_value else operator.lt
+        lower_op = operator.ge if self.include_min_value else operator.gt
+        return upper_op(value, self.max_value) and lower_op(value, self.min_value)
 
     @property
     def decimal_digits(self):
@@ -146,7 +160,9 @@ class NumericEntry(ttk.Entry):
         delta = event.delta if sys.platform == "darwin" else int(event.delta / 120)
         current = float(self.var.get())
         updated = self.scroll_modifier(current, delta)
-        self.var.set(self.format(updated))
+        updated = self.format(updated)
+        if self.is_in_bounds(float(updated)):
+            self.var.set(updated)
 
     def _validate(self, change, after, before, reason):
         """Enables only values that cen be interpreted as floats."""
@@ -174,6 +190,12 @@ class NumericEntry(ttk.Entry):
         if not after and reason == "focusout":
             return False  # do not allow no value
         if reason == "focusout":
+            try:
+                converted = float(after)
+            except ValueError:
+                return False
+            if not self.is_in_bounds(converted):
+                return False
             self.var.set(self.format(after))  # format only on valid "focusout"
         return True
 
@@ -193,7 +215,9 @@ class NumericEntry(ttk.Entry):
         if after.endswith((".", "-")):
             after = after + "0"
         try:
-            float(after)
+            converted = float(after)
+            if not self.is_in_bounds(converted) and reason == "focusout":
+                raise ValueError  # treat out-of-bounds value as invalid on "focusout"
         except ValueError:
             # revert if invalid float
             after = self._previous if reason == "focusout" else before
