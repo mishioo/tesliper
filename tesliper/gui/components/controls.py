@@ -136,20 +136,24 @@ class FilterRange(ttk.Frame):
         ttk.Label(self, textvariable=self.units_var, width=8).grid(column=2, row=0)
         ttk.Label(self, textvariable=self.units_var, width=8).grid(column=2, row=1)
         ttk.Label(self, text="Energy type").grid(column=0, row=2)
-        lentry = NumericEntry(
+        self.lower_entry = NumericEntry(
             self,
             textvariable=self.lower_var,
             width=15,
             scroll_modifier=self.scroll_modifier,
+            keep_trailing_zeros=True,
+            decimal_digits=6,
         )
-        lentry.grid(column=1, row=0, sticky="new")
-        uentry = NumericEntry(
+        self.lower_entry.grid(column=1, row=0, sticky="new")
+        self.upper_entry = NumericEntry(
             self,
             textvariable=self.upper_var,
             width=15,
             scroll_modifier=self.scroll_modifier,
+            keep_trailing_zeros=True,
+            decimal_digits=6,
         )
-        uentry.grid(column=1, row=1, sticky="new")
+        self.upper_entry.grid(column=1, row=1, sticky="new")
 
         b_filter = ttk.Button(self, text="Limit to...", command=self.filter_energy)
         b_filter.grid(column=0, row=2, columnspan=3, sticky="new")
@@ -158,7 +162,7 @@ class FilterRange(ttk.Frame):
         # root.bind("<<KeptChanged>>", self.set_upper_and_lower, "+")
         root.bind("<<DataExtracted>>", self.set_upper_and_lower, "+")
 
-        WgtStateChanger.energies.extend([b_filter, lentry, uentry])
+        WgtStateChanger.energies.extend([b_filter, self.lower_entry, self.upper_entry])
 
     _scroll_modifiers = {
         "values": lambda v, d: v + 0.00001 * d,
@@ -170,11 +174,7 @@ class FilterRange(ttk.Frame):
     def scroll_modifier(self, value, delta):
         showing = self.proxy["show"]()
         updated = self._scroll_modifiers[showing](value, delta)
-        return self.format_value(updated)
-
-    def format_value(self, value):
-        n = 6 if self.proxy["show"]() == "values" else 4
-        return "{:.{}f}".format(value, n)
+        return updated
 
     def set_upper_and_lower(self, _event=None):
         if _event is not None:
@@ -187,20 +187,20 @@ class FilterRange(ttk.Frame):
             arr = getattr(self.tesliper[energy], showing)
             lower, upper = arr.min(), arr.max()
         except (KeyError, ValueError):
-            lower, upper = "0.0", "0.0"
+            lower, upper = 0, 0
         else:
-            lower, upper = map(lambda v: self.format_value(v * factor), (lower, upper))
+            lower, upper = lower * factor, upper * factor
         finally:
-            self.lower_var.set(lower)
-            self.upper_var.set(upper)
+            self.lower_entry.update(lower)
+            self.upper_entry.update(upper)
             self.units_var.set(units)
 
     def filter_energy(self):
         showing = self.proxy["show"]()
         energy = self.proxy["genre"]()
         factor = 1e-2 if showing == "populations" else 1
-        lower = float(self.lower_var.get()) * factor
-        upper = float(self.upper_var.get()) * factor
+        lower = float(self.lower_entry.get()) * factor
+        upper = float(self.upper_entry.get()) * factor
         self.tesliper.conformers.trim_to_range(
             energy, minimum=lower, maximum=upper, attribute=showing
         )
