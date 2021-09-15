@@ -229,11 +229,19 @@ class FilterRMSD(ttk.Frame):
         self.window_size = tk.StringVar(value="5.0")
         self.threshold = tk.StringVar(value="1.0")
         window_size = NumericEntry(
-            self, textvariable=self.window_size, width=4, scroll_rate=0.5
+            self,
+            textvariable=self.window_size,
+            width=4,
+            scroll_rate=0.5,
+            min_value=0,
         )
         window_size.grid(column=1, row=0, sticky="new")
         threshold = NumericEntry(
-            self, textvariable=self.threshold, width=4, scroll_rate=0.1
+            self,
+            textvariable=self.threshold,
+            width=4,
+            scroll_rate=0.1,
+            min_value=0,
         )
         threshold.grid(column=1, row=1, sticky="new")
         self.ignore_hydrogens = tk.BooleanVar(value=True)
@@ -630,15 +638,14 @@ class CalculateSpectra(CollapsiblePane):
         scroll_param = {
             "Start": {"scroll_rate": 50},
             "Stop": {"scroll_rate": 50},
-            "Step": {"scroll_rate": 1},
-            "Width": {"scroll_rate": 0.05},
+            "Step": {"scroll_rate": 1, "min_value": 0, "include_min_value": False},
+            "Width": {"scroll_rate": 0.05, "min_value": 0, "include_min_value": False},
             "Offset": {"scroll_rate": 10},
             "Scaling": {"scroll_factor": 1.1},
         }
         for no, name in enumerate("Start Stop Step Width Offset Scaling".split(" ")):
             ttk.Label(sett, text=name).grid(column=0, row=no + 1)
             var = tk.StringVar()
-            # TODO: step and width must be > 0, enforce this
             entry = NumericEntry(
                 sett, textvariable=var, width=10, state="disabled", **scroll_param[name]
             )
