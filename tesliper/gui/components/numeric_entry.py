@@ -46,6 +46,8 @@ class NumericEntry(ttk.Entry):
         self.scroll_factor = scroll_factor
         self.scroll_rate = scroll_rate
         self.scroll_modifier = scroll_modifier
+        self.decimal_digits = decimal_digits
+        self.keep_trailing_zeros = keep_trailing_zeros
         self.min_value = min_value
         self.max_value = max_value
         self.include_min_value = include_min_value
@@ -74,8 +76,6 @@ class NumericEntry(ttk.Entry):
             kwargs["invalidcommand"] = invalidcommand
         self.var = kwargs["textvariable"]
 
-        self._decimal_digits = decimal_digits
-        self._keep_trailing_zeros = keep_trailing_zeros
         self._previous = ""  # used to recover after invalid "select all + paste"
 
         super().__init__(parent, **kwargs)
@@ -89,22 +89,23 @@ class NumericEntry(ttk.Entry):
         lower_op = operator.ge if self.include_min_value else operator.gt
         return upper_op(value, self.max_value) and lower_op(value, self.min_value)
 
-    @property
-    def decimal_digits(self):
-        return self._decimal_digits
-
-    @decimal_digits.setter
-    def decimal_digits(self, value):
-        self._decimal_digits = value
-        self.update()
-
-    @property
-    def keep_trailing_zeros(self):
-        return self._keep_trailing_zeros
-
-    @keep_trailing_zeros.setter
-    def keep_trailing_zeros(self, value):
-        self._keep_trailing_zeros = value
+    def configure(self, cnf=None, **kwargs):
+        customs = [
+            "scroll_rate",
+            "scroll_factor",
+            "scroll_modifier",
+            "decimal_digits",
+            "keep_trailing_zeros",
+            "min_value",
+            "max_value",
+            "include_min_value",
+            "include_max_value",
+        ]
+        for key in customs:
+            value = kwargs.pop(key, None)
+            if value is not None:
+                setattr(self, key, value)
+        super().configure(cnf, **kwargs)
         self.update()
 
     def update(self, value=None):
