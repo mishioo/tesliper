@@ -29,7 +29,6 @@ class NumericEntry(ttk.Entry):
         If both, scroll_rate and scroll_factor are specified.
     """
 
-    # TODO: add formatting of float value stored in StringVar
     def __init__(
         self,
         parent,
@@ -108,12 +107,14 @@ class NumericEntry(ttk.Entry):
         self._keep_trailing_zeros = value
         self.update()
 
-    def update(self):
+    def update(self, value=None):
+        value = value if value is not None else self.var.get()
         try:
-            self.var.set(self.format())
+            self.var.set(self.format(value))
         except ValueError:
-            # var cant be converted to float
-            logger.warning("Cannot update, value can't be converted to float")
+            logger.warning(
+                f"Cannot update, value {repr(value)} can't be converted to float"
+            )
 
     @property
     def scroll_factor(self):
@@ -150,9 +151,8 @@ class NumericEntry(ttk.Entry):
     def scroll_modifier(self, value):
         self._scroll_modifier = value
 
-    def format(self, value=None):
+    def format(self, value):
         formatter = f"{{:.{self.decimal_digits}f}}"
-        value = value if value is not None else self.var.get()
         value = formatter.format(float(value))
         if not self.keep_trailing_zeros:
             value = value.rstrip("0")  # discard insignificant trailing zeros
