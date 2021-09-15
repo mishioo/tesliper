@@ -667,7 +667,6 @@ class CalculateSpectra(CollapsiblePane):
                 sett, textvariable=var, width=10, state="disabled", **scroll_param[name]
             )
             entry.bind("<FocusOut>", lambda e: self.live_preview_callback(), "+")
-            # FIXME: unnecessarily triggers when empty NumericEntry scrolled
             entry.bind("<MouseWheel>", lambda e: self.live_preview_callback(), "+")
             entry.bind("<Button-4>", lambda e: self.live_preview_callback(), "+")
             entry.bind("<Button-5>", lambda e: self.live_preview_callback(), "+")
@@ -713,7 +712,6 @@ class CalculateSpectra(CollapsiblePane):
         self.stack_radio.grid(column=0, row=8, sticky="w")
 
         # TODO: call auto_combobox.update_values() when conformers.kept change
-        # FIXME: exception occurs when combobox is selected before s_name_radio
         self.single = ConformersChoice(
             self.content, tesliper=self.tesliper, spectra_var=self.s_name
         )
@@ -996,7 +994,6 @@ class CalculateSpectra(CollapsiblePane):
     def current_settings(self):
         try:
             settings = {
-                # FIXME: call to float raises when empty NumericEntry scrolled
                 key: float(getattr(self, key).get())
                 for key in "start stop step width offset scaling".split(" ")
             }
