@@ -35,7 +35,8 @@ class NumericEntry(ttk.Entry):
         scroll_rate=None,
         scroll_factor=None,
         scroll_modifier=None,
-        max_decimal_digits=4,
+        decimal_digits=4,
+        keep_trailing_zeros=False,
         **kwargs,
     ):
         self.scroll_factor = scroll_factor
@@ -50,14 +51,41 @@ class NumericEntry(ttk.Entry):
             invalidcommand = parent.register(self._on_invalid), "%S", "%P", "%s", "%V"
             kwargs["invalidcommand"] = invalidcommand
         self.var = kwargs["textvariable"]
+        self._decimal_digits = decimal_digits
+        self._keep_trailing_zeros = keep_trailing_zeros
+
         self._previous = ""  # used to recover after invalid "select all + paste"
-        self._formatter = f"{{:.{max_decimal_digits}f}}"
 
         super().__init__(parent, **kwargs)
         self.bind("<MouseWheel>", self._on_mousewheel)
         # For Linux
         self.bind("<Button-4>", self._on_mousewheel)
         self.bind("<Button-5>", self._on_mousewheel)
+
+    @property
+    def decimal_digits(self):
+        return self._decimal_digits
+
+    @decimal_digits.setter
+    def decimal_digits(self, value):
+        self._decimal_digits = value
+        self.update()
+
+    @property
+    def keep_trailing_zeros(self):
+        return self._keep_trailing_zeros
+
+    @keep_trailing_zeros.setter
+    def keep_trailing_zeros(self, value):
+        self._keep_trailing_zeros = value
+        self.update()
+
+    def update(self):
+        try:
+            self.var.set(self.format())
+        except ValueError:
+            # var cant be converted to float
+            logger.warning("Cannot update, value can't be converted to float")
 
     @property
     def scroll_factor(self):
@@ -95,9 +123,11 @@ class NumericEntry(ttk.Entry):
         self._scroll_modifier = value
 
     def format(self, value=None):
+        formatter = f"{{:.{self.decimal_digits}f}}"
         value = value if value is not None else self.var.get()
-        value = self._formatter.format(float(value))
-        value = value.rstrip("0")  # discard insignificant zeros
+        value = formatter.format(float(value))
+        if not self.keep_trailing_zeros:
+            value = value.rstrip("0")  # discard insignificant trailing zeros
         if value.endswith("."):
             value += "0"  # but keep at least one decimal digit
         return value
