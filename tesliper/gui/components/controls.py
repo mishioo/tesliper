@@ -136,20 +136,24 @@ class FilterRange(ttk.Frame):
         ttk.Label(self, textvariable=self.units_var, width=8).grid(column=2, row=0)
         ttk.Label(self, textvariable=self.units_var, width=8).grid(column=2, row=1)
         ttk.Label(self, text="Energy type").grid(column=0, row=2)
-        lentry = NumericEntry(
+        self.lower_entry = NumericEntry(
             self,
             textvariable=self.lower_var,
             width=15,
             scroll_modifier=self.scroll_modifier,
+            keep_trailing_zeros=True,
+            decimal_digits=6,
         )
-        lentry.grid(column=1, row=0, sticky="new")
-        uentry = NumericEntry(
+        self.lower_entry.grid(column=1, row=0, sticky="new")
+        self.upper_entry = NumericEntry(
             self,
             textvariable=self.upper_var,
             width=15,
             scroll_modifier=self.scroll_modifier,
+            keep_trailing_zeros=True,
+            decimal_digits=6,
         )
-        uentry.grid(column=1, row=1, sticky="new")
+        self.upper_entry.grid(column=1, row=1, sticky="new")
 
         b_filter = ttk.Button(self, text="Limit to...", command=self.filter_energy)
         b_filter.grid(column=0, row=2, columnspan=3, sticky="new")
@@ -158,7 +162,7 @@ class FilterRange(ttk.Frame):
         # root.bind("<<KeptChanged>>", self.set_upper_and_lower, "+")
         root.bind("<<DataExtracted>>", self.set_upper_and_lower, "+")
 
-        WgtStateChanger.energies.extend([b_filter, lentry, uentry])
+        WgtStateChanger.energies.extend([b_filter, self.lower_entry, self.upper_entry])
 
     _scroll_modifiers = {
         "values": lambda v, d: v + 0.00001 * d,
@@ -167,14 +171,27 @@ class FilterRange(ttk.Frame):
         "populations": lambda v, d: v + 1 * d,
     }
 
+    _entry_configure = {
+        "values": {
+            "min_value": float("-inf"),
+            "max_value": float("inf"),
+            "decimal_digits": 6,
+        },
+        "deltas": {"min_value": 0, "max_value": float("inf"), "decimal_digits": 4},
+        "min_factors": {"min_value": 0, "max_value": float("inf"), "decimal_digits": 4},
+        "populations": {"min_value": 0, "max_value": 100, "decimal_digits": 4},
+    }
+
+    def on_show_selected(self, _event=None):
+        config = self._entry_configure[self.proxy["show"]()]
+        self.upper_entry.configure(**config)
+        self.lower_entry.configure(**config)
+        self.set_upper_and_lower()
+
     def scroll_modifier(self, value, delta):
         showing = self.proxy["show"]()
         updated = self._scroll_modifiers[showing](value, delta)
-        return self.format_value(updated)
-
-    def format_value(self, value):
-        n = 6 if self.proxy["show"]() == "values" else 4
-        return "{:.{}f}".format(value, n)
+        return updated
 
     def set_upper_and_lower(self, _event=None):
         if _event is not None:
@@ -187,20 +204,20 @@ class FilterRange(ttk.Frame):
             arr = getattr(self.tesliper[energy], showing)
             lower, upper = arr.min(), arr.max()
         except (KeyError, ValueError):
-            lower, upper = "0.0", "0.0"
+            lower, upper = 0, 0
         else:
-            lower, upper = map(lambda v: self.format_value(v * factor), (lower, upper))
+            lower, upper = lower * factor, upper * factor
         finally:
-            self.lower_var.set(lower)
-            self.upper_var.set(upper)
+            self.lower_entry.update(lower)
+            self.upper_entry.update(upper)
             self.units_var.set(units)
 
     def filter_energy(self):
         showing = self.proxy["show"]()
         energy = self.proxy["genre"]()
         factor = 1e-2 if showing == "populations" else 1
-        lower = float(self.lower_var.get()) * factor
-        upper = float(self.upper_var.get()) * factor
+        lower = float(self.lower_entry.get()) * factor
+        upper = float(self.upper_entry.get()) * factor
         self.tesliper.conformers.trim_to_range(
             energy, minimum=lower, maximum=upper, attribute=showing
         )
@@ -229,11 +246,19 @@ class FilterRMSD(ttk.Frame):
         self.window_size = tk.StringVar(value="5.0")
         self.threshold = tk.StringVar(value="1.0")
         window_size = NumericEntry(
-            self, textvariable=self.window_size, width=4, scroll_rate=0.5
+            self,
+            textvariable=self.window_size,
+            width=4,
+            scroll_rate=0.5,
+            min_value=0,
         )
         window_size.grid(column=1, row=0, sticky="new")
         threshold = NumericEntry(
-            self, textvariable=self.threshold, width=4, scroll_rate=0.1
+            self,
+            textvariable=self.threshold,
+            width=4,
+            scroll_rate=0.1,
+            min_value=0,
         )
         threshold.grid(column=1, row=1, sticky="new")
         self.ignore_hydrogens = tk.BooleanVar(value=True)
@@ -332,7 +357,7 @@ class FilterEnergies(CollapsiblePane):
         if _event is not None:
             logger.debug(f"Event caught by {self}.on_show_selected handler.")
         self.view.refresh(show=self.show_ref[self.show_var.get()])
-        self.range.set_upper_and_lower()
+        self.range.on_show_selected()
 
     def on_energies_selected(self, _event=None):
         if _event is not None:
@@ -630,15 +655,14 @@ class CalculateSpectra(CollapsiblePane):
         scroll_param = {
             "Start": {"scroll_rate": 50},
             "Stop": {"scroll_rate": 50},
-            "Step": {"scroll_rate": 1},
-            "Width": {"scroll_rate": 0.05},
+            "Step": {"scroll_rate": 1, "min_value": 0, "include_min_value": False},
+            "Width": {"scroll_rate": 0.05, "min_value": 0, "include_min_value": False},
             "Offset": {"scroll_rate": 10},
             "Scaling": {"scroll_factor": 1.1},
         }
         for no, name in enumerate("Start Stop Step Width Offset Scaling".split(" ")):
             ttk.Label(sett, text=name).grid(column=0, row=no + 1)
             var = tk.StringVar()
-            # TODO: step and width must be > 0, enforce this
             entry = NumericEntry(
                 sett, textvariable=var, width=10, state="disabled", **scroll_param[name]
             )
@@ -688,7 +712,6 @@ class CalculateSpectra(CollapsiblePane):
         self.stack_radio.grid(column=0, row=8, sticky="w")
 
         # TODO: call auto_combobox.update_values() when conformers.kept change
-        # FIXME: exception occurs when combobox is selected before s_name_radio
         self.single = ConformersChoice(
             self.content, tesliper=self.tesliper, spectra_var=self.s_name
         )
@@ -989,15 +1012,19 @@ class CalculateSpectra(CollapsiblePane):
     def recalculate_command(self):
         spectra_name = self.s_name.get()
         if not spectra_name:
-            logger.debug("spectra_name not specified.")
+            logger.debug("Calculation aborted: spectra_name not specified.")
+            return
+        if not self.current_settings:
+            logger.info("Calculation aborted: invalid settings provided.")
             return
         self.last_used_settings[spectra_name] = self.current_settings.copy()
         mode = self.mode.get()
         # get value from self.single, self.average or self.stack
         option = getattr(self, mode).var.get()
         if option.startswith("Choose "):
+            logger.info("Calculation aborted: option not chosen.")
             return
-        logger.debug("Recalculating!")
+        logger.debug(f"Recalculating with {self.current_settings}")
         self._calculate_spectra(spectra_name, option, mode)
         self.draw(spectra_name=spectra_name, mode=mode, option=option)
 
