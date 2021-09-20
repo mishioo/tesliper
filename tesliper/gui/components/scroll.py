@@ -1,12 +1,10 @@
 import logging
-import logging as lgg
 import sys
 import tkinter as tk
 import tkinter.ttk as ttk
-from typing import Type
 
 # LOGGER
-logger = lgg.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 def is_scrollable(widget):
