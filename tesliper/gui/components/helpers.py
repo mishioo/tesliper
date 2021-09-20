@@ -146,15 +146,10 @@ class WgtStateChanger:
     @property
     def changers(self):
         conformers = WgtStateChanger.gui.tslr.conformers
-        # TODO: use has_genre() when it supports kept confs
-        bars, energies = False, False
-        for conf in conformers.kept_values():
-            bars = bars or any(
-                key in conf for key in "dip rot vosc vrot losc lrot raman1 roa1".split()
-            )
-            energies = energies or all(
-                key in conf for key in "zpe ent ten gib scf".split()
-            )
+        bars = conformers.has_any_genre(
+            "dip rot vosc vrot losc lrot raman1 roa1".split()
+        )
+        energies = conformers.has_any_genre("zpe ent ten gib scf".split())
         spectra = bool(WgtStateChanger.gui.tslr.spectra)
         return dict(
             tslr=self.enable if conformers else self.disable,
