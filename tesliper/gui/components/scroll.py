@@ -15,13 +15,16 @@ def is_scrollable(widget):
         try:
             _ = widget[scrollcommand]
         except tk.TclError:
-            pass
+            logger.debug(f"Widget {widget} does not offer '{scrollcommand}' config.")
+        except TypeError:
+            logger.debug(f"Widget {widget} not subscriptable with config keys.")
         else:
             scrollable = True
     try:
         disabled = str(widget["state"]) == tk.DISABLED
     except tk.TclError:
         # state irrelevant
+        logger.debug(f"Widget {widget} does not offer 'state' config.")
         disabled = False
     return scrollable and not disabled
 
