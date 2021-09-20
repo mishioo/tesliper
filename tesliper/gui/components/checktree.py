@@ -221,25 +221,18 @@ class EnergiesView(CheckTree):
     e_keys = "ten ent gib scf zpe".split(" ")
 
     def __init__(self, parent, tesliper, **kwargs):
-        kwargs["columns"] = "ten ent gib scf zpe".split(" ")
+        kwargs["columns"] = self.e_keys
         super().__init__(parent, "energies", tesliper=tesliper, **kwargs)
 
         # Columns
         for cid, text in zip(
-            "#0 ten ent gib scf zpe".split(" "),
+            ["#0"] + self.e_keys,
             "Filenames Thermal Enthalpy Gibbs SCF Zero-Point".split(" "),
         ):
             if not cid == "#0":
                 self.column(cid, width=100, anchor="e", stretch=False)
             self.heading(cid, text=text)
         self.column("#0", width=150)
-
-    def _insert(self, parent="", index=tk.END, iid=None, **kw):
-        text = kw["text"]
-        if "gib" not in self.tslr.conformers[text]:
-            return
-        iid = super()._insert(parent=parent, index=index, iid=iid, **kw)
-        return iid
 
     def refresh(self, show):
         logger.debug("Going to update by showing {}.".format(show))
@@ -249,22 +242,20 @@ class EnergiesView(CheckTree):
                 scope = self.tslr.energies
         else:
             scope = self.tslr.energies
-        values_to_show = zip(*[getattr(scope[e], show) for e in self.e_keys])
-        # values in groups of 5, ordered as e_keys
-        fnames = set(scope["gib"].filenames)
+        formatter = self.formats[show]
+        # conformers are always in the same order, so we can use iterator for values
+        # and only request next() when conformer's name is known by genre's DataArray
+        values = {key: iter(getattr(scope[key], show)) for key in self.e_keys}
+        fnames = {key: set(scope[key].filenames) for key in self.e_keys}
         for name, iid in self.owned_children.items():
             # owned_children is OrderedDict, so we get name and iid in ordered
             # they were inserted to treeview, which is same as order of data
             # stored in Tesliper instance
-            values = (
-                ["--"] * 5
-                if name not in fnames
-                else map(self.formats[show], next(values_to_show))
-            )
-            # if this conformer's kept value is False,
-            # use -- in place of missing values
-            for col, value in zip(self.e_keys, values):
-                self.set(iid, column=col, value=value)
+            for key in self.e_keys:
+                # if this conformer's kept value is False,
+                # use -- in place of missing values
+                value = formatter(next(values[key])) if name in fnames[key] else "--"
+                self.set(iid, column=key, value=value)
 
 
 class ConformersOverview(CheckTree):
