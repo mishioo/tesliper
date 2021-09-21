@@ -1035,23 +1035,29 @@ class ExtractData(ttk.LabelFrame):
         self.view = view
         super().__init__(parent, text="Extract data", **kwargs)
         self.columnconfigure(0, weight=1)
-        self.b_auto_extract = ttk.Button(
-            self, text="Choose folder", command=self.from_dir
-        )
-        self.b_auto_extract.grid(column=0, row=0, sticky="nwe")
         self.b_man_extract = ttk.Button(
             self, text="Choose files", command=self.man_extract
         )
-        self.b_man_extract.grid(column=0, row=1, sticky="nwe")
+        self.b_man_extract.grid(column=0, row=0, sticky="nwe")
+        self.b_auto_extract = ttk.Button(
+            self, text="Choose folder", command=self.from_dir
+        )
+        self.b_auto_extract.grid(column=0, row=1, sticky="nwe")
+        self.ignore_unknown = tk.BooleanVar(value=False)
+        self.check_ignore_unknown = ttk.Checkbutton(
+            self, text="Ignore unknown conformers", variable=self.ignore_unknown
+        )
+        self.check_ignore_unknown.grid(column=0, row=2, sticky="nwe")
+        WgtStateChanger.tslr.append(self.check_ignore_unknown)
 
     # TODO: add recursive smart extraction
-    # TODO: add option to ignore unknown conformers
 
     def from_dir(self):
         work_dir = askdirectory()
         if not work_dir:
             return
-        self.extract(path=work_dir)
+        wanted = self.tesliper.conformers.keys() if self.ignore_unknown.get() else None
+        self.extract(path=work_dir, wanted_files=wanted)
 
     def man_extract(self):
         files = askopenfilenames(
