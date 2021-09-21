@@ -1079,8 +1079,10 @@ class ExtractData(ttk.LabelFrame):
     @ThreadedMethod(progbar_msg="Extracting...")
     def extract(self, path, wanted_files=None):
         # TODO: handle extraction errors
+        root = self.winfo_toplevel()
         try:
             for file, data in self.tesliper.extract_iterate(path, wanted_files):
+                root.progtext.set(f"Extracting {file}...")
                 self.view.insert("", tk.END, text=file)
         except TypeError as err:
             logger.warning("Cannot extract from specified directory: " + err.args[0])
