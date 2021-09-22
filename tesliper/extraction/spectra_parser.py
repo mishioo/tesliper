@@ -1,6 +1,7 @@
 import csv
 import logging as lgg
-from typing import Optional
+from pathlib import Path
+from typing import Optional, Union
 
 import numpy as np
 
@@ -25,7 +26,7 @@ class SpectraParser(Parser):
 
     def parse(
         self,
-        filename: str,
+        filename: Union[str, Path],
         delimiter: Optional[str] = None,
         xcolumn: int = 0,
         ycolumn: int = 1,
@@ -59,17 +60,18 @@ class SpectraParser(Parser):
         self.delimiter = delimiter
         self.xcolumn = xcolumn
         self.ycolumn = ycolumn
+        filename = str(filename)
         self.workhorse(filename)  # figure out which method to use
         spc = self.workhorse(filename)  # actual parsing
         return spc
 
-    def initial(self, filename):
+    def initial(self, filename: str):
         super().initial(filename)
         if self.workhorse is self.initial:
             raise ValueError(f"Don't know how to parse file {filename}")
 
     @Parser.state(trigger=r".+\.(?:txt|xy)$")
-    def parse_txt(self, file):
+    def parse_txt(self, file: Path):
         """Loads spectral data from .txt or .xy file to numpy.array.
 
         Parameters
@@ -125,7 +127,7 @@ class SpectraParser(Parser):
         return np.array(list(zip(*arr)))
 
     @Parser.state(trigger=r".+\.csv$")
-    def parse_csv(self, file):
+    def parse_csv(self, file: Path):
         """Loads spectral data from csv file to numpy.array.
 
         Parameters
