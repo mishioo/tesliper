@@ -62,7 +62,11 @@ class CheckTree(ttk.Treeview):
         CheckTree.trees[name] = self
         self.frame = ttk.Frame(master)
         self.tesliper = tesliper
-        super().__init__(self.frame, **kwargs)
+        style = ttk.Style()
+        style.layout(
+            "borderless.Treeview", [("mystyle.Treeview.treearea", {"sticky": "nswe"})]
+        )
+        super().__init__(self.frame, **kwargs, style="borderless.Treeview")
         self.grid(column=0, row=0, rowspan=2, columnspan=2, sticky="nwse")
         tk.Grid.columnconfigure(self.frame, 1, weight=1)
         tk.Grid.rowconfigure(self.frame, 1, weight=1)
@@ -77,7 +81,6 @@ class CheckTree(ttk.Treeview):
         but_frame.grid_propagate(False)
         tk.Grid.columnconfigure(but_frame, 0, weight=1)
         tk.Grid.rowconfigure(but_frame, 0, weight=1)
-        style = ttk.Style()
         style.configure(
             "sorting.TButton", borderwidth=5, highlightthickness=1, relief="flat"
         )
