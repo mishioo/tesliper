@@ -12,6 +12,7 @@ from tkinter.filedialog import askdirectory, askopenfilename, askopenfilenames
 
 import numpy as np
 
+from ... import Soxhlet
 from ... import datawork as dw
 from ... import tesliper
 from .collapsible_pane import CollapsiblePane
@@ -832,9 +833,10 @@ class CalculateSpectra(CollapsiblePane):
             ],
         )
         if filename:
+            logger.debug(f"File: {filename}")
             try:
-                # FIXME: correct to use new API
-                spc = self.tesliper.soxhlet.load_spectrum(filename)
+                soxhlet = Soxhlet()
+                spc = soxhlet.load_spectrum(filename)
                 self.exp_spc = spc
             except ValueError:
                 logger.warning(
