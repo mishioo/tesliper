@@ -752,7 +752,7 @@ class CalculateSpectra(CollapsiblePane):
             variable=var,
             text="Reverse x-axis",
             state="disabled",
-            command=self.live_preview_callback,
+            command=self.redraw,
         )
         self.reverse_ax.grid(column=0, row=0, sticky="w")
         self.reverse_ax.var = var
@@ -763,7 +763,7 @@ class CalculateSpectra(CollapsiblePane):
             variable=var,
             text="Show activities",
             state="disabled",
-            command=self.live_preview_callback,
+            command=self.redraw,
         )
         self.show_bars.grid(column=0, row=1, sticky="w")
         self.show_bars.var = var
@@ -796,7 +796,7 @@ class CalculateSpectra(CollapsiblePane):
             variable=var,
             text="Show experimental spectrum",
             state="disabled",
-            command=self.live_preview_callback,
+            command=self.redraw,
         )
         self.show_exp.grid(column=0, row=0, columnspan=2, sticky="nw")
         self.show_exp.var = var
@@ -806,7 +806,7 @@ class CalculateSpectra(CollapsiblePane):
             variable=var,
             text="Allow double y-axis",
             state="disabled",
-            command=self.live_preview_callback,
+            command=self.redraw,
         )
         self.allow_double_axis.grid(column=0, row=1, columnspan=2, sticky="nw")
         self.allow_double_axis.var = var
@@ -1025,6 +1025,24 @@ class CalculateSpectra(CollapsiblePane):
                 functools.partial(self._draw, **kwargs), self._draw
             )
             self.after(20, func, queue_)
+
+    def redraw(self):
+        draw_params = self.draw_params
+        if draw_params["mode"] == "single" and self.show_bars.var.get():
+            bar_name = tesliper.dw.DEFAULT_ACTIVITIES[draw_params["spectra_name"]]
+            with self.tesliper.conformers.trimmed_to([draw_params["option"]]):
+                bars = self.tesliper[bar_name]
+        else:
+            bars = None
+        self.view.draw_spectra(
+            self.lastly_drawn_spectra,
+            bars=bars,
+            colour=draw_params["option"],
+            stack=draw_params["mode"] == "stack",
+            experimental=self.exp_spc if self.show_exp.var.get() else None,
+            reverse_ax=self.reverse_ax.var.get(),
+            allow_double_axis=self.allow_double_axis.var.get(),
+        )
 
     def change_colour(self, _event=None):
         if _event is not None:
