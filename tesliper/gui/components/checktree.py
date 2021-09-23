@@ -18,8 +18,9 @@ logger = lgg.getLogger(__name__)
 class BoxVar(tk.BooleanVar):
     def __init__(self, box, *args, **kwargs):
         self.box = box
+        if "value" not in kwargs:
+            kwargs["value"] = True
         super().__init__(*args, **kwargs)
-        super().set(True)
 
     def _set(self, value):
         super().set(value)

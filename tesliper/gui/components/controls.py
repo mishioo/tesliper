@@ -422,8 +422,8 @@ class SelectConformers(CollapsiblePane):
                 "file en ir vcd uv ecd ram roa incompl term opt imag incons".split(),
             )
         ):
-            var = tk.IntVar(value=0)  # number of conformers selected
-            var_all = tk.IntVar(value=0)  # number of conformers in total
+            var = tk.IntVar()  # number of conformers selected
+            var_all = tk.IntVar()  # number of conformers in total
 
             label = tk.Label(count_frame, text=name, anchor="w")
             count = tk.Label(count_frame, textvariable=var, bd=0, width=3)
@@ -463,7 +463,7 @@ class SelectConformers(CollapsiblePane):
         keep_unchecked_frame = ttk.Frame(self.content)
         keep_unchecked_frame.grid(column=0, row=2, sticky="nswe")
         self.kept_vars = {
-            k: tk.BooleanVar()
+            k: tk.BooleanVar(value=True)
             for k in "error unopt imag stoich incompl incons".split(" ")
         }
         self.kept_buttons = {
@@ -486,7 +486,6 @@ class SelectConformers(CollapsiblePane):
             )
         }
         for n, (key, var) in enumerate(self.kept_vars.items()):
-            var.set(True)
             self.kept_buttons[key].grid(column=0, row=n, sticky="nw")
 
     def on_data_extracted(self, _event=None):
@@ -674,8 +673,7 @@ class CalculateSpectra(CollapsiblePane):
             setattr(self, name.lower(), entry)
             entry.var = var
             entry.grid(column=1, row=no + 1, sticky="we", padx=(0, 5))
-            unit = tk.StringVar()
-            unit.set("-")
+            unit = tk.StringVar(value="-")
             entry.unit = unit
             label = ttk.Label(sett, textvariable=unit, width=5)
             label.grid(column=2, row=no + 1, sticky="e")
@@ -746,7 +744,6 @@ class CalculateSpectra(CollapsiblePane):
         frame.grid(column=0, row=10, sticky="new")
         frame.columnconfigure(0, weight=1)
         var = tk.BooleanVar()
-        var.set(False)
         self.reverse_ax = ttk.Checkbutton(
             frame,
             variable=var,
@@ -756,8 +753,7 @@ class CalculateSpectra(CollapsiblePane):
         )
         self.reverse_ax.grid(column=0, row=0, sticky="w")
         self.reverse_ax.var = var
-        var = tk.BooleanVar()
-        var.set(True)
+        var = tk.BooleanVar(value=True)
         self.show_bars = ttk.Checkbutton(
             frame,
             variable=var,
@@ -768,8 +764,7 @@ class CalculateSpectra(CollapsiblePane):
         self.show_bars.grid(column=0, row=1, sticky="w")
         self.show_bars.var = var
         self.show_bars.previous_value = True
-        var = tk.BooleanVar()
-        var.set(True)
+        var = tk.BooleanVar(value=True)
         self.live_prev = ttk.Checkbutton(
             frame, variable=var, text="Live preview", state="disabled"
         )
@@ -790,7 +785,6 @@ class CalculateSpectra(CollapsiblePane):
         frame.grid(column=0, row=12, sticky="new")
         frame.columnconfigure((0, 1), weight=1)
         var = tk.BooleanVar()
-        var.set(False)
         self.show_exp = ttk.Checkbutton(
             frame,
             variable=var,
@@ -1131,7 +1125,7 @@ class ExtractData(ttk.LabelFrame):
             self, text="Choose folder", command=self.from_dir
         )
         self.b_auto_extract.grid(column=0, row=1, sticky="nwe")
-        self.ignore_unknown = tk.BooleanVar(value=False)
+        self.ignore_unknown = tk.BooleanVar()
         self.check_ignore_unknown = ttk.Checkbutton(
             self, text="Ignore unknown conformers", variable=self.ignore_unknown
         )
