@@ -73,6 +73,7 @@ class SpectraView(ttk.Frame):
         stack=False,
         experimental=None,
         reverse_ax=False,
+        allow_double_axis=True,
     ):
         # TO DO: correct spectra drawing when offset used
         self.new_plot()
@@ -115,7 +116,7 @@ class SpectraView(ttk.Frame):
                     max(abs(max(experimental.y)), abs(min(experimental.y))),
                     max(abs(max(spc.y)), abs(min(spc.y))),
                 ]
-                if min(extremes) / max(extremes) > 0.1:
+                if min(extremes) / max(extremes) > 0.1 or not allow_double_axis:
                     # if both will fit fine in one plot
                     tslr_ax.plot(experimental.x, experimental.y, lw=width, color="r")
                 else:

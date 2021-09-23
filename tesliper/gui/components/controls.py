@@ -800,23 +800,33 @@ class CalculateSpectra(CollapsiblePane):
         )
         self.show_exp.grid(column=0, row=0, columnspan=2, sticky="nw")
         self.show_exp.var = var
+        var = tk.BooleanVar(value=True)
+        self.allow_double_axis = ttk.Checkbutton(
+            frame,
+            variable=var,
+            text="Allow double y-axis",
+            state="disabled",
+            command=self.live_preview_callback,
+        )
+        self.allow_double_axis.grid(column=0, row=1, columnspan=2, sticky="nw")
+        self.allow_double_axis.var = var
         self.load_exp = ttk.Button(
             frame,
             text="Load from file...",
             state="disabled",
             command=lambda: (self.load_exp_command(), self.live_preview_callback()),
         )
-        self.load_exp.grid(column=0, row=1, columnspan=2, sticky="new")
+        self.load_exp.grid(column=0, row=2, columnspan=2, sticky="new")
         self.auto_scale = ttk.Button(
             frame, text="Auto-scale", state="disabled", command=self.auto_scale_command
         )
-        self.auto_scale.grid(column=0, row=2, sticky="new")
+        self.auto_scale.grid(column=0, row=3, sticky="new")
         self.auto_shift = ttk.Button(
             frame, text="Auto-shift", state="disabled", command=self.auto_shift_command
         )
-        self.auto_shift.grid(column=1, row=2, sticky="new")
+        self.auto_shift.grid(column=1, row=3, sticky="new")
         WgtStateChanger.experimental.extend(
-            [self.show_exp, self.auto_scale, self.auto_shift]
+            [self.show_exp, self.auto_scale, self.auto_shift, self.allow_double_axis]
         )
 
         self.last_used_settings = {
@@ -1002,6 +1012,7 @@ class CalculateSpectra(CollapsiblePane):
             stack=mode == "stack",
             experimental=self.exp_spc if self.show_exp.var.get() else None,
             reverse_ax=self.reverse_ax.var.get(),
+            allow_double_axis=self.allow_double_axis.var.get(),
         )
 
     def _draw(self, queue_, **kwargs):
