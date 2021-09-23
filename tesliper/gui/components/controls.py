@@ -812,7 +812,11 @@ class CalculateSpectra(CollapsiblePane):
 
     @property
     def exp_spc(self):
-        return self._exp_spc[self.s_name.get()]
+        try:
+            return self._exp_spc[self.s_name.get()]
+        except KeyError:
+            # no value selected in s_name radio
+            return None
 
     @exp_spc.setter
     def exp_spc(self, value):

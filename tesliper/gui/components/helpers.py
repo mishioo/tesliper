@@ -122,6 +122,7 @@ class WgtStateChanger:
     both = []
     spectra = []
     all = []
+    experimental = []
     gui = None
 
     def __init__(self, function=None):
@@ -151,6 +152,7 @@ class WgtStateChanger:
         )
         energies = conformers.has_any_genre("zpe ent ten gib scf".split())
         spectra = bool(WgtStateChanger.gui.tslr.spectra)
+        experimental = WgtStateChanger.gui.controls.calculate.exp_spc is not None
         return dict(
             tslr=self.enable if conformers else self.disable,
             energies=self.enable if energies else self.disable,
@@ -159,6 +161,7 @@ class WgtStateChanger:
             both=self.enable if (bars and energies) else self.disable,
             spectra=self.enable if spectra else self.disable,
             all=self.enable if (energies and spectra) else self.disable,
+            experimental=self.enable if experimental else self.disable,
         )
 
     @staticmethod
