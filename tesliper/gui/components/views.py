@@ -111,8 +111,11 @@ class SpectraView(ttk.Frame):
                 bars_ax.tick_params(axis="y", colors="b")
                 axes.append(bars_ax)
             if experimental is not None:
-                maxes = [max(experimental[1]), max(spc.y)]
-                if min(maxes) / max(maxes) > 0.4:
+                extremes = [
+                    max(abs(max(experimental[1])), abs(min(experimental[1]))),
+                    max(abs(max(spc.y)), abs(min(spc.y))),
+                ]
+                if min(extremes) / max(extremes) > 0.1:
                     # if both will fit fine in one plot
                     tslr_ax.plot(*experimental, lw=width, color="r")
                 else:
