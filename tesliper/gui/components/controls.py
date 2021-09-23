@@ -807,7 +807,17 @@ class CalculateSpectra(CollapsiblePane):
             command=lambda: (self.load_exp_command(), self.live_preview_callback()),
         )
         self.load_exp.grid(column=0, row=1, columnspan=2, sticky="new")
-        WgtStateChanger.experimental.append(self.show_exp)
+        self.auto_scale = ttk.Button(
+            frame, text="Auto-scale", state="disabled", command=self.auto_scale_command
+        )
+        self.auto_scale.grid(column=0, row=2, sticky="new")
+        self.auto_shift = ttk.Button(
+            frame, text="Auto-shift", state="disabled", command=self.auto_shift_command
+        )
+        self.auto_shift.grid(column=1, row=2, sticky="new")
+        WgtStateChanger.experimental.extend(
+            [self.show_exp, self.auto_scale, self.auto_shift]
+        )
 
         self.last_used_settings = {
             name: {
@@ -841,6 +851,28 @@ class CalculateSpectra(CollapsiblePane):
         # get value from self.single, self.average or self.stack
         option = getattr(self, mode).var.get()
         return {"spectra_name": spectra_name, "mode": mode, "option": option}
+
+    @ThreadedMethod(progbar_msg="Calculating best fit...")
+    def _auto_scale(self):
+        self.lastly_drawn_spectra.scale_to(self.exp_spc)
+        self.scaling.update(self.lastly_drawn_spectra.scaling)
+        return self.lastly_drawn_spectra
+
+    def auto_scale_command(self):
+        if self.lastly_drawn_spectra is not None:
+            self._auto_scale()
+            self.draw(**self.draw_params)
+
+    @ThreadedMethod(progbar_msg="Calculating best fit...")
+    def _auto_shift(self):
+        self.lastly_drawn_spectra.shift_to(self.exp_spc)
+        self.offset.update(self.lastly_drawn_spectra.offset)
+        return self.lastly_drawn_spectra
+
+    def auto_shift_command(self):
+        if self.lastly_drawn_spectra is not None:
+            self._auto_shift()
+            self.draw(**self.draw_params)
 
     def load_exp_command(self):
         filename = askopenfilename(
