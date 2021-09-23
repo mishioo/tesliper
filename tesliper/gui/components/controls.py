@@ -744,6 +744,7 @@ class CalculateSpectra(CollapsiblePane):
         # Recalculate
         frame = ttk.Frame(self.content)
         frame.grid(column=0, row=10, sticky="new")
+        frame.columnconfigure(0, weight=1)
         var = tk.BooleanVar()
         var.set(False)
         self.reverse_ax = ttk.Checkbutton(
@@ -768,36 +769,44 @@ class CalculateSpectra(CollapsiblePane):
         self.show_bars.var = var
         self.show_bars.previous_value = True
         var = tk.BooleanVar()
-        var.set(False)
-        self.show_exp = ttk.Checkbutton(
-            frame,
-            variable=var,
-            text="Experimental",
-            state="disabled",
-            command=self.live_preview_callback,
-        )
-        self.show_exp.grid(column=0, row=2, sticky="w")
-        self.show_exp.var = var
-        self.load_exp = ttk.Button(
-            frame,
-            text="Load...",
-            state="disabled",
-            command=lambda: (self.load_exp_command(), self.live_preview_callback()),
-        )
-        self.load_exp.grid(column=1, row=2)
-        var = tk.BooleanVar()
         var.set(True)
         self.live_prev = ttk.Checkbutton(
             frame, variable=var, text="Live preview", state="disabled"
         )
-        self.live_prev.grid(column=0, row=3, sticky="w")
+        self.live_prev.grid(column=0, row=2, sticky="w")
         self.live_prev.var = var
         # previously labeled 'Recalculate'
         self.recalc_b = ttk.Button(
             frame, text="Redraw", state="disabled", command=self.recalculate_command
         )
-        self.recalc_b.grid(column=1, row=3)
+        self.recalc_b.grid(column=1, row=2)
         WgtStateChanger.bars.extend([self.live_prev, self.recalc_b])
+
+        # Experimental spectrum
+        LabelSeparator(self.content, text="Experimental spectrum").grid(
+            column=0, row=11, sticky="we"
+        )
+        frame = ttk.Frame(self.content)
+        frame.grid(column=0, row=12, sticky="new")
+        frame.columnconfigure((0, 1), weight=1)
+        var = tk.BooleanVar()
+        var.set(False)
+        self.show_exp = ttk.Checkbutton(
+            frame,
+            variable=var,
+            text="Show experimental spectrum",
+            state="disabled",
+            command=self.live_preview_callback,
+        )
+        self.show_exp.grid(column=0, row=0, columnspan=2, sticky="nw")
+        self.show_exp.var = var
+        self.load_exp = ttk.Button(
+            frame,
+            text="Load from file...",
+            state="disabled",
+            command=lambda: (self.load_exp_command(), self.live_preview_callback()),
+        )
+        self.load_exp.grid(column=0, row=1, columnspan=2, sticky="new")
 
         self.last_used_settings = {
             name: {
