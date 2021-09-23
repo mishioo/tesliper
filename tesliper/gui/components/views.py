@@ -1,7 +1,7 @@
 import logging as lgg
-import math
 import tkinter.ttk as ttk
 
+import numpy as np
 from matplotlib import cm
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
@@ -9,53 +9,28 @@ from matplotlib.figure import Figure
 logger = lgg.getLogger(__name__)
 
 
-def align_axes(axes):
-    """Align zeros of the axes, zooming them out by same ratio"""
-    # based on https://stackoverflow.com/a/46901839
-    extrema = [list(ax.get_ylim()) for ax in axes]
-    logger.debug(f"extrema: {extrema}")
-    # upper and lower limits
-    lowers, uppers = zip(*extrema)
-    all_positive = min(lowers) > 0
-    all_negative = max(uppers) < 0
-    # reset for divide by zero issues
-    lowers = [1 if math.isclose(L, 0.0) else L for L in lowers]
-    uppers = [-1 if math.isclose(u, 0.0) else u for u in uppers]
-    # pick "most centered" axis
-    res = [abs(u + L) for L, u in zip(lowers, uppers)]
-    min_index = res.index(min(res))
-    # scale positive or negative part
-    multiplier1 = -abs(uppers[min_index] / lowers[min_index])
-    multiplier2 = -abs(lowers[min_index] / uppers[min_index])
-    lower_lims, upper_lims = [], []
-    for i, (low, up) in enumerate(extrema):
-        # scale positive or negative part based on which induces valid
-        if i != min_index:
-            lower_change = up * multiplier2
-            upper_change = low * multiplier1
-            if upper_change < up:
-                lower_lims.append(lower_change)
-                upper_lims.append(up)
-            else:
-                lower_lims.append(low)
-                upper_lims.append(upper_change)
-        else:
-            lower_lims.append(low)
-            upper_lims.append(up)
-    # bump by 10% for a margin
-    if all_positive:
-        lower_lims = [0 for _ in range(len(lower_lims))]
-    if all_negative:
-        upper_lims = [0 for _ in range(len(upper_lims))]
-    diff = [abs(u - L) for L, u in zip(lower_lims, upper_lims)]
-    margin = [x * 0.05 for x in diff]
-    lower_lims = [lim - m for lim, m in zip(lower_lims, margin)]
-    upper_lims = [lim + m for lim, m in zip(upper_lims, margin)]
-    # set axes limits
-    logger.debug(
-        f"new limits: {[[low, up] for low, up in zip(lower_lims, upper_lims)]}"
+def align_yaxis(axes):
+    """Align zeros of the axes."""
+    # credits: https://stackoverflow.com/a/59564220/11416569
+    y_lims = np.array([ax.get_ylim() for ax in axes])
+
+    # force 0 to appear on all axes, comment if don't need
+    y_lims[:, 0] = y_lims[:, 0].clip(None, 0)
+    y_lims[:, 1] = y_lims[:, 1].clip(0, None)
+
+    # normalize all axes
+    y_mags = (y_lims[:, 1] - y_lims[:, 0]).reshape(len(y_lims), 1)
+    y_lims_normalized = y_lims / y_mags
+
+    # find combined range
+    y_new_lims_normalized = np.array(
+        [np.min(y_lims_normalized), np.max(y_lims_normalized)]
     )
-    [ax.set_ylim(low, up) for ax, low, up in zip(axes, lower_lims, upper_lims)]
+
+    # denormalize combined range to get new axes
+    new_lims = y_new_lims_normalized * y_mags
+    for i, ax in enumerate(axes):
+        ax.set_ylim(new_lims[i])
 
 
 class SpectraView(ttk.Frame):
@@ -150,7 +125,7 @@ class SpectraView(ttk.Frame):
                     tslr_ax.yaxis.set_label_coords(-0.17, 0.5)
                     # tslr_ax.tick_params(axis='y', colors='navy')
                     axes.append(exp_ax)
-            align_axes(axes)
+            align_yaxis(axes)
         if reverse_ax:
             tslr_ax.invert_xaxis()
         self.figure.tight_layout()
