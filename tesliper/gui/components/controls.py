@@ -807,6 +807,7 @@ class CalculateSpectra(CollapsiblePane):
             command=lambda: (self.load_exp_command(), self.live_preview_callback()),
         )
         self.load_exp.grid(column=0, row=1, columnspan=2, sticky="new")
+        WgtStateChanger.experimental.append(self.show_exp)
 
         self.last_used_settings = {
             name: {
