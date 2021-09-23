@@ -636,6 +636,9 @@ class CalculateSpectra(CollapsiblePane):
             b.configure(state="disabled")
             b.grid(column=c, row=r, padx=5)
             self.s_name_radio[v] = b
+        self.winfo_toplevel().bind_all(
+            "<<DataExtracted>>", self.select_available_spectra, "+"
+        )
 
         # Settings
         LabelSeparator(self.content, text="Settings").grid(column=0, row=2, sticky="we")
@@ -941,6 +944,17 @@ class CalculateSpectra(CollapsiblePane):
             self.live_preview_callback()
         else:
             self.single_radio.invoke()
+
+    def select_available_spectra(self, _event=None):
+        logger.debug(f"Event caught by {self}.select_first_spectra handler.")
+        enabled = [  # FIXME: empty when called by <<DataExtracted>>, why?
+            n for n, w in self.s_name_radio.items() if str(w["state"]) == "normal"
+        ]
+        logger.debug(f"Spectra available: {enabled}.")
+        if not enabled:
+            return
+        self.s_name_radio[enabled[0]].invoke()
+        self.spectra_chosen()
 
     def visualize_settings(self):
         spectra_name = self.s_name.get()
