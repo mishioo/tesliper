@@ -9,15 +9,11 @@ from matplotlib.figure import Figure
 logger = lgg.getLogger(__name__)
 
 
-def align_axes(axes, values):
+def align_axes(axes):
     """Align zeros of the axes, zooming them out by same ratio"""
     # based on https://stackoverflow.com/a/46901839
-    if not len(values) == len(axes):
-        raise ValueError(
-            f"Number of values ({len(values)}) different than number of"
-            f"axes ({len(axes)})."
-        )
-    extrema = [[min(v), max(v)] for v in values]
+    extrema = [list(ax.get_ylim()) for ax in axes]
+    logger.debug(f"extrema: {extrema}")
     # upper and lower limits
     lowers, uppers = zip(*extrema)
     all_positive = min(lowers) > 0
@@ -56,6 +52,9 @@ def align_axes(axes, values):
     lower_lims = [lim - m for lim, m in zip(lower_lims, margin)]
     upper_lims = [lim + m for lim, m in zip(upper_lims, margin)]
     # set axes limits
+    logger.debug(
+        f"new limits: {[[low, up] for low, up in zip(lower_lims, upper_lims)]}"
+    )
     [ax.set_ylim(low, up) for ax, low, up in zip(axes, lower_lims, upper_lims)]
 
 
@@ -114,7 +113,6 @@ class SpectraView(ttk.Frame):
                 tslr_ax.plot(x, y_, lw=width, color=col(num / no))
         else:
             tslr_ax.plot(spc.x, spc.y, lw=width, color="k")
-            values = [spc.y]
             axes = [tslr_ax]
             if bars is not None:
                 self.bars_ax = bars_ax = tslr_ax.twinx()
@@ -136,14 +134,12 @@ class SpectraView(ttk.Frame):
                 stemlines.set_linewidth(width)
                 bars_ax.set_ylabel(bars.units)
                 bars_ax.tick_params(axis="y", colors="b")
-                values.append(bars.values[0])
                 axes.append(bars_ax)
             if experimental is not None:
                 maxes = [max(experimental[1]), max(spc.y)]
                 if min(maxes) / max(maxes) > 0.4:
                     # if both will fit fine in one plot
                     tslr_ax.plot(*experimental, lw=width, color="r")
-                    values[0] = maxes + [min(experimental[1]), min(spc.y)]
                 else:
                     self.exp_ax = exp_ax = tslr_ax.twinx()
                     exp_ax.plot(*experimental, lw=width, color="r")
@@ -153,9 +149,8 @@ class SpectraView(ttk.Frame):
                     exp_ax.tick_params(axis="y", colors="r")
                     tslr_ax.yaxis.set_label_coords(-0.17, 0.5)
                     # tslr_ax.tick_params(axis='y', colors='navy')
-                    values.append(experimental[1])
                     axes.append(exp_ax)
-            align_axes(axes, values)
+            align_axes(axes)
         if reverse_ax:
             tslr_ax.invert_xaxis()
         self.figure.tight_layout()
