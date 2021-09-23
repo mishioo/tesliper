@@ -613,7 +613,7 @@ class CalculateSpectra(CollapsiblePane):
         self.content.columnconfigure(0, weight=1)
 
         # Spectra name
-        LabelSeparator(self.content, text="Spectra type:").grid(
+        LabelSeparator(self.content, text="Spectra type").grid(
             column=0, row=0, sticky="we"
         )
         s_name_frame = ttk.Frame(self.content)
@@ -631,16 +631,14 @@ class CalculateSpectra(CollapsiblePane):
                 variable=self.s_name,
                 value=v,
                 command=lambda v=v: self.spectra_chosen(v),
-                width=5,
+                width=6,
             )
             b.configure(state="disabled")
             b.grid(column=c, row=r, padx=5)
             self.s_name_radio[v] = b
 
         # Settings
-        LabelSeparator(self.content, text="Settings:").grid(
-            column=0, row=2, sticky="we"
-        )
+        LabelSeparator(self.content, text="Settings").grid(column=0, row=2, sticky="we")
         sett = ttk.Frame(self.content)
         sett.grid(column=0, row=3, sticky="we")
         tk.Grid.columnconfigure(sett, 1, weight=1)
