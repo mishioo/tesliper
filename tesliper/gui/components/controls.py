@@ -837,15 +837,15 @@ class CalculateSpectra(CollapsiblePane):
             try:
                 soxhlet = Soxhlet()
                 spc = soxhlet.load_spectrum(filename)
-                self.exp_spc = spc
             except ValueError:
                 logger.warning(
                     "Experimental spectrum couldn't be loaded. "
                     "Please check if format of your file is supported"
                     " or if file is not corrupted."
                 )
-        else:
-            return
+            else:
+                self.exp_spc = spc
+                self.show_exp.var.set(True)
 
     def mode_chosen(self, _event=None):
         if _event is not None:
