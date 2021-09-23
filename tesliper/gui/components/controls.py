@@ -809,6 +809,7 @@ class CalculateSpectra(CollapsiblePane):
             }
             for name in self.s_name_radio
         }
+        self.lastly_drawn_spectra = None
         self._exp_spc = {k: None for k in self.s_name_radio.keys()}
 
     @property
@@ -822,6 +823,14 @@ class CalculateSpectra(CollapsiblePane):
     @exp_spc.setter
     def exp_spc(self, value):
         self._exp_spc[self.s_name.get()] = value
+
+    @property
+    def draw_params(self):
+        spectra_name = self.s_name.get()
+        mode = self.mode.get()
+        # get value from self.single, self.average or self.stack
+        option = getattr(self, mode).var.get()
+        return {"spectra_name": spectra_name, "mode": mode, "option": option}
 
     def load_exp_command(self):
         filename = askopenfilename(
@@ -957,6 +966,7 @@ class CalculateSpectra(CollapsiblePane):
         try:
             spc = queue_.get(0)  # data put to queue by self._calculate_spectra
             self.view.draw_spectra(spc, **kwargs)
+            self.lastly_drawn_spectra = spc
         except queue.Empty:
             func = functools.update_wrapper(
                 functools.partial(self._draw, **kwargs), self._draw
@@ -1019,7 +1029,8 @@ class CalculateSpectra(CollapsiblePane):
         return settings
 
     def recalculate_command(self):
-        spectra_name = self.s_name.get()
+        draw_params = self.draw_params
+        spectra_name = draw_params["spectra_name"]
         if not spectra_name:
             logger.debug("Calculation aborted: spectra_name not specified.")
             return
@@ -1027,15 +1038,12 @@ class CalculateSpectra(CollapsiblePane):
             logger.info("Calculation aborted: invalid settings provided.")
             return
         self.last_used_settings[spectra_name] = self.current_settings.copy()
-        mode = self.mode.get()
-        # get value from self.single, self.average or self.stack
-        option = getattr(self, mode).var.get()
-        if option.startswith("Choose "):
+        if draw_params["option"].startswith("Choose "):
             logger.info("Calculation aborted: option not chosen.")
             return
         logger.debug(f"Recalculating with {self.current_settings}")
-        self._calculate_spectra(spectra_name, option, mode)
-        self.draw(spectra_name=spectra_name, mode=mode, option=option)
+        self._calculate_spectra(**draw_params)
+        self.draw(**draw_params)
 
 
 class ExtractData(ttk.LabelFrame):
