@@ -15,6 +15,7 @@ import numpy as np
 from ... import Soxhlet
 from ... import datawork as dw
 from ... import tesliper
+from ...glassware import SingleSpectrum
 from .collapsible_pane import CollapsiblePane
 from .helpers import ThreadedMethod, WgtStateChanger, join_with_and
 from .label_separator import LabelSeparator
@@ -846,7 +847,11 @@ class CalculateSpectra(CollapsiblePane):
                     " or if file is not corrupted."
                 )
             else:
-                self.exp_spc = spc
+                self.exp_spc = SingleSpectrum(
+                    genre=self.draw_params["spectra_name"],
+                    values=spc[1],
+                    abscissa=spc[0],
+                )
                 self.show_exp.var.set(True)
 
     def mode_chosen(self, _event=None):
