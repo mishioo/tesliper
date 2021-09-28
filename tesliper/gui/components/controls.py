@@ -164,7 +164,9 @@ class FilterRange(ttk.Frame):
         # root.bind("<<KeptChanged>>", self.set_upper_and_lower, "+")
         root.bind("<<DataExtracted>>", self.set_upper_and_lower, "+")
 
-        root.changer.energies([b_filter, self.lower_entry, self.upper_entry])
+        root.changer.register(
+            [b_filter, self.lower_entry, self.upper_entry], "energies"
+        )
 
     _scroll_modifiers = {
         "values": lambda v, d: v + 0.00001 * d,
@@ -272,8 +274,8 @@ class FilterRMSD(ttk.Frame):
         button = ttk.Button(self, text="Filter similar", command=self._filter)
         button.grid(column=0, row=4, columnspan=3, sticky="nwe")
 
-        self.winfo_toplevel().changer.energies(
-            [window_size, threshold, ignore_hydrogens, button]
+        self.winfo_toplevel().changer.register(
+            [window_size, threshold, ignore_hydrogens, button], "energies"
         )
 
     def _filter(self):
@@ -353,7 +355,7 @@ class FilterEnergies(CollapsiblePane):
         self.energies_choice.bind("<<ComboboxSelected>>", self.on_energies_selected)
         root = self.winfo_toplevel()
         root.bind("<<DataExtracted>>", self.on_show_selected, "+")
-        root.changer.energies([self.show_combo, self.energies_choice])
+        root.changer.register([self.show_combo, self.energies_choice], "energies")
 
     def on_show_selected(self, _event=None):
         if _event is not None:
@@ -452,7 +454,7 @@ class SelectConformers(CollapsiblePane):
             check_butt.grid(column=4, row=i, sticky="ne")
             uncheck_butt.grid(column=5, row=i, sticky="ne")
 
-            root.changer.tesliper([check_butt, uncheck_butt])
+            root.changer.register([check_butt, uncheck_butt], "tesliper")
 
             self.widgets[key] = widgets_tuple(
                 label, count, slash, all_, check_butt, uncheck_butt
@@ -650,7 +652,7 @@ class CalculateSpectra(CollapsiblePane):
         self.fitting.grid(column=1, row=0, columnspan=2, sticky="we")
         self.fitting["values"] = ("lorentzian", "gaussian")
         root = self.winfo_toplevel()
-        root.changer.bars(self.fitting)
+        root.changer.register(self.fitting, "bars")
 
         scroll_param = {
             "Start": {"scroll_rate": 50},
@@ -678,7 +680,7 @@ class CalculateSpectra(CollapsiblePane):
             entry.unit = unit
             label = ttk.Label(sett, textvariable=unit, width=5)
             label.grid(column=2, row=no + 1, sticky="e")
-            root.changer.bars(entry)
+            root.changer.register(entry, "bars")
 
         # Calculation Mode
         self.mode = tk.StringVar()
@@ -730,10 +732,10 @@ class CalculateSpectra(CollapsiblePane):
         self.stack = ColorsChoice(self.content)
         self.stack.bind("<<ComboboxSelected>>", self.change_colour)
         self.stack.grid(column=0, row=9)
-        root.changer.bars(
-            [self.single_radio, self.single, self.stack_radio, self.stack]
+        root.changer.register(
+            [self.single_radio, self.single, self.stack_radio, self.stack], "bars"
         )
-        root.changer.bars_and_energies([self.average_radio, self.average])
+        root.changer.register([self.average_radio, self.average], ["bars", "energies"])
         self.boxes = dict(single=self.single, average=self.average, stack=self.stack)
         self.current_box = None
         for box in self.boxes.values():
@@ -776,7 +778,7 @@ class CalculateSpectra(CollapsiblePane):
             frame, text="Redraw", state="disabled", command=self.recalculate_command
         )
         self.recalc_b.grid(column=1, row=2)
-        root.changer.bars([self.live_prev, self.recalc_b])
+        root.changer.register([self.live_prev, self.recalc_b], "bars")
 
         # Experimental spectrum
         LabelSeparator(self.content, text="Experimental spectrum").grid(
@@ -1132,7 +1134,7 @@ class ExtractData(ttk.LabelFrame):
             self, text="Ignore unknown conformers", variable=self.ignore_unknown
         )
         self.check_ignore_unknown.grid(column=0, row=2, sticky="nwe")
-        self.winfo_toplevel().changer.tesliper(self.check_ignore_unknown)
+        self.winfo_toplevel().changer.register(self.check_ignore_unknown, "tesliper")
 
     # TODO: add recursive smart extraction
 
@@ -1187,13 +1189,13 @@ class ExportData(ttk.LabelFrame):
             self, text="Clear session", command=self.winfo_toplevel().new_session
         )
         self.b_clear_session.grid(column=0, row=2, sticky="nwe")
-        root.changer.tesliper(self.b_clear_session)
+        root.changer.register(self.b_clear_session, "tesliper")
 
         self.b_calc = ttk.Button(
             self, text="Auto calculate", command=not_implemented_popup
         )
         self.b_calc.grid(column=0, row=0, sticky="nwe")
-        root.changer.bars(self.b_calc)
+        root.changer.register(self.b_calc, "bars")
 
         self.b_text_export = ttk.Button(
             self, text="Export as .txt", command=lambda _e: self.save(fmt="txt")
@@ -1207,8 +1209,8 @@ class ExportData(ttk.LabelFrame):
             self, text="Export as .csv", command=lambda _e: self.save(fmt="csv")
         )
         self.b_csv_export.grid(column=1, row=2, sticky="nwe")
-        root.changer.tesliper(
-            [self.b_text_export, self.b_excel_export, self.b_csv_export]
+        root.changer.register(
+            [self.b_text_export, self.b_excel_export, self.b_csv_export], "tesliper"
         )
 
     def get_save_query(self):

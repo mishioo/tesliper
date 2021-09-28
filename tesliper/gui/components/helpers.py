@@ -121,52 +121,62 @@ class WgtStateChanger:
         self.bars_genres = tuple("dip rot vosc vrot losc lrot raman1 roa1".split())
         self.energies_genres = tuple("zpe ent ten gib scf".split())
         self._dependencies = {}
-
-    def _short_register_proxy(self, widgets, genres, needs_all=False, key=None):
-        param = "needs_all_genres" if needs_all else "needs_any_genre"
-        kwargs = {param: genres, "key": key}
-        self.register(widgets, **kwargs)
-
-    def energies(self, widgets, needs_all=False, key=None):
-        self._short_register_proxy(
-            widgets, genres="zpe ent ten gib scf".split(), needs_all=needs_all, key=key
+        self._genres = _DerivedDefaultDict(
+            lambda g, r=self.root: r.tslr.conformers.has_genre(g)
         )
+        self._standards = {
+            "energies": self._energies,
+            "bars": self._bars,
+            "tesliper": self._tesliper,
+        }
 
-    def bars(self, widgets, needs_all=False, key=None):
-        self._short_register_proxy(
-            widgets,
-            genres=self.bars_genres,
-            needs_all=needs_all,
-            key=key,
-        )
+    def _energies(self):
+        return any(self._genres[g] for g in self.energies_genres)
 
-    def tesliper(self, widgets):
-        self.register(widgets, key=lambda t=self.root.tslr: bool(t.conformers))
+    def _bars(self):
+        return any(self._genres[g] for g in self.bars_genres)
 
-    def bars_and_energies(self, widgets):
-        self.register(
-            widgets,
-            key=lambda cs=self.root.tslr.conformers: (
-                cs.has_any_genre(self.bars_genres)
-                and cs.has_any_genre(self.energies_genres)
-            ),
-        )
+    def _tesliper(self):
+        return bool(self.root.tslr.conformers)
 
-    def register(self, widgets, needs_all_genres=None, needs_any_genre=None, key=None):
+    def register(
+        self,
+        widgets,
+        dependencies=None,
+        needs_all_genres=None,
+        needs_any_genre=None,
+        key=None,
+    ):
+        if isinstance(dependencies, str):
+            dependencies = [dependencies]
+        elif dependencies is None:
+            dependencies = []
+        for dep in dependencies:
+            if dep not in self._standards:
+                raise ValueError(f"Unknown dependency: {dep}.")
         if not isinstance(widgets, Iterable):
             widgets = [widgets]
         for wgt in widgets:
-            self._dependencies[wgt] = (needs_all_genres, needs_any_genre, key)
+
+            def _conditions(
+                obj=self,
+                deps=dependencies,
+                allg=needs_all_genres,
+                anyg=needs_any_genre,
+                key=key,
+            ):
+                dep_ = all(obj._standards[d]() for d in deps)
+                all_ = all(obj._genres[g] for g in allg) if allg else True
+                any_ = any(obj._genres[g] for g in anyg) if anyg else True
+                key_ = key() if key else True
+                return all([dep_, all_, any_, key_])
+
+            self._dependencies[wgt] = _conditions
 
     def set_states(self):
-        genres = _DerivedDefaultDict(
-            lambda g, cs=self.root.tslr.conformers: cs.has_genre(g)
-        )
-        for widget, deps in self._dependencies.items():
-            all_ = all(genres[g] for g in deps[0]) if deps[0] else True
-            any_ = any(genres[g] for g in deps[1]) if deps[1] else True
-            key_ = deps[2]() if deps[2] else True
-            changer = self.enable if all_ and any_ and key_ else self.disable
+        self._genres.clear()
+        for widget, condition in self._dependencies.items():
+            changer = self.enable if condition() else self.disable
             changer(widget)
         self.change_spectra_radio()
 
