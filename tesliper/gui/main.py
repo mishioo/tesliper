@@ -113,6 +113,7 @@ class TesliperApp(tk.Tk):
         super().__init__()
         self.title("Tesliper")
         self.thread = Thread()
+        self.changer = WgtStateChanger(self)
 
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
 
@@ -175,13 +176,10 @@ class TesliperApp(tk.Tk):
         for handler in text_handlers:
             ROOT_LOGGER.addHandler(handler)
 
-        # WgtStateChanger
-        WgtStateChanger.gui = self
         self.new_session()
-        WgtStateChanger.set_states()
 
-        self.bind("<<DataExtracted>>", lambda _: WgtStateChanger.set_states(), add="+")
-        self.bind("<<KeptChanged>>", lambda _: WgtStateChanger.set_states(), add="+")
+        self.bind("<<DataExtracted>>", lambda _: self.changer.set_states(), add="+")
+        self.bind("<<KeptChanged>>", lambda _: self.changer.set_states(), add="+")
 
         self.logger.info(
             "Welcome to Tesliper:\n" "Theoretical Spectroscopist Little Helper!"
@@ -210,6 +208,8 @@ class TesliperApp(tk.Tk):
                 return
         if self.tslr is not None:
             del self.tslr
+        if self.changer is not None:
+            del self.changer
         if self.notebook is not None:
             tk.Grid.forget(self.notebook)
             del self.notebook
@@ -217,6 +217,7 @@ class TesliperApp(tk.Tk):
             tk.Grid.forget(self.controls)
             del self.controls
         CheckTree.trees = dict()  # TODO: refactor to not need this
+        self.changer = WgtStateChanger(self)
         self.tslr = tesliper.Tesliper()
         self.notebook = ViewsNotebook(self, tesliper=self.tslr)
         self.notebook.grid(column=1, row=0, sticky="nswe")
@@ -228,7 +229,7 @@ class TesliperApp(tk.Tk):
             spectra_view=self.notebook.spectra,
         )
         self.controls.grid(column=0, row=0, sticky="nswe")
-        WgtStateChanger.set_states()
+        self.changer.set_states()
 
     def on_closing(self):
         if self.thread.is_alive():

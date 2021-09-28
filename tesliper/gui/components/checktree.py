@@ -8,8 +8,6 @@ import numpy as np
 
 import tesliper
 
-from .helpers import WgtStateChanger
-
 # LOGGER
 logger = lgg.getLogger(__name__)
 
