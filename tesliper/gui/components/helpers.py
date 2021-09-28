@@ -3,12 +3,13 @@ import logging as lgg
 import queue
 import tkinter as tk
 import tkinter.ttk as ttk
+from collections import defaultdict
 from copy import copy
 from functools import partial, wraps
 from threading import Thread
 from tkinter import messagebox
 from tkinter.scrolledtext import ScrolledText
-from typing import List
+from typing import Iterable, List
 
 from ...glassware.arrays import SpectralData
 
@@ -107,62 +108,67 @@ class ReadOnlyText(ScrolledText):
         self.window.withdraw()
 
 
+class _DerivedDefaultDict(defaultdict):
+    def __missing__(self, key):
+        value = self.default_factory(key)
+        self[key] = value
+        return value
+
+
 class WgtStateChanger:
-    """
-    TO DO
-    -----
-    Consider excluding recalculate_command from state changers (currently
-    it is state changer through GUIFeedback and FeedbackThread).
-    """
+    def __init__(self, root):
+        self.root = root
+        self.bars_genres = tuple("dip rot vosc vrot losc lrot raman1 roa1".split())
+        self.energies_genres = tuple("zpe ent ten gib scf".split())
+        self._dependencies = {}
 
-    tslr = []
-    energies = []
-    bars = []
-    either = []
-    both = []
-    spectra = []
-    all = []
-    experimental = []
-    gui = None
+    def _short_register_proxy(self, widgets, genres, needs_all=False, key=None):
+        param = "needs_all_genres" if needs_all else "needs_any_genre"
+        kwargs = {param: genres, "key": key}
+        self.register(widgets, **kwargs)
 
-    def __init__(self, function=None):
-        if function is not None:
-            self.function = function
-        else:
-            self.function = lambda *args, **kwargs: None
-        wraps(function)(self)
-
-    def __call__(self, other, *args, **kwargs):
-        outcome = self.function(other, *args, **kwargs)
-        self.set_states()
-        return outcome
-
-    def __get__(self, obj, objtype):
-        if obj is None:
-            # instance attribute accessed on class, return self
-            return self
-        else:
-            return partial(self.__call__, obj)
-
-    @property
-    def changers(self):
-        conformers = WgtStateChanger.gui.tslr.conformers
-        bars = conformers.has_any_genre(
-            "dip rot vosc vrot losc lrot raman1 roa1".split()
+    def energies(self, widgets, needs_all=False, key=None):
+        self._short_register_proxy(
+            widgets, genres="zpe ent ten gib scf".split(), needs_all=needs_all, key=key
         )
-        energies = conformers.has_any_genre("zpe ent ten gib scf".split())
-        spectra = bool(WgtStateChanger.gui.tslr.spectra)
-        experimental = WgtStateChanger.gui.controls.calculate.exp_spc is not None
-        return dict(
-            tslr=self.enable if conformers else self.disable,
-            energies=self.enable if energies else self.disable,
-            bars=self.enable if bars else self.disable,
-            either=self.enable if (bars or energies) else self.disable,
-            both=self.enable if (bars and energies) else self.disable,
-            spectra=self.enable if spectra else self.disable,
-            all=self.enable if (energies and spectra) else self.disable,
-            experimental=self.enable if experimental else self.disable,
+
+    def bars(self, widgets, needs_all=False, key=None):
+        self._short_register_proxy(
+            widgets,
+            genres=self.bars_genres,
+            needs_all=needs_all,
+            key=key,
         )
+
+    def tesliper(self, widgets):
+        self.register(widgets, key=lambda t=self.root.tslr: bool(t.conformers))
+
+    def bars_and_energies(self, widgets):
+        self.register(
+            widgets,
+            key=lambda cs=self.root.tslr.conformers: (
+                cs.has_any_genre(self.bars_genres)
+                and cs.has_any_genre(self.energies_genres)
+            ),
+        )
+
+    def register(self, widgets, needs_all_genres=None, needs_any_genre=None, key=None):
+        if not isinstance(widgets, Iterable):
+            widgets = [widgets]
+        for wgt in widgets:
+            self._dependencies[wgt] = (needs_all_genres, needs_any_genre, key)
+
+    def set_states(self):
+        genres = _DerivedDefaultDict(
+            lambda g, cs=self.root.tslr.conformers: cs.has_genre(g)
+        )
+        for widget, deps in self._dependencies.items():
+            all_ = all(genres[g] for g in deps[0]) if deps[0] else True
+            any_ = any(genres[g] for g in deps[1]) if deps[1] else True
+            key_ = deps[2]() if deps[2] else True
+            changer = self.enable if all_ and any_ and key_ else self.disable
+            changer(widget)
+        self.change_spectra_radio()
 
     @staticmethod
     def enable(widget):
@@ -175,31 +181,22 @@ class WgtStateChanger:
     def disable(widget):
         widget.configure(state="disabled")
 
-    @staticmethod
-    def change_spectra_radio():
+    def change_spectra_radio(self):
         # TODO: change to registering in WgtStateChanger for individual genres
-        tslr = WgtStateChanger.gui.tslr
-        bars = {k: False for k in "dip rot vosc vrot losc lrot raman1 roa1".split()}
+        tslr = self.root.tslr
+        bars = {k: False for k in self.bars_genres}
         for conf in tslr.conformers.values():
             for key in bars.keys():
                 bars[key] = bars[key] or key in conf
         spectra_available = [
             SpectralData.spectra_name_ref[bar] for bar, got in bars.items() if got
         ]
-        radio = WgtStateChanger.gui.controls.calculate.s_name_radio
+        radio = self.root.controls.calculate.s_name_radio
         for option, widget in radio.items():
             state = (
                 "disabled" if not tslr or option not in spectra_available else "normal"
             )
             widget.configure(state=state)
-
-    @classmethod
-    def set_states(cls):
-        inst = cls()
-        for dependency, changer in inst.changers.items():
-            for widget in getattr(inst, dependency):
-                changer(widget)
-        WgtStateChanger.change_spectra_radio()
 
 
 class FeedbackThread(Thread):
@@ -212,7 +209,6 @@ class FeedbackThread(Thread):
         self.queue = queue.Queue()
         super().__init__(daemon=True)
 
-    @WgtStateChanger
     def run(self):
         self.exc = None
         self.gui.progtext.set(self.progbar_msg)
