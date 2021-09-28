@@ -108,12 +108,6 @@ class ReadOnlyText(ScrolledText):
 
 
 class WgtStateChanger:
-    """
-    TO DO
-    -----
-    Consider excluding recalculate_command from state changers (currently
-    it is state changer through GUIFeedback and FeedbackThread).
-    """
 
     tslr = []
     energies = []
@@ -124,25 +118,6 @@ class WgtStateChanger:
     all = []
     experimental = []
     gui = None
-
-    def __init__(self, function=None):
-        if function is not None:
-            self.function = function
-        else:
-            self.function = lambda *args, **kwargs: None
-        wraps(function)(self)
-
-    def __call__(self, other, *args, **kwargs):
-        outcome = self.function(other, *args, **kwargs)
-        self.set_states()
-        return outcome
-
-    def __get__(self, obj, objtype):
-        if obj is None:
-            # instance attribute accessed on class, return self
-            return self
-        else:
-            return partial(self.__call__, obj)
 
     @property
     def changers(self):
@@ -212,7 +187,6 @@ class FeedbackThread(Thread):
         self.queue = queue.Queue()
         super().__init__(daemon=True)
 
-    @WgtStateChanger
     def run(self):
         self.exc = None
         self.gui.progtext.set(self.progbar_msg)

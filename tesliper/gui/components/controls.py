@@ -1026,13 +1026,19 @@ class CalculateSpectra(CollapsiblePane):
     def _draw(self, queue_, **kwargs):
         try:
             spc = queue_.get(0)  # data put to queue by self._calculate_spectra
-            self.view.draw_spectra(spc, **kwargs)
-            self.lastly_drawn_spectra = spc
         except queue.Empty:
             func = functools.update_wrapper(
                 functools.partial(self._draw, **kwargs), self._draw
             )
             self.after(20, func, queue_)
+        else:
+            if spc is None:
+                # FIXME: happens on <<DataExtracted>>, because self._calculate_spectra
+                #        cannot start while data extraction thread is alive
+                logger.debug("No spectrum to draw, abandoning.")
+            else:
+                self.view.draw_spectra(spc, **kwargs)
+                self.lastly_drawn_spectra = spc
 
     def redraw(self):
         draw_params = self.draw_params

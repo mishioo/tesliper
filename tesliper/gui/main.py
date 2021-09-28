@@ -180,6 +180,7 @@ class TesliperApp(tk.Tk):
         self.new_session()
         WgtStateChanger.set_states()
 
+        self.bind("<<DataExtracted>>", lambda _: WgtStateChanger.set_states(), add="+")
         self.bind("<<KeptChanged>>", lambda _: WgtStateChanger.set_states(), add="+")
 
         self.logger.info(
@@ -196,7 +197,6 @@ class TesliperApp(tk.Tk):
     def report_callback_exception(self, exc, val, tb):
         self.logger.critical("An unexpected error occurred.", exc_info=True)
 
-    @WgtStateChanger
     def new_session(self):
         if self.tslr and self.tslr.conformers:
             pop = messagebox.askokcancel(
@@ -228,6 +228,7 @@ class TesliperApp(tk.Tk):
             spectra_view=self.notebook.spectra,
         )
         self.controls.grid(column=0, row=0, sticky="nswe")
+        WgtStateChanger.set_states()
 
     def on_closing(self):
         if self.thread.is_alive():
