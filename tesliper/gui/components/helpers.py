@@ -178,7 +178,6 @@ class WgtStateChanger:
         for widget, condition in self._dependencies.items():
             changer = self.enable if condition() else self.disable
             changer(widget)
-        self.change_spectra_radio()
 
     @staticmethod
     def enable(widget):
@@ -190,23 +189,6 @@ class WgtStateChanger:
     @staticmethod
     def disable(widget):
         widget.configure(state="disabled")
-
-    def change_spectra_radio(self):
-        # TODO: change to registering in WgtStateChanger for individual genres
-        tslr = self.root.tslr
-        bars = {k: False for k in self.bars_genres}
-        for conf in tslr.conformers.values():
-            for key in bars.keys():
-                bars[key] = bars[key] or key in conf
-        spectra_available = [
-            SpectralData.spectra_name_ref[bar] for bar, got in bars.items() if got
-        ]
-        radio = self.root.controls.calculate.s_name_radio
-        for option, widget in radio.items():
-            state = (
-                "disabled" if not tslr or option not in spectra_available else "normal"
-            )
-            widget.configure(state=state)
 
 
 class FeedbackThread(Thread):

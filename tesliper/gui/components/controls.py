@@ -611,6 +611,7 @@ class CalculateSpectra(CollapsiblePane):
         super().__init__(parent, text="Calculate Spectra", **kwargs)
         self.tesliper = tesliper
         self.view = view
+        root = self.winfo_toplevel()
 
         self.content.columnconfigure(0, weight=1)
 
@@ -638,6 +639,7 @@ class CalculateSpectra(CollapsiblePane):
             b.configure(state="disabled")
             b.grid(column=c, row=r, padx=5)
             self.s_name_radio[v] = b
+            root.changer.register(b, needs_all_genres=[dw.DEFAULT_ACTIVITIES[v]])
 
         # Settings
         LabelSeparator(self.content, text="Settings").grid(column=0, row=2, sticky="we")
@@ -651,7 +653,6 @@ class CalculateSpectra(CollapsiblePane):
         self.fitting.var = fit
         self.fitting.grid(column=1, row=0, columnspan=2, sticky="we")
         self.fitting["values"] = ("lorentzian", "gaussian")
-        root = self.winfo_toplevel()
         root.changer.register(
             self.fitting, "bars", key=lambda var=self.s_name: bool(var.get())
         )
