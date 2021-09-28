@@ -652,7 +652,9 @@ class CalculateSpectra(CollapsiblePane):
         self.fitting.grid(column=1, row=0, columnspan=2, sticky="we")
         self.fitting["values"] = ("lorentzian", "gaussian")
         root = self.winfo_toplevel()
-        root.changer.register(self.fitting, "bars")
+        root.changer.register(
+            self.fitting, "bars", key=lambda var=self.s_name: bool(var.get())
+        )
 
         scroll_param = {
             "Start": {"scroll_rate": 50},
@@ -680,7 +682,9 @@ class CalculateSpectra(CollapsiblePane):
             entry.unit = unit
             label = ttk.Label(sett, textvariable=unit, width=5)
             label.grid(column=2, row=no + 1, sticky="e")
-            root.changer.register(entry, "bars")
+            root.changer.register(
+                entry, "bars", key=lambda var=self.s_name: bool(var.get())
+            )
 
         # Calculation Mode
         self.mode = tk.StringVar()
@@ -733,9 +737,15 @@ class CalculateSpectra(CollapsiblePane):
         self.stack.bind("<<ComboboxSelected>>", self.change_colour)
         self.stack.grid(column=0, row=9)
         root.changer.register(
-            [self.single_radio, self.single, self.stack_radio, self.stack], "bars"
+            [self.single_radio, self.single, self.stack_radio, self.stack],
+            "bars",
+            key=lambda var=self.s_name: bool(var.get()),
         )
-        root.changer.register([self.average_radio, self.average], ["bars", "energies"])
+        root.changer.register(
+            [self.average_radio, self.average],
+            ["bars", "energies"],
+            key=lambda var=self.s_name: bool(var.get()),
+        )
         self.boxes = dict(single=self.single, average=self.average, stack=self.stack)
         self.current_box = None
         for box in self.boxes.values():
@@ -778,7 +788,14 @@ class CalculateSpectra(CollapsiblePane):
             frame, text="Redraw", state="disabled", command=self.recalculate_command
         )
         self.recalc_b.grid(column=1, row=2)
-        root.changer.register([self.live_prev, self.recalc_b], "bars")
+        root.changer.register(
+            self.reverse_ax, key=lambda var=self.s_name: bool(var.get())
+        )
+        root.changer.register(
+            [self.live_prev, self.recalc_b],
+            "bars",
+            key=lambda var=self.s_name: bool(var.get()),
+        )
 
         # Experimental spectrum
         LabelSeparator(self.content, text="Experimental spectrum").grid(
@@ -814,6 +831,9 @@ class CalculateSpectra(CollapsiblePane):
             command=lambda: (self.load_exp_command(), self.live_preview_callback()),
         )
         self.load_exp.grid(column=0, row=2, columnspan=2, sticky="new")
+        root.changer.register(
+            self.load_exp, key=lambda var=self.s_name: bool(var.get())
+        )
         self.auto_scale = ttk.Button(
             frame, text="Auto-scale", state="disabled", command=self.auto_scale_command
         )
@@ -912,6 +932,7 @@ class CalculateSpectra(CollapsiblePane):
                     abscissa=spc[0],
                 )
                 self.show_exp.var.set(True)
+                self.winfo_toplevel().changer.set_states()
 
     def mode_chosen(self, _event=None):
         if _event is not None:
@@ -938,9 +959,7 @@ class CalculateSpectra(CollapsiblePane):
         self.visualize_settings()
         bar = tesliper.dw.DEFAULT_ACTIVITIES[self.s_name.get()]
         self.single["values"] = [k for k, v in tslr.conformers.items() if bar in v]
-        self.reverse_ax.config(state="normal")
-        self.load_exp.config(state="normal")
-        self.show_exp.config(state="normal")
+        self.winfo_toplevel().changer.set_states()
         if self.mode.get():
             self.live_preview_callback()
         else:
