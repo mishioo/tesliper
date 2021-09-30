@@ -581,7 +581,8 @@ class Conformers(OrderedDict):
                 for conf in self.values()
                 if "stoichiometry" in conf
             )
-            wanted = counter.most_common()[0][0]
+            counts = counter.most_common()
+            wanted = counts[0][0] if counts else ""  # no conformer has "stoichiometry"
         for index, conf in enumerate(self.values()):
             if "stoichiometry" not in conf or not conf["stoichiometry"] == wanted:
                 self._kept[index] = False
