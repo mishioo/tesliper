@@ -878,7 +878,11 @@ class CalculateSpectra(CollapsiblePane):
         spectra_name = self.s_name.get()
         mode = self.mode.get()
         # get value from self.single, self.average or self.stack
-        option = getattr(self, mode).var.get()
+        try:
+            option = getattr(self, mode).var.get()
+        except AttributeError:
+            # mode is not chosen
+            option = ""
         return {"spectra_name": spectra_name, "mode": mode, "option": option}
 
     @ThreadedMethod(progbar_msg="Calculating best fit...")
@@ -1127,7 +1131,8 @@ class CalculateSpectra(CollapsiblePane):
             logger.info("Calculation aborted: invalid settings provided.")
             return
         self.last_used_settings[spectra_name] = self.current_settings.copy()
-        if draw_params["option"].startswith("Choose "):
+        option = draw_params["option"]
+        if not option or option.startswith("Choose "):
             logger.info("Calculation aborted: option not chosen.")
             return
         logger.debug(f"Recalculating with {self.current_settings}")
