@@ -104,12 +104,17 @@ class ScrollableFrame(ttk.Frame):
         """Reverse order of widget's bindtags to control if widget-specific or "all"
         bindings are executed first. Do it only if widget is a child of ScrollableFrame.
         """
+        error = None
         if not str(widget).startswith(str(self.canvas)):
-            logger.debug(f"Bindtags reverse aborted: widget is not a child of {self}.")
-            return "ok"  # or maybe "continue"?
+            error = f"widget is not a child of {self}"
+        elif not isinstance(widget, tk.Widget):
+            error = f"{widget} is not a tkinter.Widget object"
         elif not is_scrollable(widget):
-            logger.debug("Bindtags reverse aborted: non-scrollable or disabled widget.")
+            error = "non-scrollable or disabled widget"
+        if error is not None:
+            logger.debug(f"Bindtags reverse aborted: {error}.")
             return "ok"  # or maybe "continue"?
+
         reversed_ = widget.bindtags()[::-1]
         widget.bindtags(reversed_)
         logger.debug(f"New bindtags order: {reversed_}.")
