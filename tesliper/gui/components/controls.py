@@ -278,6 +278,7 @@ class FilterRMSD(ttk.Frame):
             [window_size, threshold, ignore_hydrogens, button], "energies"
         )
 
+    @ThreadedMethod(progbar_msg="Finding similar conformers...")
     def _filter(self):
         self.tesliper.conformers.trim_rmsd(
             threshold=float(self.threshold.get()),
