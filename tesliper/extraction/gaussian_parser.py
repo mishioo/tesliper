@@ -312,6 +312,7 @@ class GaussianParser(Parser):
                 f"{filename or self._iterator}. Job didn't finish or content may be "
                 f"corrupted."
             )
+            self.data["normal_termination"] = False
         return self.data
 
     @Parser.state
@@ -326,7 +327,8 @@ class GaussianParser(Parser):
         line : str
             Line of text to parse."""
         data, iterator = self.data, self._iterator
-        data["normal_termination"] = True
+        # assume error termination until output file says otherwise
+        data["normal_termination"] = False
         while not line == " Cite this work as:\n":
             line = next(iterator)
         data["version"] = next(iterator).strip(" \n,")
@@ -371,10 +373,15 @@ class GaussianParser(Parser):
                 return
         if "Error termination" in line:
             self.data["normal_termination"] = False
+        elif "Normal termination" in line:
+            self.data["normal_termination"] = True
         elif line.startswith(" SCF Done:"):
             self.data["scf"] = float(SCFCRE.search(line).group(1))
         elif line.startswith(" Stoichiometry"):
             self.data["stoichiometry"] = stoich_.match(line).group(1)
+        elif "Proceeding to internal job step number" in line:
+            # last job determines if termination was normal
+            self.data["normal_termination"] = False
 
     @Parser.state(trigger=re.compile(r"^\s+Standard orientation"))
     def geometry(self, line: str) -> None:
@@ -424,7 +431,9 @@ class GaussianParser(Parser):
             self.data["scf"] = float(SCFCRE.search(line).group(1))
         elif line.startswith(" Optimization completed."):
             self.data["optimization_completed"] = True
-        elif line.startswith((" Error termination", " Job cpu time")):
+        elif line.startswith(" Error termination"):
+            self.data["normal_termination"] = False
+        if line.startswith((" Error termination", " Job cpu time")):
             self.workhorse = self.wait
 
     @Parser.state(trigger=re.compile("^ Harmonic frequencies"))
