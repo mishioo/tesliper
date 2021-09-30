@@ -315,7 +315,10 @@ class ConformersOverview(CheckTree):
             values["imag"] = imag
         else:
             values["imag"] = False
-        values["stoich"] = conf["stoichiometry"]
+        try:
+            values["stoich"] = conf["stoichiometry"]
+        except KeyError:
+            values["stoich"] = "--"
         iid = super()._insert(parent=parent, index=index, iid=iid, **kw)
         for k, v in values.items():
             self.set(iid, k, v or "X")
