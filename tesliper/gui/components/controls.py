@@ -1227,17 +1227,19 @@ class ExportData(ttk.LabelFrame):
         root = self.winfo_toplevel()
 
         tk.Grid.columnconfigure(self, (0, 1), weight=1)
+        self.b_save_session = ttk.Button(
+            self, text="Save session", command=self.save_session
+        )
+        self.b_save_session.grid(column=0, row=0, sticky="nwe")
+        self.b_load_session = ttk.Button(
+            self, text="Load session", command=self.load_session, state="enabled"
+        )
+        self.b_load_session.grid(column=0, row=1, sticky="nwe")
         self.b_clear_session = ttk.Button(
             self, text="Clear session", command=self.winfo_toplevel().new_session
         )
         self.b_clear_session.grid(column=0, row=2, sticky="nwe")
-        root.changer.register(self.b_clear_session, "tesliper")
-
-        self.b_calc = ttk.Button(
-            self, text="Auto calculate", command=not_implemented_popup
-        )
-        self.b_calc.grid(column=0, row=0, sticky="nwe")
-        root.changer.register(self.b_calc, "bars")
+        root.changer.register([self.b_clear_session, self.b_save_session], "tesliper")
 
         self.b_text_export = ttk.Button(
             self, text="Export as .txt", command=lambda: self.save(fmt="txt")
@@ -1259,10 +1261,56 @@ class ExportData(ttk.LabelFrame):
     def tesliper(self):
         return self.winfo_toplevel().tesliper
 
+    def save_session(self):
+        file = asksaveasfilename(
+            filetypes=[
+                ("tesliper", "*.tslr"),
+                ("all files", "*.*"),
+            ],
+            defaultextension=".tslr",
+        )
+        if not file:
+            return
+        path = Path(file)
+        self.tesliper.output_dir = path.parent
+        try:
+            self.tesliper.serialize(path.name)
+        except FileExistsError:
+            if self._should_override([path.name]):
+                self.tesliper.serialize(path.name, mode="w")
+
+    def load_session(self):
+        file = askopenfilename(
+            filetypes=[
+                ("tesliper", "*.tslr"),
+                ("all files", "*.*"),
+            ],
+            defaultextension=".tslr",
+        )
+        if not file:
+            return
+        root = self.winfo_toplevel()
+        root.new_session()
+        if not root.tesliper.conformers:
+            path = Path(file)
+            root.new_tesliper(path)
+
     def get_save_query(self):
         popup = ExportPopup(self, width="220", height="130")
         query = popup.get_query()
         return query
+
+    def _should_override(self, existing: list):
+        if not existing:
+            return False
+        many = len(existing) > 1
+        joined = join_with_and(existing)
+        title = "Files already exist!"
+        message = (
+            f"{joined} file{'s' if many else ''} already exist in this directory. "
+            f"Would you like to overwrite {'them' if many else 'it'}?"
+        )
+        return messagebox.askokcancel(self, title=title, message=message)
 
     @ThreadedMethod(progbar_msg="Saving...")
     def execute_save_command(self, categories, fmt):
@@ -1273,25 +1321,10 @@ class ExportData(ttk.LabelFrame):
             self.tesliper.average_spectra()
             root.progtext.set("Saving...")
         existing = self._exec_save(categories, fmt, mode="x")
-        if existing:
-            joined = join_with_and(existing).capitalize()
-            title = (
-                f"{joined} files already exist!"
-                if fmt != "xlsx"
-                else ".xlsx file already exists!"
-            )
-            message = (
-                f"{joined} files already exist in this directory. "
-                "Would you like to overwrite them?"
-                if fmt != "xlsx"
-                else ".xlsx file already exists in this directory. "
-                "Would you like to overwrite it?"
-            )
-            override = messagebox.askokcancel(title=title, message=message)
-            if override:
-                # for "xlsx" retry whole process, for other retry only unsuccessful
-                cats = existing if fmt != "xlsx" else categories
-                self._exec_save(cats, fmt, mode="w")
+        if self._should_override(existing):
+            # for "xlsx" retry whole process, for other retry only unsuccessful
+            cats = existing if fmt != "xlsx" else categories
+            self._exec_save(cats, fmt, mode="w")
 
     def _exec_save(self, categories, fmt, mode):
         """Executes save command, calling appropriate "export" methods of Tesliper
