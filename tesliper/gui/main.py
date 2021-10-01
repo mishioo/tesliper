@@ -18,6 +18,7 @@ from .components import (
     ShortExcFormatter,
     SpectraView,
     TextHandler,
+    ThreadedMethod,
     WgtStateChanger,
 )
 from .components.controls import (
@@ -195,12 +196,24 @@ class TesliperApp(tk.Tk):
     def report_callback_exception(self, exc, val, tb):
         self.logger.critical("An unexpected error occurred.", exc_info=True)
 
+    @ThreadedMethod(progbar_msg="Loading session...")
+    def new_tesliper(self, source=None):
+        if not source:
+            self.tslr = tesliper.Tesliper()
+        else:
+            self.tslr = tesliper.Tesliper.load(source)
+            view = self.notebook.extract
+            for file, data in self.tslr.conformers.items():
+                view.insert("", tk.END, text=file)
+            self.event_generate("<<DataExtracted>>")
+
     def new_session(self):
         if self.tslr and self.tslr.conformers:
             pop = messagebox.askokcancel(
-                message="Are you sure you want to start new session? "
-                "Any unsaved changes will be lost!",
-                title="New session",
+                message="This action will clear the current session "
+                "And any unsaved changes will be lost!\n"
+                "Would you like to proceed?",
+                title="Unsaved changes will be lost!",
                 icon="warning",
                 default="cancel",
             )
