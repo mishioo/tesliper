@@ -20,6 +20,10 @@ class BoxVar(tk.BooleanVar):
             kwargs["value"] = True
         super().__init__(*args, **kwargs)
 
+    @property
+    def tesliper(self):
+        return self.box.winfo_toplevel().tesliper
+
     def _set(self, value):
         super().set(value)
         tags = () if value else "discarded"
@@ -27,7 +31,7 @@ class BoxVar(tk.BooleanVar):
 
     def set(self, value):
         # set is not called by tkinter when checkbutton is clicked
-        self.box.tree.tslr.conformers.kept[int(self.box.index)] = bool(value)
+        self.tesliper.conformers.kept[int(self.box.index)] = bool(value)
         for tree in self.box.tree.trees.values():
             try:
                 tree.boxes[self.box.index].var._set(value)
@@ -57,10 +61,9 @@ class Checkbox(ttk.Checkbutton):
 class CheckTree(ttk.Treeview):
     trees = dict()
 
-    def __init__(self, master, name, tesliper, **kwargs):
+    def __init__(self, master, name, **kwargs):
         CheckTree.trees[name] = self
         self.frame = ttk.Frame(master)
-        self.tesliper = tesliper
         style = ttk.Style()
         style.layout(
             "borderless.Treeview", [("mystyle.Treeview.treearea", {"sticky": "nswe"})]
@@ -111,9 +114,8 @@ class CheckTree(ttk.Treeview):
         self.children_names = OrderedDict()
 
     @property
-    def tslr(self):
-        # for backwards compatibility
-        return self.tesliper
+    def tesliper(self):
+        return self.winfo_toplevel().tesliper
 
     @property
     def blade(self):
@@ -224,9 +226,9 @@ class EnergiesView(CheckTree):
     )
     e_keys = "ten ent gib scf zpe".split(" ")
 
-    def __init__(self, parent, tesliper, **kwargs):
+    def __init__(self, parent, **kwargs):
         kwargs["columns"] = self.e_keys
-        super().__init__(parent, "energies", tesliper=tesliper, **kwargs)
+        super().__init__(parent, "energies", **kwargs)
 
         # Columns
         for cid, text in zip(
@@ -242,10 +244,10 @@ class EnergiesView(CheckTree):
         logger.debug("Going to update by showing {}.".format(show))
         if show == "values":
             # we don't want to hide energy values of non-kept conformer
-            with self.tslr.conformers.untrimmed:
-                scope = self.tslr.energies
+            with self.tesliper.conformers.untrimmed:
+                scope = self.tesliper.energies
         else:
-            scope = self.tslr.energies
+            scope = self.tesliper.energies
         formatter = self.formats[show]
         # conformers are always in the same order, so we can use iterator for values
         # and only request next() when conformer's name is known by genre's DataArray
@@ -263,11 +265,11 @@ class EnergiesView(CheckTree):
 
 
 class ConformersOverview(CheckTree):
-    def __init__(self, master, tesliper, **kwargs):
+    def __init__(self, master, **kwargs):
         kwargs["columns"] = "term opt en ir vcd uv ecd ram roa " "imag stoich".split(
             " "
         )
-        super().__init__(master, "main", tesliper=tesliper, **kwargs)
+        super().__init__(master, "main", **kwargs)
         self.curr_iid = 0
 
         # Columns
@@ -295,7 +297,7 @@ class ConformersOverview(CheckTree):
         # TO DO: correct wrong files counting when smaller set is extracted
         # first
         text = kw["text"]
-        conf = self.tslr.conformers[text]
+        conf = self.tesliper.conformers[text]
         values = {
             "term": "normal" if conf["normal_termination"] else "ERROR",
             "opt": "n/a"
@@ -312,7 +314,7 @@ class ConformersOverview(CheckTree):
             "roa": "ok" if "roa1" in conf else False,
         }
         if "freq" in conf:
-            freqs = self.tslr.conformers[text]["freq"]
+            freqs = self.tesliper.conformers[text]["freq"]
             imag = str((np.array(freqs) < 0).sum())
             values["imag"] = imag
         else:
