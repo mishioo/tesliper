@@ -70,14 +70,13 @@ if _DEVELOPMENT:
 
 # CLASSES
 class ViewsNotebook(ttk.Notebook):
-    def __init__(self, parent, tesliper):
+    def __init__(self, parent):
         super().__init__(parent)
-        self.tesliper = tesliper
 
-        self.extract = ConformersOverview(self, tesliper)
+        self.extract = ConformersOverview(self)
         self.add(self.extract.frame, text="Extracted data")
 
-        self.energies = EnergiesView(self, tesliper)
+        self.energies = EnergiesView(self)
         self.add(self.energies.frame, text="Energies list")
 
         self.spectra = SpectraView(self)
@@ -85,27 +84,19 @@ class ViewsNotebook(ttk.Notebook):
 
 
 class ControlsFrame(ScrollableFrame):
-    def __init__(
-        self, parent, tesliper, extract_view, energies_view, spectra_view, **kwargs
-    ):
+    def __init__(self, parent, extract_view, energies_view, spectra_view, **kwargs):
         super(ControlsFrame, self).__init__(parent, **kwargs)
         tk.Grid.columnconfigure(self, 1, weight=1)
 
-        self.extract = ExtractData(self.content, tesliper=tesliper, view=extract_view)
+        self.extract = ExtractData(self.content, view=extract_view)
         self.extract.grid(column=0, row=0, sticky="new")
-        self.export = ExportData(self.content, tesliper=tesliper)
+        self.export = ExportData(self.content)
         self.export.grid(column=0, row=1, sticky="new")
-        self.select = SelectConformers(
-            self.content, tesliper=tesliper, view=extract_view
-        )
+        self.select = SelectConformers(self.content, view=extract_view)
         self.select.grid(column=0, row=2, sticky="new")
-        self.filter = FilterEnergies(
-            parent=self.content, tesliper=tesliper, view=energies_view
-        )
+        self.filter = FilterEnergies(parent=self.content, view=energies_view)
         self.filter.grid(column=0, row=3, sticky="new")
-        self.calculate = CalculateSpectra(
-            self.content, tesliper=tesliper, view=spectra_view
-        )
+        self.calculate = CalculateSpectra(self.content, view=spectra_view)
         self.calculate.grid(column=0, row=4, sticky="new")
 
 
@@ -122,7 +113,7 @@ class TesliperApp(tk.Tk):
         tk.Grid.rowconfigure(self, 0, weight=1)
 
         # created by .new_session()
-        self.tslr = None
+        self.tesliper = None
         self.notebook = None
         self.controls = None
 
@@ -199,16 +190,16 @@ class TesliperApp(tk.Tk):
     @ThreadedMethod(progbar_msg="Loading session...")
     def new_tesliper(self, source=None):
         if not source:
-            self.tslr = tesliper.Tesliper()
+            self.tesliper = tesliper.Tesliper()
         else:
-            self.tslr = tesliper.Tesliper.load(source)
+            self.tesliper = tesliper.Tesliper.load(source)
             view = self.notebook.extract
-            for file, data in self.tslr.conformers.items():
+            for file, data in self.tesliper.conformers.items():
                 view.insert("", tk.END, text=file)
             self.event_generate("<<DataExtracted>>")
 
     def new_session(self):
-        if self.tslr and self.tslr.conformers:
+        if self.tesliper and self.tesliper.conformers:
             pop = messagebox.askokcancel(
                 message="This action will clear the current session "
                 "And any unsaved changes will be lost!\n"
@@ -219,8 +210,8 @@ class TesliperApp(tk.Tk):
             )
             if not pop:
                 return
-        if self.tslr is not None:
-            del self.tslr
+        if self.tesliper is not None:
+            del self.tesliper
         if self.changer is not None:
             del self.changer
         if self.notebook is not None:
@@ -231,12 +222,11 @@ class TesliperApp(tk.Tk):
             del self.controls
         CheckTree.trees = dict()  # TODO: refactor to not need this
         self.changer = WgtStateChanger(self)
-        self.tslr = tesliper.Tesliper()
-        self.notebook = ViewsNotebook(self, tesliper=self.tslr)
+        self.tesliper = tesliper.Tesliper()
+        self.notebook = ViewsNotebook(self)
         self.notebook.grid(column=1, row=0, sticky="nswe")
         self.controls = ControlsFrame(
             self,
-            tesliper=self.tslr,
             extract_view=self.notebook.extract,
             energies_view=self.notebook.energies,
             spectra_view=self.notebook.spectra,

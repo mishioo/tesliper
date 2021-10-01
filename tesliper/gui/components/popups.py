@@ -45,7 +45,7 @@ class ExportPopup(Popup):
         ]
         for n, check in enumerate(checks):
             check.grid(column=0, row=n, pady=2, padx=5, sticky="nw")
-        tslr = master.winfo_toplevel().tslr
+        tslr = master.winfo_toplevel().tesliper
         checks[0].configure(state="normal" if tslr.energies else "disabled")
         checks[1].configure(state="normal" if tslr.activities else "disabled")
         checks[2].configure(state="normal" if tslr.spectra else "disabled")

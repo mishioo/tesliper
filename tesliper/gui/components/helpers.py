@@ -122,7 +122,7 @@ class WgtStateChanger:
         self.energies_genres = tuple("zpe ent ten gib scf".split())
         self._dependencies = {}
         self._genres = _DerivedDefaultDict(
-            lambda g, r=self.root: r.tslr.conformers.has_genre(g)
+            lambda g, r=self.root: r.tesliper.conformers.has_genre(g)
         )
         self._standards = {
             "energies": self._energies,
@@ -137,7 +137,7 @@ class WgtStateChanger:
         return any(self._genres[g] for g in self.bars_genres)
 
     def _tesliper(self):
-        return bool(self.root.tslr.conformers)
+        return bool(self.root.tesliper.conformers)
 
     def register(
         self,

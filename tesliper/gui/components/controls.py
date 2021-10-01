@@ -8,7 +8,12 @@ from abc import ABC, abstractmethod
 from collections import Counter, namedtuple
 from pathlib import Path
 from tkinter import messagebox
-from tkinter.filedialog import askdirectory, askopenfilename, askopenfilenames
+from tkinter.filedialog import (
+    askdirectory,
+    askopenfilename,
+    askopenfilenames,
+    asksaveasfilename,
+)
 
 import numpy as np
 
@@ -44,6 +49,10 @@ class AutoComboboxBase(ttk.Combobox, ABC):
     def get_available_values(self):
         raise NotImplementedError
 
+    @property
+    def tesliper(self):
+        return self.winfo_toplevel().tesliper
+
     def update_values(self, _event=None):
         """Update displayed values to reflect currently available energy genres.
         If previously chosen genre is no longer available, change it."""
@@ -76,9 +85,8 @@ class EnergiesChoice(AutoComboboxBase):
     }
     _genres_ref = {v: k for k, v in _names_ref.items()}
 
-    def __init__(self, parent, tesliper, **kwargs):
+    def __init__(self, parent, **kwargs):
         super().__init__(parent, **kwargs)
-        self.tesliper = tesliper
 
     def get_genre(self):
         """Convenience method for getting genre of the energy type chosen."""
@@ -97,9 +105,8 @@ class EnergiesChoice(AutoComboboxBase):
 class ConformersChoice(AutoComboboxBase):
     """Combobox that enables choice of conformer for spectra calculation."""
 
-    def __init__(self, parent, tesliper, spectra_var, **kwargs):
+    def __init__(self, parent, spectra_var, **kwargs):
         super().__init__(parent, **kwargs)
-        self.tesliper = tesliper
         self.spectra_var = spectra_var
 
     def get_available_values(self):
@@ -121,9 +128,8 @@ class ColorsChoice(AutoComboboxBase):
 
 
 class FilterRange(ttk.Frame):
-    def __init__(self, parent, tesliper, view, proxy, **kwargs):
+    def __init__(self, parent, view, proxy, **kwargs):
         super().__init__(parent, **kwargs)
-        self.tesliper = tesliper
         self.view = view
         # dict with getters for "genre" and "show" comboboxes
         # and "units" of currently showing values
@@ -186,6 +192,10 @@ class FilterRange(ttk.Frame):
         "populations": {"min_value": 0, "max_value": 100, "decimal_digits": 4},
     }
 
+    @property
+    def tesliper(self):
+        return self.winfo_toplevel().tesliper
+
     def on_show_selected(self, _event=None):
         config = self._entry_configure[self.proxy["show"]()]
         self.upper_entry.configure(**config)
@@ -235,9 +245,8 @@ class FilterRange(ttk.Frame):
 
 
 class FilterRMSD(ttk.Frame):
-    def __init__(self, parent, tesliper, view, proxy, **kwargs):
+    def __init__(self, parent, view, proxy, **kwargs):
         super().__init__(parent, **kwargs)
-        self.tesliper = tesliper
         self.view = view
         self.proxy = proxy  # dict with getter for "genre" combobox
 
@@ -278,6 +287,10 @@ class FilterRMSD(ttk.Frame):
             [window_size, threshold, ignore_hydrogens, button], "energies"
         )
 
+    @property
+    def tesliper(self):
+        return self.winfo_toplevel().tesliper
+
     @ThreadedMethod(progbar_msg="Finding similar conformers...")
     def _filter(self):
         self.tesliper.conformers.trim_rmsd(
@@ -296,9 +309,8 @@ class FilterRMSD(ttk.Frame):
 
 
 class FilterEnergies(CollapsiblePane):
-    def __init__(self, parent, tesliper, view, **kwargs):
+    def __init__(self, parent, view, **kwargs):
         super().__init__(parent, text="Filter kept conformers", **kwargs)
-        self.tesliper = tesliper
         self.view = view
 
         ttk.Label(self.content, text="Show:").grid(column=0, row=0, sticky="new")
@@ -324,9 +336,7 @@ class FilterEnergies(CollapsiblePane):
 
         # Energy choice
         ttk.Label(self.content, text="Use:").grid(column=0, row=1, sticky="new")
-        self.energies_choice = EnergiesChoice(
-            self.content, tesliper=self.tesliper, width=12
-        )
+        self.energies_choice = EnergiesChoice(self.content, width=12)
         self.energies_choice.grid(column=1, row=1, sticky="nwe")
 
         proxy = {
@@ -338,18 +348,14 @@ class FilterEnergies(CollapsiblePane):
         LabelSeparator(self.content, text="Filter range").grid(
             column=0, row=2, columnspan=2, sticky="nwe"
         )
-        self.range = FilterRange(
-            self.content, tesliper=self.tesliper, view=self.view, proxy=proxy
-        )
+        self.range = FilterRange(self.content, view=self.view, proxy=proxy)
         self.range.grid(column=0, row=3, columnspan=2, sticky="news")
 
         # RMSD sieve
         LabelSeparator(self.content, text="RMSD sieve").grid(
             column=0, row=4, columnspan=2, sticky="nwe"
         )
-        self.rmsd = FilterRMSD(
-            self.content, tesliper=self.tesliper, view=self.view, proxy=proxy
-        )
+        self.rmsd = FilterRMSD(self.content, view=self.view, proxy=proxy)
         self.rmsd.grid(column=0, row=5, columnspan=2, sticky="news")
 
         self.show_combo.bind("<<ComboboxSelected>>", self.on_show_selected)
@@ -357,6 +363,10 @@ class FilterEnergies(CollapsiblePane):
         root = self.winfo_toplevel()
         root.bind("<<DataExtracted>>", self.on_show_selected, "+")
         root.changer.register([self.show_combo, self.energies_choice], "energies")
+
+    @property
+    def tesliper(self):
+        return self.winfo_toplevel().tesliper
 
     def on_show_selected(self, _event=None):
         if _event is not None:
@@ -402,9 +412,8 @@ class SelectConformers(CollapsiblePane):
         ),
     )
 
-    def __init__(self, parent, tesliper, view, **kwargs):
+    def __init__(self, parent, view, **kwargs):
         super().__init__(parent, text="Select kept conformers", **kwargs)
-        self.tesliper = tesliper
         self.view = view
 
         self.widgets = dict()
@@ -490,6 +499,10 @@ class SelectConformers(CollapsiblePane):
         }
         for n, (key, var) in enumerate(self.kept_vars.items()):
             self.kept_buttons[key].grid(column=0, row=n, sticky="nw")
+
+    @property
+    def tesliper(self):
+        return self.winfo_toplevel().tesliper
 
     def on_data_extracted(self, _event=None):
         if _event is not None:
@@ -608,9 +621,8 @@ class SelectConformers(CollapsiblePane):
 
 
 class CalculateSpectra(CollapsiblePane):
-    def __init__(self, parent, tesliper, view, **kwargs):
+    def __init__(self, parent, view, **kwargs):
         super().__init__(parent, text="Calculate Spectra", **kwargs)
-        self.tesliper = tesliper
         self.view = view
         root = self.winfo_toplevel()
 
@@ -719,16 +731,14 @@ class CalculateSpectra(CollapsiblePane):
         self.stack_radio.grid(column=0, row=8, sticky="w")
 
         # TODO: call auto_combobox.update_values() when conformers.kept change
-        self.single = ConformersChoice(
-            self.content, tesliper=self.tesliper, spectra_var=self.s_name
-        )
+        self.single = ConformersChoice(self.content, spectra_var=self.s_name)
         self.single.bind(
             "<<ComboboxSelected>>",
             lambda event: self.live_preview_callback(event, mode="single"),
         )
         self.single.grid(column=0, row=5)
         self.single["values"] = ()
-        self.average = EnergiesChoice(self.content, tesliper=self.tesliper)
+        self.average = EnergiesChoice(self.content)
         self.average.bind(
             "<<ComboboxSelected>>",
             lambda event: self.live_preview_callback(event, mode="average"),
@@ -861,6 +871,10 @@ class CalculateSpectra(CollapsiblePane):
         }
         self.lastly_drawn_spectra = None
         self._exp_spc = {k: None for k in self.s_name_radio.keys()}
+
+    @property
+    def tesliper(self):
+        return self.winfo_toplevel().tesliper
 
     @property
     def exp_spc(self):
@@ -1142,8 +1156,7 @@ class CalculateSpectra(CollapsiblePane):
 
 
 class ExtractData(ttk.LabelFrame):
-    def __init__(self, parent, tesliper, view, **kwargs):
-        self.tesliper = tesliper
+    def __init__(self, parent, view, **kwargs):
         self.view = view
         super().__init__(parent, text="Extract data", **kwargs)
         self.columnconfigure(0, weight=1)
@@ -1163,6 +1176,10 @@ class ExtractData(ttk.LabelFrame):
         self.winfo_toplevel().changer.register(self.check_ignore_unknown, "tesliper")
 
     # TODO: add recursive smart extraction
+
+    @property
+    def tesliper(self):
+        return self.winfo_toplevel().tesliper
 
     def from_dir(self):
         work_dir = askdirectory()
@@ -1204,10 +1221,9 @@ class ExtractData(ttk.LabelFrame):
 
 
 class ExportData(ttk.LabelFrame):
-    def __init__(self, parent, tesliper, **kwargs):
+    def __init__(self, parent, **kwargs):
         # Change label text
         super().__init__(parent, text="Session control", **kwargs)
-        self.tesliper = tesliper
         root = self.winfo_toplevel()
 
         tk.Grid.columnconfigure(self, (0, 1), weight=1)
@@ -1238,6 +1254,10 @@ class ExportData(ttk.LabelFrame):
         root.changer.register(
             [self.b_text_export, self.b_excel_export, self.b_csv_export], "tesliper"
         )
+
+    @property
+    def tesliper(self):
+        return self.winfo_toplevel().tesliper
 
     def get_save_query(self):
         popup = ExportPopup(self, width="220", height="130")
