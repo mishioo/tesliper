@@ -139,12 +139,14 @@ class CheckTree(ttk.Treeview):
         self.but_sort.configure(command=lambda: self._sort_button(not reverse))
 
     def _sort(self, col, reverse=True):
+        # empty records always at the end
+        empty = float("-inf") if reverse else float("inf")
         try:
             ls = [(self.set(iid, col), iid) for iid in self.get_children("")]
         except tk.TclError:
             ls = [(self.item(iid)["text"], iid) for iid in self.get_children("")]
         try:
-            ls = [(-1e10 if v == "--" else float(v), iid) for v, iid in ls]
+            ls = [(empty if v == "--" else float(v), iid) for v, iid in ls]
         except ValueError:
             pass
         ls.sort(reverse=reverse)
