@@ -1224,15 +1224,15 @@ class ExportData(ttk.LabelFrame):
         root.changer.register(self.b_calc, "bars")
 
         self.b_text_export = ttk.Button(
-            self, text="Export as .txt", command=lambda _e: self.save(fmt="txt")
+            self, text="Export as .txt", command=lambda: self.save(fmt="txt")
         )
         self.b_text_export.grid(column=1, row=0, sticky="nwe")
         self.b_excel_export = ttk.Button(
-            self, text="Export as .xls", command=lambda _e: self.save(fmt="xlsx")
+            self, text="Export as .xls", command=lambda: self.save(fmt="xlsx")
         )
         self.b_excel_export.grid(column=1, row=1, sticky="nwe")
         self.b_csv_export = ttk.Button(
-            self, text="Export as .csv", command=lambda _e: self.save(fmt="csv")
+            self, text="Export as .csv", command=lambda: self.save(fmt="csv")
         )
         self.b_csv_export.grid(column=1, row=2, sticky="nwe")
         root.changer.register(

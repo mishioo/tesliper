@@ -45,22 +45,15 @@ class ExportPopup(Popup):
         ]
         for n, check in enumerate(checks):
             check.grid(column=0, row=n, pady=2, padx=5, sticky="nw")
-        checks[0].configure(
-            state="normal" if self.master.parent.tslr.energies else "disabled"
-        )
-        checks[1].configure(
-            state="normal" if self.master.parent.tslr.activities else "disabled"
-        )
-        checks[2].configure(
-            state="normal" if self.master.parent.tslr.spectra else "disabled"
-        )
-        checks[3].configure(
-            state="normal" if self.master.parent.tslr.spectra else "disabled"
-        )
-        self.vars[0].set(True if self.master.parent.tslr.energies else False)
-        self.vars[1].set(True if self.master.parent.tslr.activities else False)
-        self.vars[2].set(True if self.master.parent.tslr.spectra else False)
-        self.vars[3].set(True if self.master.parent.tslr.spectra else False)
+        tslr = master.winfo_toplevel().tslr
+        checks[0].configure(state="normal" if tslr.energies else "disabled")
+        checks[1].configure(state="normal" if tslr.activities else "disabled")
+        checks[2].configure(state="normal" if tslr.spectra else "disabled")
+        checks[3].configure(state="normal" if tslr.spectra else "disabled")
+        self.vars[0].set(True if tslr.energies else False)
+        self.vars[1].set(True if tslr.activities else False)
+        self.vars[2].set(True if tslr.spectra else False)
+        self.vars[3].set(True if tslr.spectra else False)
         self.protocol("WM_DELETE_WINDOW", self.cancel_command)
         buttons_frame = ttk.Frame(self)
         buttons_frame.grid(column=0, row=4, pady=2, sticky="se")
