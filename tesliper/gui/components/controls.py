@@ -1310,7 +1310,7 @@ class ExportData(ttk.LabelFrame):
             f"{joined} file{'s' if many else ''} already exist in this directory. "
             f"Would you like to overwrite {'them' if many else 'it'}?"
         )
-        return messagebox.askokcancel(self, title=title, message=message)
+        return messagebox.askokcancel(parent=self, title=title, message=message)
 
     @ThreadedMethod(progbar_msg="Saving...")
     def execute_save_command(self, categories, fmt):
