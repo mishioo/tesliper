@@ -101,7 +101,7 @@ def arrays():
         InfoArray("command", [""], [""]),
         FloatArray("gibcorr", [""], [1]),
         VibrationalData("freq", [""], [[1]], [[1]]),
-        ElectronicData("wave", [""], [[1]], [[1]]),
+        ElectronicData("wavelen", [""], [[1]], [[1]]),
         InfoArray("stoichiometry", [""], [""]),
         Geometry("geometry", [""], [[[1, 2, 3]]], [[1]]),
         Transitions("transitions", [""], [[[(1, 2, 0.3)]]]),
