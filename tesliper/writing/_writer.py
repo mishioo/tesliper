@@ -288,8 +288,8 @@ class Writer(ABC):
             Spacial-case genres: extra information used by some writer methods
             when exporting data. Available {key: value} pairs are:
                 corrections: dict of {energy genre: FloatArray},
-                frequencies: ElectronicData or None,
-                wavelenghts: VibrationalData or None,
+                frequencies: VibrationalData or None,
+                wavelenghts: ElectronicData or None,
                 stoichiometry: InfoArray or None,
                 charge: IntegerArray or None,
                 multiplicity: IntegerArray or None
@@ -302,7 +302,7 @@ class Writer(ABC):
                 corrs[obj.genre[:3]] = obj
             elif obj.genre == "freq":
                 extras["frequencies"] = obj
-            elif obj.genre == "wave":
+            elif obj.genre == "wavelen":
                 extras["wavelengths"] = obj
             elif obj.genre == "stoichiometry":
                 extras["stoichiometry"] = obj
