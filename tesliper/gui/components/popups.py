@@ -5,6 +5,8 @@ import tkinter.ttk as ttk
 from tkinter import messagebox
 
 # LOGGER
+from tkinter.filedialog import askdirectory
+
 logger = lgg.getLogger(__name__)
 
 
@@ -37,6 +39,25 @@ class ExportPopup(Popup):
     def __init__(self, master, *args, **kwargs):
         super().__init__(master, *args, **kwargs)
         self.title("Export...")
+        self.tesliper = master.winfo_toplevel().tesliper
+        self.rowconfigure(4, weight=1)
+        self.columnconfigure(0, weight=1)
+
+        path_frame = ttk.Frame(self)
+        path_frame.grid(column=0, row=0, sticky="new")
+        path_frame.columnconfigure(1, weight=1)
+        ttk.Label(path_frame, text="Path").grid(
+            column=0, row=0, padx=5, pady=3, sticky="new"
+        )
+        self.path = tk.StringVar()
+        self.path.set(str(self.tesliper.output_dir))
+        self.path_entry = ttk.Entry(
+            path_frame, textvariable=self.path, state="readonly"
+        )
+        self.path_entry.grid(column=1, row=0, sticky="ew")
+        self.browse = ttk.Button(path_frame, text="Browse", command=self._browse)
+        self.browse.grid(column=2, row=0, sticky="we", padx=5)
+
         self.labels = ["Energies", "Spectral data", "Spectra", "Averaged"]
         self.vars = [tk.BooleanVar() for _ in self.labels]
         checks = [
@@ -44,7 +65,7 @@ class ExportPopup(Popup):
             for label, var in zip(self.labels, self.vars)
         ]
         for n, check in enumerate(checks):
-            check.grid(column=0, row=n, pady=2, padx=5, sticky="nw")
+            check.grid(column=0, row=n + 1, pady=2, padx=5, sticky="nw")
         tslr = master.winfo_toplevel().tesliper
         checks[0].configure(state="normal" if tslr.energies else "disabled")
         checks[1].configure(state="normal" if tslr.activities else "disabled")
@@ -56,14 +77,18 @@ class ExportPopup(Popup):
         self.vars[3].set(True if tslr.spectra else False)
         self.protocol("WM_DELETE_WINDOW", self.cancel_command)
         buttons_frame = ttk.Frame(self)
-        buttons_frame.grid(column=0, row=4, pady=2, sticky="se")
+        buttons_frame.grid(column=0, row=5, pady=2, sticky="se")
         b_cancel = ttk.Button(buttons_frame, text="Cancel", command=self.cancel_command)
         b_cancel.grid(column=0, row=0, sticky="se")
         b_ok = ttk.Button(buttons_frame, text="OK", command=self.ok_command)
         b_ok.grid(column=1, row=0, padx=5, sticky="se")
-        tk.Grid.rowconfigure(self, 4, weight=1)
-        tk.Grid.columnconfigure(self, 0, weight=1)
-        self.query = []
+        self.query = {}
+
+    def _browse(self):
+        directory = askdirectory()
+        if not directory:
+            return
+        self.path.set(directory)
 
     def ok_command(self):
         vals = [v.get() for v in self.vars]
@@ -77,12 +102,15 @@ class ExportPopup(Popup):
             self.focus_set()
 
     def cancel_command(self):
-        self.vars = []
+        self.query = None
         self.destroy()
 
     def get_query(self):
         self.wait_window()
-        self.query = [
+        if self.query is None:
+            return {}
+        self.query["dest"] = self.path.get()
+        self.query["query"] = [
             thing.lower() for thing, var in zip(self.labels, self.vars) if var.get()
         ]
         logger.debug(self.query)

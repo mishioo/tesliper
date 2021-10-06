@@ -1296,7 +1296,7 @@ class ExportData(ttk.LabelFrame):
             root.new_tesliper(path)
 
     def get_save_query(self):
-        popup = ExportPopup(self, width="220", height="130")
+        popup = ExportPopup(self, width="400", height="200")
         query = popup.get_query()
         return query
 
@@ -1354,11 +1354,9 @@ class ExportData(ttk.LabelFrame):
         return existing
 
     def save(self, fmt):
-        categories = self.get_save_query()
-        if not categories:
+        query = self.get_save_query()
+        if not query:
             return
-        dest = askdirectory()
-        if dest:
-            self.tesliper.output_dir = dest
-            logger.debug(f"Export requested: {categories}; format: {fmt}")
-            self.execute_save_command(categories, fmt)
+        self.tesliper.output_dir = query["dest"]
+        logger.debug(f"Export requested: {query['query']}; format: {fmt}")
+        self.execute_save_command(query["query"], fmt)
