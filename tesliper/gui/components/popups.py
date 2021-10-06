@@ -35,6 +35,59 @@ class Popup(tk.Toplevel):
         self.geometry(geometry)
 
 
+class EnergiesDetails(ttk.Frame):
+    def __init__(self, master, **kwargs):
+        style = kwargs.pop("style", "active.TFrame")
+        super().__init__(master, style=style, **kwargs)
+        self.genres = "ten ent gib scf zpe".split(" ")
+        self.labels = "Thermal Enthalpy Gibbs SCF Zero-Point".split(" ")
+        self.vars = [tk.BooleanVar() for _ in self.labels]
+        self.checks = [
+            ttk.Checkbutton(self, text=label, variable=var, style="active.TCheckbutton")
+            for label, var in zip(self.labels, self.vars)
+        ]
+        for num, check in enumerate(self.checks):
+            check.grid(column=0, row=num, padx=5, sticky="nws")
+        self.rowconfigure((0, 1, 2, 3, 4), weight=1)
+
+    def get_query(self):
+        return [g for g, v in zip(self.genres, self.vars) if v.get()]
+
+
+class SpectralDataDetails(ttk.Frame):
+    def __init__(self, master, **kwargs):
+        style = kwargs.pop("style", "active.TFrame")
+        super().__init__(master, style=style, **kwargs)
+
+
+class SpectraDetails(ttk.Frame):
+    def __init__(self, master, **kwargs):
+        style = kwargs.pop("style", "active.TFrame")
+        super().__init__(master, style=style, **kwargs)
+
+
+class AveragedDetails(ttk.Frame):
+    def __init__(self, master, **kwargs):
+        style = kwargs.pop("style", "active.TFrame")
+        super().__init__(master, style=style, **kwargs)
+        self.columnconfigure((0, 1, 2, 3, 4), weight=1)
+        self.rowconfigure((0, 1, 2, 3, 4, 5), weight=1)
+        spectra = "IR UV Raman VCD ECD ROA".split(" ")
+        energies = "Thermal Enthalpy Gibbs SCF Zero-Point".split(" ")
+        energy_genres = "ten ent gib scf zpe".split(" ")
+        for col, energy in enumerate(energies):
+            ttk.Label(self, text=energy, style="active.TLabel").grid(
+                column=1 + col, row=0, sticky="news"
+            )
+        for row, spc in enumerate(spectra):
+            ttk.Label(self, text=spc, style="active.TLabel").grid(
+                column=0, row=1 + row, sticky="news"
+            )
+            for col, en in enumerate(energy_genres):
+                cb = ttk.Checkbutton(self, style="checkbox.active.TCheckbutton")
+                cb.grid(column=1 + col, row=1 + row)
+
+
 class ExportPopup(Popup):
     def __init__(self, master, *args, **kwargs):
         super().__init__(master, *args, **kwargs)
@@ -61,10 +114,21 @@ class ExportPopup(Popup):
         self.labels = ["Energies", "Spectral data", "Spectra", "Averaged"]
         self.vars = [tk.BooleanVar() for _ in self.labels]
 
+        details_frames = {
+            "Energies": EnergiesDetails,
+            "Spectral data": SpectralDataDetails,
+            "Spectra": SpectraDetails,
+            "Averaged": AveragedDetails,
+        }
         style = ttk.Style()
         active_color = "ghost white"
         style.configure("active.TFrame", background=active_color)
         style.configure("active.TCheckbutton", background=active_color)
+        style.configure("active.TLabel", background=active_color)
+        style.layout(
+            "checkbox.active.TCheckbutton",
+            [("Checkbutton.indicator", {"side": "left", "sticky": ""})],
+        )
         checks = []
         for n, (label, var) in enumerate(zip(self.labels, self.vars)):
             tab = ttk.Frame(self, style="TabLike.TFrame")
@@ -73,11 +137,8 @@ class ExportPopup(Popup):
             check.grid(column=0, row=0, pady=10, padx=5, sticky="w")
             checks.append(check)
             tab.check = check
-            details = ttk.Frame(self, style="active.TFrame")
+            details = details_frames[label](self)
             details.grid(column=1, row=1, rowspan=4, sticky="news")
-            details.columnconfigure(0, weight=1)
-            details.rowconfigure(0, weight=1)
-            ttk.Label(details, text=f"Details for {label}").grid(column=0, row=0)
             details.grid_remove()
             kwargs = {"tab": tab, "checkbox": check, "details": details}
             tab.bind("<Enter>", lambda _e, kw=kwargs: self.on_tab_enter(**kw))
@@ -120,7 +181,8 @@ class ExportPopup(Popup):
 
     def on_tab_leave(self, tab, checkbox, details):
         under_mouse = self.winfo_containing(*self.winfo_pointerxy())
-        if under_mouse is tab or under_mouse is details:
+        logger.debug(f"Currently under pointer: {under_mouse}")
+        if str(under_mouse).startswith((str(tab), str(details))):
             return
         tab.configure(style="TFrame")
         checkbox.configure(style="TCheckbutton")
