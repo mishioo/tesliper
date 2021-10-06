@@ -41,10 +41,10 @@ class ExportPopup(Popup):
         self.title("Export...")
         self.tesliper = master.winfo_toplevel().tesliper
         self.rowconfigure(4, weight=1)
-        self.columnconfigure(0, weight=1)
+        self.columnconfigure(1, weight=1)
 
         path_frame = ttk.Frame(self)
-        path_frame.grid(column=0, row=0, sticky="new")
+        path_frame.grid(column=0, row=0, columnspan=2, sticky="new")
         path_frame.columnconfigure(1, weight=1)
         ttk.Label(path_frame, text="Path").grid(
             column=0, row=0, padx=5, pady=3, sticky="new"
@@ -60,29 +60,72 @@ class ExportPopup(Popup):
 
         self.labels = ["Energies", "Spectral data", "Spectra", "Averaged"]
         self.vars = [tk.BooleanVar() for _ in self.labels]
-        checks = [
-            ttk.Checkbutton(self, text=label, variable=var)
-            for label, var in zip(self.labels, self.vars)
-        ]
-        for n, check in enumerate(checks):
-            check.grid(column=0, row=n + 1, pady=2, padx=5, sticky="nw")
-        tslr = master.winfo_toplevel().tesliper
-        checks[0].configure(state="normal" if tslr.energies else "disabled")
-        checks[1].configure(state="normal" if tslr.activities else "disabled")
-        checks[2].configure(state="normal" if tslr.spectra else "disabled")
-        checks[3].configure(state="normal" if tslr.spectra else "disabled")
-        self.vars[0].set(True if tslr.energies else False)
-        self.vars[1].set(True if tslr.activities else False)
-        self.vars[2].set(True if tslr.spectra else False)
-        self.vars[3].set(True if tslr.spectra else False)
+
+        style = ttk.Style()
+        active_color = "ghost white"
+        style.configure("active.TFrame", background=active_color)
+        style.configure("active.TCheckbutton", background=active_color)
+        checks = []
+        for n, (label, var) in enumerate(zip(self.labels, self.vars)):
+            tab = ttk.Frame(self, style="TabLike.TFrame")
+            tab.grid(column=0, row=n + 1, sticky="news")
+            check = ttk.Checkbutton(tab, text=label, variable=var)
+            check.grid(column=0, row=0, pady=10, padx=5, sticky="w")
+            checks.append(check)
+            tab.check = check
+            details = ttk.Frame(self, style="active.TFrame")
+            details.grid(column=1, row=1, rowspan=4, sticky="news")
+            details.columnconfigure(0, weight=1)
+            details.rowconfigure(0, weight=1)
+            ttk.Label(details, text=f"Details for {label}").grid(column=0, row=0)
+            details.grid_remove()
+            kwargs = {"tab": tab, "checkbox": check, "details": details}
+            tab.bind("<Enter>", lambda _e, kw=kwargs: self.on_tab_enter(**kw))
+            tab.bind("<Leave>", lambda _e, kw=kwargs: self.on_tab_leave(**kw))
+            details.bind("<Leave>", lambda _e, kw=kwargs: self.on_tab_leave(**kw))
+            tab.details = details
+
+        self.details = ttk.Frame(self)
+        self.details.grid(column=1, row=1, rowspan=4, sticky="news")
+        self.details.columnconfigure(0, weight=1)
+        self.details.rowconfigure(0, weight=1)
+        ttk.Label(self.details, text="Hover over the left side\nto see details.").grid(
+            column=0, row=0
+        )
+
+        checks[0].configure(state="normal" if self.tesliper.energies else "disabled")
+        checks[1].configure(state="normal" if self.tesliper.activities else "disabled")
+        checks[2].configure(state="normal" if self.tesliper.spectra else "disabled")
+        checks[3].configure(state="normal" if self.tesliper.spectra else "disabled")
+        self.vars[0].set(True if self.tesliper.energies else False)
+        self.vars[1].set(True if self.tesliper.activities else False)
+        self.vars[2].set(True if self.tesliper.spectra else False)
+        self.vars[3].set(True if self.tesliper.spectra else False)
         self.protocol("WM_DELETE_WINDOW", self.cancel_command)
         buttons_frame = ttk.Frame(self)
-        buttons_frame.grid(column=0, row=5, pady=2, sticky="se")
+        buttons_frame.grid(column=0, row=5, pady=2, columnspan=2, sticky="se")
         b_cancel = ttk.Button(buttons_frame, text="Cancel", command=self.cancel_command)
         b_cancel.grid(column=0, row=0, sticky="se")
         b_ok = ttk.Button(buttons_frame, text="OK", command=self.ok_command)
         b_ok.grid(column=1, row=0, padx=5, sticky="se")
         self.query = {}
+
+    def on_tab_enter(self, tab, checkbox, details):
+        if str(tab.check["state"]) == tk.DISABLED:
+            return
+        tab.configure(style="active.TFrame")
+        checkbox.configure(style="active.TCheckbutton")
+        self.details.grid_remove()
+        details.grid()
+
+    def on_tab_leave(self, tab, checkbox, details):
+        under_mouse = self.winfo_containing(*self.winfo_pointerxy())
+        if under_mouse is tab or under_mouse is details:
+            return
+        tab.configure(style="TFrame")
+        checkbox.configure(style="TCheckbutton")
+        details.grid_remove()
+        self.details.grid()
 
     def _browse(self):
         directory = askdirectory()

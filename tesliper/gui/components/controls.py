@@ -1296,7 +1296,7 @@ class ExportData(ttk.LabelFrame):
             root.new_tesliper(path)
 
     def get_save_query(self):
-        popup = ExportPopup(self, width="400", height="200")
+        popup = ExportPopup(self, width="500", height="250")
         query = popup.get_query()
         return query
 
