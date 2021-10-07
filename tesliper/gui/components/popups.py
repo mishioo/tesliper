@@ -70,18 +70,18 @@ class AveragedDetails(ttk.Frame):
     def __init__(self, master, **kwargs):
         style = kwargs.pop("style", "active.TFrame")
         super().__init__(master, style=style, **kwargs)
-        self.columnconfigure((0, 1, 2, 3, 4), weight=1)
-        self.rowconfigure((0, 1, 2, 3, 4, 5), weight=1)
-        spectra = "IR UV Raman VCD ECD ROA".split(" ")
+        self.columnconfigure((1, 2, 3, 4, 5), weight=1)
+        self.rowconfigure((1, 2, 3, 4, 5, 6), weight=1)
+        spectra = "IR VCD UV ECD Raman ROA".split(" ")
         energies = "Thermal Enthalpy Gibbs SCF Zero-Point".split(" ")
         energy_genres = "ten ent gib scf zpe".split(" ")
         for col, energy in enumerate(energies):
-            ttk.Label(self, text=energy, style="active.TLabel").grid(
-                column=1 + col, row=0, sticky="news"
-            )
+            ttk.Label(
+                self, text=energy, style="active.TLabel", width=9, anchor="center"
+            ).grid(column=1 + col, row=0, pady=(3, 0), sticky="news")
         for row, spc in enumerate(spectra):
             ttk.Label(self, text=spc, style="active.TLabel").grid(
-                column=0, row=1 + row, sticky="news"
+                column=0, row=1 + row, pady=(3, 0), sticky="news"
             )
             for col, en in enumerate(energy_genres):
                 cb = ttk.Checkbutton(self, style="checkbox.active.TCheckbutton")
@@ -93,7 +93,7 @@ class ExportPopup(Popup):
         super().__init__(master, *args, **kwargs)
         self.title("Export...")
         self.tesliper = master.winfo_toplevel().tesliper
-        self.rowconfigure(4, weight=1)
+        self.rowconfigure((1, 2, 3, 4), weight=1)
         self.columnconfigure(1, weight=1)
 
         path_frame = ttk.Frame(self)
