@@ -142,11 +142,13 @@ class SpectraDetails(ttk.Frame):
 
 class AveragedDetails(ttk.Frame):
     def __init__(self, master, **kwargs):
+        # TODO: add defaults and set "alls" appropriately
         style = kwargs.pop("style", "active.TFrame")
         super().__init__(master, style=style, **kwargs)
         self.columnconfigure((1, 2, 3, 4, 5), weight=1)
         self.rowconfigure((1, 2, 3, 4, 5, 6), weight=1)
         self.vars = {}
+        self.alls = {}
         spectra = "IR VCD UV ECD Raman ROA".split(" ")
         energies = "Thermal Enthalpy Gibbs SCF Zero-Point".split(" ")
         energy_genres = "ten ent gib scf zpe".split(" ")
@@ -154,17 +156,48 @@ class AveragedDetails(ttk.Frame):
             ttk.Label(
                 self, text=energy, style="active.TLabel", width=9, anchor="center"
             ).grid(column=1 + col, row=0, pady=(3, 0), sticky="news")
+        for col, en in enumerate(energy_genres):
+            cb = ttk.Checkbutton(self, style="checkbox.active.TCheckbutton")
+            cb.configure(command=lambda cb=cb, label=en: self.all_clicked(cb, label))
+            cb.grid(column=1 + col, row=7)
+            self.alls[en] = cb
         for row, spc in enumerate(spectra):
             ttk.Label(self, text=spc, style="active.TLabel").grid(
                 column=0, row=1 + row, pady=(3, 0), sticky="news"
             )
+            cb = ttk.Checkbutton(self, style="checkbox.active.TCheckbutton")
+            cb.configure(
+                command=lambda cb=cb, label=spc.lower(): self.all_clicked(cb, label)
+            )
+            cb.grid(column=6, row=1 + row)
+            self.alls[spc.lower()] = cb
             for col, en in enumerate(energy_genres):
+                label = (spc.lower(), en)
                 var = tk.BooleanVar()
                 cb = ttk.Checkbutton(
-                    self, style="checkbox.active.TCheckbutton", variable=var
+                    self,
+                    style="checkbox.active.TCheckbutton",
+                    variable=var,
+                    command=lambda label=label: self.single_clicked(label),
                 )
                 cb.grid(column=1 + col, row=1 + row)
-                self.vars[(spc.lower(), en)] = var
+                self.vars[label] = var
+
+    def all_clicked(self, cb, label):
+        for key, var in self.vars.items():
+            if label in key:
+                var.set(cb.instate(["selected"]))
+
+    def single_clicked(self, label):
+        for idx in label:
+            vals = [v.get() for k, v in self.vars.items() if idx in k]
+            all_same = all(vals[0] == val for val in vals[1:])
+            if all(vals):
+                self.alls[idx].state(["!alternate", "selected"])
+            elif not all_same:
+                self.alls[idx].state(["alternate", "!selected"])
+            else:
+                self.alls[idx].state(["!alternate", "!selected"])
 
     def get_query(self):
         return [(s, e) for (s, e), v in self.vars.items() if v.get()]
