@@ -76,7 +76,14 @@ class SpectralDataDetails(ttk.Frame):
             frame = ttk.Frame(self, style="active.TFrame")
             frame.grid(column=0, row=num * 2 + 1, sticky="news")
             frame.columnconfigure(tuple(range(cols)), weight=1)
-            for idx, genre in enumerate(class_.associated_genres):
+            associated_genres = class_.associated_genres
+            if class_ is VibrationalData:
+                # get rid of frequencies genre
+                associated_genres = associated_genres[1:]
+            if class_ is ElectronicData:
+                # get rid of wavelengths genre, add transitions
+                associated_genres = associated_genres[1:] + ("transitions",)
+            for idx, genre in enumerate(associated_genres):
                 var = tk.BooleanVar()
                 self.vars[genre] = var
                 ttk.Checkbutton(
