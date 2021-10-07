@@ -79,7 +79,7 @@ class SpectralDataDetails(ttk.Frame):
                 self.vars[genre] = var
                 ttk.Checkbutton(
                     frame, text=genre, variable=var, style="active.TCheckbutton"
-                ).grid(column=idx % cols, row=idx // cols, sticky="news")
+                ).grid(column=idx % cols, row=idx // cols, padx=(5, 0), sticky="news")
 
     def get_query(self):
         return [g for g, v in self.vars.items() if v.get()]
