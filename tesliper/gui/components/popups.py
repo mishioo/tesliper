@@ -7,6 +7,10 @@ from tkinter import messagebox
 # LOGGER
 from tkinter.filedialog import askdirectory
 
+from tesliper.glassware import ElectronicData, ScatteringData, VibrationalData
+
+from .label_separator import LabelSeparator
+
 logger = lgg.getLogger(__name__)
 
 
@@ -58,6 +62,27 @@ class SpectralDataDetails(ttk.Frame):
     def __init__(self, master, **kwargs):
         style = kwargs.pop("style", "active.TFrame")
         super().__init__(master, style=style, **kwargs)
+        self.vars = {}
+        self.columnconfigure(0, weight=1)
+        self.rowconfigure((1, 3, 5), weight=1)
+        cols = 5
+        for num, class_ in enumerate([VibrationalData, ElectronicData, ScatteringData]):
+            name = class_.__name__[:-4] + " " + class_.__name__[-4:]
+            sep = LabelSeparator(self, text=name, style="active.TFrame")
+            sep.label.configure(style="active.TLabel")
+            sep.grid(column=0, row=num * 2, sticky="news")
+            frame = ttk.Frame(self, style="active.TFrame")
+            frame.grid(column=0, row=num * 2 + 1, sticky="news")
+            frame.columnconfigure(tuple(range(cols)), weight=1)
+            for idx, genre in enumerate(class_.associated_genres):
+                var = tk.BooleanVar()
+                self.vars[genre] = var
+                ttk.Checkbutton(
+                    frame, text=genre, variable=var, style="active.TCheckbutton"
+                ).grid(column=idx % cols, row=idx // cols, sticky="news")
+
+    def get_query(self):
+        return [g for g, v in self.vars.items() if v.get()]
 
 
 class SpectraDetails(ttk.Frame):
