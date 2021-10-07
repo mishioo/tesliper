@@ -72,6 +72,7 @@ class AveragedDetails(ttk.Frame):
         super().__init__(master, style=style, **kwargs)
         self.columnconfigure((1, 2, 3, 4, 5), weight=1)
         self.rowconfigure((1, 2, 3, 4, 5, 6), weight=1)
+        self.vars = {}
         spectra = "IR VCD UV ECD Raman ROA".split(" ")
         energies = "Thermal Enthalpy Gibbs SCF Zero-Point".split(" ")
         energy_genres = "ten ent gib scf zpe".split(" ")
@@ -84,8 +85,15 @@ class AveragedDetails(ttk.Frame):
                 column=0, row=1 + row, pady=(3, 0), sticky="news"
             )
             for col, en in enumerate(energy_genres):
-                cb = ttk.Checkbutton(self, style="checkbox.active.TCheckbutton")
+                var = tk.BooleanVar()
+                cb = ttk.Checkbutton(
+                    self, style="checkbox.active.TCheckbutton", variable=var
+                )
                 cb.grid(column=1 + col, row=1 + row)
+                self.vars[(spc.lower(), en)] = var
+
+    def get_query(self):
+        return [(s, e) for (s, e), v in self.vars.items() if v.get()]
 
 
 class ExportPopup(Popup):
