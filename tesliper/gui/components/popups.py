@@ -89,6 +89,23 @@ class SpectraDetails(ttk.Frame):
     def __init__(self, master, **kwargs):
         style = kwargs.pop("style", "active.TFrame")
         super().__init__(master, style=style, **kwargs)
+        self.vars = {}
+        spectra = "IR VCD UV ECD Raman ROA".split(" ")
+        self.rowconfigure((0, 1, 2, 3, 4, 5), weight=1)
+        for idx, spc in enumerate(spectra):
+            var = tk.BooleanVar()
+            self.vars[spc] = var
+            cb = ttk.Checkbutton(
+                self, text=spc, variable=var, style="active.TCheckbutton"
+            )
+            cb.grid(column=0, row=idx, padx=(5, 0), sticky="nws")
+            label = ttk.Label(
+                self, text="calculate with default settings", style="active.TLabel"
+            )
+            label.grid(column=1, row=idx, padx=(5, 0), sticky="nws")
+
+    def get_query(self):
+        return [g for g, v in self.vars.items() if v.get()]
 
 
 class AveragedDetails(ttk.Frame):
