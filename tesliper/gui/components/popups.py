@@ -7,8 +7,10 @@ from tkinter import messagebox
 # LOGGER
 from tkinter.filedialog import askdirectory
 
+from tesliper import datawork as dw
 from tesliper.glassware import ElectronicData, ScatteringData, VibrationalData
 
+from ... import SpectralData
 from .label_separator import LabelSeparator
 
 logger = lgg.getLogger(__name__)
@@ -92,17 +94,35 @@ class SpectraDetails(ttk.Frame):
         self.vars = {}
         spectra = "IR VCD UV ECD Raman ROA".split(" ")
         self.rowconfigure((0, 1, 2, 3, 4, 5), weight=1)
+        calculations = master.master.winfo_toplevel().controls.calculate
         for idx, spc in enumerate(spectra):
-            var = tk.BooleanVar()
+            spectra_name = spc.lower()
+            spectra_type = SpectralData.spectra_type_ref[spectra_name]
+            default_params = master.tesliper.standard_parameters[spectra_type]
+            last_used = {
+                k: calculations.last_used_settings[spectra_name][k]
+                for k in "start stop step width fitting".split(" ")
+                if k in calculations.last_used_settings[spectra_name]
+            }
+            default = not last_used or last_used == default_params
+
+            act_genre = dw.DEFAULT_ACTIVITIES[spectra_name]
+            var = tk.BooleanVar(value=master.tesliper.conformers.has_genre(act_genre))
             self.vars[spc] = var
             cb = ttk.Checkbutton(
                 self, text=spc, variable=var, style="active.TCheckbutton"
             )
             cb.grid(column=0, row=idx, padx=(5, 0), sticky="nws")
+            text = "[user parameters]" if not default else "[default parameters]"
             label = ttk.Label(
-                self, text="calculate with default settings", style="active.TLabel"
+                self, text=text if var.get() else "", style="active.TLabel"
             )
             label.grid(column=1, row=idx, padx=(5, 0), sticky="nws")
+            cb.configure(
+                command=lambda t=text, w=label, v=var: w.configure(
+                    text=t if v.get() else ""
+                )
+            )
 
     def get_query(self):
         return [g for g, v in self.vars.items() if v.get()]
