@@ -47,7 +47,10 @@ class EnergiesDetails(ttk.Frame):
         super().__init__(master, style=style, **kwargs)
         self.genres = "ten ent gib scf zpe".split(" ")
         self.labels = "Thermal Enthalpy Gibbs SCF Zero-Point".split(" ")
-        self.vars = [tk.BooleanVar() for _ in self.labels]
+        self.vars = [
+            tk.BooleanVar(value=master.tesliper.conformers.has_genre(g))
+            for g in self.genres
+        ]
         self.checks = [
             ttk.Checkbutton(self, text=label, variable=var, style="active.TCheckbutton")
             for label, var in zip(self.labels, self.vars)
@@ -67,6 +70,7 @@ class SpectralDataDetails(ttk.Frame):
         self.vars = {}
         self.columnconfigure(0, weight=1)
         self.rowconfigure((1, 3, 5), weight=1)
+        defaults = set("dip rot vdip vrot transitions raman1 roa1".split())
         cols = 5
         for num, class_ in enumerate([VibrationalData, ElectronicData, ScatteringData]):
             name = class_.__name__[:-4] + " " + class_.__name__[-4:]
@@ -84,7 +88,8 @@ class SpectralDataDetails(ttk.Frame):
                 # get rid of wavelengths genre, add transitions
                 associated_genres = associated_genres[1:] + ("transitions",)
             for idx, genre in enumerate(associated_genres):
-                var = tk.BooleanVar()
+                val = genre in defaults and master.tesliper.conformers.has_genre(genre)
+                var = tk.BooleanVar(value=val)
                 self.vars[genre] = var
                 ttk.Checkbutton(
                     frame, text=genre, variable=var, style="active.TCheckbutton"
