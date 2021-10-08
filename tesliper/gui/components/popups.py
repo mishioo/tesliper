@@ -150,27 +150,16 @@ class AveragedDetails(ttk.Frame):
         self.vars = {}
         self.alls = {}
         spectra = "IR VCD UV ECD Raman ROA".split(" ")
-        energies = "Thermal Enthalpy Gibbs SCF Zero-Point".split(" ")
+        energy_names = "Thermal Enthalpy Gibbs SCF Zero-Point".split(" ")
         energy_genres = "ten ent gib scf zpe".split(" ")
-        for col, energy in enumerate(energies):
+        for col, energy in enumerate(energy_names):
             ttk.Label(
                 self, text=energy, style="active.TLabel", width=9, anchor="center"
             ).grid(column=1 + col, row=0, pady=(3, 0), sticky="news")
-        for col, en in enumerate(energy_genres):
-            cb = ttk.Checkbutton(self, style="checkbox.active.TCheckbutton")
-            cb.configure(command=lambda cb=cb, label=en: self.all_clicked(cb, label))
-            cb.grid(column=1 + col, row=7)
-            self.alls[en] = cb
         for row, spc in enumerate(spectra):
             ttk.Label(self, text=spc, style="active.TLabel").grid(
                 column=0, row=1 + row, pady=(3, 0), sticky="news"
             )
-            cb = ttk.Checkbutton(self, style="checkbox.active.TCheckbutton")
-            cb.configure(
-                command=lambda cb=cb, label=spc.lower(): self.all_clicked(cb, label)
-            )
-            cb.grid(column=6, row=1 + row)
-            self.alls[spc.lower()] = cb
             for col, en in enumerate(energy_genres):
                 label = (spc.lower(), en)
                 var = tk.BooleanVar()
@@ -183,21 +172,46 @@ class AveragedDetails(ttk.Frame):
                 cb.grid(column=1 + col, row=1 + row)
                 self.vars[label] = var
 
-    def all_clicked(self, cb, label):
+        # buttons for select/disselect all in row/column
+        for row, spc in enumerate(s.lower() for s in spectra):
+            cb = ttk.Checkbutton(self, style="checkbox.active.TCheckbutton")
+            cb.configure(command=lambda cb=cb, idx=spc: self.all_clicked(cb, idx))
+            cb.grid(column=6, row=1 + row)
+            self.alls[spc] = cb
+        for col, en in enumerate(energy_genres):
+            cb = ttk.Checkbutton(self, style="checkbox.active.TCheckbutton")
+            cb.configure(command=lambda cb=cb, idx=en: self.all_clicked(cb, idx))
+            cb.grid(column=1 + col, row=7)
+            self.alls[en] = cb
+        for idx in self.alls:
+            self.set_all_box(idx)
+        ttk.Label(
+            self, text="All", style="active.TLabel", width=9, anchor="center"
+        ).grid(column=col + 2, row=0, pady=(3, 0), sticky="news")
+        ttk.Label(self, text="All", style="active.TLabel").grid(
+            column=0, row=row + 2, pady=(3, 0), sticky="news"
+        )
+
+    def all_clicked(self, cb, idx):
         for key, var in self.vars.items():
-            if label in key:
+            if idx in key:
+                theother = tuple(set(key) - set([idx]))[0]
                 var.set(cb.instate(["selected"]))
+                self.set_all_box(theother)
+
+    def set_all_box(self, idx):
+        vals = [v.get() for k, v in self.vars.items() if idx in k]
+        all_same = all(vals[0] == val for val in vals[1:])
+        if all(vals):
+            self.alls[idx].state(["!alternate", "selected"])
+        elif not all_same:
+            self.alls[idx].state(["alternate", "!selected"])
+        else:
+            self.alls[idx].state(["!alternate", "!selected"])
 
     def single_clicked(self, label):
         for idx in label:
-            vals = [v.get() for k, v in self.vars.items() if idx in k]
-            all_same = all(vals[0] == val for val in vals[1:])
-            if all(vals):
-                self.alls[idx].state(["!alternate", "selected"])
-            elif not all_same:
-                self.alls[idx].state(["alternate", "!selected"])
-            else:
-                self.alls[idx].state(["!alternate", "!selected"])
+            self.set_all_box(idx)
 
     def get_query(self):
         return [(s, e) for (s, e), v in self.vars.items() if v.get()]
