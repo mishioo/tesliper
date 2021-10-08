@@ -11,6 +11,7 @@ from tesliper import datawork as dw
 from tesliper.glassware import ElectronicData, ScatteringData, VibrationalData
 
 from ... import SpectralData
+from .helpers import WgtStateChanger
 from .label_separator import LabelSeparator
 
 logger = lgg.getLogger(__name__)
@@ -57,6 +58,8 @@ class EnergiesDetails(ttk.Frame):
         ]
         for num, check in enumerate(self.checks):
             check.grid(column=0, row=num, padx=5, sticky="nws")
+        for check, genre in zip(self.checks, self.genres):
+            master.changer.register([check], needs_all_genres=[genre])
         self.rowconfigure((0, 1, 2, 3, 4), weight=1)
 
     def get_query(self):
@@ -91,9 +94,11 @@ class SpectralDataDetails(ttk.Frame):
                 val = genre in defaults and master.tesliper.conformers.has_genre(genre)
                 var = tk.BooleanVar(value=val)
                 self.vars[genre] = var
-                ttk.Checkbutton(
+                cb = ttk.Checkbutton(
                     frame, text=genre, variable=var, style="active.TCheckbutton"
-                ).grid(column=idx % cols, row=idx // cols, padx=(5, 0), sticky="news")
+                )
+                cb.grid(column=idx % cols, row=idx // cols, padx=(5, 0), sticky="news")
+                master.changer.register([cb], needs_all_genres=[genre])
 
     def get_query(self):
         return [g for g, v in self.vars.items() if v.get()]
@@ -125,6 +130,7 @@ class SpectraDetails(ttk.Frame):
                 self, text=spc, variable=var, style="active.TCheckbutton"
             )
             cb.grid(column=0, row=idx, padx=(5, 0), sticky="nws")
+            master.changer.register([cb], needs_all_genres=[act_genre])
             text = "[user parameters]" if not default else "[default parameters]"
             label = ttk.Label(
                 self, text=text if var.get() else "", style="active.TLabel"
@@ -178,6 +184,8 @@ class AveragedDetails(ttk.Frame):
                     command=lambda label=label: self.single_clicked(label),
                 )
                 cb.grid(column=1 + col, row=1 + row)
+                act_genre = dw.DEFAULT_ACTIVITIES[spc.lower()]
+                master.changer.register([cb], needs_all_genres=[act_genre, en])
                 self.vars[label] = var
 
         # buttons for select/disselect all in row/column
@@ -185,11 +193,14 @@ class AveragedDetails(ttk.Frame):
             cb = ttk.Checkbutton(self, style="checkbox.active.TCheckbutton")
             cb.configure(command=lambda cb=cb, idx=spc: self.all_clicked(cb, idx))
             cb.grid(column=6, row=1 + row)
+            act_genre = dw.DEFAULT_ACTIVITIES[spc]
+            master.changer.register([cb], needs_all_genres=[act_genre])
             self.alls[spc] = cb
         for col, en in enumerate(energy_genres):
             cb = ttk.Checkbutton(self, style="checkbox.active.TCheckbutton")
             cb.configure(command=lambda cb=cb, idx=en: self.all_clicked(cb, idx))
             cb.grid(column=1 + col, row=7)
+            master.changer.register([cb], needs_all_genres=[en])
             self.alls[en] = cb
         for idx in self.alls:
             self.set_all_box(idx)
@@ -229,7 +240,9 @@ class ExportPopup(Popup):
     def __init__(self, master, *args, **kwargs):
         super().__init__(master, *args, **kwargs)
         self.title("Export...")
-        self.tesliper = master.winfo_toplevel().tesliper
+        root = master.winfo_toplevel()
+        self.tesliper = root.tesliper
+        self.changer = WgtStateChanger(root)
         self.rowconfigure((1, 2, 3, 4), weight=1)
         self.columnconfigure(1, weight=1)
 
@@ -291,14 +304,9 @@ class ExportPopup(Popup):
             column=0, row=0
         )
 
-        checks[0].configure(state="normal" if self.tesliper.energies else "disabled")
-        checks[1].configure(state="normal" if self.tesliper.activities else "disabled")
-        checks[2].configure(state="normal" if self.tesliper.spectra else "disabled")
-        checks[3].configure(state="normal" if self.tesliper.spectra else "disabled")
-        self.vars[0].set(True if self.tesliper.energies else False)
-        self.vars[1].set(True if self.tesliper.activities else False)
-        self.vars[2].set(True if self.tesliper.spectra else False)
-        self.vars[3].set(True if self.tesliper.spectra else False)
+        self.changer.register(checks[0], dependencies="energies")
+        self.changer.register(checks[1:], dependencies="bars")
+        self.changer.set_states()
         self.protocol("WM_DELETE_WINDOW", self.cancel_command)
         buttons_frame = ttk.Frame(self)
         buttons_frame.grid(column=0, row=5, pady=2, columnspan=2, sticky="se")
