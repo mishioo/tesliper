@@ -152,6 +152,14 @@ class AveragedDetails(ttk.Frame):
         spectra = "IR VCD UV ECD Raman ROA".split(" ")
         energy_names = "Thermal Enthalpy Gibbs SCF Zero-Point".split(" ")
         energy_genres = "ten ent gib scf zpe".split(" ")
+
+        # for checking default values
+        has_it = {en: master.tesliper.conformers.has_genre(en) for en in energy_genres}
+        for spectra_name in (s.lower() for s in spectra):
+            act_genre = dw.DEFAULT_ACTIVITIES[spectra_name]
+            has_it[spectra_name] = master.tesliper.conformers.has_genre(act_genre)
+
+        # labels and checkboxes
         for col, energy in enumerate(energy_names):
             ttk.Label(
                 self, text=energy, style="active.TLabel", width=9, anchor="center"
@@ -162,7 +170,7 @@ class AveragedDetails(ttk.Frame):
             )
             for col, en in enumerate(energy_genres):
                 label = (spc.lower(), en)
-                var = tk.BooleanVar()
+                var = tk.BooleanVar(value=has_it[spc.lower()] and has_it[en])
                 cb = ttk.Checkbutton(
                     self,
                     style="checkbox.active.TCheckbutton",
