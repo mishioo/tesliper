@@ -11,6 +11,6 @@ from .helpers import (
     WgtStateChanger,
 )
 from .label_separator import LabelSeparator
-from .popups import BarsPopup, ExportPopup
+from .popups import ExportPopup
 from .scroll import AutoScrollbar, ScrollableFrame
 from .views import SpectraView
