@@ -148,12 +148,12 @@ class SpectraDetails(ttk.Frame):
 
 class AveragedDetails(ttk.Frame):
     def __init__(self, master, **kwargs):
-        # TODO: add defaults and set "alls" appropriately
         style = kwargs.pop("style", "active.TFrame")
         super().__init__(master, style=style, **kwargs)
         self.columnconfigure((1, 2, 3, 4, 5), weight=1)
         self.rowconfigure((1, 2, 3, 4, 5, 6), weight=1)
         self.vars = {}
+        self.checks = {}
         self.alls = {}
         spectra = "IR VCD UV ECD Raman ROA".split(" ")
         energy_names = "Thermal Enthalpy Gibbs SCF Zero-Point".split(" ")
@@ -187,6 +187,7 @@ class AveragedDetails(ttk.Frame):
                 act_genre = dw.DEFAULT_ACTIVITIES[spc.lower()]
                 master.changer.register([cb], needs_all_genres=[act_genre, en])
                 self.vars[label] = var
+                self.checks[label] = cb
 
         # buttons for select/disselect all in row/column
         for row, spc in enumerate(s.lower() for s in spectra):
@@ -202,8 +203,6 @@ class AveragedDetails(ttk.Frame):
             cb.grid(column=1 + col, row=7)
             master.changer.register([cb], needs_all_genres=[en])
             self.alls[en] = cb
-        for idx in self.alls:
-            self.set_all_box(idx)
         ttk.Label(
             self, text="All", style="active.TLabel", width=9, anchor="center"
         ).grid(column=col + 2, row=0, pady=(3, 0), sticky="news")
@@ -215,18 +214,32 @@ class AveragedDetails(ttk.Frame):
         for key, var in self.vars.items():
             if idx in key:
                 theother = tuple(set(key) - set([idx]))[0]
-                var.set(cb.instate(["selected"]))
+                var.set(
+                    # never set disabled checkbox as "selected"
+                    str(self.checks[key]["state"]) != "disabled"
+                    and cb.instate(["selected"])
+                )
                 self.set_all_box(theother)
 
     def set_all_box(self, idx):
-        vals = [v.get() for k, v in self.vars.items() if idx in k]
+        vals = [
+            v.get()
+            for k, v in self.vars.items()
+            # ignore disabled checkboxes
+            if idx in k and str(self.checks[k]["state"]) != "disabled"
+        ]
         all_same = all(vals[0] == val for val in vals[1:])
-        if all(vals):
+        if vals and all(vals):
             self.alls[idx].state(["!alternate", "selected"])
         elif not all_same:
             self.alls[idx].state(["alternate", "!selected"])
         else:
             self.alls[idx].state(["!alternate", "!selected"])
+
+    def update_all_boxes(self):
+        # should be called after updating states of checkboxes
+        for idx in self.alls:
+            self.set_all_box(idx)
 
     def single_clicked(self, label):
         for idx in label:
@@ -286,7 +299,7 @@ class ExportPopup(Popup):
             check = ttk.Checkbutton(tab, text=label, variable=var)
             check.grid(column=0, row=0, pady=10, padx=5, sticky="w")
             checks.append(check)
-            tab.check = check
+            check.tab = tab
             details = details_frames[label](self)
             details.grid(column=1, row=1, rowspan=4, sticky="news")
             details.grid_remove()
@@ -294,7 +307,7 @@ class ExportPopup(Popup):
             tab.bind("<Enter>", lambda _e, kw=kwargs: self.on_tab_enter(**kw))
             tab.bind("<Leave>", lambda _e, kw=kwargs: self.on_tab_leave(**kw))
             details.bind("<Leave>", lambda _e, kw=kwargs: self.on_tab_leave(**kw))
-            tab.details = details
+            check.details = details
 
         self.details = ttk.Frame(self)
         self.details.grid(column=1, row=1, rowspan=4, sticky="news")
@@ -307,6 +320,7 @@ class ExportPopup(Popup):
         self.changer.register(checks[0], dependencies="energies")
         self.changer.register(checks[1:], dependencies="bars")
         self.changer.set_states()
+        checks[-1].details.update_all_boxes()
         self.protocol("WM_DELETE_WINDOW", self.cancel_command)
         buttons_frame = ttk.Frame(self)
         buttons_frame.grid(column=0, row=5, pady=2, columnspan=2, sticky="se")
@@ -317,7 +331,7 @@ class ExportPopup(Popup):
         self.query = {}
 
     def on_tab_enter(self, tab, checkbox, details):
-        if str(tab.check["state"]) == tk.DISABLED:
+        if str(checkbox["state"]) == tk.DISABLED:
             return
         tab.configure(style="active.TFrame")
         checkbox.configure(style="active.TCheckbutton")
