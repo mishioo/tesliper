@@ -243,6 +243,7 @@ class XlsxWriter(Writer):
         wb.save(self.file)
         logger.info("Spectra export to xlsx file done.")
 
+    # FIXME: unify naming scheme, this method is overlooked by base class
     def single_spectrum(self, spectrum: SingleSpectrum):
         """Writes SingleSpectrum object to new sheet of xlsx workbook.
 

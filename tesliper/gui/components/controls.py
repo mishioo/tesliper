@@ -1366,6 +1366,7 @@ class ExportData(ttk.LabelFrame):
             elif thing == "spectral data":
                 saver = functools.partial(self.tesliper.export_data, genres=genres)
             elif thing == "spectra":
+                # FIXME: outputs only zeros in .txt and .xlsx formats
                 saver = self.tesliper.export_spectra
             elif thing == "averaged":
                 saver = self.tesliper.export_averaged
