@@ -1333,12 +1333,19 @@ class ExportData(ttk.LabelFrame):
             root.progtext.set("Saving...")
         if "averaged" in categories:
             root.progtext.set("Averaging spectra...")
-            self.tesliper.average_spectra()
+            self.tesliper.averaged = {}
+            for spc, en in categories["averaged"]:
+                averaged = self.tesliper.get_averaged_spectrum(spectrum=spc, energy=en)
+                self.tesliper.averaged[(spc, en)] = averaged
             root.progtext.set("Saving...")
         existing = self._exec_save(categories, fmt, mode="x")
         if self._should_override(existing):
             # for "xlsx" retry whole process, for other retry only unsuccessful
-            cats = existing if fmt != "xlsx" else categories
+            cats = (
+                {cat: categories[cat] for cat in existing}
+                if fmt != "xlsx"
+                else categories
+            )
             self._exec_save(cats, fmt, mode="w")
 
     def _exec_save(self, categories, fmt, mode):
@@ -1350,21 +1357,29 @@ class ExportData(ttk.LabelFrame):
         produced for the whole batch: if `FileExistsError` is raised on first category,
         this method returns `["xlsx"]` and ignores the rest of `categories`.
         """
-        savers = {
-            "energies": self.tesliper.export_energies,
-            "spectral data": self.tesliper.export_spectral_data,
-            "spectra": self.tesliper.export_spectra,
-            "averaged": self.tesliper.export_averaged,
-        }
         existing = []
-        for thing in categories:
+        for thing, genres in categories.items():
+            if thing == "energies":
+                saver = functools.partial(
+                    self.tesliper.export_data, genres=["freq", "stoichiometry", *genres]
+                )
+            elif thing == "spectral data":
+                saver = functools.partial(self.tesliper.export_data, genres=genres)
+            elif thing == "spectra":
+                saver = self.tesliper.export_spectra
+            elif thing == "averaged":
+                saver = self.tesliper.export_averaged
+            else:
+                logger.warning(f"Unrecognised export category: '{thing}'.")
+                return
             try:
-                savers[thing](fmt, mode=mode)
+                saver(fmt=fmt, mode=mode)
             except FileExistsError:
-                existing.append(thing)
+                # one .xlsx file for whole batch
                 if fmt == "xlsx":
                     return ["xlsx"]
-            # one .xlsx file for whole batch, must append next data chunks
+                # must append other data chunks
+                existing.append(thing)
             mode = "a" if fmt == "xlsx" else mode
         return existing
 
@@ -1373,5 +1388,5 @@ class ExportData(ttk.LabelFrame):
         if not query:
             return
         self.tesliper.output_dir = query["dest"]
-        logger.debug(f"Export requested: {query['query']}; format: {fmt}")
+        logger.info(f"Export requested: {query['query']}; format: {fmt}")
         self.execute_save_command(query["query"], fmt)

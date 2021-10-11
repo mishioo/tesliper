@@ -44,6 +44,7 @@ class Popup(tk.Toplevel):
 
 class EnergiesDetails(ttk.Frame):
     def __init__(self, master, **kwargs):
+        # TODO: add choice for corrections, stoichiometry, and imaginary
         style = kwargs.pop("style", "active.TFrame")
         super().__init__(master, style=style, **kwargs)
         self.genres = "ten ent gib scf zpe".split(" ")
@@ -276,8 +277,10 @@ class ExportPopup(Popup):
 
         self.labels = ["Energies", "Spectral data", "Spectra", "Averaged"]
         self.vars = [tk.BooleanVar() for _ in self.labels]
+        self.checks = []
+        self.details = []
 
-        details_frames = {
+        details_frames_class = {
             "Energies": EnergiesDetails,
             "Spectral data": SpectralDataDetails,
             "Spectra": SpectraDetails,
@@ -292,35 +295,33 @@ class ExportPopup(Popup):
             "checkbox.active.TCheckbutton",
             [("Checkbutton.indicator", {"side": "left", "sticky": ""})],
         )
-        checks = []
         for n, (label, var) in enumerate(zip(self.labels, self.vars)):
             tab = ttk.Frame(self, style="TabLike.TFrame")
             tab.grid(column=0, row=n + 1, sticky="news")
             check = ttk.Checkbutton(tab, text=label, variable=var)
             check.grid(column=0, row=0, pady=10, padx=5, sticky="w")
-            checks.append(check)
-            check.tab = tab
-            details = details_frames[label](self)
+            self.checks.append(check)
+            details = details_frames_class[label](self)
             details.grid(column=1, row=1, rowspan=4, sticky="news")
             details.grid_remove()
             kwargs = {"tab": tab, "checkbox": check, "details": details}
             tab.bind("<Enter>", lambda _e, kw=kwargs: self.on_tab_enter(**kw))
             tab.bind("<Leave>", lambda _e, kw=kwargs: self.on_tab_leave(**kw))
             details.bind("<Leave>", lambda _e, kw=kwargs: self.on_tab_leave(**kw))
-            check.details = details
+            self.details.append(details)
 
-        self.details = ttk.Frame(self)
-        self.details.grid(column=1, row=1, rowspan=4, sticky="news")
-        self.details.columnconfigure(0, weight=1)
-        self.details.rowconfigure(0, weight=1)
-        ttk.Label(self.details, text="Hover over the left side\nto see details.").grid(
-            column=0, row=0
-        )
+        self.details_frame = ttk.Frame(self)
+        self.details_frame.grid(column=1, row=1, rowspan=4, sticky="news")
+        self.details_frame.columnconfigure(0, weight=1)
+        self.details_frame.rowconfigure(0, weight=1)
+        ttk.Label(
+            self.details_frame, text="Hover over the left side\nto see details."
+        ).grid(column=0, row=0)
 
-        self.changer.register(checks[0], dependencies="energies")
-        self.changer.register(checks[1:], dependencies="bars")
+        self.changer.register(self.checks[0], dependencies="energies")
+        self.changer.register(self.checks[1:], dependencies="bars")
         self.changer.set_states()
-        checks[-1].details.update_all_boxes()
+        self.details[-1].update_all_boxes()
         self.protocol("WM_DELETE_WINDOW", self.cancel_command)
         buttons_frame = ttk.Frame(self)
         buttons_frame.grid(column=0, row=5, pady=2, columnspan=2, sticky="se")
@@ -335,7 +336,7 @@ class ExportPopup(Popup):
             return
         tab.configure(style="active.TFrame")
         checkbox.configure(style="active.TCheckbutton")
-        self.details.grid_remove()
+        self.details_frame.grid_remove()
         details.grid()
 
     def on_tab_leave(self, tab, checkbox, details):
@@ -346,7 +347,7 @@ class ExportPopup(Popup):
         tab.configure(style="TFrame")
         checkbox.configure(style="TCheckbutton")
         details.grid_remove()
-        self.details.grid()
+        self.details_frame.grid()
 
     def _browse(self):
         directory = askdirectory()
@@ -374,9 +375,11 @@ class ExportPopup(Popup):
         if self.query is None:
             return {}
         self.query["dest"] = self.path.get()
-        self.query["query"] = [
-            thing.lower() for thing, var in zip(self.labels, self.vars) if var.get()
-        ]
+        self.query["query"] = {
+            thing.lower(): details.get_query()
+            for thing, var, details in zip(self.labels, self.vars, self.details)
+            if var.get()
+        }
         logger.debug(self.query)
         return self.query
 
