@@ -1324,8 +1324,13 @@ class ExportData(ttk.LabelFrame):
 
     @ThreadedMethod(progbar_msg="Saving...")
     def execute_save_command(self, categories, fmt):
-        # TODO: add auto-calculate ?
         root = self.winfo_toplevel()
+        if "spectra" in categories:
+            root.progtext.set("Calculating spectra...")
+            self.tesliper.spectra = {}
+            for spc in categories["spectra"]:
+                _ = root.controls.calculate._exec_calculate_spectra(spc.lower())
+            root.progtext.set("Saving...")
         if "averaged" in categories:
             root.progtext.set("Averaging spectra...")
             self.tesliper.average_spectra()
