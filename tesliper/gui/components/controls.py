@@ -1089,11 +1089,13 @@ class CalculateSpectra(CollapsiblePane):
         colour = self.stack.var.get()
         self.view.change_colour(colour)
 
-    @ThreadedMethod(progbar_msg="Calculating...")
-    def _calculate_spectra(self, spectra_name, option, mode):
-        if mode == "single":
+    def _exec_calculate_spectra(self, spectra_name, conformer=None):
+        # should be called in execution thread
+        if conformer is not None:
             spc = self.tesliper.calculate_single_spectrum(
-                spectra_name=spectra_name, conformer=option, **self.calculation_params
+                spectra_name=spectra_name,
+                conformer=conformer,
+                **self.calculation_params,
             )
         else:
             spc = self.tesliper.calculate_spectra(
@@ -1101,11 +1103,19 @@ class CalculateSpectra(CollapsiblePane):
             )[
                 spectra_name
             ]  # tslr.calculate_spectra returns dictionary
-            if mode == "average":
-                en_name = self.average.get_genre()
-                spc = self.tesliper.get_averaged_spectrum(spectra_name, en_name)
-        spc.offset = float(self.offset.var.get())
-        spc.scaling = float(self.scaling.var.get())
+        spc.offset = float(self.offset.var.get() or 0)  # zero if not chosen
+        spc.scaling = float(self.scaling.var.get() or 0)  # zero if not chosen
+        return spc
+
+    @ThreadedMethod(progbar_msg="Calculating...")
+    def _calculate_spectra(self, spectra_name, option, mode):
+        spc = self._exec_calculate_spectra(
+            spectra_name=spectra_name,
+            conformer=option if mode == "single" else None,
+        )
+        if mode == "average":
+            en_name = self.average.get_genre()
+            spc = self.tesliper.get_averaged_spectrum(spectra_name, en_name)
         return spc
 
     @property
