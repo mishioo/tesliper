@@ -49,7 +49,7 @@ def writer_implemented():
                 handle.write(f"energies: {repr(energies)}\n")
                 handle.write(f"corrections: {repr(corrections)}\n")
 
-        def spectrum(self, spectrum):
+        def single_spectrum(self, spectrum):
             file = self.destination / self.filename_template.substitute(
                 conf="spectrum", genre="", ext=self.extension, num=""
             )

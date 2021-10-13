@@ -184,7 +184,7 @@ class CsvWriter(_CsvMixin, Writer):
                 en, corrections=extras.get("corrections", dict()).get(en.genre)
             )
 
-    def spectrum(self, spectrum: SingleSpectrum):
+    def single_spectrum(self, spectrum: SingleSpectrum):
         """Writes SingleSpectrum object to csv file.
 
         Parameters

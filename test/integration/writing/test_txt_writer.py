@@ -151,7 +151,7 @@ meoh-2               |      45.9577 |       0.8504 |        0.0960 |    -113.505
 
 
 def test_spectrum_basic(writer, spc):
-    writer.spectrum(spc)
+    writer.single_spectrum(spc)
     with Path(writer._handle.name).open("r") as outcome:
         assert (
             outcome.read()
@@ -168,7 +168,7 @@ ir calculated with peak width = 5 cm-1 and gaussian fitting, shown as Frequency 
 
 def test_spectrum_not_averaged(writer, spc):
     spc.filenames, spc.averaged_by = None, None
-    writer.spectrum(spc)
+    writer.single_spectrum(spc)
     with Path(writer._handle.name).open("r") as outcome:
         assert (
             outcome.read()

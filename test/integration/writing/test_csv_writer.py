@@ -146,7 +146,7 @@ def test_energies_no_corr_no_header(writer, gib_no_corr):
 
 def test_spectrum_no_header(writer, spc):
     writer.include_header = False
-    writer.spectrum(spc)
+    writer.single_spectrum(spc)
     with Path(writer._handle.name).open("r", newline="") as file:
         reader = csv.reader(file)
         for given, got in zip(zip(spc.abscissa, spc.values), reader):
@@ -154,7 +154,7 @@ def test_spectrum_no_header(writer, spc):
 
 
 def test_spectrum(writer, spc):
-    writer.spectrum(spc)
+    writer.single_spectrum(spc)
     header = [spc.units["y"], spc.units["x"]]
     with Path(writer._handle.name).open("r", newline="") as file:
         reader = csv.reader(file)

@@ -170,7 +170,7 @@ class TxtWriter(Writer):
                 file.write(" | ".join(new_row) + "\n")
         logger.info("Energies separate export to text files done.")
 
-    def spectrum(self, spectrum: SingleSpectrum):
+    def single_spectrum(self, spectrum: SingleSpectrum):
         """Writes SingleSpectrum object to txt file.
 
         Parameters
