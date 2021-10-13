@@ -1,4 +1,6 @@
+from logging import Logger
 from pathlib import Path
+from unittest.mock import Mock
 
 import openpyxl as oxl
 import pytest
@@ -167,3 +169,10 @@ def test_transitions_all(writer, molstd, filenamestd):
         ws = wb[file]
         assert len(list(ws.columns)) == 5
         assert len(list(ws.rows)) == 1 + trans.values[num].count()
+
+
+def test_not_implemented_write(writer, arrays, monkeypatch):
+    monkeypatch.setattr(Logger, "warning", Mock())
+    writer.write(arrays)
+    #  Geometry and generic InfoArray not supported
+    assert Logger.warning.call_count == 2

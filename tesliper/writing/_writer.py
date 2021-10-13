@@ -199,6 +199,7 @@ class Writer(ABC):
     energies_order = "zpe ten ent gib scf".split(" ")
     default_template = "${conf}.${ext}"
     # TODO: add separate template for single-file methods ?
+    # TODO: add support for generic FloatArray and InfoArray
 
     @property
     @classmethod
@@ -437,11 +438,21 @@ class Writer(ABC):
     def _transitions_handler(
         self, data: List[Transitions], extras: Dict[str, Any]
     ) -> None:
-        self.transitions(transitions=data, wavelengths=extras["wavelengths"])
+        if len(data) > 1:
+            raise ValueError(
+                "Got multiple `Transitions` objects, but can write contents "
+                "of only one such object for .write() call."
+            )
+        self.transitions(transitions=data[0], wavelengths=extras["wavelengths"])
 
     def _geometry_handler(self, data: List[Geometry], extras: Dict[str, Any]) -> None:
+        if len(data) > 1:
+            raise ValueError(
+                "Got multiple `Geometry` objects, but can write contents "
+                "of only one such object for .write() call."
+            )
         self.geometry(
-            data,
+            data[0],
             charge=extras.get("charge"),
             multiplicity=extras.get("multiplicity"),
         )
