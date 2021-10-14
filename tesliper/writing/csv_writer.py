@@ -184,7 +184,7 @@ class CsvWriter(_CsvMixin, Writer):
                 en, corrections=extras.get("corrections", dict()).get(en.genre)
             )
 
-    def spectrum(self, spectrum: SingleSpectrum):
+    def single_spectrum(self, spectrum: SingleSpectrum):
         """Writes SingleSpectrum object to csv file.
 
         Parameters
@@ -192,7 +192,12 @@ class CsvWriter(_CsvMixin, Writer):
         spectrum: glassware.SingleSpectrum
             spectrum, that is to be serialized
         """
-        with self._get_handle("spectrum", spectrum.genre, newline="") as handle:
+        genre = (
+            f"{spectrum.genre}-{spectrum.averaged_by}"
+            if spectrum.averaged_by
+            else spectrum.genre
+        )
+        with self._get_handle("spectrum", genre, newline="") as handle:
             csvwriter = csv.writer(handle, dialect=self.dialect, **self.fmtparams)
             if self.include_header:
                 csvwriter.writerow([spectrum.units["y"], spectrum.units["x"]])

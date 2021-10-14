@@ -321,7 +321,7 @@ class Tesliper:
         data = [self[g] for g in genres]
         if any(isinstance(arr, gw.arrays._Vibrational) for arr in data):
             data += [self["freq"]]
-        if any(isinstance(arr, gw.ElectronicData) for arr in data):
+        if any(isinstance(arr, (gw.ElectronicData, gw.Transitions)) for arr in data):
             data += [self["wavelen"]]
         wrt.write(data)
 
@@ -415,6 +415,8 @@ class Tesliper:
             "a" (append to existing file), "x" (only write if file doesn't exist yet),
             "w" (overwrite file if it already exists). Defaults to "x".
         """
+        # FIXME: only spectra name in output file name,
+        #        consecutive energies are overridden
         wrt = wr.writer(fmt=fmt, destination=self.output_dir, mode=mode)
         data = [s for s in self.averaged.values() if s]
         wrt.write(data)

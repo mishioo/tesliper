@@ -1,6 +1,8 @@
 import csv
 from itertools import repeat
+from logging import Logger
 from pathlib import Path
+from unittest.mock import Mock
 
 import numpy as np
 import pytest
@@ -146,7 +148,7 @@ def test_energies_no_corr_no_header(writer, gib_no_corr):
 
 def test_spectrum_no_header(writer, spc):
     writer.include_header = False
-    writer.spectrum(spc)
+    writer.single_spectrum(spc)
     with Path(writer._handle.name).open("r", newline="") as file:
         reader = csv.reader(file)
         for given, got in zip(zip(spc.abscissa, spc.values), reader):
@@ -154,7 +156,7 @@ def test_spectrum_no_header(writer, spc):
 
 
 def test_spectrum(writer, spc):
-    writer.spectrum(spc)
+    writer.single_spectrum(spc)
     header = [spc.units["y"], spc.units["x"]]
     with Path(writer._handle.name).open("r", newline="") as file:
         reader = csv.reader(file)
@@ -271,3 +273,10 @@ def test_serial_transitions_all(writer, molstd, filenamestd):
             # TODO: should also check if correct wavelength assigned
             expected_len = values.count()  # count non-masked
             assert len(list(reader)) == expected_len
+
+
+def test_not_implemented_write(writer, arrays, monkeypatch):
+    monkeypatch.setattr(Logger, "warning", Mock())
+    writer.write(arrays)
+    #  Geometry and generic InfoArray not supported
+    assert Logger.warning.call_count == 2

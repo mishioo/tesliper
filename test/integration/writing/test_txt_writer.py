@@ -1,4 +1,6 @@
+from logging import Logger
 from pathlib import Path
+from unittest.mock import Mock
 
 import pytest
 
@@ -151,7 +153,7 @@ meoh-2               |      45.9577 |       0.8504 |        0.0960 |    -113.505
 
 
 def test_spectrum_basic(writer, spc):
-    writer.spectrum(spc)
+    writer.single_spectrum(spc)
     with Path(writer._handle.name).open("r") as outcome:
         assert (
             outcome.read()
@@ -168,7 +170,7 @@ ir calculated with peak width = 5 cm-1 and gaussian fitting, shown as Frequency 
 
 def test_spectrum_not_averaged(writer, spc):
     spc.filenames, spc.averaged_by = None, None
-    writer.spectrum(spc)
+    writer.single_spectrum(spc)
     with Path(writer._handle.name).open("r") as outcome:
         assert (
             outcome.read()
@@ -263,3 +265,10 @@ def test_write(writer, mols, filenames):
     data = [mols.arrayed(genre) for genre in ["freq", "iri", "gib", "zpe", "gibcorr"]]
     writer.write(data)
     assert len(list(writer.destination.iterdir())) == len(filenames) + 3
+
+
+def test_not_implemented_write(writer, arrays, monkeypatch):
+    monkeypatch.setattr(Logger, "warning", Mock())
+    writer.write(arrays)
+    #  Geometry and generic InfoArray not supported
+    assert Logger.warning.call_count == 2

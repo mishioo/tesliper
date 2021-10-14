@@ -4,18 +4,6 @@ from unittest.mock import Mock
 
 import pytest
 
-from tesliper import tesliper
-from tesliper.glassware import (
-    ElectronicData,
-    Energies,
-    FloatArray,
-    Geometry,
-    InfoArray,
-    SingleSpectrum,
-    Spectra,
-    Transitions,
-    VibrationalData,
-)
 from tesliper.writing import Writer
 
 
@@ -49,7 +37,7 @@ def writer_implemented():
                 handle.write(f"energies: {repr(energies)}\n")
                 handle.write(f"corrections: {repr(corrections)}\n")
 
-        def spectrum(self, spectrum):
+        def single_spectrum(self, spectrum):
             file = self.destination / self.filename_template.substitute(
                 conf="spectrum", genre="", ext=self.extension, num=""
             )
@@ -89,23 +77,6 @@ def writer_implemented():
                 handle.write(f"multiplicity: {repr(multiplicity)}\n")
 
     return _Writer
-
-
-@pytest.fixture
-def arrays():
-    yield [
-        Energies("gib", [""], [1]),
-        VibrationalData("iri", [""], [[1]], [[1]]),
-        Spectra("ir", [""], [[1, 2]], [1, 2]),
-        SingleSpectrum("ir", [1, 2], [1, 2]),
-        InfoArray("command", [""], [""]),
-        FloatArray("gibcorr", [""], [1]),
-        VibrationalData("freq", [""], [[1]], [[1]]),
-        ElectronicData("wavelen", [""], [[1]], [[1]]),
-        InfoArray("stoichiometry", [""], [""]),
-        Geometry("geometry", [""], [[[1, 2, 3]]], [[1]]),
-        Transitions("transitions", [""], [[[(1, 2, 0.3)]]]),
-    ]
 
 
 def test_iter_handles(writer_class, tmp_path):
@@ -164,7 +135,15 @@ def test_not_implemented_write(writer_class, arrays, tmp_path, monkeypatch):
     Logger.warning.assert_called()
 
 
-def test_implemented_write(writer_implemented, arrays, tmp_path):
+def test_implemented_write(writer_implemented, arrays, tmp_path, monkeypatch):
+    monkeypatch.setattr(Logger, "warning", Mock())
     wrt = writer_implemented(tmp_path)
     wrt.write(arrays)
     assert len(list(tmp_path.iterdir())) == 7
+    assert Logger.warning.call_count == 1  # generic InfoArray not supported
+
+
+def test_forbidden_double(writer_implemented, tmp_path, forbidden_double_arrays):
+    wrt = writer_implemented(tmp_path)
+    with pytest.raises(ValueError):
+        wrt.write(forbidden_double_arrays)
