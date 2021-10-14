@@ -1103,8 +1103,12 @@ class CalculateSpectra(CollapsiblePane):
             )[
                 spectra_name
             ]  # tslr.calculate_spectra returns dictionary
-        spc.offset = float(self.offset.var.get() or 0)  # zero if not chosen
-        spc.scaling = float(self.scaling.var.get() or 0)  # zero if not chosen
+        offset = self.offset.var.get()
+        scaling = self.scaling.var.get()
+        if offset:  # if not chosen, ignore
+            spc.offset = float(offset)
+        if scaling:  # if not chosen, ignore
+            spc.scaling = float(scaling)
         return spc
 
     @ThreadedMethod(progbar_msg="Calculating...")
@@ -1366,7 +1370,6 @@ class ExportData(ttk.LabelFrame):
             elif thing == "spectral data":
                 saver = functools.partial(self.tesliper.export_data, genres=genres)
             elif thing == "spectra":
-                # FIXME: outputs only zeros in .txt and .xlsx formats
                 saver = self.tesliper.export_spectra
             elif thing == "averaged":
                 saver = self.tesliper.export_averaged
