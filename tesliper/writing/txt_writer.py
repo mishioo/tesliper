@@ -184,7 +184,12 @@ class TxtWriter(Writer):
             f'{spectrum.fitting} fitting, shown as {spectrum.units["x"]} '
             f'vs. {spectrum.units["y"]}'
         )
-        with self._get_handle("spectrum", spectrum.genre) as file:
+        genre = (
+            f"{spectrum.genre}-{spectrum.averaged_by}"
+            if spectrum.averaged_by
+            else spectrum.genre
+        )
+        with self._get_handle("spectrum", genre) as file:
             file.write(title + "\n")
             if spectrum.averaged_by:
                 file.write(

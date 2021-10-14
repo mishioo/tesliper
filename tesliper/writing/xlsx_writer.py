@@ -253,7 +253,12 @@ class XlsxWriter(Writer):
         """
         # TODO: add comment as in txt export
         wb = self.workbook
-        ws = wb.create_sheet(title=f"{spectrum.genre}_{spectrum.averaged_by}")
+        genre = (
+            f"{spectrum.genre}-{spectrum.averaged_by}"
+            if spectrum.averaged_by
+            else spectrum.genre
+        )
+        ws = wb.create_sheet(title=genre)
         ws.append([spectrum.units["x"], spectrum.units["y"]])
         for row in zip(spectrum.x, spectrum.y):
             ws.append(row)
