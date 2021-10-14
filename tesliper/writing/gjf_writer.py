@@ -73,17 +73,13 @@ class GjfWriter(Writer):
             char = charge.values
         except AttributeError:
             char = (0,) if charge is None else charge
-            char = [charge] if not isinstance(charge, Iterable) else charge
+            char = [char] if not isinstance(char, Iterable) else char
         char = cycle(char)
         try:
             mult = multiplicity.values
         except AttributeError:
             mult = (1,) if multiplicity is None else multiplicity
-            mult = (
-                [multiplicity]
-                if not isinstance(multiplicity, Iterable)
-                else multiplicity
-            )
+            mult = [mult] if not isinstance(mult, Iterable) else mult
         mult = cycle(mult)
         for handle, *params in zip(
             self._iter_handles(geometry.filenames, geometry.genre),

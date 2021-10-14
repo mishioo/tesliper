@@ -69,19 +69,19 @@ def geometry(filenames):
 
 
 @pytest.fixture
-def charge(filenames,):
+def charge(filenames):
     values = [0] * len(filenames)
     return ar.IntegerArray(genre="charge", filenames=filenames, values=values)
 
 
 @pytest.fixture
-def multiplicity(filenames,):
+def multiplicity(filenames):
     values = [1] * len(filenames)
     return ar.IntegerArray(genre="multiplicity", filenames=filenames, values=values)
 
 
 @pytest.fixture(params=["values", 0, [0]])
-def altcharge(filenames, request):
+def alt_charge(filenames, request):
     if not isinstance(request.param, str):
         return request.param
     if request.param == "values":
@@ -89,7 +89,7 @@ def altcharge(filenames, request):
 
 
 @pytest.fixture(params=["values", 1, [1]])
-def altmultiplicity(filenames, request):
+def alt_multiplicity(filenames, request):
     if not isinstance(request.param, str):
         return request.param
     if request.param == "values":
@@ -101,20 +101,31 @@ def gjfwriter(tmp_path):
     return GjfWriter(tmp_path, route="hf/sto-3g")
 
 
+def assert_output_ok(path, names):
+    assert len(list(path.iterdir())) == 2
+    assert {f.name for f in path.iterdir()} == {f"{f}.gjf" for f in names}
+    assert path.joinpath(names[0] + ".gjf").open("r").read() == meoh0
+    assert path.joinpath(names[1] + ".gjf").open("r").read() == meoh1
+
+
 def test_basic(tmp_path, gjfwriter, geometry, charge, multiplicity, filenames):
     gjfwriter.geometry(geometry, charge, multiplicity)
-    assert len(list(tmp_path.iterdir())) == 2
-    assert {f.name for f in tmp_path.iterdir()} == {f"{f}.gjf" for f in filenames}
-    assert tmp_path.joinpath(filenames[0] + ".gjf").open("r").read() == meoh0
-    assert tmp_path.joinpath(filenames[1] + ".gjf").open("r").read() == meoh1
+    assert_output_ok(tmp_path, filenames)
 
 
-def test_alt_args(tmp_path, gjfwriter, geometry, altcharge, altmultiplicity, filenames):
-    gjfwriter.geometry(geometry, altcharge, altmultiplicity)
-    assert len(list(tmp_path.iterdir())) == 2
-    assert {f.name for f in tmp_path.iterdir()} == {f"{f}.gjf" for f in filenames}
-    assert tmp_path.joinpath(filenames[0] + ".gjf").open("r").read() == meoh0
-    assert tmp_path.joinpath(filenames[1] + ".gjf").open("r").read() == meoh1
+def test_default_args(tmp_path, gjfwriter, geometry, filenames):
+    gjfwriter.geometry(geometry)
+    assert_output_ok(tmp_path, filenames)
+
+
+def test_alt_charge(tmp_path, gjfwriter, geometry, alt_charge, filenames):
+    gjfwriter.geometry(geometry, alt_charge)
+    assert_output_ok(tmp_path, filenames)
+
+
+def test_alt_multiplicity(tmp_path, gjfwriter, geometry, alt_multiplicity, filenames):
+    gjfwriter.geometry(geometry, multiplicity=alt_multiplicity)
+    assert_output_ok(tmp_path, filenames)
 
 
 @pytest.mark.parametrize(
