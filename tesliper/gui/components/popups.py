@@ -382,3 +382,39 @@ class ExportPopup(Popup):
         }
         logger.debug(self.query)
         return self.query
+
+
+class GjfPopup(Popup):
+    def __init__(self, master, *args, **kwargs):
+        super().__init__(master, *args, **kwargs)
+        self.title("Create .gjf files...")
+        root = master.winfo_toplevel()
+        self.tesliper = root.tesliper
+        self.changer = WgtStateChanger(root)
+        path_frame = ttk.Frame(self)
+        path_frame.grid(column=0, row=0, columnspan=2, sticky="new")
+        path_frame.columnconfigure(1, weight=1)
+        ttk.Label(path_frame, text="Path").grid(
+            column=0, row=0, padx=5, pady=3, sticky="new"
+        )
+        self.path = tk.StringVar()
+        self.path.set(str(self.tesliper.output_dir))
+        self.path_entry = ttk.Entry(
+            path_frame, textvariable=self.path, state="readonly"
+        )
+        self.path_entry.grid(column=1, row=0, sticky="ew")
+        self.browse = ttk.Button(path_frame, text="Browse", command=self._browse)
+        self.browse.grid(column=2, row=0, sticky="we", padx=5)
+
+        # geometry genre selection
+        # charge and multiplicity
+        # job route entry
+        # comment / job description
+        # link0 commands
+        # after-geometry specifications
+
+    def _browse(self):
+        directory = askdirectory()
+        if not directory:
+            return
+        self.path.set(directory)
