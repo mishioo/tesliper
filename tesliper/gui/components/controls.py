@@ -25,7 +25,7 @@ from .collapsible_pane import CollapsiblePane
 from .helpers import ThreadedMethod, join_with_and
 from .label_separator import LabelSeparator
 from .numeric_entry import NumericEntry
-from .popups import ExportPopup, not_implemented_popup
+from .popups import ExportPopup
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -73,20 +73,20 @@ class AutoComboboxBase(ttk.Combobox, ABC):
             logger.info("No values available, removed selection.")
 
 
-class EnergiesChoice(AutoComboboxBase):
+class GenresChoice(AutoComboboxBase):
     """Combobox that enables choice of type of energy."""
 
-    _names_ref = {
-        k: v
-        for k, v in zip(
-            "Thermal Enthalpy Gibbs SCF Zero-Point".split(),
-            "ten ent gib scf zpe".split(),
-        )
-    }
-    _genres_ref = {v: k for k, v in _names_ref.items()}
-
-    def __init__(self, parent, **kwargs):
+    def __init__(self, parent, genres, names=None, **kwargs):
         super().__init__(parent, **kwargs)
+        if names is not None and len(names) != len(genres):
+            raise ValueError(
+                "One name is needed for each genre. "
+                f"Got {len(names)} names and {len(genres)} genres."
+            )
+        if names is None:
+            names = genres
+        self._names_ref = {k: v for k, v in zip(names, genres)}
+        self._genres_ref = {v: k for k, v in self._names_ref.items()}
 
     def get_genre(self):
         """Convenience method for getting genre of the energy type chosen."""
@@ -100,6 +100,26 @@ class EnergiesChoice(AutoComboboxBase):
         ]
         available = tuple(self._genres_ref[genre] for genre in available_genres)
         return available
+
+
+class EnergiesChoice(GenresChoice):
+    def __init__(self, parent, **kwargs):
+        super().__init__(
+            parent=parent,
+            genres="ten ent gib scf zpe".split(),
+            names="Thermal Enthalpy Gibbs SCF Zero-Point".split(),
+            **kwargs,
+        )
+
+
+class GeometriesChoice(GenresChoice):
+    def __init__(self, parent, **kwargs):
+        super().__init__(
+            parent=parent,
+            genres=["geometry", "input_geom", "optimized_geom"],
+            names=["Last read", "Input", "Optimized"],
+            **kwargs,
+        )
 
 
 class ConformersChoice(AutoComboboxBase):
