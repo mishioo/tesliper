@@ -11,8 +11,10 @@ from tesliper import datawork as dw
 from tesliper.glassware import ElectronicData, ScatteringData, VibrationalData
 
 from ... import SpectralData
+from .choices import GeometriesChoice
 from .helpers import WgtStateChanger
 from .label_separator import LabelSeparator
+from .numeric_entry import NumericEntry
 
 logger = lgg.getLogger(__name__)
 
@@ -391,6 +393,7 @@ class GjfPopup(Popup):
         root = master.winfo_toplevel()
         self.tesliper = root.tesliper
         self.changer = WgtStateChanger(root)
+        self.columnconfigure(1, weight=1)
         path_frame = ttk.Frame(self)
         path_frame.grid(column=0, row=0, columnspan=2, sticky="new")
         path_frame.columnconfigure(1, weight=1)
@@ -406,9 +409,38 @@ class GjfPopup(Popup):
         self.browse = ttk.Button(path_frame, text="Browse", command=self._browse)
         self.browse.grid(column=2, row=0, sticky="we", padx=5)
 
+        frame = ttk.Frame(self)
+        frame.grid(column=0, row=1, columnspan=2, pady=3, sticky="new")
         # geometry genre selection
+        ttk.Label(frame, text="Geometry type").grid(
+            column=0, row=0, padx=5, sticky="new"
+        )
+        self.geom_combobox = GeometriesChoice(frame)
+        self.geom_combobox.grid(column=1, row=0, padx=(0, 5), sticky="new")
+        self.geom_combobox.update_values()
         # charge and multiplicity
+        ttk.Label(frame, text="Multiplicity").grid(
+            column=2, row=0, padx=(0, 5), sticky="new"
+        )
+        # TODO: change entries for integer based
+        self.multiplicity = tk.StringVar(value="1")
+        self.multiplicity_entry = NumericEntry(
+            frame, textvariable=self.multiplicity, scroll_rate=1, width=4
+        )
+        self.multiplicity_entry.grid(column=3, row=0, padx=(0, 5), sticky="new")
+        ttk.Label(frame, text="Charge").grid(column=4, row=0, padx=(0, 5), sticky="new")
+        self.charge = tk.StringVar(value="0")
+        self.charge_entry = NumericEntry(
+            frame, textvariable=self.charge, scroll_rate=1, width=4
+        )
+        self.charge_entry.grid(column=5, row=0, padx=(0, 5), sticky="new")
+
         # job route entry
+        ttk.Label(self, text="Route").grid(column=0, row=2, padx=5, sticky="new")
+        self.job = tk.StringVar()
+        self.job_entry = ttk.Entry(self, textvariable=self.job)
+        self.job_entry.grid(column=1, row=2, padx=(0, 5), sticky="new")
+
         # comment / job description
         # link0 commands
         # after-geometry specifications
