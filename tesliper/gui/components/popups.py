@@ -390,19 +390,19 @@ class LinkZero(ttk.Frame):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
         self.descriptions = {
-            "Mem": "string specifying required memory",
-            "Chk": "string with file path",
-            "OldChk": "string with file path",
-            "SChk": "string with file path",
-            "RWF": "string with file path",
-            "OldMatrix": "string with file path",
-            "OldRawMatrix": "string with file path",
-            "Int": "string with specification",
-            "D2E": "string with specification",
-            "KJob": "string with link number and, optionally, space-separated number",
+            "Mem": "amount of dynamic memory used",
+            "Chk": "path to the checkpoint file",
+            "OldChk": "path to the previous checkpoint file",
+            "SChk": "path to which checkpoint file is copied on job step start",
+            "RWF": "path to the read-write file",
+            "OldMatrix": "path to the unformatted binary matrix element file",
+            "OldRawMatrix": "path to the raw binary matrix element file",
+            "Int": "path to the two-electron integral file(s)",
+            "D2E": "path to the two-electron integral derivative file(s)",
+            "KJob": "link number and, optionally, space-separated number",
             "Save": "empty for false, anything else for true",
             "ErrorSave": "aka 'NoSave', empty for false, anything else for true",
-            "Subst": "string with link number and space-separated file path",
+            "Subst": "link number and space-separated file path",
         }
         ttk.Style().configure("Placeholder.TEntry", foreground="grey")
 
