@@ -386,6 +386,85 @@ class ExportPopup(Popup):
         return self.query
 
 
+class LinkZero(ttk.Frame):
+    def __init__(self, master, **kwargs):
+        super().__init__(master, **kwargs)
+        self.descriptions = {
+            "Mem": "string specifying required memory",
+            "Chk": "string with file path",
+            "OldChk": "string with file path",
+            "SChk": "string with file path",
+            "RWF": "string with file path",
+            "OldMatrix": "string with file path",
+            "OldRawMatrix": "string with file path",
+            "Int": "string with specification",
+            "D2E": "string with specification",
+            "KJob": "string with link number and, optionally, space-separated number",
+            "Save": "empty for false, anything else for true",
+            "ErrorSave": "aka 'NoSave', empty for false, anything else for true",
+            "Subst": "string with link number and space-separated file path",
+        }
+
+        self.command = tk.StringVar()
+        self.command_checkbox = ttk.Combobox(
+            self,
+            textvariable=self.command,
+            state="readonly",
+            values=list(self.descriptions.keys()),
+            width=13,
+        )
+        self.command_checkbox.bind("<<ComboboxSelected>>", self.combobox_selected)
+        self.value = tk.StringVar()
+        self.value_entry = ttk.Entry(self, textvariable=self.value)
+        self.value_entry.bind("<FocusIn>", self.entry_focus_in)
+        self.value_entry.bind("<FocusOut>", self.entry_focus_out)
+        add_button = ttk.Button(self, text="Add", command=self.add)
+        self.items_frame = ttk.Frame(self)
+        self.items = {}
+
+        self.columnconfigure(1, weight=1)
+        self.command_checkbox.grid(column=0, row=0, sticky="new")
+        self.value_entry.grid(column=1, row=0, sticky="new")
+        add_button.grid(column=2, row=0, sticky="new")
+        self.items_frame.grid(column=0, row=1, columnspan=3, sticky="news")
+        self.items_frame.columnconfigure(1, weight=1)
+
+    def edit(self, item, value):
+        self.items[item]["value"].configure(text=value)
+
+    def add(self):
+        item = self.command.get()
+        value = self.value.get()
+        if item in self.items:
+            return self.edit(item, value)
+        idx = len(self.items)
+        self.items[item] = {
+            "command": ttk.Label(self.items_frame, text=item, width=13),
+            "value": ttk.Label(self.items_frame, text=value, anchor="e"),
+            "button": ttk.Button(
+                self.items_frame, text="-", command=lambda i=item: self.remove(i)
+            ),
+        }
+        self.items[item]["command"].grid(column=0, row=idx, sticky="new")
+        self.items[item]["value"].grid(column=1, row=idx, sticky="new")
+        self.items[item]["button"].grid(column=2, row=idx, sticky="new")
+
+    def remove(self, item):
+        for widget in self.items[item].values():
+            widget.grid_forget()
+            widget.destroy()
+        del self.items[item]
+
+    def combobox_selected(self, _event=None):
+        ...
+
+    def entry_focus_in(self, _event=None):
+        ...
+
+    def entry_focus_out(self, _event=None):
+        ...
+
+
 class GjfPopup(Popup):
     def __init__(self, master, *args, **kwargs):
         super().__init__(master, *args, **kwargs)
