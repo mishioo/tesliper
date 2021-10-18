@@ -419,14 +419,16 @@ class LinkZero(ttk.Frame):
         self.value_entry = ttk.Entry(self, textvariable=self.value)
         self.value_entry.bind("<FocusIn>", self.entry_focus_in)
         self.value_entry.bind("<FocusOut>", self.entry_focus_out)
-        add_button = ttk.Button(self, text="Add", command=self.add, state="disabled")
+        self.add_button = ttk.Button(
+            self, text="Add", command=self.add, state="disabled", width=4
+        )
         self.items_frame = ttk.Frame(self)
         self.items = {}
 
         self.columnconfigure(1, weight=1)
         self.command_checkbox.grid(column=0, row=0, sticky="new")
         self.value_entry.grid(column=1, row=0, sticky="new")
-        add_button.grid(column=2, row=0, sticky="new")
+        self.add_button.grid(column=2, row=0, sticky="new")
         self.items_frame.grid(column=0, row=1, columnspan=3, sticky="news")
         self.items_frame.columnconfigure(1, weight=1)
 
@@ -447,6 +449,7 @@ class LinkZero(ttk.Frame):
                 self.items_frame,
                 text="-",
                 command=lambda i=item: self.remove(i),
+                width=4,
             ),
         }
         self.items[item]["command"].grid(column=0, row=idx, sticky="new")
@@ -460,6 +463,7 @@ class LinkZero(ttk.Frame):
         del self.items[item]
 
     def combobox_selected(self, _event=None):
+        self.add_button.configure(state="normal")
         item = self.command.get()
         if item in self.items:
             self.value.set(self.items[item]["value"]["text"])
