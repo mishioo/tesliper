@@ -404,6 +404,7 @@ class LinkZero(ttk.Frame):
             "ErrorSave": "aka 'NoSave', empty for false, anything else for true",
             "Subst": "string with link number and space-separated file path",
         }
+        ttk.Style().configure("Placeholder.TEntry", foreground="grey")
 
         self.command = tk.StringVar()
         self.command_checkbox = ttk.Combobox(
@@ -418,7 +419,7 @@ class LinkZero(ttk.Frame):
         self.value_entry = ttk.Entry(self, textvariable=self.value)
         self.value_entry.bind("<FocusIn>", self.entry_focus_in)
         self.value_entry.bind("<FocusOut>", self.entry_focus_out)
-        add_button = ttk.Button(self, text="Add", command=self.add)
+        add_button = ttk.Button(self, text="Add", command=self.add, state="disabled")
         self.items_frame = ttk.Frame(self)
         self.items = {}
 
@@ -434,7 +435,8 @@ class LinkZero(ttk.Frame):
 
     def add(self):
         item = self.command.get()
-        value = self.value.get()
+        placeholder = self.value_entry.cget("style") == "Placeholder.TEntry"
+        value = "" if placeholder else self.value.get()
         if item in self.items:
             return self.edit(item, value)
         idx = len(self.items)
@@ -442,7 +444,9 @@ class LinkZero(ttk.Frame):
             "command": ttk.Label(self.items_frame, text=item, width=13),
             "value": ttk.Label(self.items_frame, text=value, anchor="e"),
             "button": ttk.Button(
-                self.items_frame, text="-", command=lambda i=item: self.remove(i)
+                self.items_frame,
+                text="-",
+                command=lambda i=item: self.remove(i),
             ),
         }
         self.items[item]["command"].grid(column=0, row=idx, sticky="new")
@@ -456,13 +460,23 @@ class LinkZero(ttk.Frame):
         del self.items[item]
 
     def combobox_selected(self, _event=None):
-        ...
+        item = self.command.get()
+        if item in self.items:
+            self.value.set(self.items[item]["value"]["text"])
+            self.value_entry.configure(style="TEntry")
+        else:
+            self.value.set(self.descriptions[item])
+            self.value_entry.configure(style="Placeholder.TEntry")
 
     def entry_focus_in(self, _event=None):
-        ...
+        if self.value_entry.cget("style") == "Placeholder.TEntry":
+            self.value.set("")
+            self.value_entry.configure(style="TEntry")
 
     def entry_focus_out(self, _event=None):
-        ...
+        if not self.value.get():
+            self.value.set(self.descriptions[self.command.get()])
+            self.value_entry.configure(style="Placeholder.TEntry")
 
 
 class GjfPopup(Popup):
