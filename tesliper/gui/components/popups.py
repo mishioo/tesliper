@@ -15,7 +15,7 @@ from . import CollapsiblePane
 from .choices import GeometriesChoice
 from .helpers import WgtStateChanger
 from .label_separator import LabelSeparator
-from .numeric_entry import NumericEntry
+from .numeric_entry import IntegerEntry, NumericEntry
 
 logger = lgg.getLogger(__name__)
 
@@ -526,17 +526,14 @@ class GjfPopup(Popup):
         ttk.Label(frame, text="Multiplicity").grid(
             column=2, row=0, padx=(0, 5), sticky="new"
         )
-        # TODO: change entries for integer based
         self.multiplicity = tk.StringVar(value="1")
-        self.multiplicity_entry = NumericEntry(
-            frame, textvariable=self.multiplicity, scroll_rate=1, width=4
+        self.multiplicity_entry = IntegerEntry(
+            frame, textvariable=self.multiplicity, width=4
         )
         self.multiplicity_entry.grid(column=3, row=0, padx=(0, 5), sticky="new")
         ttk.Label(frame, text="Charge").grid(column=4, row=0, padx=(0, 5), sticky="new")
         self.charge = tk.StringVar(value="0")
-        self.charge_entry = NumericEntry(
-            frame, textvariable=self.charge, scroll_rate=1, width=4
-        )
+        self.charge_entry = IntegerEntry(frame, textvariable=self.charge, width=4)
         self.charge_entry.grid(column=5, row=0, padx=(0, 5), sticky="new")
 
         # job route entry
@@ -593,9 +590,8 @@ class GjfPopup(Popup):
         }
         self.query["call"] = {
             "geometry": self.tesliper[self.geom_combobox.get_genre()],
-            # TODO: make charge_entry allow only int and change to int()
-            "charge": float(self.charge.get()),
-            "multiplicity": float(self.multiplicity.get()),  # TODO: as above
+            "charge": int(self.charge.get()),
+            "multiplicity": int(self.multiplicity.get()),
         }
         self.destroy()
 
