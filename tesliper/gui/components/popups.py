@@ -11,6 +11,7 @@ from tesliper import datawork as dw
 from tesliper.glassware import ElectronicData, ScatteringData, VibrationalData
 
 from ... import SpectralData
+from . import CollapsiblePane
 from .choices import GeometriesChoice
 from .helpers import WgtStateChanger
 from .label_separator import LabelSeparator
@@ -540,6 +541,12 @@ class GjfPopup(Popup):
 
         # comment / job description
         # link0 commands
+        pane = CollapsiblePane(self, text="Link0 commands", collapsed=True)
+        pane.grid(column=0, row=3, columnspan=2, padx=5, pady=3, sticky="new")
+        pane.content.columnconfigure(0, weight=1)
+        pane.content.rowconfigure(0, weight=1)
+        self.link_zero = LinkZero(pane.content)
+        self.link_zero.grid(column=0, row=0, sticky="news")
         # after-geometry specifications
 
     def _browse(self):
