@@ -483,6 +483,9 @@ class LinkZero(ttk.Frame):
             self.value.set(self.descriptions[self.command.get()])
             self.value_entry.configure(style="Placeholder.TEntry")
 
+    def get_query(self):
+        return {key: value["value"].cget("text") for key, value in self.items.items()}
+
 
 class GjfPopup(Popup):
     def __init__(self, master, *args, **kwargs):
@@ -491,6 +494,8 @@ class GjfPopup(Popup):
         root = master.winfo_toplevel()
         self.tesliper = root.tesliper
         self.changer = WgtStateChanger(root)
+        self.query = {}
+
         self.columnconfigure(1, weight=1)
         path_frame = ttk.Frame(self)
         path_frame.grid(column=0, row=0, columnspan=2, sticky="new")
@@ -540,17 +545,64 @@ class GjfPopup(Popup):
         self.job_entry.grid(column=1, row=2, padx=(0, 5), sticky="new")
 
         # comment / job description
+        ttk.Label(self, text="Comment").grid(column=0, row=3, padx=5, sticky="new")
+        self.comment = tk.StringVar()
+        self.comment_entry = ttk.Entry(self, textvariable=self.comment)
+        self.comment_entry.grid(column=1, row=3, padx=(0, 5), sticky="new")
+
         # link0 commands
         pane = CollapsiblePane(self, text="Link0 commands", collapsed=True)
-        pane.grid(column=0, row=3, columnspan=2, padx=5, pady=3, sticky="new")
+        pane.grid(column=0, row=4, columnspan=2, padx=5, pady=3, sticky="new")
         pane.content.columnconfigure(0, weight=1)
         pane.content.rowconfigure(0, weight=1)
         self.link_zero = LinkZero(pane.content)
         self.link_zero.grid(column=0, row=0, sticky="news")
+
         # after-geometry specifications
+        pane = CollapsiblePane(
+            self, text="Post-geometry specifications", collapsed=True
+        )
+        pane.grid(column=0, row=5, columnspan=2, padx=5, pady=3, sticky="new")
+        pane.content.columnconfigure(0, weight=1)
+        pane.content.rowconfigure(0, weight=1)
+        self.post_spec = tk.Text(pane.content)
+        self.post_spec.grid(column=0, row=0, sticky="news")
+
+        # ok / cancel buttons
+        buttons_frame = ttk.Frame(self)
+        buttons_frame.grid(column=0, row=6, pady=2, columnspan=2, sticky="se")
+        b_cancel = ttk.Button(buttons_frame, text="Cancel", command=self.cancel_command)
+        b_cancel.grid(column=0, row=0, sticky="se")
+        b_ok = ttk.Button(buttons_frame, text="OK", command=self.ok_command)
+        b_ok.grid(column=1, row=0, padx=5, sticky="se")
 
     def _browse(self):
         directory = askdirectory()
         if not directory:
             return
         self.path.set(directory)
+
+    def ok_command(self):
+        self.query["init"] = {
+            "destination": self.path.get(),
+            "link0": self.link_zero.get_query(),
+            "route": self.job.get(),
+            "comment": self.comment.get(),
+            "post_spec": self.post_spec.get("1.0", "end"),  # Tk.Text instance
+        }
+        self.query["call"] = {
+            "geometry": self.tesliper[self.geom_combobox.get_genre()],
+            # TODO: make charge_entry allow only int and change to int()
+            "charge": float(self.charge.get()),
+            "multiplicity": float(self.multiplicity.get()),  # TODO: as above
+        }
+        self.destroy()
+
+    def cancel_command(self):
+        self.query = {}
+        self.destroy()
+
+    def get_query(self):
+        self.wait_window()
+        logger.debug(f"Request: {self.query}")
+        return self.query
