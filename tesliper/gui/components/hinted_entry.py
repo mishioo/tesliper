@@ -26,14 +26,15 @@ class HintedEntry(ttk.Entry):
         self.bind("<FocusOut>", self.entry_focus_out)
 
     def entry_focus_in(self, _event=None):
-        if self.cget("style") == self._hinted_style:
+        normal_state = str(self.cget("state")) == "normal"
+        if self.is_hinted() and normal_state:
             self.variable.set("")
-            self.configure(style=self._style)
+            super().configure(style=self._style)
 
     def entry_focus_out(self, _event=None):
         if not self.variable.get():
             self.variable.set(self._hint)
-            self.configure(style=self._hinted_style)
+            super().configure(style=self._hinted_style)
 
     def get(self):
         return "" if self.is_empty() else self.variable.get()
