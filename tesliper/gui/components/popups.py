@@ -14,6 +14,7 @@ from ... import SpectralData
 from . import CollapsiblePane
 from .choices import GeometriesChoice
 from .helpers import WgtStateChanger
+from .hinted_entry import HintedEntry
 from .label_separator import LabelSeparator
 from .numeric_entry import IntegerEntry, NumericEntry
 
@@ -405,8 +406,6 @@ class LinkZero(ttk.Frame):
             "ErrorSave": "aka 'NoSave', empty for false, anything else for true",
             "Subst": "link number and space-separated file path",
         }
-        ttk.Style().configure("Placeholder.TEntry", foreground="grey")
-
         self.command = tk.StringVar()
         self.command_checkbox = ttk.Combobox(
             self,
@@ -416,11 +415,10 @@ class LinkZero(ttk.Frame):
             width=13,
         )
         self.command_checkbox.bind("<<ComboboxSelected>>", self.combobox_selected)
-        self.value = tk.StringVar()
-        self.value_entry = ttk.Entry(self, textvariable=self.value)
-        self.value_entry.bind("<FocusIn>", self.entry_focus_in)
-        self.value_entry.bind("<FocusOut>", self.entry_focus_out)
-        self.value_entry.bind("<Return>", self.add)
+        self.value = HintedEntry(
+            self, hint="← select a link0 command", state="readonly"
+        )
+        self.value.bind("<Return>", self.add)
         self.add_button = ttk.Button(
             self, text="+", command=self.add, state="disabled", width=1
         )
@@ -429,7 +427,7 @@ class LinkZero(ttk.Frame):
 
         self.columnconfigure(1, weight=1)
         self.command_checkbox.grid(column=0, row=0, sticky="ew")
-        self.value_entry.grid(column=1, row=0, sticky="ew")
+        self.value.grid(column=1, row=0, sticky="ew")
         self.add_button.grid(column=2, row=0, sticky="ew")
         self.items_frame.grid(column=0, row=1, columnspan=3, sticky="news")
         self.items_frame.columnconfigure(1, weight=1)
@@ -439,8 +437,7 @@ class LinkZero(ttk.Frame):
 
     def add(self, _event=None):
         item = self.command.get()
-        placeholder = self.value_entry.cget("style") == "Placeholder.TEntry"
-        value = "" if placeholder else self.value.get()
+        value = self.value.get()
         if item in self.items:
             return self.edit(item, value)
         idx = len(self.items)
@@ -466,23 +463,13 @@ class LinkZero(ttk.Frame):
 
     def combobox_selected(self, _event=None):
         self.add_button.configure(state="normal")
+        self.value.configure(state="normal")
         item = self.command.get()
         if item in self.items:
             self.value.set(self.items[item]["value"]["text"])
-            self.value_entry.configure(style="TEntry")
         else:
-            self.value.set(self.descriptions[item])
-            self.value_entry.configure(style="Placeholder.TEntry")
-
-    def entry_focus_in(self, _event=None):
-        if self.value_entry.cget("style") == "Placeholder.TEntry":
+            self.value.configure(hint=self.descriptions[item])
             self.value.set("")
-            self.value_entry.configure(style="TEntry")
-
-    def entry_focus_out(self, _event=None):
-        if not self.value.get():
-            self.value.set(self.descriptions[self.command.get()])
-            self.value_entry.configure(style="Placeholder.TEntry")
 
     def get_query(self):
         return {key: value["value"].cget("text") for key, value in self.items.items()}
