@@ -525,15 +525,13 @@ class GjfPopup(Popup):
 
         # job route entry
         ttk.Label(self, text="Route").grid(column=0, row=2, padx=5, sticky="new")
-        self.job = tk.StringVar()
-        self.job_entry = ttk.Entry(self, textvariable=self.job)
-        self.job_entry.grid(column=1, row=2, padx=(0, 5), sticky="new")
+        self.job = HintedEntry(self, hint="Calculations specification")
+        self.job.grid(column=1, row=2, padx=(0, 5), sticky="new")
 
         # comment / job description
         ttk.Label(self, text="Comment").grid(column=0, row=3, padx=5, sticky="new")
-        self.comment = tk.StringVar()
-        self.comment_entry = ttk.Entry(self, textvariable=self.comment)
-        self.comment_entry.grid(column=1, row=3, padx=(0, 5), sticky="new")
+        self.comment = HintedEntry(self, hint="Short description, optional")
+        self.comment.grid(column=1, row=3, padx=(0, 5), sticky="new")
 
         # link0 commands
         pane = CollapsiblePane(self, text="Link0 commands", collapsed=True)
