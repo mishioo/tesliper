@@ -420,23 +420,24 @@ class LinkZero(ttk.Frame):
         self.value_entry = ttk.Entry(self, textvariable=self.value)
         self.value_entry.bind("<FocusIn>", self.entry_focus_in)
         self.value_entry.bind("<FocusOut>", self.entry_focus_out)
+        self.value_entry.bind("<Return>", self.add)
         self.add_button = ttk.Button(
-            self, text="Add", command=self.add, state="disabled", width=4
+            self, text="+", command=self.add, state="disabled", width=1
         )
         self.items_frame = ttk.Frame(self)
         self.items = {}
 
         self.columnconfigure(1, weight=1)
-        self.command_checkbox.grid(column=0, row=0, sticky="new")
-        self.value_entry.grid(column=1, row=0, sticky="new")
-        self.add_button.grid(column=2, row=0, sticky="new")
+        self.command_checkbox.grid(column=0, row=0, sticky="ew")
+        self.value_entry.grid(column=1, row=0, sticky="ew")
+        self.add_button.grid(column=2, row=0, sticky="ew")
         self.items_frame.grid(column=0, row=1, columnspan=3, sticky="news")
         self.items_frame.columnconfigure(1, weight=1)
 
     def edit(self, item, value):
         self.items[item]["value"].configure(text=value)
 
-    def add(self):
+    def add(self, _event=None):
         item = self.command.get()
         placeholder = self.value_entry.cget("style") == "Placeholder.TEntry"
         value = "" if placeholder else self.value.get()
@@ -450,12 +451,12 @@ class LinkZero(ttk.Frame):
                 self.items_frame,
                 text="-",
                 command=lambda i=item: self.remove(i),
-                width=4,
+                width=1,
             ),
         }
-        self.items[item]["command"].grid(column=0, row=idx, sticky="new")
-        self.items[item]["value"].grid(column=1, row=idx, sticky="new")
-        self.items[item]["button"].grid(column=2, row=idx, sticky="new")
+        self.items[item]["command"].grid(column=0, row=idx, sticky="ew")
+        self.items[item]["value"].grid(column=1, row=idx, sticky="ew")
+        self.items[item]["button"].grid(column=2, row=idx, sticky="ew")
 
     def remove(self, item):
         for widget in self.items[item].values():
