@@ -128,7 +128,7 @@ def test_single_spectrum(writer, mols, spc):
     writer.single_spectrum(spc)
     assert writer.file.exists()
     wb = oxl.load_workbook(writer.file)
-    ws = wb[f"{spc.genre}_{spc.averaged_by}"]
+    ws = wb[f"{spc.genre}-{spc.averaged_by}"]
     assert len(list(ws.columns)) == 2
     assert len(list(ws.rows)) == 1 + spc.values.size
 

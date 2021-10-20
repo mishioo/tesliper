@@ -130,7 +130,7 @@ arrays_by_type = dict(
 extras_by_type = dict(
     corrections=FloatArray("gibcorr", [""], [1]),
     frequencies=VibrationalData("freq", [""], [[1]], [[1]]),
-    wavelengths=ElectronicData("wave", [""], [[1]], [[1]]),
+    wavelengths=ElectronicData("wavelen", [""], [[1]], [[1]]),
     stoichiometry=InfoArray("stoichiometry", [""], [""]),
 )
 
@@ -158,7 +158,7 @@ writer_methods = {
         stoichiometry=None,
     ),
     "energies": dict(energies=None, corrections=None),
-    "spectrum": dict(spectrum=None),
+    "single_spectrum": dict(spectrum=None),
     "spectral_data": dict(band=None, data=None),
     "spectra": dict(spectra=None),
     "transitions": dict(
