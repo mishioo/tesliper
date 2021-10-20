@@ -572,7 +572,7 @@ class GjfPopup(Popup):
             "destination": self.path.get(),
             "link0": self.link_zero.get_query(),
             "route": self.job.get(),
-            "comment": self.comment.get(),
+            "comment": self.comment.get() or "No information provided.",
             "post_spec": self.post_spec.get("1.0", "end"),  # Tk.Text instance
         }
         self.query["call"] = {
