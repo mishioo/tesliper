@@ -77,23 +77,6 @@ class FloatArray(DataArray):
         "tencorr",
         "entcorr",
         "gibcorr",
-        "mass",
-        "frc",
-        "emang",
-        "depolarp",
-        "depolaru",
-        "depp",
-        "depu",
-        "alpha2",
-        "beta2",
-        "alphag ",
-        "gamma2",
-        "delta2",
-        "cid1",
-        "cid2",
-        "cid3",
-        "rc180",
-        "eemang",
     )
     values = ArrayProperty(dtype=float, check_against="filenames")
 
@@ -282,7 +265,109 @@ class Averagable:
         return averaged
 
 
-class SpectralActivities(FloatArray, Averagable):
+class _Spectral(FloatArray):
+    associated_genres = ()
+    _units = dict()
+
+    def __init__(
+        self,
+        genre,
+        filenames,
+        values,
+        allow_data_inconsistency=False,
+    ):
+        super().__init__(genre, filenames, values, allow_data_inconsistency)
+
+    # TODO: at least one, freq or wave, must be defined by subclass;
+    #       include that in docstring
+    @property
+    def freq(self):
+        return 1e7 / self.wavelen
+
+    @property
+    def wavelen(self):
+        return 1e7 / self.freq
+
+    @property
+    def frequencies(self):
+        return self.freq
+
+    @property
+    def wavelengths(self):
+        return self.wavelen
+
+    @property
+    def units(self):
+        try:
+            return self._units[self.genre]
+        except KeyError:
+            return ""
+
+
+class SpectralData(_Spectral):
+    """Base class for spectral data genres, that are not spectral activities."""
+
+    # TODO: Supplement tests regarding this class' subclasses
+
+    associated_genres = ()
+
+
+class _VibData(SpectralData):
+    freq = ArrayProperty(check_against="filenames")
+    associated_genres = ()
+
+    def __init__(
+        self,
+        genre,
+        filenames,
+        values,
+        freq,
+        allow_data_inconsistency=False,
+    ):
+        super().__init__(genre, filenames, values, allow_data_inconsistency)
+        self.freq = freq
+
+
+class VibrationalData(_VibData):
+    associated_genres = ("mass", "frc", "emang")
+
+
+class ScatteringData(_VibData):
+    associated_genres = (
+        "depolarp",
+        "depolaru",
+        "depp",
+        "depu",
+        "alpha2",
+        "beta2",
+        "alphag ",
+        "gamma2",
+        "delta2",
+        "cid1",
+        "cid2",
+        "cid3",
+        "rc180",
+    )
+
+
+class ElectronicData(SpectralData):
+    wavelen = ArrayProperty(check_against="filenames")
+    associated_genres = ("eemang",)
+
+    def __init__(
+        self,
+        genre,
+        filenames,
+        values,
+        wavelen,
+        allow_data_inconsistency=False,
+    ):
+        super().__init__(genre, filenames, values, allow_data_inconsistency)
+        self.wavelen = wavelen  # in nm
+
+
+class SpectralActivities(_Spectral, Averagable):
+    """Base class for spectral activities genres."""
 
     associated_genres = ()
     spectra_name_ref = dict(
@@ -334,34 +419,6 @@ class SpectralActivities(FloatArray, Averagable):
     )
     _intensities_converters = {}
 
-    def __init__(
-        self,
-        genre,
-        filenames,
-        values,
-        allow_data_inconsistency=False,
-    ):
-        super().__init__(genre, filenames, values, allow_data_inconsistency)
-
-    # TODO: move calculate_spectra here from derived classes
-    # TODO: at least one, freq or wave, must be defined by subclass;
-    #       include that in docstring
-    @property
-    def freq(self):
-        return 1e7 / self.wavelen
-
-    @property
-    def wavelen(self):
-        return 1e7 / self.freq
-
-    @property
-    def frequencies(self):
-        return self.freq
-
-    @property
-    def wavelengths(self):
-        return self.wavelen
-
     @property
     def spectra_name(self):
         if self.genre in self.spectra_name_ref:
@@ -371,13 +428,6 @@ class SpectralActivities(FloatArray, Averagable):
     def spectra_type(self):
         if self.genre in self.spectra_name_ref:
             return self.spectra_type_ref[self.spectra_name]
-
-    @property
-    def units(self):
-        try:
-            return self._units[self.genre]
-        except KeyError:
-            return ""
 
     @property
     def intensities(self):
