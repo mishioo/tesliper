@@ -545,11 +545,13 @@ class GjfPopup(Popup):
         pane = CollapsiblePane(
             self, text="Post-geometry specifications", collapsed=True
         )
-        pane.grid(column=0, row=5, columnspan=2, padx=5, pady=3, sticky="new")
+        pane.grid(column=0, row=5, columnspan=2, padx=5, pady=3, sticky="news")
         pane.content.columnconfigure(0, weight=1)
         pane.content.rowconfigure(0, weight=1)
-        self.post_spec = tk.Text(pane.content)
+        # post_spec width controlled by grid manager, hence 0 below
+        self.post_spec = tk.Text(pane.content, height=4, width=0)
         self.post_spec.grid(column=0, row=0, sticky="news")
+        self.rowconfigure(5, weight=1)
 
         # ok / cancel buttons
         buttons_frame = ttk.Frame(self)
