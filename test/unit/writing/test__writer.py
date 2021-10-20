@@ -7,11 +7,11 @@ from hypothesis import strategies as st
 
 from tesliper import Energies, InfoArray, Spectra
 from tesliper.glassware import (
-    ElectronicData,
+    ElectronicActivities,
     FloatArray,
-    ScatteringData,
+    ScatteringActivities,
     SingleSpectrum,
-    VibrationalData,
+    VibrationalActivities,
 )
 from tesliper.writing import Writer
 
@@ -120,17 +120,17 @@ def test_writer_check_file_new_only_no_dest(writer_class):
 
 arrays_by_type = dict(
     energies=Energies("gib", [""], [1]),
-    vibrationaldata=VibrationalData("iri", [""], [[1]], [[1]]),
-    scatteringdata=ScatteringData("ramact", [""], [[1]], [[1]]),
-    electronicdata=ElectronicData("ex_en", [""], [[1]], [[1]]),
+    vibrationalactivities=VibrationalActivities("iri", [""], [[1]], [[1]]),
+    scatteringactivities=ScatteringActivities("ramact", [""], [[1]], [[1]]),
+    electronicactivities=ElectronicActivities("ex_en", [""], [[1]], [[1]]),
     spectra=Spectra("ir", [""], [[1, 2]], [1, 2]),
     singlespectrum=SingleSpectrum("ir", [1, 2], [1, 2]),
     infoarray=InfoArray("command", [""], [""]),
 )
 extras_by_type = dict(
     corrections=FloatArray("gibcorr", [""], [1]),
-    frequencies=VibrationalData("freq", [""], [[1]], [[1]]),
-    wavelengths=ElectronicData("wavelen", [""], [[1]], [[1]]),
+    frequencies=VibrationalActivities("freq", [""], [[1]], [[1]]),
+    wavelengths=ElectronicActivities("wavelen", [""], [[1]], [[1]]),
     stoichiometry=InfoArray("stoichiometry", [""], [""]),
 )
 
@@ -159,7 +159,7 @@ writer_methods = {
     ),
     "energies": dict(energies=None, corrections=None),
     "single_spectrum": dict(spectrum=None),
-    "spectral_data": dict(band=None, data=None),
+    "spectral_activities": dict(band=None, data=None),
     "spectra": dict(spectra=None),
     "transitions": dict(
         transitions=None,

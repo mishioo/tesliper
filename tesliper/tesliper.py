@@ -190,7 +190,7 @@ class Tesliper:
         return self.settings
 
     def _calc_spc_with_settings(
-        self, activities: gw.SpectralData, settings: dict
+        self, activities: gw.SpectralActivities, settings: dict
     ) -> gw.Spectra:
         sett = self.parameters[activities.spectra_type].copy()
         sett.update(settings)
@@ -321,7 +321,9 @@ class Tesliper:
         data = [self[g] for g in genres]
         if any(isinstance(arr, gw.arrays._Vibrational) for arr in data):
             data += [self["freq"]]
-        if any(isinstance(arr, (gw.ElectronicData, gw.Transitions)) for arr in data):
+        if any(
+            isinstance(arr, (gw.ElectronicActivities, gw.Transitions)) for arr in data
+        ):
             data += [self["wavelen"]]
         wrt.write(data)
 

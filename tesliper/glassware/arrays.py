@@ -282,7 +282,7 @@ class Averagable:
         return averaged
 
 
-class SpectralData(FloatArray, Averagable):
+class SpectralActivities(FloatArray, Averagable):
 
     associated_genres = ()
     spectra_name_ref = dict(
@@ -406,7 +406,7 @@ def _as_is(values, *_args, **_kwargs):
     return values
 
 
-class _Vibrational(SpectralData):
+class _Vibrational(SpectralActivities):
 
     freq = ArrayProperty(check_against="filenames")
 
@@ -488,7 +488,7 @@ class _Vibrational(SpectralData):
         return spectra
 
 
-class VibrationalData(_Vibrational):
+class VibrationalActivities(_Vibrational):
     associated_genres = (
         "freq",
         "iri",
@@ -503,7 +503,7 @@ class VibrationalData(_Vibrational):
     }
 
 
-class ScatteringData(_Vibrational):
+class ScatteringActivities(_Vibrational):
     associated_genres = (
         "ramact",
         "raman1",
@@ -558,7 +558,7 @@ class ScatteringData(_Vibrational):
         return converter(self.values, self.frequencies, self.t, self.laser)
 
 
-class ElectronicData(SpectralData):
+class ElectronicActivities(SpectralActivities):
     associated_genres = (
         "wavelen",
         "ex_en",

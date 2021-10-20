@@ -10,11 +10,11 @@ import openpyxl as oxl
 
 from ..glassware.arrays import (
     DataArray,
-    ElectronicData,
+    ElectronicActivities,
     Energies,
     FloatArray,
     InfoArray,
-    SpectralData,
+    SpectralActivities,
     Transitions,
 )
 from ..glassware.spectra import SingleSpectrum, Spectra
@@ -183,17 +183,19 @@ class XlsxWriter(Writer):
         wb.save(self.file)
         logger.info("Energies export to xlsx files done.")
 
-    def spectral_data(self, band: SpectralData, data: Iterable[SpectralData]):
-        """Writes SpectralData objects to xlsx file (one sheet for each conformer).
+    def spectral_activities(
+        self, band: SpectralActivities, data: Iterable[SpectralActivities]
+    ):
+        """Writes SpectralActivities objects to xlsx file (one sheet for each conformer).
 
         Parameters
         ----------
-        band: glassware.SpectralData
+        band: glassware.SpectralActivities
             object containing information about band at which transitions occur;
             it should be frequencies for vibrational data and wavelengths or
             excitation energies for electronic data
-        data: list of glassware.SpectralData
-            SpectralData objects that are to be serialized; all should contain
+        data: list of glassware.SpectralActivities
+            SpectralActivities objects that are to be serialized; all should contain
             information for the same conformers"""
         # TODO: sort on sheets by type of DataArray class (GroundState, ExitedState...)
         wb = self.workbook
@@ -216,7 +218,7 @@ class XlsxWriter(Writer):
                     cell.value = v
                     cell.number_format = fmt
         wb.save(self.file)
-        logger.info("SpectralData export to xlsx files done.")
+        logger.info("SpectralActivities export to xlsx files done.")
 
     def spectra(self, spectra: Spectra):
         """Writes given spectral data collectively to one sheet of xlsx workbook.
@@ -266,7 +268,10 @@ class XlsxWriter(Writer):
         logger.info("Spectrum export to xlsx files done.")
 
     def transitions(
-        self, transitions: Transitions, wavelengths: ElectronicData, only_highest=True
+        self,
+        transitions: Transitions,
+        wavelengths: ElectronicActivities,
+        only_highest=True,
     ):
         transtions_data = (
             transitions.highest_contribution

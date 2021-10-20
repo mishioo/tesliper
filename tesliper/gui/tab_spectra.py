@@ -319,7 +319,7 @@ class Spectra(ttk.Frame):
 
     def visualize_settings(self):
         spectra_name = self.s_name.get()
-        spectra_type = tesliper.gw.SpectralData.spectra_type_ref[spectra_name]
+        spectra_type = tesliper.gw.SpectralActivities.spectra_type_ref[spectra_name]
         tslr = self.parent.tslr
         last_used = self.last_used_settings[spectra_name]
         settings = tslr.parameters[spectra_type].copy()

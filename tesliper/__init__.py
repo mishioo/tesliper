@@ -6,6 +6,6 @@ from .glassware import (
     Energies,
     InfoArray,
     Spectra,
-    SpectralData,
+    SpectralActivities,
 )
 from .tesliper import Tesliper

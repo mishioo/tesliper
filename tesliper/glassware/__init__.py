@@ -2,17 +2,17 @@ from .array_base import ArrayBase, ArrayProperty
 from .arrays import (
     BooleanArray,
     DataArray,
-    ElectronicData,
+    ElectronicActivities,
     Energies,
     FilenamesArray,
     FloatArray,
     Geometry,
     InfoArray,
     IntegerArray,
-    ScatteringData,
-    SpectralData,
+    ScatteringActivities,
+    SpectralActivities,
     Transitions,
-    VibrationalData,
+    VibrationalActivities,
 )
 from .conformers import Conformers
 from .spectra import SingleSpectrum, Spectra

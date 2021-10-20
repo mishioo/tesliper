@@ -44,7 +44,7 @@ def writer_implemented():
             with file.open(self.mode) as handle:
                 handle.write(f"spectrum: {repr(spectrum)}\n")
 
-        def spectral_data(self, band, data):
+        def spectral_activities(self, band, data):
             file = self.destination / self.filename_template.substitute(
                 conf="bars", genre="", ext=self.extension, num=""
             )

@@ -167,7 +167,7 @@ def test_spectrum(writer, spc):
 
 def test_serial_bars(writer, mols):
     freq, bars = mols.arrayed("freq"), [mols.arrayed("iri")]
-    writer.spectral_data(freq, bars)
+    writer.spectral_activities(freq, bars)
     values = list(zip(freq.values, *[b.values for b in bars]))
     header = [CsvWriter._header[bar.genre] for bar in [freq, *bars]]
     for name, values in zip(freq.filenames, values):
@@ -182,7 +182,7 @@ def test_serial_bars(writer, mols):
 def test_serial_bars_no_header(writer, mols):
     writer.include_header = False
     freq, bars = mols.arrayed("freq"), [mols.arrayed("iri")]
-    writer.spectral_data(freq, bars)
+    writer.spectral_activities(freq, bars)
     values = list(zip(freq.values, *[b.values for b in bars]))
     for name, values in zip(freq.filenames, values):
         file = writer.destination.joinpath(name).with_suffix(".freq.csv")

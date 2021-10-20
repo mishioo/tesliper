@@ -21,16 +21,16 @@ from typing import (
 
 from ..glassware.arrays import (
     DataArray,
-    ElectronicData,
+    ElectronicActivities,
     Energies,
     FloatArray,
     Geometry,
     InfoArray,
     IntegerArray,
-    ScatteringData,
-    SpectralData,
+    ScatteringActivities,
+    SpectralActivities,
     Transitions,
-    VibrationalData,
+    VibrationalActivities,
 )
 from ..glassware.spectra import SingleSpectrum, Spectra
 
@@ -289,8 +289,8 @@ class Writer(ABC):
             Spacial-case genres: extra information used by some writer methods
             when exporting data. Available {key: value} pairs are:
                 corrections: dict of {energy genre: FloatArray},
-                frequencies: VibrationalData or None,
-                wavelenghts: ElectronicData or None,
+                frequencies: VibrationalActivities or None,
+                wavelenghts: ElectronicActivities or None,
                 stoichiometry: InfoArray or None,
                 charge: IntegerArray or None,
                 multiplicity: IntegerArray or None
@@ -420,20 +420,20 @@ class Writer(ABC):
                 en, corrections=extras.get("corrections", dict()).get(en.genre)
             )
 
-    def _vibrationaldata_handler(
-        self, data: List[VibrationalData], extras: Dict[str, Any]
+    def _vibrationalactivities_handler(
+        self, data: List[VibrationalActivities], extras: Dict[str, Any]
     ) -> None:
-        self.spectral_data(band=extras["frequencies"], data=data)
+        self.spectral_activities(band=extras["frequencies"], data=data)
 
-    def _scatteringdata_handler(
-        self, data: List[ScatteringData], extras: Dict[str, Any]
+    def _scatteringactivities_handler(
+        self, data: List[ScatteringActivities], extras: Dict[str, Any]
     ) -> None:
-        self.spectral_data(band=extras["frequencies"], data=data)
+        self.spectral_activities(band=extras["frequencies"], data=data)
 
-    def _electronicdata_handler(
-        self, data: List[ElectronicData], extras: Dict[str, Any]
+    def _electronicactivities_handler(
+        self, data: List[ElectronicActivities], extras: Dict[str, Any]
     ) -> None:
-        self.spectral_data(band=extras["wavelengths"], data=data)
+        self.spectral_activities(band=extras["wavelengths"], data=data)
 
     def _transitions_handler(
         self, data: List[Transitions], extras: Dict[str, Any]
@@ -488,7 +488,9 @@ class Writer(ABC):
     def single_spectrum(self, spectrum: SingleSpectrum):
         raise NotImplementedError(f"Class {type(self)} does not implement this method.")
 
-    def spectral_data(self, band: SpectralData, data: List[SpectralData]):
+    def spectral_activities(
+        self, band: SpectralActivities, data: List[SpectralActivities]
+    ):
         raise NotImplementedError(f"Class {type(self)} does not implement this method.")
 
     def spectra(self, spectra: Spectra):
@@ -497,7 +499,7 @@ class Writer(ABC):
     def transitions(
         self,
         transitions: Transitions,
-        wavelengths: ElectronicData,
+        wavelengths: ElectronicActivities,
         only_highest: bool = True,
     ):
         raise NotImplementedError(f"Class {type(self)} does not implement this method.")
