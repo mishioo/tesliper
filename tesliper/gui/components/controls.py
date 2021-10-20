@@ -19,13 +19,14 @@ import numpy as np
 from ... import Soxhlet
 from ... import datawork as dw
 from ... import tesliper
-from ...glassware import SingleSpectrum
+from ... import writing as wr
+from ...glassware import Geometry, SingleSpectrum
 from .choices import ColorsChoice, ConformersChoice, EnergiesChoice
 from .collapsible_pane import CollapsiblePane
 from .helpers import ThreadedMethod, join_with_and
 from .label_separator import LabelSeparator
 from .numeric_entry import NumericEntry
-from .popups import ExportPopup
+from .popups import ExportPopup, GjfPopup
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -1175,6 +1176,13 @@ class ExportData(ttk.LabelFrame):
         root.changer.register(
             [self.b_text_export, self.b_excel_export, self.b_csv_export], "tesliper"
         )
+        self.b_gjf_export = ttk.Button(
+            self, text="Create .gjf files", command=self.export_gjf
+        )
+        self.b_gjf_export.grid(column=1, row=3, sticky="nwe")
+        root.changer.register(
+            [self.b_gjf_export], needs_any_genre=Geometry.associated_genres
+        )
 
     @property
     def tesliper(self):
@@ -1299,3 +1307,19 @@ class ExportData(ttk.LabelFrame):
         self.tesliper.output_dir = query["dest"]
         logger.info(f"Export requested: {query['query']}; format: {fmt}")
         self.execute_save_command(query["query"], fmt)
+
+    def export_gjf(self):
+        query = GjfPopup(self).get_query()
+        if not query:
+            return
+        self.execute_gjf_export(query)
+
+    @ThreadedMethod(progbar_msg="Creating gjf files...")
+    def execute_gjf_export(self, query):
+        wrt = wr.writer(fmt="gjf", mode="x", **query["init"])
+        try:
+            wrt.geometry(**query["call"])
+        except FileExistsError:
+            if self._should_override(["gjf"]):
+                wrt.mode = "w"
+                wrt.geometry(**query["call"])
