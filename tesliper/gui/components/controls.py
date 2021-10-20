@@ -1183,6 +1183,7 @@ class ExportData(ttk.LabelFrame):
         root.changer.register(
             [self.b_gjf_export], needs_any_genre=Geometry.associated_genres
         )
+        # TODO: handle PermissionDenied exception
 
     @property
     def tesliper(self):
