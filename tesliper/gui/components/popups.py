@@ -11,8 +11,12 @@ from tesliper import datawork as dw
 from tesliper.glassware import ElectronicData, ScatteringData, VibrationalData
 
 from ... import SpectralData
+from . import CollapsiblePane
+from .choices import GeometriesChoice
 from .helpers import WgtStateChanger
+from .hinted_entry import HintedEntry
 from .label_separator import LabelSeparator
+from .numeric_entry import IntegerEntry, NumericEntry
 
 logger = lgg.getLogger(__name__)
 
@@ -381,4 +385,208 @@ class ExportPopup(Popup):
             if var.get()
         }
         logger.debug(self.query)
+        return self.query
+
+
+class LinkZero(ttk.Frame):
+    def __init__(self, master, **kwargs):
+        super().__init__(master, **kwargs)
+        self.descriptions = {
+            "Mem": "amount of dynamic memory used",
+            "Chk": "path to the checkpoint file",
+            "OldChk": "path to the previous checkpoint file",
+            "SChk": "path to which checkpoint file is copied on job step start",
+            "RWF": "path to the read-write file",
+            "OldMatrix": "path to the unformatted binary matrix element file",
+            "OldRawMatrix": "path to the raw binary matrix element file",
+            "Int": "path to the two-electron integral file(s)",
+            "D2E": "path to the two-electron integral derivative file(s)",
+            "KJob": "link number and, optionally, space-separated number",
+            "Save": "empty for false, anything else for true",
+            "ErrorSave": "aka 'NoSave', empty for false, anything else for true",
+            "Subst": "link number and space-separated file path",
+        }
+        self.command = tk.StringVar()
+        self.command_checkbox = ttk.Combobox(
+            self,
+            textvariable=self.command,
+            state="readonly",
+            values=list(self.descriptions.keys()),
+            width=13,
+        )
+        self.command_checkbox.bind("<<ComboboxSelected>>", self.combobox_selected)
+        self.value = HintedEntry(
+            self, hint="← select a link0 command", state="readonly"
+        )
+        self.value.bind("<Return>", self.add)
+        self.add_button = ttk.Button(
+            self, text="+", command=self.add, state="disabled", width=1
+        )
+        self.items_frame = ttk.Frame(self)
+        self.items = {}
+
+        self.columnconfigure(1, weight=1)
+        self.command_checkbox.grid(column=0, row=0, sticky="ew")
+        self.value.grid(column=1, row=0, sticky="ew")
+        self.add_button.grid(column=2, row=0, sticky="ew")
+        self.items_frame.grid(column=0, row=1, columnspan=3, sticky="news")
+        self.items_frame.columnconfigure(1, weight=1)
+
+    def edit(self, item, value):
+        self.items[item]["value"].configure(text=value)
+
+    def add(self, _event=None):
+        item = self.command.get()
+        value = self.value.get()
+        if item in self.items:
+            return self.edit(item, value)
+        idx = len(self.items)
+        self.items[item] = {
+            "command": ttk.Label(self.items_frame, text=item, width=13),
+            "value": ttk.Label(self.items_frame, text=value, anchor="e"),
+            "button": ttk.Button(
+                self.items_frame,
+                text="-",
+                command=lambda i=item: self.remove(i),
+                width=1,
+            ),
+        }
+        self.items[item]["command"].grid(column=0, row=idx, sticky="ew")
+        self.items[item]["value"].grid(column=1, row=idx, sticky="ew")
+        self.items[item]["button"].grid(column=2, row=idx, sticky="ew")
+
+    def remove(self, item):
+        for widget in self.items[item].values():
+            widget.grid_forget()
+            widget.destroy()
+        del self.items[item]
+
+    def combobox_selected(self, _event=None):
+        self.add_button.configure(state="normal")
+        self.value.configure(state="normal")
+        item = self.command.get()
+        if item in self.items:
+            self.value.set(self.items[item]["value"]["text"])
+        else:
+            self.value.configure(hint=self.descriptions[item])
+            self.value.set("")
+
+    def get_query(self):
+        return {key: value["value"].cget("text") for key, value in self.items.items()}
+
+
+class GjfPopup(Popup):
+    def __init__(self, master, *args, **kwargs):
+        super().__init__(master, *args, **kwargs)
+        self.title("Create .gjf files...")
+        root = master.winfo_toplevel()
+        self.tesliper = root.tesliper
+        self.changer = WgtStateChanger(root)
+        self.query = {}
+
+        self.columnconfigure(1, weight=1)
+        path_frame = ttk.Frame(self)
+        path_frame.grid(column=0, row=0, columnspan=2, sticky="new")
+        path_frame.columnconfigure(1, weight=1)
+        ttk.Label(path_frame, text="Path").grid(
+            column=0, row=0, padx=5, pady=3, sticky="new"
+        )
+        self.path = tk.StringVar()
+        self.path.set(str(self.tesliper.output_dir))
+        self.path_entry = ttk.Entry(
+            path_frame, textvariable=self.path, state="readonly"
+        )
+        self.path_entry.grid(column=1, row=0, sticky="ew")
+        self.browse = ttk.Button(path_frame, text="Browse", command=self._browse)
+        self.browse.grid(column=2, row=0, sticky="we", padx=5)
+
+        frame = ttk.Frame(self)
+        frame.grid(column=0, row=1, columnspan=2, pady=3, sticky="new")
+        # geometry genre selection
+        ttk.Label(frame, text="Geometry type").grid(
+            column=0, row=0, padx=5, sticky="new"
+        )
+        self.geom_combobox = GeometriesChoice(frame)
+        self.geom_combobox.grid(column=1, row=0, padx=(0, 5), sticky="new")
+        self.geom_combobox.update_values()
+        # charge and multiplicity
+        ttk.Label(frame, text="Multiplicity").grid(
+            column=2, row=0, padx=(0, 5), sticky="new"
+        )
+        self.multiplicity = tk.StringVar(value="1")
+        self.multiplicity_entry = IntegerEntry(
+            frame, textvariable=self.multiplicity, width=4
+        )
+        self.multiplicity_entry.grid(column=3, row=0, padx=(0, 5), sticky="new")
+        ttk.Label(frame, text="Charge").grid(column=4, row=0, padx=(0, 5), sticky="new")
+        self.charge = tk.StringVar(value="0")
+        self.charge_entry = IntegerEntry(frame, textvariable=self.charge, width=4)
+        self.charge_entry.grid(column=5, row=0, padx=(0, 5), sticky="new")
+
+        # job route entry
+        ttk.Label(self, text="Route").grid(column=0, row=2, padx=5, sticky="new")
+        self.job = HintedEntry(self, hint="Calculations specification")
+        self.job.grid(column=1, row=2, padx=(0, 5), sticky="new")
+
+        # comment / job description
+        ttk.Label(self, text="Comment").grid(column=0, row=3, padx=5, sticky="new")
+        self.comment = HintedEntry(self, hint="Short description, optional")
+        self.comment.grid(column=1, row=3, padx=(0, 5), sticky="new")
+
+        # link0 commands
+        pane = CollapsiblePane(self, text="Link0 commands", collapsed=True)
+        pane.grid(column=0, row=4, columnspan=2, padx=5, pady=3, sticky="new")
+        pane.content.columnconfigure(0, weight=1)
+        pane.content.rowconfigure(0, weight=1)
+        self.link_zero = LinkZero(pane.content)
+        self.link_zero.grid(column=0, row=0, sticky="news")
+
+        # after-geometry specifications
+        pane = CollapsiblePane(
+            self, text="Post-geometry specifications", collapsed=True
+        )
+        pane.grid(column=0, row=5, columnspan=2, padx=5, pady=3, sticky="news")
+        pane.content.columnconfigure(0, weight=1)
+        pane.content.rowconfigure(0, weight=1)
+        # post_spec width controlled by grid manager, hence 0 below
+        self.post_spec = tk.Text(pane.content, height=4, width=0)
+        self.post_spec.grid(column=0, row=0, sticky="news")
+        self.rowconfigure(5, weight=1)
+
+        # ok / cancel buttons
+        buttons_frame = ttk.Frame(self)
+        buttons_frame.grid(column=0, row=6, pady=2, columnspan=2, sticky="se")
+        b_cancel = ttk.Button(buttons_frame, text="Cancel", command=self.cancel_command)
+        b_cancel.grid(column=0, row=0, sticky="se")
+        b_ok = ttk.Button(buttons_frame, text="OK", command=self.ok_command)
+        b_ok.grid(column=1, row=0, padx=5, sticky="se")
+
+    def _browse(self):
+        directory = askdirectory()
+        if not directory:
+            return
+        self.path.set(directory)
+
+    def ok_command(self):
+        self.query["init"] = {
+            "destination": self.path.get(),
+            "link0": self.link_zero.get_query(),
+            "route": self.job.get(),
+            "comment": self.comment.get() or "No information provided.",
+            "post_spec": self.post_spec.get("1.0", "end"),  # Tk.Text instance
+        }
+        self.query["call"] = {
+            "geometry": self.tesliper[self.geom_combobox.get_genre()],
+            "charge": int(self.charge.get()),
+            "multiplicity": int(self.multiplicity.get()),
+        }
+        self.destroy()
+
+    def cancel_command(self):
+        self.query = {}
+        self.destroy()
+
+    def get_query(self):
+        self.wait_window()
+        logger.debug(f"Request: {self.query}")
         return self.query

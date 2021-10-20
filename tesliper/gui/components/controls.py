@@ -4,7 +4,6 @@ import logging as lgg
 import queue
 import tkinter as tk
 import tkinter.ttk as ttk
-from abc import ABC, abstractmethod
 from collections import Counter, namedtuple
 from pathlib import Path
 from tkinter import messagebox
@@ -20,113 +19,20 @@ import numpy as np
 from ... import Soxhlet
 from ... import datawork as dw
 from ... import tesliper
-from ...glassware import SingleSpectrum
+from ... import writing as wr
+from ...glassware import Geometry, SingleSpectrum
+from .choices import ColorsChoice, ConformersChoice, EnergiesChoice
 from .collapsible_pane import CollapsiblePane
 from .helpers import ThreadedMethod, join_with_and
 from .label_separator import LabelSeparator
 from .numeric_entry import NumericEntry
-from .popups import ExportPopup, not_implemented_popup
+from .popups import ExportPopup, GjfPopup
 
 # LOGGER
 logger = lgg.getLogger(__name__)
 
 
 # CLASSES
-class AutoComboboxBase(ttk.Combobox, ABC):
-    """Combobox implementing functionality for automatically updating list of available
-    values."""
-
-    def __init__(self, parent, **kwargs):
-        self.var = tk.StringVar()
-        kwargs["textvariable"] = self.var
-        kwargs["state"] = "readonly"
-        super().__init__(parent, **kwargs)
-        root = self.winfo_toplevel()
-        root.bind("<<KeptChanged>>", self.update_values, "+")
-        root.bind("<<DataExtracted>>", self.update_values, "+")
-
-    @abstractmethod
-    def get_available_values(self):
-        raise NotImplementedError
-
-    @property
-    def tesliper(self):
-        return self.winfo_toplevel().tesliper
-
-    def update_values(self, _event=None):
-        """Update displayed values to reflect currently available energy genres.
-        If previously chosen genre is no longer available, change it."""
-        if _event is not None:
-            logger.debug(f"Event caught by {self}.update_values handler.")
-        current = self.var.get()
-        available = self.get_available_values()
-        self["values"] = available
-        logger.debug(f"Updated {self} values with {available}.")
-        if available and current not in available:
-            self.var.set(available[0])
-            logger.info(
-                f"Option '{current}' is no longer available, "
-                f"changed to {available[0]}."
-            )
-        elif not available:
-            self.var.set("Not available.")
-            logger.info("No values available, removed selection.")
-
-
-class EnergiesChoice(AutoComboboxBase):
-    """Combobox that enables choice of type of energy."""
-
-    _names_ref = {
-        k: v
-        for k, v in zip(
-            "Thermal Enthalpy Gibbs SCF Zero-Point".split(),
-            "ten ent gib scf zpe".split(),
-        )
-    }
-    _genres_ref = {v: k for k, v in _names_ref.items()}
-
-    def __init__(self, parent, **kwargs):
-        super().__init__(parent, **kwargs)
-
-    def get_genre(self):
-        """Convenience method for getting genre of the energy type chosen."""
-        return self._names_ref[self.var.get()]
-
-    def get_available_values(self):
-        available_genres = [
-            genre
-            for genre in self._genres_ref
-            if self.tesliper.conformers.has_genre(genre)
-        ]
-        available = tuple(self._genres_ref[genre] for genre in available_genres)
-        return available
-
-
-class ConformersChoice(AutoComboboxBase):
-    """Combobox that enables choice of conformer for spectra calculation."""
-
-    def __init__(self, parent, spectra_var, **kwargs):
-        super().__init__(parent, **kwargs)
-        self.spectra_var = spectra_var
-
-    def get_available_values(self):
-        """Returns filenames of conformers having data for chosen spectra."""
-        try:
-            activities_genre = dw.DEFAULT_ACTIVITIES[self.spectra_var.get()]
-        except KeyError:
-            return []
-        available = self.tesliper[activities_genre].filenames.tolist()
-        return available
-
-
-class ColorsChoice(AutoComboboxBase):
-    def get_available_values(self):
-        return (
-            "viridis plasma spring summer autumn winter copper rainbow "
-            "turbo gnuplot Blues Reds Greens Greys ".split()
-        )
-
-
 class FilterRange(ttk.Frame):
     def __init__(self, parent, view, proxy, **kwargs):
         super().__init__(parent, **kwargs)
@@ -1270,6 +1176,14 @@ class ExportData(ttk.LabelFrame):
         root.changer.register(
             [self.b_text_export, self.b_excel_export, self.b_csv_export], "tesliper"
         )
+        self.b_gjf_export = ttk.Button(
+            self, text="Create .gjf files", command=self.export_gjf
+        )
+        self.b_gjf_export.grid(column=1, row=3, sticky="nwe")
+        root.changer.register(
+            [self.b_gjf_export], needs_any_genre=Geometry.associated_genres
+        )
+        # TODO: handle PermissionDenied exception
 
     @property
     def tesliper(self):
@@ -1394,3 +1308,19 @@ class ExportData(ttk.LabelFrame):
         self.tesliper.output_dir = query["dest"]
         logger.info(f"Export requested: {query['query']}; format: {fmt}")
         self.execute_save_command(query["query"], fmt)
+
+    def export_gjf(self):
+        query = GjfPopup(self).get_query()
+        if not query:
+            return
+        self.execute_gjf_export(query)
+
+    @ThreadedMethod(progbar_msg="Creating gjf files...")
+    def execute_gjf_export(self, query):
+        wrt = wr.writer(fmt="gjf", mode="x", **query["init"])
+        try:
+            wrt.geometry(**query["call"])
+        except FileExistsError:
+            if self._should_override(["gjf"]):
+                wrt.mode = "w"
+                wrt.geometry(**query["call"])
