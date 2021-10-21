@@ -22,15 +22,19 @@ from typing import (
 from ..glassware.arrays import (
     DataArray,
     ElectronicActivities,
+    ElectronicData,
     Energies,
     FloatArray,
     Geometry,
     InfoArray,
     IntegerArray,
     ScatteringActivities,
+    ScatteringData,
     SpectralActivities,
+    SpectralData,
     Transitions,
     VibrationalActivities,
+    VibrationalData,
 )
 from ..glassware.spectra import SingleSpectrum, Spectra
 
@@ -435,6 +439,21 @@ class Writer(ABC):
     ) -> None:
         self.spectral_activities(band=extras["wavelengths"], data=data)
 
+    def _vibrationaldata_handler(
+        self, data: List[VibrationalData], extras: Dict[str, Any]
+    ) -> None:
+        self.spectral_data(band=extras["frequencies"], data=data)
+
+    def _scatteringdata_handler(
+        self, data: List[ScatteringData], extras: Dict[str, Any]
+    ) -> None:
+        self.spectral_data(band=extras["frequencies"], data=data)
+
+    def _electronicdata_handler(
+        self, data: List[ElectronicData], extras: Dict[str, Any]
+    ) -> None:
+        self.spectral_data(band=extras["wavelengths"], data=data)
+
     def _transitions_handler(
         self, data: List[Transitions], extras: Dict[str, Any]
     ) -> None:
@@ -491,6 +510,9 @@ class Writer(ABC):
     def spectral_activities(
         self, band: SpectralActivities, data: List[SpectralActivities]
     ):
+        raise NotImplementedError(f"Class {type(self)} does not implement this method.")
+
+    def spectral_data(self, band: SpectralData, data: List[SpectralData]):
         raise NotImplementedError(f"Class {type(self)} does not implement this method.")
 
     def spectra(self, spectra: Spectra):
