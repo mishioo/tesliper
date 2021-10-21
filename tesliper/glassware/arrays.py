@@ -85,7 +85,6 @@ class InfoArray(DataArray):
     associated_genres = (
         "command",
         "cpu_time",
-        "transitions",
         "stoichiometry",
     )
     values = ArrayProperty(dtype=str, check_against="filenames")
