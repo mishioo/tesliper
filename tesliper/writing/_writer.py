@@ -42,7 +42,7 @@ logger.setLevel(lgg.DEBUG)
 _WRITERS: Dict[str, Type["Writer"]] = {}
 
 
-def writer(fmt: str, destination, mode, **kwargs) -> "Writer":
+def writer(fmt: str, destination, mode="x", **kwargs) -> "Writer":
     try:
         return _WRITERS[fmt](destination, mode, **kwargs)
     except KeyError:
