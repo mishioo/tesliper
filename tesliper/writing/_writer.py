@@ -389,7 +389,7 @@ class Writer(ABC):
                 cat=cat,
                 det=det,
             )
-        except ValueError as error:
+        except KeyError as error:
             known = {"conf", "ext", "num", "genre", "cat", "det"}
             # second element of each tuple returned is identifier's name
             ids = {parsed[1] for parsed in Formatter().parse(template.template)}
