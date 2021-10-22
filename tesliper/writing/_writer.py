@@ -321,7 +321,7 @@ class Writer(ABC):
         num: Union[str, int] = "",
         genre: str = "",
         cat: str = "",
-        avg: str = "",
+        det: str = "",
         ext: str = "",
     ) -> str:
         """Create filename using given template and given or global values
@@ -333,7 +333,7 @@ class Writer(ABC):
             ${num} - number of the file according to internal counter;
             ${genre} - genre of exported data;
             ${cat} - category of produced output;
-            ${avg} - genre of values used to average data.
+            ${det} - category-specific detail.
         The ${ext} identifier is filled with the value of Writers `extension` attribute
         if not explicitly given as parameter to this method's call. Default values
         for other identifiers are just empty strings.
@@ -351,8 +351,8 @@ class Writer(ABC):
             value for ${genre} identifier, defaults to empty string.
         cat : str
             value for ${cat} identifier, defaults to empty string.
-        avg : str
-            value for ${avg} identifier, defaults to empty string.
+        det : str
+            value for ${det} identifier, defaults to empty string.
         ext : str
             value for ${ext} identifier, defaults to empty string.
 
@@ -387,10 +387,10 @@ class Writer(ABC):
                 num=num,
                 genre=genre,
                 cat=cat,
-                avg=avg,
+                det=det,
             )
         except ValueError as error:
-            known = {"conf", "ext", "num", "genre", "cat", "avg"}
+            known = {"conf", "ext", "num", "genre", "cat", "det"}
             # second element of each tuple returned is identifier's name
             ids = {parsed[1] for parsed in Formatter().parse(template.template)}
             raise ValueError(f"Unexpected identifiers given: {ids-known}.") from error
