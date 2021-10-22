@@ -189,7 +189,7 @@ class TxtWriter(Writer):
     def single_spectrum(
         self,
         spectrum: SingleSpectrum,
-        filename_template: Union[str, Template] = "${cat}.${genre}-${avg}.${ext}",
+        filename_template: Union[str, Template] = "${cat}.${genre}-${det}.${ext}",
     ):
         """Writes SingleSpectrum object to txt file.
 
