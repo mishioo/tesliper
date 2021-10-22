@@ -239,7 +239,7 @@ def test_serial_transitions_header(writer, molstd):
     values = list(zip(wave.wavelen, *trans.highest_contribution))
     header = ["wavelength/nm", "ground", "excited", "coefficient", "contribution"]
     for name, values in zip(trans.filenames, values):
-        file = writer.destination.joinpath(name).with_suffix(".transitions.csv")
+        file = writer.destination.joinpath(name).with_suffix(".transitions-highest.csv")
         with file.open("r", newline="") as file:
             reader = csv.reader(file)
             assert next(reader) == header
@@ -254,7 +254,7 @@ def test_serial_transitions_only_highest(writer, molstd, filenamestd):
     writer.transitions(trans, wave, only_highest=True)
     values = list(zip(wave.wavelen, *trans.highest_contribution))
     for name, values in zip(trans.filenames, values):
-        file = writer.destination.joinpath(name).with_suffix(".transitions.csv")
+        file = writer.destination.joinpath(name).with_suffix(".transitions-highest.csv")
         with file.open("r", newline="") as file:
             reader = csv.reader(file)
             for *given, got in zip(*values, reader):
@@ -267,7 +267,7 @@ def test_serial_transitions_all(writer, molstd, filenamestd):
     trans, wave = molstd.arrayed("transitions"), molstd.arrayed("wavelen")
     writer.transitions(trans, wave, only_highest=False)
     for name, values in zip(trans.filenames, trans.values):
-        file = writer.destination.joinpath(name).with_suffix(".transitions.csv")
+        file = writer.destination.joinpath(name).with_suffix(".transitions-all.csv")
         with file.open("r", newline="") as file:
             reader = csv.reader(file)
             # TODO: should also check if correct wavelength assigned
