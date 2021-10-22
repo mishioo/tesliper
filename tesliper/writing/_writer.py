@@ -3,7 +3,7 @@ import logging as lgg
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
 from pathlib import Path
-from string import Template
+from string import Formatter, Template
 from typing import (
     IO,
     Any,
@@ -197,8 +197,6 @@ class Writer(ABC):
         scf="0.00000000",
     )
     energies_order = "zpe ten ent gib scf".split(" ")
-    default_template = "${conf}.${ext}"
-    # TODO: add separate template for single-file methods ?
     # TODO: add support for generic FloatArray and InfoArray
 
     @property
@@ -215,7 +213,6 @@ class Writer(ABC):
     def __init__(self, destination: Union[str, Path], mode: str = "x"):
         self.mode = mode
         self.destination = destination
-        self.filename_template = self.default_template
         self._handle = None
 
     @property
@@ -317,69 +314,120 @@ class Writer(ABC):
                 values.append(obj)
         return distr, extras
 
-    @property
-    def filename_template(self) -> Template:
-        """string.Template: Template that will be used for generation of names of files
-        produced by this object. It is stored as a `string.Template` object, if string
-        is given instead, it will be converted. Only predefined identifiers may be used
-        and they are as follows:
+    def make_filename(
+        self,
+        template: Union[str, Template],
+        conf: str = "",
+        num: Union[str, int] = "",
+        genre: str = "",
+        cat: str = "",
+        avg: str = "",
+        ext: str = "",
+    ) -> str:
+        """Create filename using given template and given or global values
+        for known identifiers. The identifier should be used in the template as
+        "${identifier}" where "identifier" is the name of identifier.
+        Available names and their meaning are:
+            ${ext} - appropriate file extension;
             ${conf} - name of the conformer;
-            ${ext} - appropriate file extension, stored in `extension` class attribute;
             ${num} - number of the file according to internal counter;
-            ${genre} - genre of exported data.
+            ${genre} - genre of exported data;
+            ${cat} - category of produced output;
+            ${avg} - genre of values used to average data.
+        The ${ext} identifier is filled with the value of Writers `extension` attribute
+        if not explicitly given as parameter to this method's call. Default values
+        for other identifiers are just empty strings.
+
+        Parameters
+        ----------
+        template : str or string.Template
+            Template that will be used to generate filenames. It should contain only
+            known identifiers, listed above.
+        conf : str
+            value for ${conf} identifier, defaults to empty string.
+        num : str or int
+            value for ${str} identifier, defaults to empty string.
+        genre : str
+            value for ${genre} identifier, defaults to empty string.
+        cat : str
+            value for ${cat} identifier, defaults to empty string.
+        avg : str
+            value for ${avg} identifier, defaults to empty string.
+        ext : str
+            value for ${ext} identifier, defaults to empty string.
 
         Raises
         ------
         ValueError
-            If given template or string contain any unexpected identifiers.
-        """
-        return self._filename_template
+            If given template or string contains any unexpected identifiers.
 
-    @filename_template.setter
-    def filename_template(self, filename_template: Union[str, Template]) -> None:
-        # TODO: add ${name} identifier for type of produced summary
-        if isinstance(filename_template, str):
-            filename_template = Template(filename_template)
+        Examples
+        --------
+        Must be first subclassed and instantiated:
+        >>> class MyWriter(Writer):
+        >>>     extension = "foo"
+        >>> wrt = MyWriter("/path/to/some/directory/")
+
+        >>> wrt.make_filename(template="somefile.${ext}")
+        "somefile.foo"
+        >>> wrt.make_filename(template="${conf}.${ext}")
+        ".foo"  # conf is empty string by default
+        >>> wrt.make_filename(template="${conf}.${ext}", conf="")
+        "conformer.foo"
+        >>> wrt.make_filename(template="Unknown_identifier_${bla}.${ext}")
+        Traceback (most recent call last):
+        ValueError: Unexpected identifiers given: bla.
+        """
+        if isinstance(template, str):
+            template = Template(template)
         try:
-            filename_template.substitute(conf="", ext="", num="", genre="")
+            return template.substitute(
+                conf=conf,
+                ext=ext or self.extension,
+                num=num,
+                genre=genre,
+                cat=cat,
+                avg=avg,
+            )
         except ValueError as error:
-            # TODO: add list of unexpected identifiers given
-            raise ValueError("Unexpected identifiers given.") from error
-        self._filename_template = filename_template
+            known = {"conf", "ext", "num", "genre", "cat", "avg"}
+            # second element of each tuple returned is identifier's name
+            ids = {parsed[1] for parsed in Formatter().parse(template.template)}
+            raise ValueError(f"Unexpected identifiers given: {ids-known}.") from error
 
     @contextmanager
     def _get_handle(
-        self, name: str, genre: str, num: int = 0, **kwargs
+        self, template: Union[str, Template], params: dict, **kwargs
     ) -> Iterator[IO[AnyStr]]:
         """Helper method for creating files. Given additional kwargs will be passed to
         `open()` method. Implemented as context manager for use with `with` statement.
 
         Parameters
         ----------
-        name: str
-            value for `${conf}` placeholder in `filename_template`
-        genre: str
-            genre name for `${genre}` placeholder in `filename_template`
-        num: int
-            number for `${num}` placeholder in `filename_template`
+        template : str or string.Template
+            Template that will be used to generate filenames.
+        params : dict
+            Dictionary of {identifier: value} for `.make_filename` method.
         kwargs
-            arguments for `Path.open()` used to open file
+            Arguments for `Path.open()` used to open file.
 
         Yields
         ------
         IO
             file handle, will be closed automatically after `with` statement exits
         """
-        filename = self.filename_template.substitute(
-            conf=name, ext=self.extension, num=num, genre=genre
-        )
+        filename = self.make_filename(template=template, **params)
         file = self.check_file(self.destination.joinpath(filename))
         with file.open(self.mode, **kwargs) as handle:
             self._handle = handle
             yield handle
 
     def _iter_handles(
-        self, filenames: Iterable[str], genre: str, **kwargs
+        self,
+        filenames: Iterable[str],
+        template: Union[str, Template],
+        params: dict,
+        **kwargs,
     ) -> Iterator[IO[AnyStr]]:
         """Helper method for iteration over generated files. Given additional kwargs
         will be passed to `open()` method.
@@ -402,9 +450,8 @@ class Writer(ABC):
             file handle, will be closed automatically
         """
         for num, fnm in enumerate(filenames):
-            filename = self.filename_template.substitute(
-                conf=fnm, ext=self.extension, num=num, genre=genre
-            )
+            params.update({"conf": fnm, "num": num})
+            filename = self.make_filename(template=template, **params)
             file = self.check_file(self.destination.joinpath(filename))
             with file.open(self.mode, **kwargs) as handle:
                 yield handle
@@ -479,19 +526,32 @@ class Writer(ABC):
         energies: Sequence[Energies],
         frequencies: Optional[DataArray] = None,
         stoichiometry: Optional[InfoArray] = None,
+        filename_template: Union[str, Template] = "",
     ):
         raise NotImplementedError(f"Class {type(self)} does not implement this method.")
 
-    def energies(self, energies: Energies, corrections: Optional[FloatArray] = None):
+    def energies(
+        self,
+        energies: Energies,
+        corrections: Optional[FloatArray] = None,
+        filename_template: Union[str, Template] = "",
+    ):
         raise NotImplementedError(f"Class {type(self)} does not implement this method.")
 
-    def single_spectrum(self, spectrum: SingleSpectrum):
+    def single_spectrum(
+        self, spectrum: SingleSpectrum, filename_template: Union[str, Template] = ""
+    ):
         raise NotImplementedError(f"Class {type(self)} does not implement this method.")
 
-    def spectral_data(self, band: SpectralData, data: List[SpectralData]):
+    def spectral_data(
+        self,
+        band: SpectralData,
+        data: List[SpectralData],
+        filename_template: Union[str, Template] = "",
+    ):
         raise NotImplementedError(f"Class {type(self)} does not implement this method.")
 
-    def spectra(self, spectra: Spectra):
+    def spectra(self, spectra: Spectra, filename_template: Union[str, Template] = ""):
         raise NotImplementedError(f"Class {type(self)} does not implement this method.")
 
     def transitions(
@@ -499,6 +559,7 @@ class Writer(ABC):
         transitions: Transitions,
         wavelengths: ElectronicData,
         only_highest: bool = True,
+        filename_template: Union[str, Template] = "",
     ):
         raise NotImplementedError(f"Class {type(self)} does not implement this method.")
 
@@ -507,5 +568,6 @@ class Writer(ABC):
         geometry: Geometry,
         charge: Optional[Union[IntegerArray, Sequence[int], int]] = None,
         multiplicity: Optional[Union[IntegerArray, Sequence[int], int]] = None,
+        filename_template: Union[str, Template] = "",
     ):
         raise NotImplementedError(f"Class {type(self)} does not implement this method.")
