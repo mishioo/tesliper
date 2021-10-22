@@ -397,7 +397,7 @@ class Writer(ABC):
 
     @contextmanager
     def _get_handle(
-        self, template: Union[str, Template], params: dict, **kwargs
+        self, template: Union[str, Template], template_params: dict, open_params: dict
     ) -> Iterator[IO[AnyStr]]:
         """Helper method for creating files. Given additional kwargs will be passed to
         `open()` method. Implemented as context manager for use with `with` statement.
@@ -406,9 +406,9 @@ class Writer(ABC):
         ----------
         template : str or string.Template
             Template that will be used to generate filenames.
-        params : dict
+        template_params : dict
             Dictionary of {identifier: value} for `.make_filename` method.
-        kwargs
+        open_params : dict
             Arguments for `Path.open()` used to open file.
 
         Yields
@@ -416,9 +416,9 @@ class Writer(ABC):
         IO
             file handle, will be closed automatically after `with` statement exits
         """
-        filename = self.make_filename(template=template, **params)
+        filename = self.make_filename(template=template, **template_params)
         file = self.check_file(self.destination.joinpath(filename))
-        with file.open(self.mode, **kwargs) as handle:
+        with file.open(self.mode, **open_params) as handle:
             self._handle = handle
             yield handle
 
@@ -426,8 +426,8 @@ class Writer(ABC):
         self,
         filenames: Iterable[str],
         template: Union[str, Template],
-        params: dict,
-        **kwargs,
+        template_params: dict,
+        open_params: dict,
     ) -> Iterator[IO[AnyStr]]:
         """Helper method for iteration over generated files. Given additional kwargs
         will be passed to `open()` method.
@@ -437,11 +437,9 @@ class Writer(ABC):
         filenames: list of str
             list of source filenames, used as value for `${conf}` placeholder
             in `filename_template`
-        genre: str
-            genre name for `${genre}` placeholder in `filename_template`
-        genre: str
-            genre name for `${genre}` placeholder in `filename_template`
-        kwargs
+        template_params : dict
+            Dictionary of {identifier: value} for `.make_filename` method.
+        open_params : dict
             arguments for `Path.open()` used to open file
 
         Yields
@@ -450,10 +448,10 @@ class Writer(ABC):
             file handle, will be closed automatically
         """
         for num, fnm in enumerate(filenames):
-            params.update({"conf": fnm, "num": num})
-            filename = self.make_filename(template=template, **params)
+            template_params.update({"conf": fnm, "num": num})
+            filename = self.make_filename(template=template, **template_params)
             file = self.check_file(self.destination.joinpath(filename))
-            with file.open(self.mode, **kwargs) as handle:
+            with file.open(self.mode, **open_params) as handle:
                 yield handle
 
     def _energies_handler(self, data: List[Energies], extras: Dict[str, Any]) -> None:
