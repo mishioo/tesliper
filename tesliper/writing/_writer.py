@@ -397,7 +397,10 @@ class Writer(ABC):
 
     @contextmanager
     def _get_handle(
-        self, template: Union[str, Template], template_params: dict, open_params: dict
+        self,
+        template: Union[str, Template],
+        template_params: dict,
+        open_params: Optional[dict] = None,
     ) -> Iterator[IO[AnyStr]]:
         """Helper method for creating files. Given additional kwargs will be passed to
         `open()` method. Implemented as context manager for use with `with` statement.
@@ -408,7 +411,7 @@ class Writer(ABC):
             Template that will be used to generate filenames.
         template_params : dict
             Dictionary of {identifier: value} for `.make_filename` method.
-        open_params : dict
+        open_params : dict, optional
             Arguments for `Path.open()` used to open file.
 
         Yields
@@ -416,6 +419,7 @@ class Writer(ABC):
         IO
             file handle, will be closed automatically after `with` statement exits
         """
+        open_params = open_params or {}  # empty dict by default
         filename = self.make_filename(template=template, **template_params)
         file = self.check_file(self.destination.joinpath(filename))
         with file.open(self.mode, **open_params) as handle:
@@ -427,7 +431,7 @@ class Writer(ABC):
         filenames: Iterable[str],
         template: Union[str, Template],
         template_params: dict,
-        open_params: dict,
+        open_params: Optional[dict] = None,
     ) -> Iterator[IO[AnyStr]]:
         """Helper method for iteration over generated files. Given additional kwargs
         will be passed to `open()` method.
@@ -439,14 +443,15 @@ class Writer(ABC):
             in `filename_template`
         template_params : dict
             Dictionary of {identifier: value} for `.make_filename` method.
-        open_params : dict
-            arguments for `Path.open()` used to open file
+        open_params : dict, optional
+            arguments for `Path.open()` used to open file.
 
         Yields
         ------
         TextIO
             file handle, will be closed automatically
         """
+        open_params = open_params or {}  # empty dict by default
         for num, fnm in enumerate(filenames):
             template_params.update({"conf": fnm, "num": num})
             filename = self.make_filename(template=template, **template_params)
