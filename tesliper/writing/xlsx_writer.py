@@ -40,7 +40,8 @@ class XlsxWriter(Writer):
     """
 
     extension = "xlsx"
-    default_template = "${conf}-${genre}"  # TODO: use it as template for sheet names
+    # TODO: use filename_template and .make_filename() for sheet names
+    # TODO: maybe change their names to not include "file"?
 
     def __init__(
         self,

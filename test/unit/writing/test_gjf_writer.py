@@ -30,7 +30,6 @@ def test_writer_init():
     assert gjfwriter.route == "#"
     assert gjfwriter.comment == "No information provided."
     assert gjfwriter.post_spec == ""
-    assert gjfwriter.filename_template.template == "${conf}.${ext}"
 
 
 @given(st.text())

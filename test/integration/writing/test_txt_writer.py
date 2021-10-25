@@ -217,7 +217,7 @@ def test_serial_transitions_only_highest(writer, molstd, filenamestd):
         molstd.arrayed("transitions"), molstd.arrayed("wavelen"), only_highest=True
     )
     output_file_path = writer.destination.joinpath(filenamestd[0])
-    output_file_path = output_file_path.with_suffix(".transitions.txt")
+    output_file_path = output_file_path.with_suffix(".transitions-highest.txt")
     with output_file_path.open("r") as handle:
         cont = iter(handle.readlines())
     assert "of highest contribution" in next(cont)
@@ -240,7 +240,7 @@ def test_serial_transitions_all(writer, molstd, filenamestd):
         molstd.arrayed("transitions"), molstd.arrayed("wavelen"), only_highest=False
     )
     output_file_path = writer.destination.joinpath(filenamestd[0])
-    output_file_path = output_file_path.with_suffix(".transitions.txt")
+    output_file_path = output_file_path.with_suffix(".transitions-all.txt")
     with output_file_path.open("r") as handle:
         cont = iter(handle.readlines())
     assert "contributing" in next(cont)
