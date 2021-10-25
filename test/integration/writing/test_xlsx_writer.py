@@ -70,8 +70,8 @@ def test_energies(writer, mols):
     writer.energies(mols.arrayed(grn))
     assert writer.file.exists()
     wb = oxl.load_workbook(writer.file)
-    assert wb.sheetnames == [XlsxWriter._header[grn]]
-    ws = wb[XlsxWriter._header[grn]]
+    assert wb.sheetnames == [f"distribution-{grn}"]
+    ws = wb[f"distribution-{grn}"]
     assert len(list(ws.columns)) == 5
     assert len(list(ws.rows)) == 1 + len(list(mols.keys()))
 
@@ -84,8 +84,8 @@ def test_overview(writer, mols):
     )
     assert writer.file.exists()
     wb = oxl.load_workbook(writer.file)
-    assert wb.sheetnames == ["Collective overview"]
-    ws = wb["Collective overview"]
+    assert wb.sheetnames == ["overview"]
+    ws = wb["overview"]
     assert len(list(ws.columns)) == 13
     assert len(list(ws.rows)) == 2 + len(list(mols.keys()))
 
@@ -97,17 +97,17 @@ def test_energies_with_corrections(writer, mols):
     writer.energies(ens, corrections=corrs)
     assert writer.file.exists()
     wb = oxl.load_workbook(writer.file)
-    assert wb.sheetnames == [XlsxWriter._header[grn]]
-    ws = wb[XlsxWriter._header[grn]]
+    assert wb.sheetnames == [f"distribution-{grn}"]
+    ws = wb[f"distribution-{grn}"]
     assert len(list(ws.columns)) == 6
     assert len(list(ws.rows)) == 1 + len(list(mols.keys()))
 
 
-def test_bars(writer, mols, filenames):
+def test_activities(writer, mols, filenames):
     writer.spectral_activities(mols.arrayed("freq"), [mols.arrayed("iri")])
     assert writer.file.exists()
     wb = oxl.load_workbook(writer.file)
-    keys = [Path(f).stem for f in filenames]
+    keys = [f"{Path(f).stem}.activities-freq" for f in filenames]
     assert wb.sheetnames == keys
     for file in keys:
         ws = wb[file]
@@ -128,7 +128,7 @@ def test_single_spectrum(writer, mols, spc):
     writer.single_spectrum(spc)
     assert writer.file.exists()
     wb = oxl.load_workbook(writer.file)
-    ws = wb[f"{spc.genre}-{spc.averaged_by}"]
+    ws = wb[f"spectrum.{spc.genre}-{spc.averaged_by}"]
     assert len(list(ws.columns)) == 2
     assert len(list(ws.rows)) == 1 + spc.values.size
 
@@ -150,7 +150,7 @@ def test_transitions_only_highest(writer, molstd, filenamestd):
     writer.transitions(trans, wave, only_highest=True)
     assert writer.file.exists()
     wb = oxl.load_workbook(writer.file)
-    keys = [Path(f).stem for f in filenamestd]
+    keys = [f"{Path(f).stem}.transitions-highest" for f in filenamestd]
     assert wb.sheetnames == keys
     for file in keys:
         ws = wb[file]
@@ -163,7 +163,7 @@ def test_transitions_all(writer, molstd, filenamestd):
     writer.transitions(trans, wave, only_highest=False)
     assert writer.file.exists()
     wb = oxl.load_workbook(writer.file)
-    keys = [Path(f).stem for f in filenamestd]
+    keys = [f"{Path(f).stem}.transitions-all" for f in filenamestd]
     assert wb.sheetnames == keys
     for num, file in enumerate(keys):
         ws = wb[file]
