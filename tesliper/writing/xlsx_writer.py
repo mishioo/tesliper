@@ -15,6 +15,7 @@ from ..glassware.arrays import (
     FloatArray,
     InfoArray,
     SpectralActivities,
+    SpectralData,
     Transitions,
 )
 from ..glassware.spectra import SingleSpectrum, Spectra
@@ -184,6 +185,21 @@ class XlsxWriter(Writer):
         wb.save(self.file)
         logger.info("Energies export to xlsx files done.")
 
+    def spectral_data(self, band: SpectralActivities, data: Iterable[SpectralData]):
+        """Writes SpectralData objects to xlsx file (one sheet for each conformer).
+
+        Parameters
+        ----------
+        band: glassware.SpectralActivities
+            object containing information about band at which transitions occur;
+            it should be frequencies for vibrational data and wavelengths or
+            excitation energies for electronic data
+        data: iterable of glassware.SpectralData
+            SpectralData objects that are to be serialized; all should contain
+            information for the same conformers.
+        """
+        self._spectral(band=band, data=data, category="data")
+
     def spectral_activities(
         self, band: SpectralActivities, data: Iterable[SpectralActivities]
     ):
@@ -195,10 +211,30 @@ class XlsxWriter(Writer):
             object containing information about band at which transitions occur;
             it should be frequencies for vibrational data and wavelengths or
             excitation energies for electronic data
-        data: list of glassware.SpectralActivities
+        data: iterable of glassware.SpectralActivities
             SpectralActivities objects that are to be serialized; all should contain
-            information for the same conformers"""
-        # TODO: sort on sheets by type of DataArray class (GroundState, ExitedState...)
+            information for the same conformers.
+        """
+        self._spectral(band=band, data=data, category="activities")
+
+    def _spectral(
+        self,
+        band: SpectralActivities,
+        data: Union[Iterable[SpectralData], Iterable[SpectralActivities]],
+        category: str,
+    ):
+        """Writes SpectralActivities objects to xlsx file (one sheet for each conformer).
+
+        Parameters
+        ----------
+        band: glassware.SpectralActivities
+            object containing information about band at which transitions occur;
+            it should be frequencies for vibrational data and wavelengths or
+            excitation energies for electronic data
+        data: iterable of glassware.SpectralActivities or iterable of SpectralData
+            SpectralActivities or SpectralData objects that are to be serialized;
+            all should contain information for the same conformers.
+        """
         wb = self.workbook
         data = [band] + list(data)
         genres = [bar.genre for bar in data]
@@ -207,7 +243,8 @@ class XlsxWriter(Writer):
         fmts = [self._excel_formats[genre] for genre in genres]
         values = list(zip(*[bar.values for bar in data]))
         for fname, values_ in zip(data[0].filenames, values):
-            ws = wb.create_sheet(title=fname)
+            title = f"{fname}.{category}-{band.genre}"
+            ws = wb.create_sheet(title=title)
             ws.append(headers)
             ws.freeze_panes = "B2"
             for column, width in zip(ws.columns, widths):
