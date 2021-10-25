@@ -41,7 +41,7 @@ class XlsxWriter(Writer):
     """
 
     extension = "xlsx"
-    # TODO: use filename_template and .make_filename() for sheet names
+    # TODO: use name_template and .make_filename() for sheet names
     # TODO: maybe change their names to not include "file"?
 
     def __init__(

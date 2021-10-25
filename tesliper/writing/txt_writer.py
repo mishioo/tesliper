@@ -45,7 +45,7 @@ class TxtWriter(Writer):
         energies: Sequence[Energies],
         frequencies: Optional[VibrationalActivities] = None,
         stoichiometry: Optional[InfoArray] = None,
-        filename_template: Union[str, Template] = "${cat}.${ext}",
+        name_template: Union[str, Template] = "${cat}.${ext}",
     ):
         """Writes essential information from multiple Energies objects to
          single txt file.
@@ -63,7 +63,7 @@ class TxtWriter(Writer):
             frequencies count
         stoichiometry: glassware.InfoArray, optional
             InfoArray object containing stoichiometry information
-        filename_template : str or string.Template
+        name_template : str or string.Template
             Template that will be used to generate filenames.
 
         """
@@ -108,7 +108,7 @@ class TxtWriter(Writer):
             f"{f' | {{:<{max_stoich}}}' if max_stoich else '{}'}\n"
         )
         template_params = {"cat": "overview", "conf": "multiple"}
-        with self._get_handle(filename_template, template_params) as file:
+        with self._get_handle(name_template, template_params) as file:
             file.write(header + "\n")
             file.write(names_line + "\n")
             file.write("-" * len(header) + "\n")
@@ -133,7 +133,7 @@ class TxtWriter(Writer):
         self,
         energies: Energies,
         corrections: Optional[FloatArray] = None,
-        filename_template: Union[str, Template] = "distribution-${genre}.${ext}",
+        name_template: Union[str, Template] = "distribution-${genre}.${ext}",
     ):
         """Writes Energies object to txt file.
 
@@ -143,7 +143,7 @@ class TxtWriter(Writer):
             Energies object that is to be serialized
         corrections: glassware.DataArray, optional
             DataArray object, containing energies corrections
-        filename_template : str or string.Template
+        name_template : str or string.Template
             Template that will be used to generate filenames.
         """
         max_fnm = max(np.vectorize(len)(energies.filenames).max(), 20)
@@ -176,7 +176,7 @@ class TxtWriter(Writer):
             "genre": energies.genre,
             "cat": "populations",
         }
-        with self._get_handle(filename_template, template_params) as file:
+        with self._get_handle(name_template, template_params) as file:
             file.write(header + "\n")
             file.write("-" * len(header) + "\n")
             for row in rows:
@@ -191,7 +191,7 @@ class TxtWriter(Writer):
     def single_spectrum(
         self,
         spectrum: SingleSpectrum,
-        filename_template: Union[str, Template] = "${cat}.${genre}-${det}.${ext}",
+        name_template: Union[str, Template] = "${cat}.${genre}-${det}.${ext}",
     ):
         """Writes SingleSpectrum object to txt file.
 
@@ -199,7 +199,7 @@ class TxtWriter(Writer):
         ----------
         spectrum: glassware.SingleSpectrum
             spectrum, that is to be serialized
-        filename_template : str or string.Template
+        name_template : str or string.Template
             Template that will be used to generate filenames.
         """
         title = (
@@ -213,7 +213,7 @@ class TxtWriter(Writer):
             "cat": "spectrum",
             "det": spectrum.averaged_by,
         }
-        with self._get_handle(filename_template, template_params) as file:
+        with self._get_handle(name_template, template_params) as file:
             file.write(title + "\n")
             if spectrum.averaged_by:
                 file.write(
@@ -232,7 +232,7 @@ class TxtWriter(Writer):
         self,
         band: SpectralActivities,
         data: List[SpectralActivities],
-        filename_template: Union[str, Template] = "${conf}.${cat}-${genre}.${ext}",
+        name_template: Union[str, Template] = "${conf}.${cat}-${genre}.${ext}",
     ):
         """Writes SpectralActivities objects to txt files (one for each conformer).
 
@@ -245,13 +245,13 @@ class TxtWriter(Writer):
         data: list of glassware.SpectralActivities
             SpectralActivities objects that are to be serialized; all should contain
             information for the same conformers
-        filename_template : str or string.Template
+        name_template : str or string.Template
             Template that will be used to generate filenames.
         """
         self._spectral(
             band=band,
             data=data,
-            filename_template=filename_template,
+            name_template=name_template,
             category="activities",
         )
 
@@ -259,7 +259,7 @@ class TxtWriter(Writer):
         self,
         band: SpectralActivities,
         data: List[SpectralData],
-        filename_template: Union[str, Template] = "${conf}.${cat}-${genre}.${ext}",
+        name_template: Union[str, Template] = "${conf}.${cat}-${genre}.${ext}",
     ):
         """Writes SpectralData objects to txt files (one for each conformer).
 
@@ -272,18 +272,18 @@ class TxtWriter(Writer):
         data: list of glassware.SpectralData
             SpectralData objects that are to be serialized; all should contain
             information for the same conformers
-        filename_template : str or string.Template
+        name_template : str or string.Template
             Template that will be used to generate filenames.
         """
         self._spectral(
-            band=band, data=data, filename_template=filename_template, category="data"
+            band=band, data=data, name_template=name_template, category="data"
         )
 
     def _spectral(
         self,
         band: SpectralActivities,
         data: Union[List[SpectralData], List[SpectralActivities]],
-        filename_template: Union[str, Template],
+        name_template: Union[str, Template],
         category: str,
     ):
         """Writes SpectralData objects to txt files (one for each conformer).
@@ -297,7 +297,7 @@ class TxtWriter(Writer):
         data: list of glassware.SpectralData
             SpectralData objects that are to be serialized; all should contain
             information for the same conformers
-        filename_template : str or string.Template
+        name_template : str or string.Template
             Template that will be used to generate filenames.
         category : str
             category of exported data genres
@@ -310,7 +310,7 @@ class TxtWriter(Writer):
         values = zip(*[bar.values for bar in data])
         template_params = {"genre": band.genre, "cat": category}
         for handle, values_ in zip(
-            self._iter_handles(band.filenames, filename_template, template_params),
+            self._iter_handles(band.filenames, name_template, template_params),
             values,
         ):
             handle.write("\t".join(formatted))
@@ -325,7 +325,7 @@ class TxtWriter(Writer):
     def spectra(
         self,
         spectra: Spectra,
-        filename_template: Union[str, Template] = "${conf}.${genre}.${ext}",
+        name_template: Union[str, Template] = "${conf}.${genre}.${ext}",
     ):
         """Writes Spectra object to text files (one for each conformer).
 
@@ -333,7 +333,7 @@ class TxtWriter(Writer):
         ----------
         spectra: glassware.Spectra
             Spectra object, that is to be serialized
-        filename_template : str or string.Template
+        name_template : str or string.Template
             Template that will be used to generate filenames.
 
         """
@@ -346,7 +346,7 @@ class TxtWriter(Writer):
         )
         template_params = {"genre": spectra.genre, "cat": "spectra"}
         for handle, values in zip(
-            self._iter_handles(spectra.filenames, filename_template, template_params),
+            self._iter_handles(spectra.filenames, name_template, template_params),
             spectra.y,
         ):
             handle.write(title + "\n")
@@ -360,7 +360,7 @@ class TxtWriter(Writer):
         transitions: Transitions,
         wavelengths: ElectronicActivities,
         only_highest=True,
-        filename_template: Union[str, Template] = "${conf}.${cat}-${det}.${ext}",
+        name_template: Union[str, Template] = "${conf}.${cat}-${det}.${ext}",
     ):
         """Writes electronic transitions data to text files (one for each conformer).
 
@@ -374,7 +374,7 @@ class TxtWriter(Writer):
             Specifies if only transition of highest contribution to given band should
             be reported. If `False` all transition are saved to file.
             Defaults to `True`.
-        filename_template : str or string.Template
+        name_template : str or string.Template
             Template that will be used to generate filenames.
 
         """
@@ -398,9 +398,7 @@ class TxtWriter(Writer):
             "det": "highest" if only_highest else "all",
         }
         for handle, grounds, exciteds, values, contribs, bands in zip(
-            self._iter_handles(
-                transitions.filenames, filename_template, template_params
-            ),
+            self._iter_handles(transitions.filenames, name_template, template_params),
             *transtions_data,
             wavelengths.wavelen,
         ):

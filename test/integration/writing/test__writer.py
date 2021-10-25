@@ -21,7 +21,7 @@ def writer_implemented():
         extension = "ext"
 
         def overview(self, energies, frequencies, stoichiometry):
-            file = self.destination / self.make_filename(
+            file = self.destination / self.make_name(
                 "${conf}.${genre}.${ext}",
                 conf="overview",
                 genre="",
@@ -34,7 +34,7 @@ def writer_implemented():
                 handle.write(f"stoichiometry: {repr(stoichiometry)}\n")
 
         def energies(self, energies, corrections):
-            file = self.destination / self.make_filename(
+            file = self.destination / self.make_name(
                 "${conf}.${genre}.${ext}",
                 conf="energies",
                 genre="",
@@ -46,7 +46,7 @@ def writer_implemented():
                 handle.write(f"corrections: {repr(corrections)}\n")
 
         def single_spectrum(self, spectrum):
-            file = self.destination / self.make_filename(
+            file = self.destination / self.make_name(
                 "${conf}.${genre}.${ext}",
                 conf="spectrum",
                 genre="",
@@ -57,7 +57,19 @@ def writer_implemented():
                 handle.write(f"spectrum: {repr(spectrum)}\n")
 
         def spectral_data(self, band, data):
-            file = self.destination / self.make_filename(
+            file = self.destination / self.make_name(
+                "${conf}.${genre}.${ext}",
+                conf="bars",
+                genre="",
+                ext=self.extension,
+                num="",
+            )
+            with file.open(self.mode) as handle:
+                handle.write(f"band: {repr(band)}\n")
+                handle.write(f"data: {repr(data)}\n")
+
+        def spectral_activities(self, band, data):
+            file = self.destination / self.make_name(
                 "${conf}.${genre}.${ext}",
                 conf="bars",
                 genre="",
@@ -69,7 +81,7 @@ def writer_implemented():
                 handle.write(f"data: {repr(data)}\n")
 
         def spectra(self, spectra):
-            file = self.destination / self.make_filename(
+            file = self.destination / self.make_name(
                 "${conf}.${genre}.${ext}",
                 conf="spectra",
                 genre="",
@@ -80,7 +92,7 @@ def writer_implemented():
                 handle.write(f"spectra: {repr(spectra)}\n")
 
         def transitions(self, transitions, wavelengths):
-            file = self.destination / self.make_filename(
+            file = self.destination / self.make_name(
                 "${conf}.${genre}.${ext}",
                 conf="transitions",
                 genre="",
@@ -92,7 +104,7 @@ def writer_implemented():
                 handle.write(f"wavelengths: {repr(wavelengths)}\n")
 
         def geometry(self, geometry, charge, multiplicity):
-            file = self.destination / self.make_filename(
+            file = self.destination / self.make_name(
                 "${conf}.${genre}.${ext}",
                 conf="geometry",
                 genre="",

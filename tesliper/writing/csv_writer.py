@@ -168,7 +168,7 @@ class CsvWriter(_CsvMixin, Writer):
         self,
         energies: Energies,
         corrections: Optional[FloatArray] = None,
-        filename_template: Union[str, Template] = "distribution-${genre}.${ext}",
+        name_template: Union[str, Template] = "distribution-${genre}.${ext}",
     ):
         """Writes Energies object to csv file. The output also contains derived values:
         populations, min_factors, deltas. Corrections are added only when explicitly
@@ -180,7 +180,7 @@ class CsvWriter(_CsvMixin, Writer):
             Energies objects that is to be serialized
         corrections: glassware.DataArray, optional
             DataArray objects containing energies corrections
-        filename_template : str or string.Template
+        name_template : str or string.Template
             Template that will be used to generate filenames.
         """
         header = ["Gaussian output file"]
@@ -203,7 +203,7 @@ class CsvWriter(_CsvMixin, Writer):
             "genre": energies.genre,
             "cat": "populations",
         }
-        with self._get_handle(filename_template, template_params) as handle:
+        with self._get_handle(name_template, template_params) as handle:
             csvwriter = csv.writer(handle, dialect=self.dialect, **self.fmtparams)
             if self.include_header:
                 csvwriter.writerow(header)
@@ -221,7 +221,7 @@ class CsvWriter(_CsvMixin, Writer):
     def single_spectrum(
         self,
         spectrum: SingleSpectrum,
-        filename_template: Union[str, Template] = "${cat}.${genre}-${det}.${ext}",
+        name_template: Union[str, Template] = "${cat}.${genre}-${det}.${ext}",
     ):
         """Writes SingleSpectrum object to csv file.
 
@@ -229,7 +229,7 @@ class CsvWriter(_CsvMixin, Writer):
         ----------
         spectrum: glassware.SingleSpectrum
             spectrum, that is to be serialized
-        filename_template : str or string.Template
+        name_template : str or string.Template
             Template that will be used to generate filenames.
         """
         template_params = {
@@ -237,7 +237,7 @@ class CsvWriter(_CsvMixin, Writer):
             "cat": "spectrum",
             "det": spectrum.averaged_by,
         }
-        with self._get_handle(filename_template, template_params) as handle:
+        with self._get_handle(name_template, template_params) as handle:
             csvwriter = csv.writer(handle, dialect=self.dialect, **self.fmtparams)
             if self.include_header:
                 csvwriter.writerow([spectrum.units["y"], spectrum.units["x"]])
@@ -249,7 +249,7 @@ class CsvWriter(_CsvMixin, Writer):
         self,
         band: SpectralActivities,
         data: List[SpectralActivities],
-        filename_template: Union[str, Template] = "${conf}.${cat}-${genre}.${ext}",
+        name_template: Union[str, Template] = "${conf}.${cat}-${genre}.${ext}",
     ):
         """Writes SpectralActivities objects to csv files (one file for each conformer).
 
@@ -262,13 +262,13 @@ class CsvWriter(_CsvMixin, Writer):
         data: list of glassware.SpectralActivities
             SpectralActivities objects that are to be serialized; all should contain
             information for the same set of conformers and correspond to given band.
-        filename_template : str or string.Template
+        name_template : str or string.Template
             Template that will be used to generate filenames.
         """
         self._spectral(
             band=band,
             data=data,
-            filename_template=filename_template,
+            name_template=name_template,
             category="activities",
         )
 
@@ -276,7 +276,7 @@ class CsvWriter(_CsvMixin, Writer):
         self,
         band: SpectralData,
         data: List[SpectralData],
-        filename_template: Union[str, Template] = "${conf}.${cat}-${genre}.${ext}",
+        name_template: Union[str, Template] = "${conf}.${cat}-${genre}.${ext}",
     ):
         """Writes SpectralData objects to csv files (one file for each conformer).
 
@@ -289,18 +289,18 @@ class CsvWriter(_CsvMixin, Writer):
         data: list of glassware.SpectralData
             SpectralData objects that are to be serialized; all should contain
             information for the same set of conformers and correspond to given band.
-        filename_template : str or string.Template
+        name_template : str or string.Template
             Template that will be used to generate filenames.
         """
         self._spectral(
-            band=band, data=data, filename_template=filename_template, category="data"
+            band=band, data=data, name_template=name_template, category="data"
         )
 
     def _spectral(
         self,
         band: SpectralActivities,
         data: Union[List[SpectralData], List[SpectralActivities]],
-        filename_template: Union[str, Template],
+        name_template: Union[str, Template],
         category: str,
     ):
         """Writes SpectralData objects to csv files (one file for each conformer).
@@ -314,7 +314,7 @@ class CsvWriter(_CsvMixin, Writer):
         data: list of glassware.SpectralData
             SpectralData objects that are to be serialized; all should contain
             information for the same set of conformers and correspond to given band.
-        filename_template : str or string.Template
+        name_template : str or string.Template
             Template that will be used to generate filenames.
         category : str
             category of exported data genres
@@ -324,7 +324,7 @@ class CsvWriter(_CsvMixin, Writer):
         values = zip(*[bar.values for bar in data])
         template_params = {"genre": band.genre, "cat": category}
         for handle, values_ in zip(
-            self._iter_handles(band.filenames, filename_template, template_params),
+            self._iter_handles(band.filenames, name_template, template_params),
             values,
         ):
             csvwriter = csv.writer(handle, dialect=self.dialect, **self.fmtparams)
@@ -337,7 +337,7 @@ class CsvWriter(_CsvMixin, Writer):
     def spectra(
         self,
         spectra: Spectra,
-        filename_template: Union[str, Template] = "${conf}.${genre}.${ext}",
+        name_template: Union[str, Template] = "${conf}.${genre}.${ext}",
     ):
         """Writes Spectra object to .csv files (one file for each conformer).
 
@@ -345,14 +345,14 @@ class CsvWriter(_CsvMixin, Writer):
         ----------
         spectra: glassware.Spectra
             Spectra object, that is to be serialized.
-        filename_template : str or string.Template
+        name_template : str or string.Template
             Template that will be used to generate filenames.
         """
         abscissa = spectra.x
         header = [spectra.units["y"], spectra.units["x"]]
         template_params = {"genre": spectra.genre, "cat": "spectra"}
         for handle, values in zip(
-            self._iter_handles(spectra.filenames, filename_template, template_params),
+            self._iter_handles(spectra.filenames, name_template, template_params),
             spectra.y,
         ):
             csvwriter = csv.writer(handle, dialect=self.dialect, **self.fmtparams)
@@ -367,7 +367,7 @@ class CsvWriter(_CsvMixin, Writer):
         transitions: Transitions,
         wavelengths: ElectronicActivities,
         only_highest=True,
-        filename_template: Union[str, Template] = "${conf}.${cat}-${det}.${ext}",
+        name_template: Union[str, Template] = "${conf}.${cat}-${det}.${ext}",
     ):
         """Writes electronic transitions data to CSV files (one for each conformer).
 
@@ -381,7 +381,7 @@ class CsvWriter(_CsvMixin, Writer):
             Specifies if only transition of highest contribution to given band should
             be reported. If `False` all transition are saved to file.
             Defaults to `True`.
-        filename_template : str or string.Template
+        name_template : str or string.Template
             Template that will be used to generate filenames.
         """
         transtions_data = (
@@ -401,9 +401,7 @@ class CsvWriter(_CsvMixin, Writer):
             "det": "highest" if only_highest else "all",
         }
         for handle, grounds, exciteds, values, contribs, bands in zip(
-            self._iter_handles(
-                transitions.filenames, filename_template, template_params
-            ),
+            self._iter_handles(transitions.filenames, name_template, template_params),
             *transtions_data,
             wavelengths.wavelen,
         ):

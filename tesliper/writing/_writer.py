@@ -318,7 +318,7 @@ class Writer(ABC):
                 values.append(obj)
         return distr, extras
 
-    def make_filename(
+    def make_name(
         self,
         template: Union[str, Template],
         conf: str = "",
@@ -372,13 +372,13 @@ class Writer(ABC):
         >>>     extension = "foo"
         >>> wrt = MyWriter("/path/to/some/directory/")
 
-        >>> wrt.make_filename(template="somefile.${ext}")
+        >>> wrt.make_name(template="somefile.${ext}")
         "somefile.foo"
-        >>> wrt.make_filename(template="${conf}.${ext}")
+        >>> wrt.make_name(template="${conf}.${ext}")
         ".foo"  # conf is empty string by default
-        >>> wrt.make_filename(template="${conf}.${ext}", conf="")
+        >>> wrt.make_name(template="${conf}.${ext}", conf="")
         "conformer.foo"
-        >>> wrt.make_filename(template="Unknown_identifier_${bla}.${ext}")
+        >>> wrt.make_name(template="Unknown_identifier_${bla}.${ext}")
         Traceback (most recent call last):
         ValueError: Unexpected identifiers given: bla.
         """
@@ -414,7 +414,7 @@ class Writer(ABC):
         template : str or string.Template
             Template that will be used to generate filenames.
         template_params : dict
-            Dictionary of {identifier: value} for `.make_filename` method.
+            Dictionary of {identifier: value} for `.make_name` method.
         open_params : dict, optional
             Arguments for `Path.open()` used to open file.
 
@@ -424,7 +424,7 @@ class Writer(ABC):
             file handle, will be closed automatically after `with` statement exits
         """
         open_params = open_params or {}  # empty dict by default
-        filename = self.make_filename(template=template, **template_params)
+        filename = self.make_name(template=template, **template_params)
         file = self.check_file(self.destination.joinpath(filename))
         with file.open(self.mode, **open_params) as handle:
             self._handle = handle
@@ -444,9 +444,9 @@ class Writer(ABC):
         ----------
         filenames: list of str
             list of source filenames, used as value for `${conf}` placeholder
-            in `filename_template`
+            in `name_template`
         template_params : dict
-            Dictionary of {identifier: value} for `.make_filename` method.
+            Dictionary of {identifier: value} for `.make_name` method.
         open_params : dict, optional
             arguments for `Path.open()` used to open file.
 
@@ -458,7 +458,7 @@ class Writer(ABC):
         open_params = open_params or {}  # empty dict by default
         for num, fnm in enumerate(filenames):
             template_params.update({"conf": fnm, "num": num})
-            filename = self.make_filename(template=template, **template_params)
+            filename = self.make_name(template=template, **template_params)
             file = self.check_file(self.destination.joinpath(filename))
             with file.open(self.mode, **open_params) as handle:
                 yield handle
@@ -548,7 +548,7 @@ class Writer(ABC):
         energies: Sequence[Energies],
         frequencies: Optional[DataArray] = None,
         stoichiometry: Optional[InfoArray] = None,
-        filename_template: Union[str, Template] = "",
+        name_template: Union[str, Template] = "",
     ):
         raise NotImplementedError(f"Class {type(self)} does not implement this method.")
 
@@ -556,12 +556,12 @@ class Writer(ABC):
         self,
         energies: Energies,
         corrections: Optional[FloatArray] = None,
-        filename_template: Union[str, Template] = "",
+        name_template: Union[str, Template] = "",
     ):
         raise NotImplementedError(f"Class {type(self)} does not implement this method.")
 
     def single_spectrum(
-        self, spectrum: SingleSpectrum, filename_template: Union[str, Template] = ""
+        self, spectrum: SingleSpectrum, name_template: Union[str, Template] = ""
     ):
         raise NotImplementedError(f"Class {type(self)} does not implement this method.")
 
@@ -569,7 +569,7 @@ class Writer(ABC):
         self,
         band: SpectralData,
         data: List[SpectralData],
-        filename_template: Union[str, Template] = "",
+        name_template: Union[str, Template] = "",
     ):
         raise NotImplementedError(f"Class {type(self)} does not implement this method.")
 
@@ -577,11 +577,11 @@ class Writer(ABC):
         self,
         band: SpectralActivities,
         data: List[SpectralActivities],
-        filename_template: Union[str, Template] = "",
+        name_template: Union[str, Template] = "",
     ):
         raise NotImplementedError(f"Class {type(self)} does not implement this method.")
 
-    def spectra(self, spectra: Spectra, filename_template: Union[str, Template] = ""):
+    def spectra(self, spectra: Spectra, name_template: Union[str, Template] = ""):
         raise NotImplementedError(f"Class {type(self)} does not implement this method.")
 
     def transitions(
@@ -589,7 +589,7 @@ class Writer(ABC):
         transitions: Transitions,
         wavelengths: ElectronicActivities,
         only_highest: bool = True,
-        filename_template: Union[str, Template] = "",
+        name_template: Union[str, Template] = "",
     ):
         raise NotImplementedError(f"Class {type(self)} does not implement this method.")
 
@@ -598,6 +598,6 @@ class Writer(ABC):
         geometry: Geometry,
         charge: Optional[Union[IntegerArray, Sequence[int], int]] = None,
         multiplicity: Optional[Union[IntegerArray, Sequence[int], int]] = None,
-        filename_template: Union[str, Template] = "",
+        name_template: Union[str, Template] = "",
     ):
         raise NotImplementedError(f"Class {type(self)} does not implement this method.")
