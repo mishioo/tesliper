@@ -184,12 +184,12 @@ ir calculated with peak width = 5 cm-1 and gaussian fitting, shown as Frequency 
         )
 
 
-def test_serial_bars(writer, mols, filenames):
+def test_serial_activities(writer, mols, filenames):
     writer.spectral_activities(mols.arrayed("freq"), [mols.arrayed("iri")])
     assert set(p.name for p in writer.destination.iterdir()) == {
-        Path(f).with_suffix(".freq.txt").name for f in filenames
+        Path(f).with_suffix(".activities-freq.txt").name for f in filenames
     }
-    with writer.destination.joinpath("meoh-1.freq.txt").open("r") as handle:
+    with writer.destination.joinpath("meoh-1.activities-freq.txt").open("r") as handle:
         cont = handle.read()
     listed = cont.split("\n")
     assert "Frequencies" in listed[0]

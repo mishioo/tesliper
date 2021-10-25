@@ -3,6 +3,7 @@ from .arrays import (
     BooleanArray,
     DataArray,
     ElectronicActivities,
+    ElectronicData,
     Energies,
     FilenamesArray,
     FloatArray,
@@ -10,9 +11,12 @@ from .arrays import (
     InfoArray,
     IntegerArray,
     ScatteringActivities,
+    ScatteringData,
     SpectralActivities,
+    SpectralData,
     Transitions,
     VibrationalActivities,
+    VibrationalData,
 )
 from .conformers import Conformers
 from .spectra import SingleSpectrum, Spectra

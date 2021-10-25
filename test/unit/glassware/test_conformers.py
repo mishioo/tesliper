@@ -235,7 +235,7 @@ def test_arrayed_types(full):
     vdip = full.arrayed("vdip")
     assert gw.ElectronicActivities is type(vdip)
     emang = full.arrayed("emang")
-    assert gw.FloatArray is type(emang)
+    assert gw.VibrationalData is type(emang)
     charge = full.arrayed("charge")
     assert gw.IntegerArray is type(charge)
     filenames = full.arrayed("filenames")
