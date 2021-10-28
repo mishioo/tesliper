@@ -1355,3 +1355,7 @@ class ExportData(ttk.LabelFrame):
             if self._should_override(["gjf"]):
                 wrt.mode = "w"
                 wrt.geometry(**query["call"])
+        except PermissionError as error:
+            messagebox.showwarning(
+                "Permission Error", f"Cannot write to file: {error}."
+            )
