@@ -16,11 +16,13 @@ from tkinter.filedialog import (
 
 import numpy as np
 
-from ... import Soxhlet
-from ... import datawork as dw
-from ... import tesliper
-from ... import writing as wr
-from ...glassware import Geometry, SingleSpectrum
+from tesliper import Soxhlet
+from tesliper import datawork as dw
+from tesliper import glassware as gw
+from tesliper import writing as wr
+
+# LOGGER
+from ...datawork import DEFAULT_ACTIVITIES
 from .choices import ColorsChoice, ConformersChoice, EnergiesChoice
 from .collapsible_pane import CollapsiblePane
 from .helpers import ThreadedMethod, join_with_and
@@ -28,7 +30,6 @@ from .label_separator import LabelSeparator
 from .numeric_entry import NumericEntry
 from .popups import ExportPopup, GjfPopup
 
-# LOGGER
 logger = lgg.getLogger(__name__)
 
 
@@ -852,7 +853,7 @@ class CalculateSpectra(CollapsiblePane):
                     " or if file is not corrupted."
                 )
             else:
-                self.exp_spc = SingleSpectrum(
+                self.exp_spc = gw.SingleSpectrum(
                     genre=self.draw_params["spectra_name"],
                     values=spc[1],
                     abscissa=spc[0],
@@ -883,7 +884,7 @@ class CalculateSpectra(CollapsiblePane):
             logger.debug(f"Event caught by {self}.spectra_chosen handler.")
         tslr = self.tesliper
         self.visualize_settings()
-        bar = tesliper.dw.DEFAULT_ACTIVITIES[self.s_name.get()]
+        bar = DEFAULT_ACTIVITIES[self.s_name.get()]
         self.single["values"] = [k for k, v in tslr.conformers.items() if bar in v]
         self.winfo_toplevel().changer.set_states()
         if self.mode.get():
@@ -893,7 +894,7 @@ class CalculateSpectra(CollapsiblePane):
 
     def visualize_settings(self):
         spectra_name = self.s_name.get()
-        spectra_type = tesliper.gw.SpectralData.spectra_type_ref[spectra_name]
+        spectra_type = gw.SpectralActivities.spectra_type_ref[spectra_name]
         tslr = self.tesliper
         last_used = self.last_used_settings[spectra_name]
         settings = tslr.parameters[spectra_type].copy()
@@ -908,14 +909,12 @@ class CalculateSpectra(CollapsiblePane):
                 entry = getattr(self, name)
                 entry.var.set(sett)
                 try:
-                    entry.unit.set(tesliper.gw.Spectra._units[spectra_name][name])
+                    entry.unit.set(gw.Spectra._units[spectra_name][name])
                 except AttributeError:
                     logger.debug(f"Pass on {name}")
                 except KeyError:
                     if name == "offset":
-                        entry.unit.set(
-                            tesliper.gw.Spectra._units[spectra_name]["start"]
-                        )
+                        entry.unit.set(gw.Spectra._units[spectra_name]["start"])
                     elif name == "scaling":
                         pass
                     else:
@@ -943,7 +942,7 @@ class CalculateSpectra(CollapsiblePane):
     def draw(self, spectra_name, mode, option):
         queue_ = self.winfo_toplevel().thread.queue
         if mode == "single" and self.show_bars.var.get():
-            bar_name = tesliper.dw.DEFAULT_ACTIVITIES[spectra_name]
+            bar_name = dw.DEFAULT_ACTIVITIES[spectra_name]
             with self.tesliper.conformers.trimmed_to([option]):
                 bars = self.tesliper[bar_name]
         else:
@@ -972,7 +971,7 @@ class CalculateSpectra(CollapsiblePane):
     def redraw(self):
         draw_params = self.draw_params
         if draw_params["mode"] == "single" and self.show_bars.var.get():
-            bar_name = tesliper.dw.DEFAULT_ACTIVITIES[draw_params["spectra_name"]]
+            bar_name = dw.DEFAULT_ACTIVITIES[draw_params["spectra_name"]]
             with self.tesliper.conformers.trimmed_to([draw_params["option"]]):
                 bars = self.tesliper[bar_name]
         else:
@@ -1051,7 +1050,7 @@ class CalculateSpectra(CollapsiblePane):
                 }
             )
             fit = self.fitting.get()
-            settings["fitting"] = getattr(tesliper.dw, fit)
+            settings["fitting"] = getattr(dw, fit)
         except ValueError:
             return {}
         return settings
@@ -1181,7 +1180,7 @@ class ExportData(ttk.LabelFrame):
         )
         self.b_gjf_export.grid(column=1, row=3, sticky="nwe")
         root.changer.register(
-            [self.b_gjf_export], needs_any_genre=Geometry.associated_genres
+            [self.b_gjf_export], needs_any_genre=gw.Geometry.associated_genres
         )
         # TODO: handle PermissionDenied exception
 

@@ -8,15 +8,22 @@ from tkinter import messagebox
 from tkinter.filedialog import askdirectory
 
 from tesliper import datawork as dw
-from tesliper.glassware import ElectronicData, ScatteringData, VibrationalData
+from tesliper.glassware import (
+    ElectronicActivities,
+    ElectronicData,
+    ScatteringActivities,
+    ScatteringData,
+    SpectralActivities,
+    VibrationalActivities,
+    VibrationalData,
+)
 
-from ... import SpectralData
 from . import CollapsiblePane
 from .choices import GeometriesChoice
 from .helpers import WgtStateChanger
 from .hinted_entry import HintedEntry
 from .label_separator import LabelSeparator
-from .numeric_entry import IntegerEntry, NumericEntry
+from .numeric_entry import IntegerEntry
 
 logger = lgg.getLogger(__name__)
 
@@ -119,7 +126,7 @@ class SpectraDetails(ttk.Frame):
         calculations = master.master.winfo_toplevel().controls.calculate
         for idx, spc in enumerate(spectra):
             spectra_name = spc.lower()
-            spectra_type = SpectralData.spectra_type_ref[spectra_name]
+            spectra_type = SpectralActivities.spectra_type_ref[spectra_name]
             default_params = master.tesliper.standard_parameters[spectra_type]
             last_used = {
                 k: calculations.last_used_settings[spectra_name][k]
