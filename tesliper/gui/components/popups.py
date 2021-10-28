@@ -96,6 +96,10 @@ class SpectralDataDetails(ttk.Frame):
             ScatteringData,
         ]
         frames = dict()
+        transitions_names = {
+            "transitions": "Highest contrib. transitions",
+            "transitions-all": "All transitions",
+        }
         for num, class_ in enumerate(classes):
             name = re.findall("[A-Z][^A-Z]*", class_.__name__)[0] + " Data"
             if name not in frames:
@@ -111,13 +115,13 @@ class SpectralDataDetails(ttk.Frame):
             associated_genres = class_.associated_genres
             if class_ is ElectronicActivities:
                 # add transitions
-                associated_genres = associated_genres + ("transitions",)
+                associated_genres = associated_genres + tuple(transitions_names)
             for idx_, genre in enumerate(associated_genres):
-                full_name = (
-                    "Transitions"
-                    if genre == "transitions"
-                    else class_.full_name_ref[genre]
-                )
+                try:
+                    full_name = transitions_names[genre]
+                except KeyError:
+                    full_name = class_.full_name_ref[genre]
+
                 idx = last_idx + idx_
                 val = genre in defaults and master.tesliper.conformers.has_genre(genre)
                 var = tk.BooleanVar(value=val)
@@ -127,9 +131,11 @@ class SpectralDataDetails(ttk.Frame):
                     text=full_name,
                     variable=var,
                     style="active.TCheckbutton",
+                    width=30,
                 )
                 cb.grid(column=idx % cols, row=idx // cols, padx=(5, 0), sticky="news")
-                master.changer.register([cb], needs_all_genres=[genre])
+                genre_needed = "transitions" if genre == "transitions-all" else genre
+                master.changer.register([cb], needs_all_genres=[genre_needed])
             try:
                 frames[name] = frame, idx + 1
             except NameError:

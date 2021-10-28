@@ -1223,7 +1223,7 @@ class ExportData(ttk.LabelFrame):
             root.new_tesliper(path)
 
     def get_save_query(self):
-        popup = ExportPopup(self, width="700", height="350")
+        popup = ExportPopup(self, width="700", height="380")
         query = popup.get_query()
         return query
 
@@ -1265,6 +1265,12 @@ class ExportData(ttk.LabelFrame):
             )
             self._exec_save(cats, fmt, mode="w")
 
+    def _save_all_transitions(self, fmt, mode, transitions, wavelengths):
+        wrt = wr.writer(fmt=fmt, destination=self.tesliper.output_dir, mode=mode)
+        wrt.transitions(
+            transitions=transitions, wavelengths=wavelengths, only_highest=False
+        )
+
     def _exec_save(self, categories, fmt, mode):
         """Executes save command, calling appropriate "export" methods of Tesliper
         instance. Returns list of genres' categories, for which the associated method
@@ -1274,21 +1280,40 @@ class ExportData(ttk.LabelFrame):
         produced for the whole batch: if `FileExistsError` is raised on first category,
         this method returns `["xlsx"]` and ignores the rest of `categories`.
         """
-        existing = []
+        savers = []
         for thing, genres in categories.items():
+            try:
+                idx = genres.index("transitions-all")
+            except ValueError:
+                logger.debug("transitions-all not requested")
+            else:
+                _ = genres.pop(idx)
+                savers.append(
+                    functools.partial(
+                        self._save_all_transitions,
+                        transitions=self.tesliper["transitions"],
+                        wavelengths=self.tesliper["wavelen"],
+                    )
+                )
             if thing == "energies":
-                saver = functools.partial(
-                    self.tesliper.export_data, genres=["freq", "stoichiometry", *genres]
+                savers.append(
+                    functools.partial(
+                        self.tesliper.export_data,
+                        genres=["freq", "stoichiometry", *genres],
+                    )
                 )
             elif thing == "spectral data":
-                saver = functools.partial(self.tesliper.export_data, genres=genres)
+                savers.append(
+                    functools.partial(self.tesliper.export_data, genres=genres)
+                )
             elif thing == "spectra":
-                saver = self.tesliper.export_spectra
+                savers.append(self.tesliper.export_spectra)
             elif thing == "averaged":
-                saver = self.tesliper.export_averaged
+                savers.append(self.tesliper.export_averaged)
             else:
                 logger.warning(f"Unrecognised export category: '{thing}'.")
-                return
+        existing = []
+        for saver in savers:
             try:
                 saver(fmt=fmt, mode=mode)
             except FileExistsError:
