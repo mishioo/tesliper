@@ -5,6 +5,7 @@ from typing import Any, Sequence, Tuple, Union
 import numpy as np
 
 from .. import datawork as dw
+from ..datawork import convert_band
 from ..datawork.atoms import atomic_number
 from .array_base import (
     ArrayBase,
@@ -666,8 +667,12 @@ class ElectronicActivities(SpectralActivities):
             intensity values).
         """
         abscissa = np.arange(start, stop, step)
-        _width = width / 1.23984e-4  # from eV to cm-1
-        _abscissa = 1e7 / abscissa  # from nm to cm-1
+        _width = convert_band(
+            width, from_genre="ex_en", to_genre="freq"
+        )  # from eV to cm-1
+        _abscissa = convert_band(
+            abscissa, from_genre="wavelen", to_genre="freq"
+        )  # from nm to cm-1
         freqs = self.frequencies
         inten = self.intensities
         values = dw.calculate_spectra(freqs, inten, _abscissa, _width, fitting)
