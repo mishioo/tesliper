@@ -2,6 +2,7 @@
 import logging
 from itertools import cycle
 from pathlib import Path
+from string import Template
 from typing import Iterable, List, Sequence, TextIO, Union
 
 from ..datawork.atoms import symbol_of_element
@@ -26,7 +27,6 @@ class GjfWriter(Writer):
     # TODO: Add per-file parametrization of link0 commands
 
     extension = "gjf"
-    default_template = "${conf}.${ext}"
     _link0_commands = {
         "Mem",  # str specifying required memory
         "Chk",  # str with file path
@@ -66,6 +66,7 @@ class GjfWriter(Writer):
         geometry: Geometry,
         charge: Union[IntegerArray, Sequence[int], int, None] = None,
         multiplicity: Union[IntegerArray, Sequence[int], int, None] = None,
+        name_template: Union[str, Template] = "${conf}.${ext}",
     ):
         geom = geometry.values
         atoms = cycle(geometry.molecule_atoms)
@@ -81,8 +82,9 @@ class GjfWriter(Writer):
             mult = (1,) if multiplicity is None else multiplicity
             mult = [mult] if not isinstance(mult, Iterable) else mult
         mult = cycle(mult)
+        template_params = {"genre": geometry.genre, "cat": "geometry"}
         for handle, *params in zip(
-            self._iter_handles(geometry.filenames, geometry.genre),
+            self._iter_handles(geometry.filenames, name_template, template_params),
             geom,
             atoms,
             char,

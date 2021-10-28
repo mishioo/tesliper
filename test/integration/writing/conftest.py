@@ -1,7 +1,8 @@
 import pytest
 
 from tesliper.glassware import (
-    ElectronicData,
+    Bands,
+    ElectronicActivities,
     Energies,
     FloatArray,
     Geometry,
@@ -9,7 +10,7 @@ from tesliper.glassware import (
     SingleSpectrum,
     Spectra,
     Transitions,
-    VibrationalData,
+    VibrationalActivities,
 )
 
 
@@ -17,13 +18,14 @@ from tesliper.glassware import (
 def arrays():
     yield [
         Energies("gib", [""], [1]),
-        VibrationalData("iri", [""], [[1]], [[1]]),
+        VibrationalActivities("iri", [""], [[1]], [[1]]),
+        ElectronicActivities("vrot", [""], [[1]], [[1]]),
         Spectra("ir", [""], [[1, 2]], [1, 2]),
         SingleSpectrum("ir", [1, 2], [1, 2], averaged_by="gib"),
         InfoArray("command", [""], [""]),
         FloatArray("gibcorr", [""], [1]),
-        VibrationalData("freq", [""], [[1]], [[1]]),
-        ElectronicData("wavelen", [""], [[1]], [[1]]),
+        Bands("freq", [""], [[1]]),
+        Bands("wavelen", [""], [[1]]),
         InfoArray("stoichiometry", [""], [""]),
         Geometry("geometry", [""], [[[1, 2, 3]]], [[1]]),
         Transitions("transitions", [""], [[[(1, 2, 0.3)]]]),

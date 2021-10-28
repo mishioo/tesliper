@@ -5,13 +5,10 @@ import tkinter as tk
 import tkinter.ttk as ttk
 from collections import defaultdict
 from copy import copy
-from functools import partial, wraps
 from threading import Thread
 from tkinter import messagebox
 from tkinter.scrolledtext import ScrolledText
 from typing import Iterable, List
-
-from ...glassware.arrays import SpectralData
 
 # LOGGER
 logger = lgg.getLogger(__name__)

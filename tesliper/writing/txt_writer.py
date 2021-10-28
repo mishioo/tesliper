@@ -7,13 +7,14 @@ from typing import List, Optional, Sequence, Union
 import numpy as np
 
 from ..glassware.arrays import (
-    ElectronicData,
+    Bands,
+    ElectronicActivities,
     Energies,
     FloatArray,
     InfoArray,
+    SpectralActivities,
     SpectralData,
     Transitions,
-    VibrationalData,
 )
 from ..glassware.spectra import SingleSpectrum, Spectra
 from ._writer import Writer
@@ -38,13 +39,13 @@ class TxtWriter(Writer):
     """
 
     extension = "txt"
-    default_template: Union[str, Template] = "${conf}.${genre}.${ext}"
 
     def overview(
         self,
         energies: Sequence[Energies],
-        frequencies: Optional[VibrationalData] = None,
+        frequencies: Optional[Bands] = None,
         stoichiometry: Optional[InfoArray] = None,
+        name_template: Union[str, Template] = "${cat}.${ext}",
     ):
         """Writes essential information from multiple Energies objects to
          single txt file.
@@ -62,6 +63,9 @@ class TxtWriter(Writer):
             frequencies count
         stoichiometry: glassware.InfoArray, optional
             InfoArray object containing stoichiometry information
+        name_template : str or string.Template
+            Template that will be used to generate filenames.
+
         """
         filenames = energies[0].filenames
         imaginary = [] if frequencies is None else frequencies.imaginary
@@ -103,7 +107,8 @@ class TxtWriter(Writer):
             f"{' | {:^ 4}' if frequencies is not None else '{}'}"
             f"{f' | {{:<{max_stoich}}}' if max_stoich else '{}'}\n"
         )
-        with self._get_handle("overwiew", "general") as file:
+        template_params = {"cat": "overview", "conf": "multiple"}
+        with self._get_handle(name_template, template_params) as file:
             file.write(header + "\n")
             file.write(names_line + "\n")
             file.write("-" * len(header) + "\n")
@@ -124,7 +129,12 @@ class TxtWriter(Writer):
                 file.write(line)
         logger.info("Energies collective export to text file done.")
 
-    def energies(self, energies: Energies, corrections: Optional[FloatArray] = None):
+    def energies(
+        self,
+        energies: Energies,
+        corrections: Optional[FloatArray] = None,
+        name_template: Union[str, Template] = "distribution-${genre}.${ext}",
+    ):
         """Writes Energies object to txt file.
 
         Parameters
@@ -132,7 +142,10 @@ class TxtWriter(Writer):
         energies: glassware.Energies
             Energies object that is to be serialized
         corrections: glassware.DataArray, optional
-            DataArray object, containing energies corrections"""
+            DataArray object, containing energies corrections
+        name_template : str or string.Template
+            Template that will be used to generate filenames.
+        """
         max_fnm = max(np.vectorize(len)(energies.filenames).max(), 20)
         header = [f"{'Gaussian output file':<{max_fnm}}"]
         header += ["Population/%", "Min.B.Factor", "DE/(kcal/mol)", "Energy/Hartree"]
@@ -158,7 +171,12 @@ class TxtWriter(Writer):
             corrections,
             fillvalue=None,
         )
-        with self._get_handle("populations", energies.genre) as file:
+        template_params = {
+            "conf": "multiple",
+            "genre": energies.genre,
+            "cat": "populations",
+        }
+        with self._get_handle(name_template, template_params) as file:
             file.write(header + "\n")
             file.write("-" * len(header) + "\n")
             for row in rows:
@@ -170,13 +188,19 @@ class TxtWriter(Writer):
                 file.write(" | ".join(new_row) + "\n")
         logger.info("Energies separate export to text files done.")
 
-    def single_spectrum(self, spectrum: SingleSpectrum):
+    def single_spectrum(
+        self,
+        spectrum: SingleSpectrum,
+        name_template: Union[str, Template] = "${cat}.${genre}-${det}.${ext}",
+    ):
         """Writes SingleSpectrum object to txt file.
 
         Parameters
         ----------
         spectrum: glassware.SingleSpectrum
             spectrum, that is to be serialized
+        name_template : str or string.Template
+            Template that will be used to generate filenames.
         """
         title = (
             f"{spectrum.genre} calculated with peak width = "
@@ -184,12 +208,12 @@ class TxtWriter(Writer):
             f'{spectrum.fitting} fitting, shown as {spectrum.units["x"]} '
             f'vs. {spectrum.units["y"]}'
         )
-        genre = (
-            f"{spectrum.genre}-{spectrum.averaged_by}"
-            if spectrum.averaged_by
-            else spectrum.genre
-        )
-        with self._get_handle("spectrum", genre) as file:
+        template_params = {
+            "genre": spectrum.genre,
+            "cat": "spectrum",
+            "det": spectrum.averaged_by,
+        }
+        with self._get_handle(name_template, template_params) as file:
             file.write(title + "\n")
             if spectrum.averaged_by:
                 file.write(
@@ -204,7 +228,39 @@ class TxtWriter(Writer):
             )
         logger.info("Spectrum export to text files done.")
 
-    def spectral_data(self, band: SpectralData, data: List[SpectralData]):
+    def spectral_activities(
+        self,
+        band: SpectralActivities,
+        data: List[SpectralActivities],
+        name_template: Union[str, Template] = "${conf}.${cat}-${genre}.${ext}",
+    ):
+        """Writes SpectralActivities objects to txt files (one for each conformer).
+
+        Parameters
+        ----------
+        band: glassware.SpectralActivities
+            object containing information about band at which transitions occur;
+            it should be frequencies for vibrational data and wavelengths or
+            excitation energies for electronic data
+        data: list of glassware.SpectralActivities
+            SpectralActivities objects that are to be serialized; all should contain
+            information for the same conformers
+        name_template : str or string.Template
+            Template that will be used to generate filenames.
+        """
+        self._spectral(
+            band=band,
+            data=data,
+            name_template=name_template,
+            category="activities",
+        )
+
+    def spectral_data(
+        self,
+        band: SpectralActivities,
+        data: List[SpectralData],
+        name_template: Union[str, Template] = "${conf}.${cat}-${genre}.${ext}",
+    ):
         """Writes SpectralData objects to txt files (one for each conformer).
 
         Parameters
@@ -216,6 +272,35 @@ class TxtWriter(Writer):
         data: list of glassware.SpectralData
             SpectralData objects that are to be serialized; all should contain
             information for the same conformers
+        name_template : str or string.Template
+            Template that will be used to generate filenames.
+        """
+        self._spectral(
+            band=band, data=data, name_template=name_template, category="data"
+        )
+
+    def _spectral(
+        self,
+        band: SpectralActivities,
+        data: Union[List[SpectralData], List[SpectralActivities]],
+        name_template: Union[str, Template],
+        category: str,
+    ):
+        """Writes SpectralData objects to txt files (one for each conformer).
+
+        Parameters
+        ----------
+        band: glassware.SpectralData
+            object containing information about band at which transitions occur;
+            it should be frequencies for vibrational data and wavelengths or
+            excitation energies for electronic data
+        data: list of glassware.SpectralData
+            SpectralData objects that are to be serialized; all should contain
+            information for the same conformers
+        name_template : str or string.Template
+            Template that will be used to generate filenames.
+        category : str
+            category of exported data genres
         """
         data = [band] + data
         genres = [bar.genre for bar in data]
@@ -223,8 +308,10 @@ class TxtWriter(Writer):
         widths = [self._formatters[genre][4:-4] for genre in genres]
         formatted = [f"{h: <{w}}" for h, w in zip(headers, widths)]
         values = zip(*[bar.values for bar in data])
+        template_params = {"genre": band.genre, "cat": category}
         for handle, values_ in zip(
-            self._iter_handles(data[0].filenames, band.genre), values
+            self._iter_handles(band.filenames, name_template, template_params),
+            values,
         ):
             handle.write("\t".join(formatted))
             handle.write("\n")
@@ -233,15 +320,22 @@ class TxtWriter(Writer):
                     self._formatters[g].format(v) for v, g in zip(vals, genres)
                 )
                 handle.write(line + "\n")
-        logger.info("SpectralData export to text files done.")
+        logger.info(f"{category.title()} export to text files done.")
 
-    def spectra(self, spectra: Spectra):
+    def spectra(
+        self,
+        spectra: Spectra,
+        name_template: Union[str, Template] = "${conf}.${genre}.${ext}",
+    ):
         """Writes Spectra object to text files (one for each conformer).
 
         Parameters
         ----------
         spectra: glassware.Spectra
             Spectra object, that is to be serialized
+        name_template : str or string.Template
+            Template that will be used to generate filenames.
+
         """
         abscissa = spectra.x
         title = (
@@ -250,8 +344,10 @@ class TxtWriter(Writer):
             f'fitting, shown as {spectra.units["x"]} vs. '
             f'{spectra.units["y"]}'
         )
+        template_params = {"genre": spectra.genre, "cat": "spectra"}
         for handle, values in zip(
-            self._iter_handles(spectra.filenames, spectra.genre), spectra.y
+            self._iter_handles(spectra.filenames, name_template, template_params),
+            spectra.y,
         ):
             handle.write(title + "\n")
             handle.write(
@@ -260,7 +356,11 @@ class TxtWriter(Writer):
         logger.info("Spectra export to text files done.")
 
     def transitions(
-        self, transitions: Transitions, wavelengths: ElectronicData, only_highest=True
+        self,
+        transitions: Transitions,
+        wavelengths: ElectronicActivities,
+        only_highest=True,
+        name_template: Union[str, Template] = "${conf}.${cat}-${det}.${ext}",
     ):
         """Writes electronic transitions data to text files (one for each conformer).
 
@@ -268,12 +368,15 @@ class TxtWriter(Writer):
         ----------
         transitions : glassware.Transitions
             Electronic transitions data that should be serialized.
-        wavelengths : glassware.ElectronicData
+        wavelengths : glassware.ElectronicActivities
             Object containing information about wavelength at which transitions occur.
         only_highest : bool
             Specifies if only transition of highest contribution to given band should
             be reported. If `False` all transition are saved to file.
             Defaults to `True`.
+        name_template : str or string.Template
+            Template that will be used to generate filenames.
+
         """
         transtions_data = (
             transitions.highest_contribution
@@ -289,8 +392,13 @@ class TxtWriter(Writer):
         title = f"Electronic transitions {contrib_text} to each band."
         legend = "wavelength: ground -> excited, coefficient, contribution"
         transition_entry = "{:>6d} -> {:<7d} {:> 11.5f} {:>12.0%}\n"
+        template_params = {
+            "genre": transitions.genre,
+            "cat": "transitions",
+            "det": "highest" if only_highest else "all",
+        }
         for handle, grounds, exciteds, values, contribs, bands in zip(
-            self._iter_handles(transitions.filenames, transitions.genre),
+            self._iter_handles(transitions.filenames, name_template, template_params),
             *transtions_data,
             wavelengths.wavelen,
         ):

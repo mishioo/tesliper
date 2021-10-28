@@ -184,12 +184,12 @@ ir calculated with peak width = 5 cm-1 and gaussian fitting, shown as Frequency 
         )
 
 
-def test_serial_bars(writer, mols, filenames):
-    writer.spectral_data(mols.arrayed("freq"), [mols.arrayed("iri")])
+def test_serial_activities(writer, mols, filenames):
+    writer.spectral_activities(mols.arrayed("freq"), [mols.arrayed("iri")])
     assert set(p.name for p in writer.destination.iterdir()) == {
-        Path(f).with_suffix(".freq.txt").name for f in filenames
+        Path(f).with_suffix(".activities-freq.txt").name for f in filenames
     }
-    with writer.destination.joinpath("meoh-1.freq.txt").open("r") as handle:
+    with writer.destination.joinpath("meoh-1.activities-freq.txt").open("r") as handle:
         cont = handle.read()
     listed = cont.split("\n")
     assert "Frequencies" in listed[0]
@@ -217,7 +217,7 @@ def test_serial_transitions_only_highest(writer, molstd, filenamestd):
         molstd.arrayed("transitions"), molstd.arrayed("wavelen"), only_highest=True
     )
     output_file_path = writer.destination.joinpath(filenamestd[0])
-    output_file_path = output_file_path.with_suffix(".transitions.txt")
+    output_file_path = output_file_path.with_suffix(".transitions-highest.txt")
     with output_file_path.open("r") as handle:
         cont = iter(handle.readlines())
     assert "of highest contribution" in next(cont)
@@ -240,7 +240,7 @@ def test_serial_transitions_all(writer, molstd, filenamestd):
         molstd.arrayed("transitions"), molstd.arrayed("wavelen"), only_highest=False
     )
     output_file_path = writer.destination.joinpath(filenamestd[0])
-    output_file_path = output_file_path.with_suffix(".transitions.txt")
+    output_file_path = output_file_path.with_suffix(".transitions-all.txt")
     with output_file_path.open("r") as handle:
         cont = iter(handle.readlines())
     assert "contributing" in next(cont)
