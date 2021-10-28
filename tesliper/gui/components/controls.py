@@ -1322,6 +1322,13 @@ class ExportData(ttk.LabelFrame):
                     return ["xlsx"]
                 # must append other data chunks
                 existing.append(thing)
+            except PermissionError as error:
+                answer = messagebox.askokcancel(
+                    "Permission Error", f"Cannot write to file: {error}. Continue?"
+                )
+                if not answer:
+                    return []  # empty to abort retry
+            # next chunks must be appended to .xlsx file
             mode = "a" if fmt == "xlsx" else mode
         return existing
 
