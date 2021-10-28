@@ -72,7 +72,7 @@ def writer_implemented():
             file = self.destination / self.make_name(
                 "${conf}.${genre}.${ext}",
                 conf="bars",
-                genre="",
+                genre="-".join(d.genre for d in data),
                 ext=self.extension,
                 num="",
             )
@@ -175,7 +175,7 @@ def test_implemented_write(writer_implemented, arrays, tmp_path, monkeypatch):
     monkeypatch.setattr(Logger, "warning", Mock())
     wrt = writer_implemented(tmp_path)
     wrt.write(arrays)
-    assert len(list(tmp_path.iterdir())) == 7
+    assert len(list(tmp_path.iterdir())) == 8
     assert Logger.warning.call_count == 1  # generic InfoArray not supported
 
 
