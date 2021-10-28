@@ -28,6 +28,7 @@ from .intensities import (
 from .spectra import (
     calculate_average,
     calculate_spectra,
+    convert_band,
     count_imaginary,
     find_imaginary,
     find_offset,

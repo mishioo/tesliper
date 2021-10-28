@@ -10,10 +10,11 @@ import openpyxl as oxl
 
 from ..glassware.arrays import (
     DataArray,
-    ElectronicData,
+    ElectronicActivities,
     Energies,
     FloatArray,
     InfoArray,
+    SpectralActivities,
     SpectralData,
     Transitions,
 )
@@ -31,17 +32,18 @@ class XlsxWriter(Writer):
 
     Parameters
     ----------
-    destination: str or pathlib.Path
+    destination : str or pathlib.Path
         Directory, to which generated files should be written.
-    mode: str
+    mode : str
         Specifies how writing to file should be handled. Should be one of characters:
          'a' (append to existing file), 'x' (only write if file doesn't exist yet),
          or 'w' (overwrite file if it already exists).
+    filename : str or string.Template
+        Filename of created .xlsx file or a template for generation of the name using
+        `Writer.make_name` method.
     """
 
     extension = "xlsx"
-    # TODO: use filename_template and .make_filename() for sheet names
-    # TODO: maybe change their names to not include "file"?
 
     def __init__(
         self,
@@ -63,9 +65,29 @@ class XlsxWriter(Writer):
         energies: Sequence[Energies],
         frequencies: Optional[DataArray] = None,
         stoichiometry: Optional[InfoArray] = None,
+        name_template: Union[str, Template] = "${cat}",
     ):
+        """Writes summarized information from multiple Energies objects to xlsx file.
+        Creates a worksheet with energy values and calculated
+        populations for each energy object given, as well as number of imaginary
+        frequencies and stoichiometry of conformers if `frequencies` and `stoichiometry`
+        are provided, respectively.
+
+        Parameters
+        ----------
+        energies: list of glassware.Energies
+            Energies objects that are to be exported
+        frequencies: glassware.DataArray, optional
+            DataArray object containing frequencies
+        stoichiometry: glassware.InfoArray, optional
+            InfoArray object containing stoichiometry information
+        name_template : str or string.Template
+            Template that will be used to generate filenames,
+            defaults to "${cat}".
+        """
         wb = self.workbook
-        ws = wb.create_sheet(title="Collective overview")
+        template_params = {"cat": "overview", "conf": "multiple"}
+        ws = wb.create_sheet(title=self.make_name(name_template, **template_params))
         ens_no = len(energies)
         headers = ["Gaussian output file", "Populations / %", "Energies / hartree"]
         headers += ["Imag"] if frequencies is not None else []
@@ -123,32 +145,36 @@ class XlsxWriter(Writer):
         self,
         energies: Energies,
         corrections: Optional[FloatArray] = None,
+        name_template: Union[str, Template] = "distribution-${genre}",
     ):
         """Writes detailed information from multiple Energies objects to xlsx file.
-        Creates "Collective overview" sheet and one "<<genre>>" sheet for each Energies
-        object provided. The former contains energy values and calculated
-        populations for each energy object given, as well as number of imaginary
-        frequencies and stoichiometry of conformers if `frequencies` and `stoichiometry`
-        are provided, respectively. The latter contains detailed information about
-        each type of energy given, including corrections, if those are provided.
+        Creates one worksheet for each Energies  object provided.
+        The sheet contains energy values, energy difference to lowest-energy conformer,
+        Boltzmann factor, population of each conformer and corrections,
+        if those are provided.
 
         Parameters
         ----------
         energies: list of glassware.Energies
             Energies objects that are to be exported
-        frequencies: glassware.DataArray, optional
-            DataArray object containing frequencies
-        stoichiometry: glassware.InfoArray, optional
-            InfoArray object containing stoichiometry information
         corrections: list of glassware.DataArray
-            DataArray objects containing energies corrections"""
+            DataArray objects containing energies corrections
+        name_template : str or string.Template
+            Template that will be used to generate filenames,
+            defaults to "distribution-${genre}".
+        """
         wb = self.workbook
         fmts = (
             ["0", "0.00%"]
             + ["0.0000"] * 2
             + ["0.00000000" if energies.genre == "scf" else "0.000000"] * 2
         )
-        ws = wb.create_sheet(title=self._header[energies.genre])
+        template_params = {
+            "conf": "multiple",
+            "genre": energies.genre,
+            "cat": "populations",
+        }
+        ws = wb.create_sheet(title=self.make_name(name_template, **template_params))
         ws.freeze_panes = "A2"
         header = [
             "Gaussian output file",
@@ -184,19 +210,79 @@ class XlsxWriter(Writer):
         wb.save(self.file)
         logger.info("Energies export to xlsx files done.")
 
-    def spectral_data(self, band: SpectralData, data: Iterable[SpectralData]):
+    def spectral_data(
+        self,
+        band: SpectralActivities,
+        data: Iterable[SpectralData],
+        name_template: Union[str, Template] = "${conf}.${cat}-${genre}",
+    ):
         """Writes SpectralData objects to xlsx file (one sheet for each conformer).
 
         Parameters
         ----------
-        band: glassware.SpectralData
+        band: glassware.SpectralActivities
             object containing information about band at which transitions occur;
             it should be frequencies for vibrational data and wavelengths or
             excitation energies for electronic data
-        data: list of glassware.SpectralData
+        data: iterable of glassware.SpectralData
             SpectralData objects that are to be serialized; all should contain
-            information for the same conformers"""
-        # TODO: sort on sheets by type of DataArray class (GroundState, ExitedState...)
+            information for the same conformers.
+        name_template : str or string.Template
+            Template that will be used to generate filenames,
+            defaults to "${conf}.${cat}-${genre}".
+        """
+        self._spectral(
+            band=band, data=data, name_template=name_template, category="data"
+        )
+
+    def spectral_activities(
+        self,
+        band: SpectralActivities,
+        data: Iterable[SpectralActivities],
+        name_template: Union[str, Template] = "${conf}.${cat}-${genre}",
+    ):
+        """Writes SpectralActivities objects to xlsx file (one sheet for each conformer).
+
+        Parameters
+        ----------
+        band: glassware.SpectralActivities
+            object containing information about band at which transitions occur;
+            it should be frequencies for vibrational data and wavelengths or
+            excitation energies for electronic data
+        data: iterable of glassware.SpectralActivities
+            SpectralActivities objects that are to be serialized; all should contain
+            information for the same conformers.
+        name_template : str or string.Template
+            Template that will be used to generate filenames,
+            defaults to "${conf}.${cat}-${genre}".
+        """
+        self._spectral(
+            band=band, data=data, name_template=name_template, category="activities"
+        )
+
+    def _spectral(
+        self,
+        band: SpectralActivities,
+        data: Union[Iterable[SpectralData], Iterable[SpectralActivities]],
+        name_template: Union[str, Template],
+        category: str,
+    ):
+        """Writes SpectralActivities objects to xlsx file (one sheet for each conformer).
+
+        Parameters
+        ----------
+        band: glassware.SpectralActivities
+            object containing information about band at which transitions occur;
+            it should be frequencies for vibrational data and wavelengths or
+            excitation energies for electronic data
+        data: iterable of glassware.SpectralActivities or iterable of SpectralData
+            SpectralActivities or SpectralData objects that are to be serialized;
+            all should contain information for the same conformers.
+        name_template : str or string.Template
+            Template that will be used to generate filenames.
+        category : str
+            Category of exported data genres.
+        """
         wb = self.workbook
         data = [band] + list(data)
         genres = [bar.genre for bar in data]
@@ -204,8 +290,10 @@ class XlsxWriter(Writer):
         widths = [max(len(h), 10) for h in headers]
         fmts = [self._excel_formats[genre] for genre in genres]
         values = list(zip(*[bar.values for bar in data]))
-        for fname, values_ in zip(data[0].filenames, values):
-            ws = wb.create_sheet(title=fname)
+        template_params = {"genre": band.genre, "cat": category}
+        for num, (fname, values_) in enumerate(zip(data[0].filenames, values)):
+            template_params.update({"conf": fname, "num": num})
+            ws = wb.create_sheet(title=self.make_name(name_template, **template_params))
             ws.append(headers)
             ws.freeze_panes = "B2"
             for column, width in zip(ws.columns, widths):
@@ -217,18 +305,26 @@ class XlsxWriter(Writer):
                     cell.value = v
                     cell.number_format = fmt
         wb.save(self.file)
-        logger.info("SpectralData export to xlsx files done.")
+        logger.info("SpectralActivities export to xlsx files done.")
 
-    def spectra(self, spectra: Spectra):
+    def spectra(
+        self,
+        spectra: Spectra,
+        name_template: Union[str, Template] = "${genre}",
+    ):
         """Writes given spectral data collectively to one sheet of xlsx workbook.
 
         Parameters
         ----------
         spectra: glassware.Spectra
             Spectra object, that is to be serialized
+        name_template : str or string.Template
+            Template that will be used to generate filenames,
+            defaults to "${genre}".
         """
         wb = self.workbook
-        ws = wb.create_sheet(title=spectra.genre)
+        template_params = {"genre": spectra.genre, "cat": "spectra"}
+        ws = wb.create_sheet(title=self.make_name(name_template, **template_params))
         ws.freeze_panes = "B2"
         A0 = spectra.units["x"]
         ws.append([A0] + list(spectra.filenames))
@@ -244,22 +340,29 @@ class XlsxWriter(Writer):
         wb.save(self.file)
         logger.info("Spectra export to xlsx file done.")
 
-    def single_spectrum(self, spectrum: SingleSpectrum):
+    def single_spectrum(
+        self,
+        spectrum: SingleSpectrum,
+        name_template: Union[str, Template] = "${cat}.${genre}-${det}",
+    ):
         """Writes SingleSpectrum object to new sheet of xlsx workbook.
 
         Parameters
         ----------
         spectrum: glassware.SingleSpectrum
             spectrum, that is to be serialized
+        name_template : str or string.Template
+            Template that will be used to generate sheet names,
+            defaults to "${cat}.${genre}-${det}".
         """
         # TODO: add comment as in txt export
         wb = self.workbook
-        genre = (
-            f"{spectrum.genre}-{spectrum.averaged_by}"
-            if spectrum.averaged_by
-            else spectrum.genre
-        )
-        ws = wb.create_sheet(title=genre)
+        template_params = {
+            "genre": spectrum.genre,
+            "cat": "spectrum",
+            "det": spectrum.averaged_by,
+        }
+        ws = wb.create_sheet(title=self.make_name(name_template, **template_params))
         ws.append([spectrum.units["x"], spectrum.units["y"]])
         for row in zip(spectrum.x, spectrum.y):
             ws.append(row)
@@ -267,8 +370,29 @@ class XlsxWriter(Writer):
         logger.info("Spectrum export to xlsx files done.")
 
     def transitions(
-        self, transitions: Transitions, wavelengths: ElectronicData, only_highest=True
+        self,
+        transitions: Transitions,
+        wavelengths: ElectronicActivities,
+        only_highest=True,
+        name_template: Union[str, Template] = "${conf}.${cat}-${det}",
     ):
+        """Writes electronic transitions data to xlsx file
+        (one sheet for each conformer).
+
+        Parameters
+        ----------
+        transitions : glassware.Transitions
+            Electronic transitions data that should be serialized.
+        wavelengths : glassware.ElectronicActivities
+            Object containing information about wavelength at which transitions occur.
+        only_highest : bool
+            Specifies if only transition of highest contribution to given band should
+            be reported. If `False` all transition are saved to file.
+            Defaults to `True`.
+        name_template : str or string.Template
+            Template that will be used to generate filenames,
+            defaults to "${conf}.${cat}-${det}".
+        """
         transtions_data = (
             transitions.highest_contribution
             if only_highest
@@ -290,10 +414,20 @@ class XlsxWriter(Writer):
         widths = [len(h) for h in headers]
         fmts = [self._excel_formats[wavelengths.genre], "0", "0", "0.0000", "0%"]
 
-        for fname, grounds, exciteds, values, contribs, bands in zip(
-            transitions.filenames, *transtions_data, wavelengths.wavelen,
+        template_params = {
+            "genre": transitions.genre,
+            "cat": "transitions",
+            "det": "highest" if only_highest else "all",
+        }
+        for num, (fname, grounds, exciteds, values, contribs, bands) in enumerate(
+            zip(
+                transitions.filenames,
+                *transtions_data,
+                wavelengths.wavelen,
+            )
         ):
-            ws = wb.create_sheet(title=fname)
+            template_params.update({"conf": fname, "num": num})
+            ws = wb.create_sheet(title=self.make_name(name_template, **template_params))
             ws.append(headers)
             ws.freeze_panes = "B2"
             for column, width in zip(ws.columns, widths):

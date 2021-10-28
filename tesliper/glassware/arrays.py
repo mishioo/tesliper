@@ -1,10 +1,12 @@
 # IMPORTS
 import logging as lgg
+from abc import ABC, abstractmethod
 from typing import Any, Sequence, Tuple, Union
 
 import numpy as np
 
 from .. import datawork as dw
+from ..datawork import convert_band
 from ..datawork.atoms import atomic_number
 from .array_base import (
     ArrayBase,
@@ -36,32 +38,22 @@ class DataArray(ArrayBase):
 
     # TODO: Supplement full_name_ref
 
-    full_name_ref = dict(
-        rot="Rot. Strength",
-        dip="Dip. Strength",
-        roa1="ROA1",
-        raman1="Raman1",
-        vrot="Rot. (velo)",
-        lrot="Rot. (lenght)",
-        vosc="Osc. (velo)",
-        losc="Osc. (length)",
-        iri="IR Intensity",
-        vemang="E-M Angle",
-        eemang="E-M Angle",
-        zpe="Zero-point Energy",
-        ten="Thermal Energy",
-        ent="Thermal Enthalpy",
-        gib="Thermal Free Energy",
-        scf="SCF",
-        ex_en="Excitation energy",
-        freq="Frequency",
-        wave="Wavelength",
-        energies="Energies",
-    )
+    full_name_ref = {}
+    _units = {}
 
     @property
     def full_name(self):
-        return self.full_name_ref[self.genre]
+        try:
+            return self.full_name_ref[self.genre]
+        except KeyError:
+            return ""
+
+    @property
+    def units(self):
+        try:
+            return self._units[self.genre]
+        except KeyError:
+            return ""
 
 
 class IntegerArray(DataArray):
@@ -71,45 +63,40 @@ class IntegerArray(DataArray):
 
 
 class FloatArray(DataArray):
-
     associated_genres = (
         "zpecorr",
         "tencorr",
         "entcorr",
         "gibcorr",
-        "mass",
-        "frc",
-        "emang",
-        "depolarp",
-        "depolaru",
-        "depp",
-        "depu",
-        "alpha2",
-        "beta2",
-        "alphag ",
-        "gamma2",
-        "delta2",
-        "cid1",
-        "cid2",
-        "cid3",
-        "rc180",
-        "eemang",
     )
+    full_name_ref = dict(
+        zpecorr="Zero-point Correction",
+        tencorr="Correction to Energy",
+        entcorr="Correction to Enthalpy",
+        gibcorr="Correction to Free Energy",
+    )
+    _units = dict(
+        zpecorr="Hartree",
+        tencorr="Hartree",
+        entcorr="Hartree",
+        gibcorr="Hartree",
+    )
+
     values = ArrayProperty(dtype=float, check_against="filenames")
 
 
 class InfoArray(DataArray):
+    full_name_ref = {}
+    _units = {}
     associated_genres = (
         "command",
         "cpu_time",
-        "transitions",
         "stoichiometry",
     )
     values = ArrayProperty(dtype=str, check_against="filenames")
 
 
 class FilenamesArray(DataArray):
-    associated_genres = ("filenames",)
     """Special case of DataArray, holds only filenames. `values` property returns
     same as `filenames` and ignores any value given to its setter.
 
@@ -122,6 +109,10 @@ class FilenamesArray(DataArray):
     values : numpy.ndarray(dtype=str)
         Always returns same as `filenames`.
     """
+
+    associated_genres = ("filenames",)
+    full_name_ref = {"filenames": "Filenames"}
+    _units = {}
 
     def __init__(
         self,
@@ -142,6 +133,11 @@ class FilenamesArray(DataArray):
 
 
 class BooleanArray(DataArray):
+    full_name_ref = {
+        "normal_termination": "Normal Termination",
+        "optimization_completed": "Optimization Completed",
+    }
+    _units = {}
     associated_genres = ("normal_termination", "optimization_completed")
     values = ArrayProperty(dtype=bool, check_against="filenames")
 
@@ -160,6 +156,20 @@ class Energies(FloatArray):
     t : int or float
         Temperature of calculated state in K."""
 
+    full_name_ref = dict(
+        zpe="Zero-point Energy",
+        ten="Thermal Energy",
+        ent="Thermal Enthalpy",
+        gib="Thermal Free Energy",
+        scf="SCF",
+    )
+    _units = dict(
+        zpe="Hartree",
+        ten="Hartree",
+        ent="Hartree",
+        gib="Hartree",
+        scf="Hartree",
+    )
     associated_genres = (
         "scf",
         "zpe",
@@ -282,7 +292,212 @@ class Averagable:
         return averaged
 
 
-class SpectralData(FloatArray, Averagable):
+class Bands(FloatArray):
+    associated_genres = ("freq", "wavelen", "ex_en")
+    full_name_ref = {
+        "ex_en": "Excitation energy",
+        "freq": "Frequency",
+        "wave": "Wavelength",
+    }
+    _units = {"freq": "cm^(-1)", "wave": "nm", "ex_en": "eV"}
+
+    def __init__(
+        self,
+        genre,
+        filenames,
+        values,
+        allow_data_inconsistency=False,
+    ):
+        super().__init__(genre, filenames, values, allow_data_inconsistency)
+
+    @property
+    def freq(self):
+        """Values converted to frequencies in cm^(-1).
+        Same as `Bands.frequencies`
+        """
+        return convert_band(self.values, from_genre=self.genre, to_genre="freq")
+
+    @property
+    def frequencies(self):
+        """Values converted to frequencies in cm^(-1).
+        Same as `Bands.freq`
+        """
+        return self.freq
+
+    @property
+    def wavelen(self):
+        """Values converted to wavelengths in nm.
+        Same as `Bands.wavelengths`
+        """
+        return convert_band(self.values, from_genre=self.genre, to_genre="wavelen")
+
+    @property
+    def wavelengths(self):
+        """Values converted to wavelengths in nm.
+        Same as `Bands.wavelen`
+        """
+        return self.wavelen
+
+    @property
+    def ex_en(self):
+        """Values converted to excitation_energy in eV.
+        Same as `Bands.excitation_energy`
+        """
+        return convert_band(self.values, from_genre=self.genre, to_genre="ex_en")
+
+    @property
+    def excitation_energy(self):
+        """Values converted to excitation_energy in eV.
+        Same as `Bands.ex_en`
+        """
+        return self.ex_en
+
+    @property
+    def imaginary(self):
+        """Finds number of imaginary frequencies of each conformer.
+
+        Returns
+        -------
+        numpy.ndarray
+            Number of imaginary frequencies of each conformer."""
+        if self.frequencies.size > 0:
+            return (self.frequencies < 0).sum(1)
+        else:
+            return np.array([])
+
+    def find_imaginary(self):
+        """Finds all freqs with imaginary values and creates 'imag' entry with
+        list of indicants of imaginery values presence.
+
+        Returns
+        -------
+        dict
+            Dictionary of {filename: number-of-imaginary-frequencies} for each
+            conformer with at least one imaginary frequency.
+        """
+        imag = self.imaginary
+        return {k: v for k, v in zip(self.filenames, imag) if v}
+
+
+class SpectralData(FloatArray, ABC):
+    """Base class for spectral data genres, that are not spectral activities."""
+
+    # TODO: Supplement tests regarding this class' subclasses
+
+    associated_genres = ()
+
+    @property
+    @abstractmethod
+    def frequencies(self):
+        return NotImplemented
+
+
+class _VibData(SpectralData):
+    freq = ArrayProperty(check_against="filenames")
+    associated_genres = ()
+
+    def __init__(
+        self,
+        genre,
+        filenames,
+        values,
+        freq,
+        allow_data_inconsistency=False,
+    ):
+        super().__init__(genre, filenames, values, allow_data_inconsistency)
+        self.freq = freq
+
+    @property
+    def frequencies(self):
+        return self.freq
+
+
+class VibrationalData(_VibData):
+    associated_genres = ("mass", "frc", "emang")
+    full_name_ref = dict(
+        mass="Reduced masses", frc="Force constants", emang="E-M Angle"
+    )
+    _units = dict(mass="AMU", frc="mDyne/A", emang="deg")
+
+
+class ScatteringData(_VibData):
+    associated_genres = (
+        "depolarp",
+        "depolaru",
+        "depp",
+        "depu",
+        "alpha2",
+        "beta2",
+        "alphag ",
+        "gamma2",
+        "delta2",
+        "cid1",
+        "cid2",
+        "cid3",
+        "rc180",
+    )
+    full_name_ref = {
+        "depolarp": "Depolarization ratio for plane incident light",
+        "depolaru": "Depolarization ratio for unpolarized incident light",
+        "depp": "Depolarization ratio for plane incident light",
+        "depu": "Depolarization ratio for unpolarized incident light",
+        "alpha2": "Raman invariant Alpha2",
+        "beta2": "Raman invariant Beta2",
+        "alphag ": "ROA invariant AlphaG",
+        "gamma2": "ROA invariant Gamma2",
+        "delta2": "ROA invariant Delta2",
+        "cid1": "CID1",
+        "cid2": "CID2",
+        "cid3": "CID3",
+        "rc180": "Degree of circularity",
+    }
+    _units = {
+        "alpha2": "(A**4/AMU)",
+        "beta2": "(A**4/AMU)",
+        "alphag ": "(10**4 A**5/AMU)",
+        "gamma2": "(10**4 A**5/AMU)",
+        "delta2": "(10**4 A**5/AMU)",
+    }
+
+    def __init__(
+        self,
+        genre,
+        filenames,
+        values,
+        freq,
+        t=298.15,
+        laser=532,
+        allow_data_inconsistency=False,
+    ):
+        super().__init__(genre, filenames, values, freq, allow_data_inconsistency)
+        self.laser = laser  # in nm
+        self.t = t  # temperature in K
+
+
+class ElectronicData(SpectralData):
+    wavelen = ArrayProperty(check_against="filenames")
+    associated_genres = ("eemang",)
+    full_name_ref = dict(emang="E-M Angle")
+    _units = dict(emang="deg")
+
+    def __init__(
+        self,
+        genre,
+        filenames,
+        values,
+        wavelen,
+        allow_data_inconsistency=False,
+    ):
+        super().__init__(genre, filenames, values, allow_data_inconsistency)
+        self.wavelen = wavelen  # in nm
+
+    @property
+    def frequencies(self):
+        return convert_band(self.wavelen, from_genre="wavelen", to_genre="freq")
+
+
+class SpectralActivities(SpectralData, Averagable, ABC):
+    """Base class for spectral activities genres."""
 
     associated_genres = ()
     spectra_name_ref = dict(
@@ -311,56 +526,9 @@ class SpectralData(FloatArray, Averagable):
         ecd="electronic",
         uv="electronic",
     )
-    _units = dict(
-        freq="Frequency / cm^(-1)",
-        wave="Wavenlength / nm",
-        ex_en="Excitation energy / eV",
-        rot="R / 10^(-44) esu^2 cm^2",
-        dip="D / 10^(-40) esu^2 cm^2",
-        iri="KM/Mole",
-        ramact="Raman scattering activities / A^4/AMU",
-        roa1="ROA intensiy / 10^4 K",
-        raman1="Raman intensity / K",
-        roa2="ROA intensiy / 10^4 K",
-        raman2="Raman intensity / K",
-        roa3="ROA intensiy / 10^4 K",
-        raman3="Raman intensity / K",
-        vrot="R / 10^(-40) erg*esu*cm/Gauss",
-        lrot="R / 10^(-40) erg*esu*cm/Gauss",
-        vosc="Oscillator strength",
-        losc="Oscillator strength",
-        vdip="D / 10^(-44) esu^2 cm^2",
-        ldip="D / 10^(-44) esu^2 cm^2",
-    )
+    full_name_ref = dict()
+    _units = dict()
     _intensities_converters = {}
-
-    def __init__(
-        self,
-        genre,
-        filenames,
-        values,
-        allow_data_inconsistency=False,
-    ):
-        super().__init__(genre, filenames, values, allow_data_inconsistency)
-
-    # TODO: move calculate_spectra here from derived classes
-    # TODO: at least one, freq or wave, must be defined by subclass;
-    #       include that in docstring
-    @property
-    def freq(self):
-        return 1e7 / self.wavelen
-
-    @property
-    def wavelen(self):
-        return 1e7 / self.freq
-
-    @property
-    def frequencies(self):
-        return self.freq
-
-    @property
-    def wavelengths(self):
-        return self.wavelen
 
     @property
     def spectra_name(self):
@@ -371,13 +539,6 @@ class SpectralData(FloatArray, Averagable):
     def spectra_type(self):
         if self.genre in self.spectra_name_ref:
             return self.spectra_type_ref[self.spectra_name]
-
-    @property
-    def units(self):
-        try:
-            return self._units[self.genre]
-        except KeyError:
-            return ""
 
     @property
     def intensities(self):
@@ -406,47 +567,7 @@ def _as_is(values, *_args, **_kwargs):
     return values
 
 
-class _Vibrational(SpectralData):
-
-    freq = ArrayProperty(check_against="filenames")
-
-    def __init__(
-        self,
-        genre,
-        filenames,
-        values,
-        freq,
-        allow_data_inconsistency=False,
-    ):
-        super().__init__(genre, filenames, values, allow_data_inconsistency)
-        self.freq = freq
-
-    @property
-    def imaginary(self):
-        """Finds number of imaginary frequencies of each conformer.
-
-        Returns
-        -------
-        numpy.ndarray
-            Number of imaginary frequencies of each conformer."""
-        if self.frequencies.size > 0:
-            return (self.frequencies < 0).sum(1)
-        else:
-            return np.array([])
-
-    def find_imaginary(self):
-        """Finds all freqs with imaginary values and creates 'imag' entry with
-        list of indicants of imaginery values presence.
-
-        Returns
-        -------
-        dict
-            Dictionary of {filename: number-of-imaginary-frequencies} for each
-            conformer with at least one imaginary frequency.
-        """
-        imag = self.imaginary
-        return {k: v for k, v in zip(self.filenames, imag) if v}
-
+class _VibAct(_VibData, SpectralActivities):
     def calculate_spectra(self, start, stop, step, width, fitting):
         """Calculates spectrum of desired type for each individual conformer.
 
@@ -488,22 +609,30 @@ class _Vibrational(SpectralData):
         return spectra
 
 
-class VibrationalData(_Vibrational):
+class VibrationalActivities(VibrationalData, _VibAct):
     associated_genres = (
-        "freq",
         "iri",
         "dip",
         "rot",
     )
-
     _intensities_converters = {
         "dip": dw.dip_to_ir,
         "rot": dw.rot_to_vcd,
         "iri": _as_is,
     }
+    full_name_ref = dict(
+        rot="Rot. Strength",
+        dip="Dip. Strength",
+        iri="IR Intensity",
+    )
+    _units = dict(
+        rot="10^(-44) esu^2 cm^2",
+        dip="10^(-40) esu^2 cm^2",
+        iri="KM/Mole",
+    )
 
 
-class ScatteringData(_Vibrational):
+class ScatteringActivities(ScatteringData, _VibAct):
     associated_genres = (
         "ramact",
         "raman1",
@@ -512,6 +641,24 @@ class ScatteringData(_Vibrational):
         "roa2",
         "raman3",
         "roa3",
+    )
+    full_name_ref = dict(
+        ramact="Raman scattering activities",
+        roa1="ROA intensiy 1",
+        raman1="Raman intensity 1",
+        roa2="ROA intensiy 2",
+        raman2="Raman intensity 2",
+        roa3="ROA intensiy 3",
+        raman3="Raman intensity 3",
+    )
+    _units = dict(
+        ramact="A^4/AMU",
+        roa1="10^4 K",
+        raman1="K",
+        roa2="10^4 K",
+        raman2="K",
+        roa3="10^4 K",
+        raman3="K",
     )
     _intensities_converters = {
         "ramact": _as_is,
@@ -522,20 +669,6 @@ class ScatteringData(_Vibrational):
         "raman3": _as_is,
         "roa3": _as_is,
     }
-
-    def __init__(
-        self,
-        genre,
-        filenames,
-        values,
-        freq,
-        t=298.15,
-        laser=532,
-        allow_data_inconsistency=False,
-    ):
-        super().__init__(genre, filenames, values, freq, allow_data_inconsistency)
-        self.laser = laser  # in nm
-        self.t = t  # temperature in K
 
     @property
     def intensities(self):
@@ -558,10 +691,8 @@ class ScatteringData(_Vibrational):
         return converter(self.values, self.frequencies, self.t, self.laser)
 
 
-class ElectronicData(SpectralData):
+class ElectronicActivities(ElectronicData, SpectralActivities):
     associated_genres = (
-        "wavelen",
-        "ex_en",
         "vdip",
         "ldip",
         "vrot",
@@ -569,7 +700,20 @@ class ElectronicData(SpectralData):
         "vosc",
         "losc",
     )
-
+    full_name_ref = dict(
+        vrot="Rot. (velo)",
+        lrot="Rot. (lenght)",
+        vosc="Osc. (velo)",
+        losc="Osc. (length)",
+        vdip="Osc. (velo)",
+        ldip="Osc. (length)",
+    )
+    _units = dict(
+        vrot="10^(-40) erg*esu*cm/Gauss",
+        lrot="10^(-40) erg*esu*cm/Gauss",
+        vdip="10^(-44) esu^2 cm^2",
+        ldip="10^(-44) esu^2 cm^2",
+    )
     _intensities_converters = {
         # for "osc" ignore frequencies given by default by super().intensities
         "vosc": lambda v, _: dw.osc_to_uv(v),
@@ -577,20 +721,9 @@ class ElectronicData(SpectralData):
         "vrot": dw.rot_to_ecd,
         "lrot": dw.rot_to_ecd,
         # TODO: add "ldip" and "vdip"
+        "ldip": lambda *_: NotImplemented,
+        "vdip": lambda *_: NotImplemented,
     }
-
-    def __init__(
-        self,
-        genre,
-        filenames,
-        values,
-        wavelen,
-        allow_data_inconsistency=False,
-    ):
-        super().__init__(genre, filenames, values, allow_data_inconsistency)
-        self.wavelen = wavelen  # in nm
-
-    wavelen = ArrayProperty(check_against="filenames")
 
     def calculate_spectra(self, start, stop, step, width, fitting):
         """Calculates spectrum of desired type for each individual conformer.
@@ -617,8 +750,12 @@ class ElectronicData(SpectralData):
             intensity values).
         """
         abscissa = np.arange(start, stop, step)
-        _width = width / 1.23984e-4  # from eV to cm-1
-        _abscissa = 1e7 / abscissa  # from nm to cm-1
+        _width = convert_band(
+            width, from_genre="ex_en", to_genre="freq"
+        )  # from eV to cm-1
+        _abscissa = convert_band(
+            abscissa, from_genre="wavelen", to_genre="freq"
+        )  # from nm to cm-1
         freqs = self.frequencies
         inten = self.intensities
         values = dw.calculate_spectra(freqs, inten, _abscissa, _width, fitting)
@@ -671,6 +808,8 @@ class Transitions(DataArray):
     """
 
     associated_genres = ("transitions",)
+    full_name_ref = dict(transitions="Transitions")
+    _units = dict()
     ground = JaggedArrayProperty(dtype=int, check_against="filenames")
     excited = JaggedArrayProperty(dtype=int, check_against="filenames")
     values = JaggedArrayProperty(dtype=float, check_against="filenames")
@@ -795,6 +934,8 @@ class Geometry(FloatArray):
     """
 
     associated_genres = ("geometry",)
+    full_name_ref = dict(geometry="Geometry")
+    _units = dict(geometry="Angstrom")
     values = ArrayProperty(dtype=float, check_against="filenames")
     molecule_atoms = CollapsibleArrayProperty(
         dtype=int,

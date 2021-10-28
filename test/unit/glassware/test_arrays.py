@@ -146,27 +146,29 @@ def test_calculate_populations(en, monkeypatch, filenames_mock, convert_mock):
 @pytest.fixture
 def freq(monkeypatch):
     monkeypatch.setattr(
-        ar.SpectralData,
+        ar.SpectralActivities,
         "frequencies",
         mock.PropertyMock(return_value=[[10, 20], [12, 21]]),
     )
-    return ar.SpectralData.frequencies
+    return ar.SpectralActivities.frequencies
 
 
 @pytest.fixture
 def vals(monkeypatch):
     monkeypatch.setattr(
-        ar.SpectralData, "values", mock.PropertyMock(return_value=[[2, 5], [3, 7]])
+        ar.SpectralActivities,
+        "values",
+        mock.PropertyMock(return_value=[[2, 5], [3, 7]]),
     )
-    return ar.SpectralData.values
+    return ar.SpectralActivities.values
 
 
 @pytest.fixture
 def fnms(monkeypatch):
     monkeypatch.setattr(
-        ar.SpectralData, "filenames", mock.PropertyMock(return_value=["f1", "f2"])
+        ar.SpectralActivities, "filenames", mock.PropertyMock(return_value=["f1", "f2"])
     )
-    return ar.SpectralData.filenames
+    return ar.SpectralActivities.filenames
 
 
 @pytest.fixture
@@ -174,7 +176,7 @@ def inten(monkeypatch):
     inten_mock = mock.MagicMock()
     inten_mock.converter = mock.Mock()
     inten_mock.__getitem__.side_effect = lambda _k: inten_mock.converter
-    monkeypatch.setattr(ar.SpectralData, "_intensities_converters", inten_mock)
+    monkeypatch.setattr(ar.VibrationalActivities, "_intensities_converters", inten_mock)
     return inten_mock
 
 
@@ -189,7 +191,7 @@ def inten_no_conversion(inten):
 
 @pytest.fixture
 def bars():
-    return ar.SpectralData("bla", [], [], [])
+    return ar.VibrationalActivities("iri", [], [], [])
 
 
 def test_intensieties(bars, inten, fnms, vals, freq):

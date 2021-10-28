@@ -1,7 +1,9 @@
 from .array_base import ArrayBase, ArrayProperty
 from .arrays import (
+    Bands,
     BooleanArray,
     DataArray,
+    ElectronicActivities,
     ElectronicData,
     Energies,
     FilenamesArray,
@@ -9,9 +11,12 @@ from .arrays import (
     Geometry,
     InfoArray,
     IntegerArray,
+    ScatteringActivities,
     ScatteringData,
+    SpectralActivities,
     SpectralData,
     Transitions,
+    VibrationalActivities,
     VibrationalData,
 )
 from .conformers import Conformers

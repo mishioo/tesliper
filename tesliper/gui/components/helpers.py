@@ -9,7 +9,7 @@ from threading import Thread
 from tkinter import messagebox
 from tkinter.scrolledtext import ScrolledText
 
-from ...glassware.arrays import SpectralData
+from ...glassware.arrays import SpectralActivities
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -213,7 +213,7 @@ class WgtStateChanger:
             for key in bars.keys():
                 bars[key] = bars[key] or key in conf
         spectra_available = [
-            SpectralData.spectra_name_ref[bar] for bar, got in bars.items() if got
+            SpectralActivities.spectra_name_ref[bar] for bar, got in bars.items() if got
         ]
         radio = WgtStateChanger.gui.spectra_tab.s_name_radio
         for option, widget in radio.items():

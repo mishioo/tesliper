@@ -66,7 +66,7 @@ class GjfWriter(Writer):
         geometry: Geometry,
         charge: Union[IntegerArray, Sequence[int], int, None] = None,
         multiplicity: Union[IntegerArray, Sequence[int], int, None] = None,
-        filename_template: Union[str, Template] = "${conf}.${ext}",
+        name_template: Union[str, Template] = "${conf}.${ext}",
     ):
         geom = geometry.values
         atoms = cycle(geometry.molecule_atoms)
@@ -84,7 +84,7 @@ class GjfWriter(Writer):
         mult = cycle(mult)
         template_params = {"genre": geometry.genre, "cat": "geometry"}
         for handle, *params in zip(
-            self._iter_handles(geometry.filenames, filename_template, template_params),
+            self._iter_handles(geometry.filenames, name_template, template_params),
             geom,
             atoms,
             char,
