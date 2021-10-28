@@ -437,18 +437,18 @@ class ScatteringData(_VibData):
         "rc180",
     )
     full_name_ref = {
-        "depolarp": "Depolarization ratio for plane incident light",
-        "depolaru": "Depolarization ratio for unpolarized incident light",
-        "depp": "Depolarization ratio for plane incident light",
-        "depu": "Depolarization ratio for unpolarized incident light",
+        "depolarp": "Depolar-P Raman",
+        "depolaru": "Depolar-U Raman",
+        "depp": "Depolar-P ROA",
+        "depu": "Depolar-U ROA",
         "alpha2": "Raman invariant Alpha2",
         "beta2": "Raman invariant Beta2",
         "alphag ": "ROA invariant AlphaG",
         "gamma2": "ROA invariant Gamma2",
         "delta2": "ROA invariant Delta2",
-        "cid1": "CID1",
-        "cid2": "CID2",
-        "cid3": "CID3",
+        "cid1": "CID ICPu/SCPu(180)",
+        "cid2": "CID ICPd/SCPd(90)",
+        "cid3": "CID DCPI(180)",
         "rc180": "Degree of circularity",
     }
     _units = {
@@ -477,8 +477,8 @@ class ScatteringData(_VibData):
 class ElectronicData(SpectralData):
     wavelen = ArrayProperty(check_against="filenames")
     associated_genres = ("eemang",)
-    full_name_ref = dict(emang="E-M Angle")
-    _units = dict(emang="deg")
+    full_name_ref = dict(eemang="E-M Angle")
+    _units = dict(eemang="deg")
 
     def __init__(
         self,
@@ -637,19 +637,19 @@ class ScatteringActivities(ScatteringData, _VibAct):
         "ramact",
         "raman1",
         "roa1",
-        "raman2 ",
+        "raman2",
         "roa2",
         "raman3",
         "roa3",
     )
     full_name_ref = dict(
-        ramact="Raman scattering activities",
-        roa1="ROA intensiy 1",
-        raman1="Raman intensity 1",
-        roa2="ROA intensiy 2",
-        raman2="Raman intensity 2",
-        roa3="ROA intensiy 3",
-        raman3="Raman intensity 3",
+        ramact="Raman scatt. activities",
+        roa1="ROA inten. ICPu/SCPu(180)",
+        raman1="Raman inten. ICPu/SCPu(180)",
+        roa2="ROA inten. ICPd/SCPd(90)",
+        raman2="Raman inten. ICPd/SCPd(90)",
+        roa3="ROA inten. DCPI(180)",
+        raman3="Raman inten. DCPI(180)",
     )
     _units = dict(
         ramact="A^4/AMU",
@@ -664,7 +664,7 @@ class ScatteringActivities(ScatteringData, _VibAct):
         "ramact": _as_is,
         "raman1": _as_is,
         "roa1": _as_is,
-        "raman2 ": _as_is,
+        "raman2": _as_is,
         "roa2": _as_is,
         "raman3": _as_is,
         "roa3": _as_is,
@@ -705,8 +705,8 @@ class ElectronicActivities(ElectronicData, SpectralActivities):
         lrot="Rot. (lenght)",
         vosc="Osc. (velo)",
         losc="Osc. (length)",
-        vdip="Osc. (velo)",
-        ldip="Osc. (length)",
+        vdip="Dip. (velo)",
+        ldip="Dip. (length)",
     )
     _units = dict(
         vrot="10^(-40) erg*esu*cm/Gauss",
