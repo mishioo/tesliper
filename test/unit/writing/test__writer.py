@@ -7,6 +7,7 @@ from hypothesis import strategies as st
 
 from tesliper import Energies, InfoArray, Spectra
 from tesliper.glassware import (
+    Bands,
     ElectronicActivities,
     ElectronicData,
     FloatArray,
@@ -135,8 +136,8 @@ arrays_by_type = dict(
 )
 extras_by_type = dict(
     corrections=FloatArray("gibcorr", [""], [1]),
-    frequencies=VibrationalActivities("freq", [""], [[1]], [[1]]),
-    wavelengths=ElectronicActivities("wavelen", [""], [[1]], [[1]]),
+    frequencies=Bands("freq", [""], [[1]], [[1]]),
+    wavelengths=Bands("wavelen", [""], [[1]], [[1]]),
     stoichiometry=InfoArray("stoichiometry", [""], [""]),
 )
 

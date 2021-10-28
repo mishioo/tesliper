@@ -7,6 +7,7 @@ from typing import List, Optional, Sequence, Union
 import numpy as np
 
 from ..glassware.arrays import (
+    Bands,
     ElectronicActivities,
     Energies,
     FloatArray,
@@ -14,7 +15,6 @@ from ..glassware.arrays import (
     SpectralActivities,
     SpectralData,
     Transitions,
-    VibrationalActivities,
 )
 from ..glassware.spectra import SingleSpectrum, Spectra
 from ._writer import Writer
@@ -43,7 +43,7 @@ class TxtWriter(Writer):
     def overview(
         self,
         energies: Sequence[Energies],
-        frequencies: Optional[VibrationalActivities] = None,
+        frequencies: Optional[Bands] = None,
         stoichiometry: Optional[InfoArray] = None,
         name_template: Union[str, Template] = "${cat}.${ext}",
     ):
