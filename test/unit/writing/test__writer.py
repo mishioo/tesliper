@@ -8,10 +8,13 @@ from hypothesis import strategies as st
 from tesliper import Energies, InfoArray, Spectra
 from tesliper.glassware import (
     ElectronicActivities,
+    ElectronicData,
     FloatArray,
     ScatteringActivities,
+    ScatteringData,
     SingleSpectrum,
     VibrationalActivities,
+    VibrationalData,
 )
 from tesliper.writing import Writer
 
@@ -120,9 +123,12 @@ def test_writer_check_file_new_only_no_dest(writer_class):
 
 arrays_by_type = dict(
     energies=Energies("gib", [""], [1]),
+    vibrationaldata=VibrationalData("emang", [""], [[1]], [[1]]),
+    scatteringdata=ScatteringData("depp", [""], [[1]], [[1]]),
+    electronicdata=ElectronicData("eemang", [""], [[1]], [[1]]),
     vibrationalactivities=VibrationalActivities("iri", [""], [[1]], [[1]]),
     scatteringactivities=ScatteringActivities("ramact", [""], [[1]], [[1]]),
-    electronicactivities=ElectronicActivities("ex_en", [""], [[1]], [[1]]),
+    electronicactivities=ElectronicActivities("vrot", [""], [[1]], [[1]]),
     spectra=Spectra("ir", [""], [[1, 2]], [1, 2]),
     singlespectrum=SingleSpectrum("ir", [1, 2], [1, 2]),
     infoarray=InfoArray("command", [""], [""]),

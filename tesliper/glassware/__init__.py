@@ -1,5 +1,6 @@
 from .array_base import ArrayBase, ArrayProperty
 from .arrays import (
+    Bands,
     BooleanArray,
     DataArray,
     ElectronicActivities,

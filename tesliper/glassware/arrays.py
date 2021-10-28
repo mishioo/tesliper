@@ -1,5 +1,6 @@
 # IMPORTS
 import logging as lgg
+from abc import ABC, abstractmethod
 from typing import Any, Sequence, Tuple, Union
 
 import numpy as np
@@ -60,9 +61,21 @@ class DataArray(ArrayBase):
         energies="Energies",
     )
 
+    _units = {}
+
     @property
     def full_name(self):
-        return self.full_name_ref[self.genre]
+        try:
+            return self.full_name_ref[self.genre]
+        except KeyError:
+            return ""
+
+    @property
+    def units(self):
+        try:
+            return self._units[self.genre]
+        except KeyError:
+            return ""
 
 
 class IntegerArray(DataArray):
@@ -265,9 +278,13 @@ class Averagable:
         return averaged
 
 
-class _Spectral(FloatArray):
-    associated_genres = ()
-    _units = dict()
+class Bands(FloatArray):
+    associated_genres = ("freq", "wavelen", "ex_en")
+    _units = {
+        "freq": "Frequency / cm^(-1)",
+        "wave": "Wavenlength / nm",
+        "ex_en": "Excitation energy / eV",
+    }
 
     def __init__(
         self,
@@ -278,38 +295,86 @@ class _Spectral(FloatArray):
     ):
         super().__init__(genre, filenames, values, allow_data_inconsistency)
 
-    # TODO: at least one, freq or wave, must be defined by subclass;
-    #       include that in docstring
     @property
     def freq(self):
-        return 1e7 / self.wavelen
-
-    @property
-    def wavelen(self):
-        return 1e7 / self.freq
+        """Values converted to frequencies in cm^(-1).
+        Same as `Bands.frequencies`
+        """
+        return convert_band(self.values, from_genre=self.genre, to_genre="freq")
 
     @property
     def frequencies(self):
+        """Values converted to frequencies in cm^(-1).
+        Same as `Bands.freq`
+        """
         return self.freq
 
     @property
+    def wavelen(self):
+        """Values converted to wavelengths in nm.
+        Same as `Bands.wavelengths`
+        """
+        return convert_band(self.values, from_genre=self.genre, to_genre="wavelen")
+
+    @property
     def wavelengths(self):
+        """Values converted to wavelengths in nm.
+        Same as `Bands.wavelen`
+        """
         return self.wavelen
 
     @property
-    def units(self):
-        try:
-            return self._units[self.genre]
-        except KeyError:
-            return ""
+    def ex_en(self):
+        """Values converted to excitation_energy in eV.
+        Same as `Bands.excitation_energy`
+        """
+        return convert_band(self.values, from_genre=self.genre, to_genre="ex_en")
+
+    @property
+    def excitation_energy(self):
+        """Values converted to excitation_energy in eV.
+        Same as `Bands.ex_en`
+        """
+        return self.ex_en
+
+    @property
+    def imaginary(self):
+        """Finds number of imaginary frequencies of each conformer.
+
+        Returns
+        -------
+        numpy.ndarray
+            Number of imaginary frequencies of each conformer."""
+        if self.frequencies.size > 0:
+            return (self.frequencies < 0).sum(1)
+        else:
+            return np.array([])
+
+    def find_imaginary(self):
+        """Finds all freqs with imaginary values and creates 'imag' entry with
+        list of indicants of imaginery values presence.
+
+        Returns
+        -------
+        dict
+            Dictionary of {filename: number-of-imaginary-frequencies} for each
+            conformer with at least one imaginary frequency.
+        """
+        imag = self.imaginary
+        return {k: v for k, v in zip(self.filenames, imag) if v}
 
 
-class SpectralData(_Spectral):
+class SpectralData(FloatArray, ABC):
     """Base class for spectral data genres, that are not spectral activities."""
 
     # TODO: Supplement tests regarding this class' subclasses
 
     associated_genres = ()
+
+    @property
+    @abstractmethod
+    def frequencies(self):
+        return NotImplemented
 
 
 class _VibData(SpectralData):
@@ -326,6 +391,10 @@ class _VibData(SpectralData):
     ):
         super().__init__(genre, filenames, values, allow_data_inconsistency)
         self.freq = freq
+
+    @property
+    def frequencies(self):
+        return self.freq
 
 
 class VibrationalData(_VibData):
@@ -349,6 +418,20 @@ class ScatteringData(_VibData):
         "rc180",
     )
 
+    def __init__(
+        self,
+        genre,
+        filenames,
+        values,
+        freq,
+        t=298.15,
+        laser=532,
+        allow_data_inconsistency=False,
+    ):
+        super().__init__(genre, filenames, values, freq, allow_data_inconsistency)
+        self.laser = laser  # in nm
+        self.t = t  # temperature in K
+
 
 class ElectronicData(SpectralData):
     wavelen = ArrayProperty(check_against="filenames")
@@ -365,8 +448,12 @@ class ElectronicData(SpectralData):
         super().__init__(genre, filenames, values, allow_data_inconsistency)
         self.wavelen = wavelen  # in nm
 
+    @property
+    def frequencies(self):
+        return convert_band(self.wavelen, from_genre="wavelen", to_genre="freq")
 
-class SpectralActivities(_Spectral, Averagable):
+
+class SpectralActivities(SpectralData, Averagable, ABC):
     """Base class for spectral activities genres."""
 
     associated_genres = ()
@@ -397,9 +484,6 @@ class SpectralActivities(_Spectral, Averagable):
         uv="electronic",
     )
     _units = dict(
-        freq="Frequency / cm^(-1)",
-        wave="Wavenlength / nm",
-        ex_en="Excitation energy / eV",
         rot="R / 10^(-44) esu^2 cm^2",
         dip="D / 10^(-40) esu^2 cm^2",
         iri="KM/Mole",
@@ -456,47 +540,7 @@ def _as_is(values, *_args, **_kwargs):
     return values
 
 
-class _Vibrational(SpectralActivities):
-
-    freq = ArrayProperty(check_against="filenames")
-
-    def __init__(
-        self,
-        genre,
-        filenames,
-        values,
-        freq,
-        allow_data_inconsistency=False,
-    ):
-        super().__init__(genre, filenames, values, allow_data_inconsistency)
-        self.freq = freq
-
-    @property
-    def imaginary(self):
-        """Finds number of imaginary frequencies of each conformer.
-
-        Returns
-        -------
-        numpy.ndarray
-            Number of imaginary frequencies of each conformer."""
-        if self.frequencies.size > 0:
-            return (self.frequencies < 0).sum(1)
-        else:
-            return np.array([])
-
-    def find_imaginary(self):
-        """Finds all freqs with imaginary values and creates 'imag' entry with
-        list of indicants of imaginery values presence.
-
-        Returns
-        -------
-        dict
-            Dictionary of {filename: number-of-imaginary-frequencies} for each
-            conformer with at least one imaginary frequency.
-        """
-        imag = self.imaginary
-        return {k: v for k, v in zip(self.filenames, imag) if v}
-
+class _VibAct(_VibData, SpectralActivities):
     def calculate_spectra(self, start, stop, step, width, fitting):
         """Calculates spectrum of desired type for each individual conformer.
 
@@ -538,14 +582,12 @@ class _Vibrational(SpectralActivities):
         return spectra
 
 
-class VibrationalActivities(_Vibrational):
+class VibrationalActivities(VibrationalData, _VibAct):
     associated_genres = (
-        "freq",
         "iri",
         "dip",
         "rot",
     )
-
     _intensities_converters = {
         "dip": dw.dip_to_ir,
         "rot": dw.rot_to_vcd,
@@ -553,7 +595,7 @@ class VibrationalActivities(_Vibrational):
     }
 
 
-class ScatteringActivities(_Vibrational):
+class ScatteringActivities(ScatteringData, _VibAct):
     associated_genres = (
         "ramact",
         "raman1",
@@ -572,20 +614,6 @@ class ScatteringActivities(_Vibrational):
         "raman3": _as_is,
         "roa3": _as_is,
     }
-
-    def __init__(
-        self,
-        genre,
-        filenames,
-        values,
-        freq,
-        t=298.15,
-        laser=532,
-        allow_data_inconsistency=False,
-    ):
-        super().__init__(genre, filenames, values, freq, allow_data_inconsistency)
-        self.laser = laser  # in nm
-        self.t = t  # temperature in K
 
     @property
     def intensities(self):
@@ -608,10 +636,8 @@ class ScatteringActivities(_Vibrational):
         return converter(self.values, self.frequencies, self.t, self.laser)
 
 
-class ElectronicActivities(SpectralActivities):
+class ElectronicActivities(ElectronicData, SpectralActivities):
     associated_genres = (
-        "wavelen",
-        "ex_en",
         "vdip",
         "ldip",
         "vrot",
@@ -619,7 +645,6 @@ class ElectronicActivities(SpectralActivities):
         "vosc",
         "losc",
     )
-
     _intensities_converters = {
         # for "osc" ignore frequencies given by default by super().intensities
         "vosc": lambda v, _: dw.osc_to_uv(v),
@@ -628,19 +653,6 @@ class ElectronicActivities(SpectralActivities):
         "lrot": dw.rot_to_ecd,
         # TODO: add "ldip" and "vdip"
     }
-
-    def __init__(
-        self,
-        genre,
-        filenames,
-        values,
-        wavelen,
-        allow_data_inconsistency=False,
-    ):
-        super().__init__(genre, filenames, values, allow_data_inconsistency)
-        self.wavelen = wavelen  # in nm
-
-    wavelen = ArrayProperty(check_against="filenames")
 
     def calculate_spectra(self, start, stop, step, width, fitting):
         """Calculates spectrum of desired type for each individual conformer.

@@ -288,13 +288,14 @@ class Writer(ABC):
             list of DataArray objects of this type}.
         extras : dict
             Spacial-case genres: extra information used by some writer methods
-            when exporting data. Available {key: value} pairs are:
+            when exporting data. Available {key: value} pairs (if given in `data`) are:
                 corrections: dict of {energy genre: FloatArray},
-                frequencies: VibrationalActivities or None,
-                wavelenghts: ElectronicActivities or None,
-                stoichiometry: InfoArray or None,
-                charge: IntegerArray or None,
-                multiplicity: IntegerArray or None
+                frequencies: Bands,
+                wavelengths: Bands,
+                excitation: Bands,
+                stoichiometry: InfoArray,
+                charge: IntegerArray,
+                multiplicity: IntegerArray
         """
         distr: Dict[str, List] = dict()
         extras: Dict[str, Any] = dict()
@@ -306,6 +307,8 @@ class Writer(ABC):
                 extras["frequencies"] = obj
             elif obj.genre == "wavelen":
                 extras["wavelengths"] = obj
+            elif obj.genre == "ex_en":
+                extras["excitation"] = obj
             elif obj.genre == "stoichiometry":
                 extras["stoichiometry"] = obj
             elif obj.genre == "charge":

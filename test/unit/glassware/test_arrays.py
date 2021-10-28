@@ -176,7 +176,7 @@ def inten(monkeypatch):
     inten_mock = mock.MagicMock()
     inten_mock.converter = mock.Mock()
     inten_mock.__getitem__.side_effect = lambda _k: inten_mock.converter
-    monkeypatch.setattr(ar.SpectralActivities, "_intensities_converters", inten_mock)
+    monkeypatch.setattr(ar.VibrationalActivities, "_intensities_converters", inten_mock)
     return inten_mock
 
 
@@ -191,7 +191,7 @@ def inten_no_conversion(inten):
 
 @pytest.fixture
 def bars():
-    return ar.SpectralActivities("bla", [], [], [])
+    return ar.VibrationalActivities("iri", [], [], [])
 
 
 def test_intensieties(bars, inten, fnms, vals, freq):
