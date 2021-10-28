@@ -387,3 +387,45 @@ def find_scaling(a: Numbers, b: Numbers) -> float:
     scaling = np.mean(np.abs(a)) / np.mean(np.abs(b))
     scaling = 1.0 if np.isnan(scaling) else scaling
     return scaling
+
+
+# genre: {target: converter}
+_converters = {
+    "freq": {"wavelen": lambda v: 1e7 / v, "ex_en": lambda v: v / 8065.544},
+    "wavelen": {"freq": lambda v: 1e7 / v, "ex_en": lambda v: 1239.8 / v},
+    "ex_en": {"freq": lambda v: v * 8065.544, "wavelen": lambda v: 1239.8 / v},
+}
+
+
+def convert_band(
+    value: Union[float, np.ndarray], from_genre: str, to_genre: str
+) -> Union[float, np.ndarray]:
+    """Convert one representation of band to another.
+
+    Parameters
+    ----------
+    value : float or np.ndarray
+        Value(s) to convert.
+    from_genre : str
+        Genre specifying a representation of band of input data.
+        Should be one of: 'freq', 'wavelen', 'ex_en'.
+    to_genre : str
+        Genre specifying a representation of band, to which you want to convert.
+        Should be one of: 'freq', 'wavelen', 'ex_en'.
+
+    Returns
+    -------
+    float or np.ndarray
+        Requested representation of bands. If `from_genre` is same as `to_genre`,
+        then simply `value` is returned.
+    """
+    if from_genre == to_genre:
+        return value
+    try:
+        converter = _converters[from_genre][to_genre]
+    except KeyError as error:
+        raise ValueError(
+            f"Unsupported conversion: from '{from_genre}' to '{to_genre}'. "
+            "Genres available for conversion are: 'freq', 'wavelen', 'ex_en'."
+        ) from error
+    return converter(value)
