@@ -1,5 +1,6 @@
 # IMPORTS
 import logging as lgg
+import re
 import tkinter as tk
 import tkinter.ttk as ttk
 from tkinter import messagebox
@@ -84,33 +85,57 @@ class SpectralDataDetails(ttk.Frame):
         super().__init__(master, style=style, **kwargs)
         self.vars = {}
         self.columnconfigure(0, weight=1)
-        self.rowconfigure((1, 3, 5), weight=1)
         defaults = set("dip rot vdip vrot transitions raman1 roa1".split())
-        cols = 5
-        for num, class_ in enumerate([VibrationalData, ElectronicData, ScatteringData]):
-            name = class_.__name__[:-4] + " " + class_.__name__[-4:]
-            sep = LabelSeparator(self, text=name, style="active.TFrame")
-            sep.label.configure(style="active.TLabel")
-            sep.grid(column=0, row=num * 2, sticky="news")
-            frame = ttk.Frame(self, style="active.TFrame")
-            frame.grid(column=0, row=num * 2 + 1, sticky="news")
-            frame.columnconfigure(tuple(range(cols)), weight=1)
+        cols = 3
+        classes = [
+            VibrationalActivities,
+            VibrationalData,
+            ElectronicActivities,
+            ElectronicData,
+            ScatteringActivities,
+            ScatteringData,
+        ]
+        frames = dict()
+        for num, class_ in enumerate(classes):
+            name = re.findall("[A-Z][^A-Z]*", class_.__name__)[0] + " Data"
+            if name not in frames:
+                sep = LabelSeparator(self, text=name, style="active.TFrame")
+                sep.label.configure(style="active.TLabel")
+                sep.grid(column=0, row=num * 2, sticky="news")
+                frame = ttk.Frame(self, style="active.TFrame")
+                frame.grid(column=0, row=num * 2 + 1, sticky="news")
+                frame.columnconfigure(tuple(range(cols)), weight=1)
+                last_idx = 0
+            else:
+                frame, last_idx = frames[name]
             associated_genres = class_.associated_genres
-            if class_ is VibrationalData:
-                # get rid of frequencies genre
-                associated_genres = associated_genres[1:]
-            if class_ is ElectronicData:
-                # get rid of wavelengths genre, add transitions
-                associated_genres = associated_genres[1:] + ("transitions",)
-            for idx, genre in enumerate(associated_genres):
+            if class_ is ElectronicActivities:
+                # add transitions
+                associated_genres = associated_genres + ("transitions",)
+            for idx_, genre in enumerate(associated_genres):
+                full_name = (
+                    "Transitions"
+                    if genre == "transitions"
+                    else class_.full_name_ref[genre]
+                )
+                idx = last_idx + idx_
                 val = genre in defaults and master.tesliper.conformers.has_genre(genre)
                 var = tk.BooleanVar(value=val)
                 self.vars[genre] = var
                 cb = ttk.Checkbutton(
-                    frame, text=genre, variable=var, style="active.TCheckbutton"
+                    frame,
+                    text=full_name,
+                    variable=var,
+                    style="active.TCheckbutton",
                 )
                 cb.grid(column=idx % cols, row=idx // cols, padx=(5, 0), sticky="news")
                 master.changer.register([cb], needs_all_genres=[genre])
+            try:
+                frames[name] = frame, idx + 1
+            except NameError:
+                frames[name] = frame, last_idx
+        for frame, idx in frames.values():
+            self.rowconfigure(frame.grid_info()["row"], weight=idx)
 
     def get_query(self):
         return [g for g, v in self.vars.items() if v.get()]
