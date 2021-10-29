@@ -1289,31 +1289,32 @@ class ExportData(ttk.LabelFrame):
             else:
                 _ = genres.pop(idx)
                 savers.append(
-                    functools.partial(
-                        self._save_all_transitions,
-                        transitions=self.tesliper["transitions"],
-                        wavelengths=self.tesliper["wavelen"],
+                    (
+                        functools.partial(
+                            self._save_all_transitions,
+                            transitions=self.tesliper["transitions"],
+                            wavelengths=self.tesliper["wavelen"],
+                        ),
+                        thing,
                     )
                 )
             if thing == "energies":
-                savers.append(
-                    functools.partial(
-                        self.tesliper.export_data,
-                        genres=["freq", "stoichiometry", *genres],
-                    )
+                saver = functools.partial(
+                    self.tesliper.export_data,
+                    genres=["freq", "stoichiometry", *genres],
                 )
             elif thing == "spectral data":
-                savers.append(
-                    functools.partial(self.tesliper.export_data, genres=genres)
-                )
+                saver = functools.partial(self.tesliper.export_data, genres=genres)
             elif thing == "spectra":
-                savers.append(self.tesliper.export_spectra)
+                saver = self.tesliper.export_spectra
             elif thing == "averaged":
-                savers.append(self.tesliper.export_averaged)
+                saver = self.tesliper.export_averaged
             else:
                 logger.warning(f"Unrecognised export category: '{thing}'.")
-        existing = []
-        for saver in savers:
+                continue
+            savers.append((saver, thing))
+        existing = set()
+        for saver, thing in savers:
             try:
                 saver(fmt=fmt, mode=mode)
             except FileExistsError:
@@ -1321,7 +1322,7 @@ class ExportData(ttk.LabelFrame):
                 if fmt == "xlsx":
                     return ["xlsx"]
                 # must append other data chunks
-                existing.append(thing)
+                existing.add(thing)
             except PermissionError as error:
                 answer = messagebox.askokcancel(
                     "Permission Error", f"Cannot write to file: {error}. Continue?"
@@ -1330,7 +1331,7 @@ class ExportData(ttk.LabelFrame):
                     return []  # empty to abort retry
             # next chunks must be appended to .xlsx file
             mode = "a" if fmt == "xlsx" else mode
-        return existing
+        return list(existing)
 
     def save(self, fmt):
         query = self.get_save_query()
