@@ -112,10 +112,16 @@ class TesliperApp(tk.Tk):
         tk.Grid.columnconfigure(self, 1, weight=1)
         tk.Grid.rowconfigure(self, 0, weight=1)
 
-        # created by .new_session()
-        self.tesliper = None
-        self.notebook = None
-        self.controls = None
+        self.tesliper = tesliper.Tesliper()
+        self.notebook = ViewsNotebook(self)
+        self.notebook.grid(column=1, row=0, sticky="nswe")
+        self.controls = ControlsFrame(
+            self,
+            extract_view=self.notebook.extract,
+            energies_view=self.notebook.energies,
+            spectra_view=self.notebook.spectra,
+        )
+        self.controls.grid(column=0, row=0, sticky="nswe")
 
         # Log & Bar frame
         bottom_frame = tk.Frame(self)
@@ -168,8 +174,6 @@ class TesliperApp(tk.Tk):
         for handler in text_handlers:
             ROOT_LOGGER.addHandler(handler)
 
-        self.new_session()
-
         self.bind("<<DataExtracted>>", lambda _: self.changer.set_states(), add="+")
         self.bind("<<KeptChanged>>", lambda _: self.changer.set_states(), add="+")
 
@@ -183,6 +187,8 @@ class TesliperApp(tk.Tk):
             self.log.window.iconbitmap(os.path.join(iconpath, "tesliper.ico"))
         except tk.TclError:
             self.logger.warning("Cannot load icon.")
+
+        self.changer.set_states()
 
     def report_callback_exception(self, exc, val, tb):
         self.logger.critical("An unexpected error occurred.", exc_info=True)
@@ -210,28 +216,8 @@ class TesliperApp(tk.Tk):
             )
             if not pop:
                 return
-        if self.tesliper is not None:
-            del self.tesliper
-        if self.changer is not None:
-            del self.changer
-        if self.notebook is not None:
-            tk.Grid.forget(self.notebook)
-            del self.notebook
-        if self.controls is not None:
-            tk.Grid.forget(self.controls)
-            del self.controls
-        CheckTree.trees = dict()  # TODO: refactor to not need this
-        self.changer = WgtStateChanger(self)
-        self.tesliper = tesliper.Tesliper()
-        self.notebook = ViewsNotebook(self)
-        self.notebook.grid(column=1, row=0, sticky="nswe")
-        self.controls = ControlsFrame(
-            self,
-            extract_view=self.notebook.extract,
-            energies_view=self.notebook.energies,
-            spectra_view=self.notebook.spectra,
-        )
-        self.controls.grid(column=0, row=0, sticky="nswe")
+        self.tesliper.clear()
+        CheckTree.clear()
         self.changer.set_states()
 
     def on_closing(self):

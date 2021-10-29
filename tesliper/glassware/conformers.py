@@ -156,6 +156,13 @@ class Conformers(OrderedDict):
         self._indices = {}
         super().__init__(*args, **kwargs)
 
+    def clear(self):
+        """Remove all items from the Conformers instance."""
+        self.kept = []
+        self.filenames = []
+        self._indices = {}
+        super().clear()
+
     def __setitem__(self, key, value):
         try:
             value = dict(value)

@@ -203,6 +203,23 @@ class CheckTree(ttk.Treeview):
         for tree in CheckTree.trees.values():
             tree._insert(parent=parent, index=index, iid=iid, **kw)
 
+    def delete(self, *items):
+        raise NotImplementedError(
+            "Removing individual items not supported. "
+            "To clear all trees, use `CheckTree.clear()`."
+        )
+
+    @classmethod
+    def clear(cls):
+        for tree in CheckTree.trees.values():
+            items = tree.get_children()
+            super(CheckTree, tree).delete(*items)
+            for box in tree.boxes.values():
+                box.destroy()
+            tree.boxes = OrderedDict()
+            tree.owned_children = OrderedDict()
+            tree.children_names = OrderedDict()
+
     def on_bar(self, *args):
         self.yview(*args)
         # logger.debug(args)

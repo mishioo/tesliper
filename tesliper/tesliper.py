@@ -88,6 +88,16 @@ class Tesliper:
         except ValueError:
             raise KeyError(f"Unknown genre '{item}'.")
 
+    def clear(self):
+        """Remove all data from the instance."""
+        self.conformers.clear()
+        self.wanted_files = []
+        self.input_dir = ""
+        self.output_dir = ""
+        self.spectra = dict()
+        self.averaged = dict()
+        self.parameters = self.standard_parameters
+
     @property
     def energies(self):
         # TODO: use appropriate DataArray.associated_genres instead of hard-coded value
