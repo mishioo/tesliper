@@ -219,6 +219,7 @@ class CheckTree(ttk.Treeview):
             tree.boxes = OrderedDict()
             tree.owned_children = OrderedDict()
             tree.children_names = OrderedDict()
+            cls.trees["main"].curr_iid = 0
 
     def on_bar(self, *args):
         self.yview(*args)
