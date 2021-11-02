@@ -217,7 +217,7 @@ class TesliperApp(tk.Tk):
             if not pop:
                 return
         self.tesliper.clear()
-        CheckTree.clear()
+        self.event_generate("<<Clear>>")
         self.changer.set_states()
 
     def on_closing(self):

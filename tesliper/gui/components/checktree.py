@@ -112,6 +112,7 @@ class CheckTree(ttk.Treeview):
 
         self.owned_children = OrderedDict()
         self.children_names = OrderedDict()
+        self.winfo_toplevel().bind("<<Clear>>", CheckTree.clear, "+")
 
     @property
     def tesliper(self):
@@ -210,7 +211,7 @@ class CheckTree(ttk.Treeview):
         )
 
     @classmethod
-    def clear(cls):
+    def clear(cls, _event=None):
         for tree in CheckTree.trees.values():
             items = tree.get_children()
             super(CheckTree, tree).delete(*items)
