@@ -328,6 +328,7 @@ class SelectConformers(CollapsiblePane):
         root = self.winfo_toplevel()
         root.bind("<<KeptChanged>>", self.on_kept_changed, "+")
         root.bind("<<DataExtracted>>", self.on_data_extracted, "+")
+        root.bind("<<Clear>>", self.clear, "+")
 
         count_frame = ttk.Frame(self.content)
         count_frame.grid(column=0, row=0, sticky="news")
@@ -410,6 +411,11 @@ class SelectConformers(CollapsiblePane):
     @property
     def tesliper(self):
         return self.winfo_toplevel().tesliper
+
+    def clear(self, _event=None):
+        for items in self.widgets.values():
+            items.all.var.set(0)
+            items.count.var.set(0)
 
     def on_data_extracted(self, _event=None):
         if _event is not None:
@@ -532,6 +538,7 @@ class CalculateSpectra(CollapsiblePane):
         super().__init__(parent, text="Calculate Spectra", **kwargs)
         self.view = view
         root = self.winfo_toplevel()
+        root.bind("<<Clear>>", self.clear, "+")
 
         self.content.columnconfigure(0, weight=1)
 
@@ -1072,6 +1079,11 @@ class CalculateSpectra(CollapsiblePane):
         logger.debug(f"Recalculating with {self.current_settings}")
         self._calculate_spectra(**draw_params)
         self.draw(**draw_params)
+
+    def clear(self, _event=None):
+        self.s_name.set("")
+        self.mode.set("")
+        self.show_bars.config(state="disabled")
 
 
 class ExtractData(ttk.LabelFrame):

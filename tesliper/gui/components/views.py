@@ -50,8 +50,12 @@ class SpectraView(ttk.Frame):
         self.tslr_ax = None
         self.bars_ax = None
         self.exp_ax = None
-        # TO DO:
-        # add save/save img buttons
+        self.winfo_toplevel().bind("<<Clear>>", self.clear, "+")
+        # TODO: add save/save img buttons
+
+    def clear(self, _event=None):
+        self.new_plot()
+        self.canvas.draw()
 
     def new_plot(self):
         if self.tslr_ax:
