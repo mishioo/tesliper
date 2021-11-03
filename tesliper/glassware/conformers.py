@@ -541,6 +541,8 @@ class Conformers(OrderedDict):
         wanted = wanted if wanted is not None else self.primary_genres
         if not strict:
             count = [tuple(g in conf for g in wanted) for conf in self.values()]
+            if not count:
+                return
             best_match = max(count)
             complete = (match == best_match for match in count)
         else:
