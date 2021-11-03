@@ -644,7 +644,6 @@ class CalculateSpectra(CollapsiblePane):
         )
         self.stack_radio.grid(column=0, row=8, sticky="w")
 
-        # TODO: call auto_combobox.update_values() when conformers.kept change
         self.single = ConformersChoice(self.content, spectra_var=self.s_name)
         self.single.bind(
             "<<ComboboxSelected>>",
@@ -1194,7 +1193,6 @@ class ExportData(ttk.LabelFrame):
         root.changer.register(
             [self.b_gjf_export], needs_any_genre=gw.Geometry.associated_genres
         )
-        # TODO: handle PermissionDenied exception
 
     @property
     def tesliper(self):

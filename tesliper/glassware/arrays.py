@@ -36,8 +36,6 @@ class DataArray(ArrayBase):
         List of appropriate data values.
     """
 
-    # TODO: Supplement full_name_ref
-
     full_name_ref = {}
     _units = {}
 

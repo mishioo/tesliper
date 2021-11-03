@@ -538,9 +538,6 @@ class Conformers(OrderedDict):
         -----
         Conformers previously marked as "not kept" will not be affected.
         """
-        # DONE: don't take optimization_completed and such into consideration
-        # TODO: when above satisfied, change gui.tab_loader.Loader\
-        #       .update_overview_values() and .set_overview_values()
         wanted = wanted if wanted is not None else self.primary_genres
         if not strict:
             count = [tuple(g in conf for g in wanted) for conf in self.values()]
