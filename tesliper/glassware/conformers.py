@@ -158,7 +158,7 @@ class Conformers(OrderedDict):
 
     def clear(self):
         """Remove all items from the Conformers instance."""
-        self.kept = []
+        self._kept = []
         self.filenames = []
         self._indices = {}
         super().clear()
