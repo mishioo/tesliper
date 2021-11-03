@@ -22,6 +22,7 @@ class AutoComboboxBase(ttk.Combobox, ABC):
         root = self.winfo_toplevel()
         root.bind("<<KeptChanged>>", self.update_values, "+")
         root.bind("<<DataExtracted>>", self.update_values, "+")
+        root.bind("<<Clear>>", self.update_values, "+")
 
     @abstractmethod
     def get_available_values(self):
