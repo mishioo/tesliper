@@ -560,6 +560,10 @@ class SpectralActivities(SpectralData, Averagable, ABC):
             )
         return converter(self.values, self.frequencies)
 
+    @abstractmethod
+    def calculate_spectra(self, start, stop, step, width, fitting):
+        return NotImplemented
+
 
 def _as_is(values, *_args, **_kwargs):
     return values
