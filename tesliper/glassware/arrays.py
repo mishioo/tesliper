@@ -940,7 +940,7 @@ class Geometry(FloatArray):
         check_against="values",
         check_depth=2,
         # TODO: make sanitizer, that accepts jagged nested sequences
-        fsan=np.vectorize(atomic_number),
+        fsan=np.vectorize(atomic_number, otypes=[int]),
         strict=True,
     )
 

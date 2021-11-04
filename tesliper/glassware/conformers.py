@@ -348,8 +348,8 @@ class Conformers(OrderedDict):
             else:
                 self[key] = value
 
-    def arrayed(self, genre: str, full: bool = False) -> AnyArray:
-        """Lists requested data and returns as appropriate DataArray instance.
+    def arrayed(self, genre: str, full: bool = False, **kwargs) -> AnyArray:
+        """Lists requested data and returns as appropriate `DataArray` instance.
 
         Parameters
         ----------
@@ -357,12 +357,16 @@ class Conformers(OrderedDict):
             String representing data genre. Must be one of known genres.
         full
             Boolean indicating if full set of data should be taken, ignoring
-            any trimming conducted earlier. Defaults to False.
+            any trimming conducted earlier. Defaults to `False`.
+        kwargs
+            Additional keyword parameters passed to data array constructor.
+            Any explicitly given parameters will take precedence over automatically
+            retrieved and default values.
 
         Returns
         -------
         DataArray
-            Arrayed data of desired genre as appropriate DataArray object.
+            Arrayed data of desired genre as appropriate `DataArray` object.
         """
         try:
             cls = _ARRAY_CONSTRUCTORS[genre]  # ArrayBase subclasses
@@ -392,33 +396,32 @@ class Conformers(OrderedDict):
         params["filenames"] = filenames
         params["values"] = values
         params["allow_data_inconsistency"] = self.allow_data_inconsistency
-        for key in params:
+        for key, value in params.items():
+            if key in kwargs:
+                # explicitly given keyword parameters take precedence
+                continue
             if not isinstance(params[key], parameter_type):
-                # if value for parameter is already established, move on
+                # if value for parameter is already established, just take it
+                kwargs[key] = value
                 continue
             try:
-                if not confs and key in ("freq", "wavelen"):
-                    params[key] = []
-                elif not confs:
-                    # this is a hack to invoke except clause
-                    # also when conf is an empty sequence
-                    raise KeyError
-                # TODO: add kwargs passed to array constructor
-                #       or fix for single-value parameters stored for each conformer
-                params[key] = [conf[key] for conf in confs]
+                kwargs[key] = [conf[key] for conf in confs]
             except KeyError:
                 # set param to its default value
                 # or raise an error if it don't have one
-                if params[key].default is not params[key].empty:
-                    params[key] = params[key].default
+                if value.default is not value.empty:
+                    kwargs[key] = value.default
                 else:
-                    # FIXME: this triggers for empty Geometry
                     raise TesliperError(
-                        f"One or more conformers does not provide value for "
-                        f"{key} genre, needed to instantiate {cls.__name__} "
-                        f"object."
+                        f"One or more conformers does not provide value for '{key}' "
+                        f"genre, needed to instantiate {cls.__name__} object. "
+                        "You may provide missing values as a keyword parameters to the "
+                        "`Conformers.arrayed()` method call."
                     )
-        return cls(**params)
+            if not kwargs[key] and value.default is not value.empty:
+                # genre produces an empty array, but parameter has default value
+                kwargs[key] = value.default
+        return cls(**kwargs)
 
     def by_index(self, index: int) -> dict:
         """Returns data for conformer on desired index."""
@@ -541,6 +544,8 @@ class Conformers(OrderedDict):
         wanted = wanted if wanted is not None else self.primary_genres
         if not strict:
             count = [tuple(g in conf for g in wanted) for conf in self.values()]
+            if not count:
+                return
             best_match = max(count)
             complete = (match == best_match for match in count)
         else:
@@ -772,14 +777,16 @@ class Conformers(OrderedDict):
         if not energy.filenames.size == geometry.filenames.size:
             raise InconsistentDataError(
                 "Unequal number of conformers in requested geometry and energy genres. "
-                "Trim to incomplete entries before trimming with `trim_rmds`."
+                "Trim incomplete entries before trimming with `trim_rmds`."
             )
         elif not np.array_equal(energy.filenames, geometry.filenames):
             raise InconsistentDataError(
                 "Different conformers in requested geometry and energy genres. "
-                "Trim to incomplete entries before trimming with `trim_rmds`."
+                "Trim incomplete entries before trimming with `trim_rmds`."
             )
-        if ignore_hydrogen and geometry.molecule_atoms.shape[0] != 1:
+        if not geometry:
+            return  # next steps assume there are some conformers
+        if ignore_hydrogen and geometry.molecule_atoms.shape[0] > 1:
             # TODO: remove when dw.geometry.select_atoms supplemented
             raise ValueError(
                 "Cannot ignore hydrogen atoms if requested conformers do not have "
