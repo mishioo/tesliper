@@ -73,7 +73,7 @@ class Writer(ABC):
     """
 
     _header = dict(
-        # TODO: add missing headers (vdip)
+        # TODO: add missing headers
         freq="Frequencies",
         mass="Red. masses",
         frc="Frc consts",
