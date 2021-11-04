@@ -777,14 +777,16 @@ class Conformers(OrderedDict):
         if not energy.filenames.size == geometry.filenames.size:
             raise InconsistentDataError(
                 "Unequal number of conformers in requested geometry and energy genres. "
-                "Trim to incomplete entries before trimming with `trim_rmds`."
+                "Trim incomplete entries before trimming with `trim_rmds`."
             )
         elif not np.array_equal(energy.filenames, geometry.filenames):
             raise InconsistentDataError(
                 "Different conformers in requested geometry and energy genres. "
-                "Trim to incomplete entries before trimming with `trim_rmds`."
+                "Trim incomplete entries before trimming with `trim_rmds`."
             )
-        if ignore_hydrogen and geometry.molecule_atoms.shape[0] != 1:
+        if not geometry:
+            return  # next steps assume there are some conformers
+        if ignore_hydrogen and geometry.molecule_atoms.shape[0] > 1:
             # TODO: remove when dw.geometry.select_atoms supplemented
             raise ValueError(
                 "Cannot ignore hydrogen atoms if requested conformers do not have "
