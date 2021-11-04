@@ -3,7 +3,6 @@ from unittest import mock
 import numpy as np
 import pytest
 
-import tesliper.datawork as dw
 import tesliper.glassware.arrays as ar
 from tesliper.exceptions import InconsistentDataError
 
@@ -27,6 +26,30 @@ def test_filenames_array_values():
 def test_dtype():
     arr = ar.FloatArray(genre="bla", filenames=["f1", "f2", "f3"], values=[3, 12, 15])
     assert arr.values.dtype == np.float64
+
+
+@pytest.mark.parametrize(
+    "cls,kwargs",
+    [
+        (ar.IntegerArray, {}),
+        (ar.FloatArray, {}),
+        (ar.InfoArray, {}),
+        (ar.FilenamesArray, {}),
+        (ar.BooleanArray, {}),
+        (ar.Energies, {}),
+        (ar.Bands, {}),
+        (ar.VibrationalData, {"freq": []}),
+        (ar.ScatteringData, {"freq": []}),
+        (ar.ElectronicData, {"wavelen": []}),
+        (ar.VibrationalActivities, {"freq": []}),
+        (ar.ScatteringActivities, {"freq": []}),
+        (ar.ElectronicActivities, {"wavelen": []}),
+        (ar.Transitions, {}),
+        (ar.Geometry, {"molecule_atoms": []}),
+    ],
+)
+def test_empty_arrays(cls, kwargs):
+    _ = cls(genre="", filenames=[], values=[], **kwargs)
 
 
 @pytest.fixture
