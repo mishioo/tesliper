@@ -931,7 +931,7 @@ class Geometry(FloatArray):
         of this class and setting it's attributes. Defaults to `False`.
     """
 
-    associated_genres = ("geometry",)
+    associated_genres = ("geometry", "input_geom")
     full_name_ref = dict(geometry="Geometry")
     _units = dict(geometry="Angstrom")
     values = ArrayProperty(dtype=float, check_against="filenames")
