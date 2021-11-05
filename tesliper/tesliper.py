@@ -289,23 +289,11 @@ class Tesliper:
             bars = self.activities.values()
         else:
             # convert to spectra name if bar name passed
-            bar_names = dw.DEFAULT_ACTIVITIES
+            default_act = dw.DEFAULT_ACTIVITIES
             genres = genres.split() if isinstance(genres, str) else genres
-            query = [bar_names[v] if v in bar_names else v for v in genres]
+            query = [default_act[v] if v in default_act else v for v in genres]
             query_set = set(query)  # ensure no duplicates
-            bar_names, bars = zip(
-                *[(k, v) for k, v in self.spectral.items() if k in query_set]
-            )
-            unknown = query_set - set(self.spectral.keys())
-            # TODO: change it to handle custom spectral data arrays
-            if unknown:
-                info = (
-                    "No other requests provided."
-                    if not bar_names
-                    else f"Will proceed using only these genres: {bar_names}"
-                )
-                msg = f"Don't have those bar types: {unknown}. {info}"
-                logger.warning(msg)
+            bars = (self[g] for g in query_set)
         sett_from_args = {
             k: v
             for k, v in zip(
@@ -323,7 +311,7 @@ class Tesliper:
                 # should empty spectra be included in output?
                 logger.warning(
                     f"No data for {bar.spectra_name} calculation; "
-                    f"appropriate data is not available or was filtered out."
+                    f"appropriate data is not available or was trimmed off."
                 )
         self.spectra.update(output)
         return output
