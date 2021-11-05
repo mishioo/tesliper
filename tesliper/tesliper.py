@@ -4,8 +4,6 @@ import os
 from pathlib import Path
 from typing import Iterable, Optional, Sequence, Set, Union, Dict
 
-import numpy as np
-
 from . import datawork as dw
 from . import extraction as ex
 from . import glassware as gw
@@ -184,8 +182,6 @@ class Tesliper:
 
     def update(self, *args, **kwargs):
         self.conformers.update(*args, **kwargs)
-        # raise TypeError("Tesliper instance can not be updated with "
-        #                 "type {}".format(type(value)))
 
     @property
     def input_dir(self) -> Path:
