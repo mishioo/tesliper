@@ -2,7 +2,7 @@
 import logging as lgg
 import os
 from pathlib import Path
-from typing import Iterable, Optional, Sequence, Set, Union
+from typing import Iterable, Optional, Sequence, Set, Union, Dict
 
 import numpy as np
 
@@ -28,6 +28,12 @@ mainhandler.setFormatter(
 
 logger.setLevel(lgg.DEBUG if _DEVELOPMENT else lgg.WARNING)
 logger.addHandler(mainhandler)
+
+_activities_types = Union[
+    gw.VibrationalActivities,
+    gw.ScatteringActivities,
+    gw.ElectronicActivities,
+]
 
 
 # CLASSES
@@ -99,22 +105,58 @@ class Tesliper:
         self.parameters = self.standard_parameters
 
     @property
-    def energies(self):
-        # TODO: use appropriate DataArray.associated_genres instead of hard-coded value
-        keys = "zpe ent ten gib scf".split(" ")
+    def energies(self) -> Dict[str, gw.Energies]:
+        """Data for each energies' genre as `Energies` data array.
+        Returned dictionary is of form {"genre": `Energies`} for each of the genres:
+        "scf", "zpe", "ten", "ent", and "gib". If no values are available for
+        a specific genre, an empty `Energies` array is produced as corresponding
+        dictionary value.
+
+        >>> tslr = Tesliper()
+        >>> tslr.energies
+        {
+            "scf": Energies(genre="scf", ...),
+            "zpe": Energies(genre="zpe", ...),
+            "ten": Energies(genre="ten", ...),
+            "ent": Energies(genre="ent", ...),
+            "gib": Energies(genre="gib", ...),
+        }
+
+        Returns
+        -------
+        dict
+            Dictionary with genre names as keys and `Energies` data arrays as values.
+        """
+        keys = gw.Energies.associated_genres
         return {k: self.conformers.arrayed(k) for k in keys}
 
     @property
-    def spectral(self):
-        # TODO: expand with other spectral data
-        # TODO: use appropriate DataArray.associated_genres instead of hard-coded value
-        keys = "dip rot vosc vrot losc lrot raman1 roa1".split(" ")
-        return {k: self.conformers.arrayed(k) for k in keys}
+    def activities(self) -> Dict[str, _activities_types]:
+        """Data for default activities used to calculate spectra as appropriate
+        `SpectralActivities` subclass.
+        Returned dictionary is of form {"genre": `SpectralActivities`} for each of the
+        genres: "dip", "rot", "vosc", "vrot", "raman1", and "roa1". If no values are
+        available for a specific genre, an empty data array is produced as corresponding
+        dictionary value.
 
-    @property
-    def activities(self):
-        # TODO: put proper keys here
-        keys = "dip rot vosc vrot raman1 roa1".split(" ")
+        >>> tslr = Tesliper()
+        >>> tslr.activities
+        {
+            "dip": VibrationalActivities(genre="dip", ...),
+            "rot": VibrationalActivities(genre="rot", ...),
+            "vosc": ElectronicActivities(genre="vosc", ...),
+            "vrot": ElectronicActivities(genre="vrot", ...),
+            "raman1": ScatteringActivities(genre="raman1", ...),
+            "roa1": ScatteringActivities(genre="roa1", ...),
+        }
+
+        Returns
+        -------
+        dict
+            Dictionary with genre names as keys and `SpectralActivities`
+            data arrays as values.
+        """
+        keys = dw.DEFAULT_ACTIVITIES.values()
         return {k: self.conformers.arrayed(k) for k in keys}
 
     @property
@@ -381,7 +423,12 @@ class Tesliper:
         """
         wrt = wr.writer(fmt=fmt, destination=self.output_dir, mode=mode)
         bands = [self["freq"], self["wavelen"]]
-        data = [b for b in self.spectral.values() if b] + [b for b in bands if b]
+        genres = (
+            *gw.VibrationalData.associated_genres,
+            *gw.ElectronicData.associated_genres,
+            *gw.ScatteringData.associated_genres,
+        )
+        data = [self[g] for g in genres if g] + [b for b in bands if b]
         wrt.write(data)
 
     def export_spectra(self, fmt: str = "txt", mode: str = "x"):
