@@ -8,8 +8,6 @@ import numpy as np
 
 import tesliper
 
-from .helpers import WgtStateChanger
-
 # LOGGER
 logger = lgg.getLogger(__name__)
 
@@ -18,8 +16,13 @@ logger = lgg.getLogger(__name__)
 class BoxVar(tk.BooleanVar):
     def __init__(self, box, *args, **kwargs):
         self.box = box
+        if "value" not in kwargs:
+            kwargs["value"] = True
         super().__init__(*args, **kwargs)
-        super().set(True)
+
+    @property
+    def tesliper(self):
+        return self.box.winfo_toplevel().tesliper
 
     def _set(self, value):
         super().set(value)
@@ -28,7 +31,7 @@ class BoxVar(tk.BooleanVar):
 
     def set(self, value):
         # set is not called by tkinter when checkbutton is clicked
-        self.box.tree.tslr.conformers.kept[int(self.box.index)] = bool(value)
+        self.tesliper.conformers.kept[int(self.box.index)] = bool(value)
         for tree in self.box.tree.trees.values():
             try:
                 tree.boxes[self.box.index].var._set(value)
@@ -52,21 +55,20 @@ class Checkbox(ttk.Checkbutton):
         logger.debug(f"box index: {self.index}")
         value = self.var.get()
         self.var.set(value)
-        self.tree.trees["main"].parent_tab.discard_not_kept()
-        self.tree.trees["main"].parent_tab.update_overview_values()
-        self.tree.trees["energies"].parent_tab.refresh()
-        # self.tree.selection_set(str(self.index))
-        WgtStateChanger.set_states()
+        self.event_generate("<<KeptChanged>>")
 
 
 class CheckTree(ttk.Treeview):
     trees = dict()
 
-    def __init__(self, master, name, parent_tab=None, **kwargs):
+    def __init__(self, master, name, **kwargs):
         CheckTree.trees[name] = self
         self.frame = ttk.Frame(master)
-        self.parent_tab = parent_tab
-        super().__init__(self.frame, **kwargs)
+        style = ttk.Style()
+        style.layout(
+            "borderless.Treeview", [("mystyle.Treeview.treearea", {"sticky": "nswe"})]
+        )
+        super().__init__(self.frame, **kwargs, style="borderless.Treeview")
         self.grid(column=0, row=0, rowspan=2, columnspan=2, sticky="nwse")
         tk.Grid.columnconfigure(self.frame, 1, weight=1)
         tk.Grid.rowconfigure(self.frame, 1, weight=1)
@@ -81,7 +83,6 @@ class CheckTree(ttk.Treeview):
         but_frame.grid_propagate(False)
         tk.Grid.columnconfigure(but_frame, 0, weight=1)
         tk.Grid.rowconfigure(but_frame, 0, weight=1)
-        style = ttk.Style()
         style.configure(
             "sorting.TButton", borderwidth=5, highlightthickness=1, relief="flat"
         )
@@ -111,10 +112,11 @@ class CheckTree(ttk.Treeview):
 
         self.owned_children = OrderedDict()
         self.children_names = OrderedDict()
+        self.winfo_toplevel().bind("<<Clear>>", CheckTree.clear, "+")
 
     @property
-    def tslr(self):
-        return self.parent_tab.parent.tslr
+    def tesliper(self):
+        return self.winfo_toplevel().tesliper
 
     @property
     def blade(self):
@@ -140,12 +142,14 @@ class CheckTree(ttk.Treeview):
         self.but_sort.configure(command=lambda: self._sort_button(not reverse))
 
     def _sort(self, col, reverse=True):
+        # empty records always at the end
+        empty = float("-inf") if reverse else float("inf")
         try:
             ls = [(self.set(iid, col), iid) for iid in self.get_children("")]
         except tk.TclError:
             ls = [(self.item(iid)["text"], iid) for iid in self.get_children("")]
         try:
-            ls = [(-1e10 if v == "--" else float(v), iid) for v, iid in ls]
+            ls = [(empty if v == "--" else float(v), iid) for v, iid in ls]
         except ValueError:
             pass
         ls.sort(reverse=reverse)
@@ -200,16 +204,28 @@ class CheckTree(ttk.Treeview):
         for tree in CheckTree.trees.values():
             tree._insert(parent=parent, index=index, iid=iid, **kw)
 
+    def delete(self, *items):
+        raise NotImplementedError(
+            "Removing individual items not supported. "
+            "To clear all trees, use `CheckTree.clear()`."
+        )
+
+    @classmethod
+    def clear(cls, _event=None):
+        for tree in CheckTree.trees.values():
+            items = tree.get_children()
+            super(CheckTree, tree).delete(*items)
+            for box in tree.boxes.values():
+                box.destroy()
+            tree.boxes = OrderedDict()
+            tree.owned_children = OrderedDict()
+            tree.children_names = OrderedDict()
+            cls.trees["main"].curr_iid = 0
+
     def on_bar(self, *args):
         self.yview(*args)
         # logger.debug(args)
         # logger.debug(self.canvas.yview())
-
-    def click_all(self, index, value):
-        # this is not used currently 21.11.2018
-        for tree in CheckTree.trees.values():
-            tree.boxes[index].var.set(value)
-            tree.refresh()
 
     def refresh(self):
         pass
@@ -229,13 +245,13 @@ class EnergiesView(CheckTree):
     )
     e_keys = "ten ent gib scf zpe".split(" ")
 
-    def __init__(self, master, parent_tab=None, **kwargs):
-        kwargs["columns"] = "ten ent gib scf zpe".split(" ")
-        super().__init__(master, "energies", parent_tab=parent_tab, **kwargs)
+    def __init__(self, parent, **kwargs):
+        kwargs["columns"] = self.e_keys
+        super().__init__(parent, "energies", **kwargs)
 
         # Columns
         for cid, text in zip(
-            "#0 ten ent gib scf zpe".split(" "),
+            ["#0"] + self.e_keys,
             "Filenames Thermal Enthalpy Gibbs SCF Zero-Point".split(" "),
         ):
             if not cid == "#0":
@@ -243,48 +259,36 @@ class EnergiesView(CheckTree):
             self.heading(cid, text=text)
         self.column("#0", width=150)
 
-    def _insert(self, parent="", index=tk.END, iid=None, **kw):
-        text = kw["text"]
-        if "gib" not in self.tslr.conformers[text]:
-            return
-        iid = super()._insert(parent=parent, index=index, iid=iid, **kw)
-        return iid
-
-    def refresh(self):
-        # TO DO: implement this based on table_view_update from main.Conformers
-        # super().refresh()
-        show = self.parent_tab.show_ref[self.parent_tab.show_var.get()]
+    def refresh(self, show):
         logger.debug("Going to update by showing {}.".format(show))
         if show == "values":
             # we don't want to hide energy values of non-kept conformer
-            with self.tslr.conformers.untrimmed:
-                scope = self.tslr.energies
+            with self.tesliper.conformers.untrimmed:
+                scope = self.tesliper.energies
         else:
-            scope = self.tslr.energies
-        values_to_show = zip(*[getattr(scope[e], show) for e in self.e_keys])
-        # values in groups of 5, ordered as e_keys
-        fnames = set(scope["gib"].filenames)
+            scope = self.tesliper.energies
+        formatter = self.formats[show]
+        # conformers are always in the same order, so we can use iterator for values
+        # and only request next() when conformer's name is known by genre's DataArray
+        values = {key: iter(getattr(scope[key], show)) for key in self.e_keys}
+        fnames = {key: set(scope[key].filenames) for key in self.e_keys}
         for name, iid in self.owned_children.items():
             # owned_children is OrderedDict, so we get name and iid in ordered
             # they were inserted to treeview, which is same as order of data
             # stored in Tesliper instance
-            values = (
-                ["--"] * 5
-                if name not in fnames
-                else map(self.formats[show], next(values_to_show))
-            )
-            # if this conformer's kept value is False,
-            # use -- in place of missing values
-            for col, value in zip(self.e_keys, values):
-                self.set(iid, column=col, value=value)
+            for key in self.e_keys:
+                # if this conformer's kept value is False,
+                # use -- in place of missing values
+                value = formatter(next(values[key])) if name in fnames[key] else "--"
+                self.set(iid, column=key, value=value)
 
 
 class ConformersOverview(CheckTree):
-    def __init__(self, master, parent_tab=None, **kwargs):
+    def __init__(self, master, **kwargs):
         kwargs["columns"] = "term opt en ir vcd uv ecd ram roa " "imag stoich".split(
             " "
         )
-        super().__init__(master, "main", parent_tab=parent_tab, **kwargs)
+        super().__init__(master, "main", **kwargs)
         self.curr_iid = 0
 
         # Columns
@@ -312,7 +316,7 @@ class ConformersOverview(CheckTree):
         # TO DO: correct wrong files counting when smaller set is extracted
         # first
         text = kw["text"]
-        conf = self.tslr.conformers[text]
+        conf = self.tesliper.conformers[text]
         values = {
             "term": "normal" if conf["normal_termination"] else "ERROR",
             "opt": "n/a"
@@ -329,12 +333,15 @@ class ConformersOverview(CheckTree):
             "roa": "ok" if "roa1" in conf else False,
         }
         if "freq" in conf:
-            freqs = self.tslr.conformers[text]["freq"]
+            freqs = self.tesliper.conformers[text]["freq"]
             imag = str((np.array(freqs) < 0).sum())
             values["imag"] = imag
         else:
             values["imag"] = False
-        values["stoich"] = conf["stoichiometry"]
+        try:
+            values["stoich"] = conf["stoichiometry"]
+        except KeyError:
+            values["stoich"] = "--"
         iid = super()._insert(parent=parent, index=index, iid=iid, **kw)
         for k, v in values.items():
             self.set(iid, k, v or "X")

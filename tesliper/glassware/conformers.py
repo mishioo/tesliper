@@ -156,6 +156,13 @@ class Conformers(OrderedDict):
         self._indices = {}
         super().__init__(*args, **kwargs)
 
+    def clear(self):
+        """Remove all items from the Conformers instance."""
+        self._kept = []
+        self.filenames = []
+        self._indices = {}
+        super().clear()
+
     def __setitem__(self, key, value):
         try:
             value = dict(value)
@@ -414,7 +421,7 @@ class Conformers(OrderedDict):
             if not kwargs[key] and value.default is not value.empty:
                 # genre produces an empty array, but parameter has default value
                 kwargs[key] = value.default
-        return cls(**params)
+        return cls(**kwargs)
 
     def by_index(self, index: int) -> dict:
         """Returns data for conformer on desired index."""
@@ -534,12 +541,11 @@ class Conformers(OrderedDict):
         -----
         Conformers previously marked as "not kept" will not be affected.
         """
-        # DONE: don't take optimization_completed and such into consideration
-        # TODO: when above satisfied, change gui.tab_loader.Loader\
-        #       .update_overview_values() and .set_overview_values()
         wanted = wanted if wanted is not None else self.primary_genres
         if not strict:
             count = [tuple(g in conf for g in wanted) for conf in self.values()]
+            if not count:
+                return
             best_match = max(count)
             complete = (match == best_match for match in count)
         else:
@@ -771,14 +777,16 @@ class Conformers(OrderedDict):
         if not energy.filenames.size == geometry.filenames.size:
             raise InconsistentDataError(
                 "Unequal number of conformers in requested geometry and energy genres. "
-                "Trim to incomplete entries before trimming with `trim_rmds`."
+                "Trim incomplete entries before trimming with `trim_rmds`."
             )
         elif not np.array_equal(energy.filenames, geometry.filenames):
             raise InconsistentDataError(
                 "Different conformers in requested geometry and energy genres. "
-                "Trim to incomplete entries before trimming with `trim_rmds`."
+                "Trim incomplete entries before trimming with `trim_rmds`."
             )
-        if ignore_hydrogen and geometry.molecule_atoms.shape[0] != 1:
+        if not geometry:
+            return  # next steps assume there are some conformers
+        if ignore_hydrogen and geometry.molecule_atoms.shape[0] > 1:
             # TODO: remove when dw.geometry.select_atoms supplemented
             raise ValueError(
                 "Cannot ignore hydrogen atoms if requested conformers do not have "

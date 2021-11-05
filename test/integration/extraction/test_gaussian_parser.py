@@ -5,7 +5,6 @@ import pytest
 
 from tesliper.extraction import gaussian_parser as gprs
 
-
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
@@ -27,7 +26,6 @@ def setup_class(request):
         with open(path, "r") as file:
             request.cls.data = parser.parse(file)
     except Exception:
-        # import pdb; pdb.set_trace()
         for patcher in patchers:
             patcher.stop()
             parser.states[patcher.attribute] = getattr(parser, patcher.attribute)
@@ -63,6 +61,9 @@ class ParserTestCase:
     def test_atoms(self):
         assert self.data["molecule_atoms"] == [6, 1, 1, 8]
 
+    def test_input_atoms(self):
+        assert self.data["input_atoms"] == ["C", "H", "H", "O"]
+
 
 @pytest.mark.usefixtures("setup_class")
 class TestFreq(ParserTestCase):
@@ -85,6 +86,7 @@ class TestFreq(ParserTestCase):
             "charge",
             "multiplicity",
             "input_geom",
+            "input_atoms",
             "scf",
             "stoichiometry",
             "zpecorr",
@@ -201,6 +203,7 @@ class TestFreqRoa(ParserTestCase):
             "charge",
             "multiplicity",
             "input_geom",
+            "input_atoms",
             "scf",
             "stoichiometry",
             "geometry",
@@ -348,6 +351,7 @@ class TestOpt(ParserTestCase):
             "charge",
             "multiplicity",
             "input_geom",
+            "input_atoms",
             "scf",
             "stoichiometry",
             "geometry",
@@ -393,6 +397,7 @@ class TestOptFreq(ParserTestCase):
             "charge",
             "multiplicity",
             "input_geom",
+            "input_atoms",
             "scf",
             "stoichiometry",
             "zpecorr",
@@ -431,6 +436,7 @@ class TestInputError(ParserTestCase):
             "charge",
             "multiplicity",
             "input_geom",
+            "input_atoms",
         }
 
     def test_normal_termination(self):
@@ -463,6 +469,7 @@ class TestTd(ParserTestCase):
             "charge",
             "multiplicity",
             "input_geom",
+            "input_atoms",
             "scf",
             "stoichiometry",
             "vdip",

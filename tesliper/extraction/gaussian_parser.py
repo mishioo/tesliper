@@ -258,8 +258,10 @@ class GaussianParser(Parser):
         molecule's charge
     multiplicity : int, always available
         molecule's spin multiplicity
-    input_geom : list of tuples of (str, float, float, float), always available
-        input orientation, starting with atom symbol
+    input_atoms : list of str, always available
+        input atoms as a list of atoms' symbols
+    input_geom : list of tuples of floats, always available
+        input geometry as X, Y, Z coordinates of atoms
     stoichiometry : str, always available
         molecule's stoichiometry
     molecule_atoms : list of ints, always available
@@ -272,7 +274,6 @@ class GaussianParser(Parser):
     data : dict
         Data extracted during last parsing."""
 
-    # TODO: unify geometry and input_geom, so both can be casted on Geometry
     # TODO?: add optimized_geometry or similarly named genre
 
     purpose = "gaussian"
@@ -351,9 +352,9 @@ class GaussianParser(Parser):
         while line:
             atom = re.match(pattern, line)
             label, *coordinates = atom.groups()
-            input_geom.append((label, *map(float, coordinates)))
+            input_geom.append((label, tuple(map(float, coordinates))))
             line = next(iterator).strip()
-        data["input_geom"] = input_geom
+        data["input_atoms"], data["input_geom"] = map(list, zip(*input_geom))
         self.workhorse = self.wait
 
     @Parser.state

@@ -7,10 +7,27 @@ from threading import Thread
 from tkinter import messagebox
 
 from .. import tesliper
-from . import components as guicom
-from .tab_energies import Conformers
-from .tab_loader import Loader
-from .tab_spectra import Spectra
+from .components import (
+    CheckTree,
+    ConformersOverview,
+    EnergiesView,
+    MaxLevelFilter,
+    PopupHandler,
+    ReadOnlyText,
+    ScrollableFrame,
+    ShortExcFormatter,
+    SpectraView,
+    TextHandler,
+    ThreadedMethod,
+    WgtStateChanger,
+)
+from .components.controls import (
+    CalculateSpectra,
+    ExportData,
+    ExtractData,
+    FilterEnergies,
+    SelectConformers,
+)
 
 _DEVELOPMENT = "ENV" in os.environ and os.environ["ENV"] == "prod"
 
@@ -32,15 +49,13 @@ error_handler.setLevel(logging.ERROR)
 error_handler.setFormatter(
     logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s\n")
 )
-error_popup_handler = guicom.PopupHandler(title_msg="Something unexpected happened! :(")
+error_popup_handler = PopupHandler(title_msg="Something unexpected happened! :(")
 error_popup_handler.setLevel(logging.ERROR)
-error_popup_handler.setFormatter(
-    guicom.ShortExcFormatter("%(message)s \n\n" + error_msg)
-)
-warning_popup_handler = guicom.PopupHandler(title_msg="Sorry!")
+error_popup_handler.setFormatter(ShortExcFormatter("%(message)s \n\n" + error_msg))
+warning_popup_handler = PopupHandler(title_msg="Sorry!")
 warning_popup_handler.setLevel(logging.WARNING)
-warning_popup_handler.addFilter(guicom.MaxLevelFilter(logging.WARNING))
-warning_popup_handler.setFormatter(guicom.ShortExcFormatter("%(message)s \n\n"))
+warning_popup_handler.addFilter(MaxLevelFilter(logging.WARNING))
+warning_popup_handler.setFormatter(ShortExcFormatter("%(message)s \n\n"))
 
 handlers = [error_handler, error_popup_handler, warning_popup_handler]
 
@@ -54,27 +69,63 @@ if _DEVELOPMENT:
 
 
 # CLASSES
+class ViewsNotebook(ttk.Notebook):
+    def __init__(self, parent):
+        super().__init__(parent)
+
+        self.extract = ConformersOverview(self)
+        self.add(self.extract.frame, text="Extracted data")
+
+        self.energies = EnergiesView(self)
+        self.add(self.energies.frame, text="Energies list")
+
+        self.spectra = SpectraView(self)
+        self.add(self.spectra, text="Spectra view")
+
+
+class ControlsFrame(ScrollableFrame):
+    def __init__(self, parent, extract_view, energies_view, spectra_view, **kwargs):
+        super(ControlsFrame, self).__init__(parent, **kwargs)
+        tk.Grid.columnconfigure(self, 1, weight=1)
+
+        self.extract = ExtractData(self.content, view=extract_view)
+        self.extract.grid(column=0, row=0, sticky="new")
+        self.export = ExportData(self.content)
+        self.export.grid(column=0, row=1, sticky="new")
+        self.select = SelectConformers(self.content, view=extract_view)
+        self.select.grid(column=0, row=2, sticky="new")
+        self.filter = FilterEnergies(parent=self.content, view=energies_view)
+        self.filter.grid(column=0, row=3, sticky="new")
+        self.calculate = CalculateSpectra(self.content, view=spectra_view)
+        self.calculate.grid(column=0, row=4, sticky="new")
+
+
 class TesliperApp(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Tesliper")
-        self.tslr = tesliper.Tesliper()
         self.thread = Thread()
+        self.changer = WgtStateChanger(self)
 
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
 
-        # Notebook
-        tk.Grid.columnconfigure(self, 0, weight=1)
+        tk.Grid.columnconfigure(self, 1, weight=1)
         tk.Grid.rowconfigure(self, 0, weight=1)
-        self.notebook = ttk.Notebook(self)
-        self.main_tab = None
-        self.spectra_tab = None
-        self.conf_tab = None
-        self.notebook.grid(column=0, row=0, sticky="nswe")
+
+        self.tesliper = tesliper.Tesliper()
+        self.notebook = ViewsNotebook(self)
+        self.notebook.grid(column=1, row=0, sticky="nswe")
+        self.controls = ControlsFrame(
+            self,
+            extract_view=self.notebook.extract,
+            energies_view=self.notebook.energies,
+            spectra_view=self.notebook.spectra,
+        )
+        self.controls.grid(column=0, row=0, sticky="nswe")
 
         # Log & Bar frame
         bottom_frame = tk.Frame(self)
-        bottom_frame.grid(column=0, row=1, sticky="nswe")
+        bottom_frame.grid(column=0, row=1, columnspan=2, sticky="nswe")
         tk.Grid.columnconfigure(bottom_frame, 1, weight=1)
         tk.Grid.rowconfigure(bottom_frame, 0, weight=1)
 
@@ -92,28 +143,28 @@ class TesliperApp(tk.Tk):
 
         # Log window
         # displayed in separate, optional window
-        self.log = guicom.ReadOnlyText(self, width=50, height=34, wrap=tk.WORD)
+        self.log = ReadOnlyText(self, width=50, height=34, wrap=tk.WORD)
         ttk.Button(bottom_frame, text="Display log", command=self.log.show).grid(
             column=2, row=0, sticky="se"
         )
 
         # Logger & handlers
         self.logger = logger
-        text_handler = guicom.TextHandler(self.log)
+        text_handler = TextHandler(self.log)
         text_handler.setLevel(logging.INFO)
-        text_handler.addFilter(guicom.MaxLevelFilter(logging.INFO))
+        text_handler.addFilter(MaxLevelFilter(logging.INFO))
 
-        text_warning_handler = guicom.TextHandler(self.log)
+        text_warning_handler = TextHandler(self.log)
         text_warning_handler.setLevel(logging.WARNING)
-        text_warning_handler.addFilter(guicom.MaxLevelFilter(logging.WARNING))
+        text_warning_handler.addFilter(MaxLevelFilter(logging.WARNING))
         text_warning_handler.setFormatter(
             logging.Formatter("%(levelname)s: %(message)s")
         )
 
-        text_error_handler = guicom.TextHandler(self.log)
+        text_error_handler = TextHandler(self.log)
         text_error_handler.setLevel(logging.ERROR)
         text_error_handler.setFormatter(
-            guicom.ShortExcFormatter("ERROR! %(message)s \n" + error_msg)
+            ShortExcFormatter("ERROR! %(message)s \n" + error_msg)
         )
         text_handlers = [
             text_error_handler,
@@ -123,10 +174,8 @@ class TesliperApp(tk.Tk):
         for handler in text_handlers:
             ROOT_LOGGER.addHandler(handler)
 
-        # WgtStateChanger
-        guicom.WgtStateChanger.gui = self
-        self.new_session()
-        guicom.WgtStateChanger.set_states()
+        self.bind("<<DataExtracted>>", lambda _: self.changer.set_states(), add="+")
+        self.bind("<<KeptChanged>>", lambda _: self.changer.set_states(), add="+")
 
         self.logger.info(
             "Welcome to Tesliper:\n" "Theoretical Spectroscopist Little Helper!"
@@ -139,48 +188,37 @@ class TesliperApp(tk.Tk):
         except tk.TclError:
             self.logger.warning("Cannot load icon.")
 
+        self.changer.set_states()
+
     def report_callback_exception(self, exc, val, tb):
         self.logger.critical("An unexpected error occurred.", exc_info=True)
 
-    @guicom.WgtStateChanger
+    @ThreadedMethod(progbar_msg="Loading session...")
+    def new_tesliper(self, source=None):
+        if not source:
+            self.tesliper = tesliper.Tesliper()
+        else:
+            self.tesliper = tesliper.Tesliper.load(source)
+            view = self.notebook.extract
+            for file, data in self.tesliper.conformers.items():
+                view.insert("", tk.END, text=file)
+            self.event_generate("<<DataExtracted>>")
+
     def new_session(self):
-        if self.tslr.conformers:
+        if self.tesliper and self.tesliper.conformers:
             pop = messagebox.askokcancel(
-                message="Are you sure you want to start new session? "
-                "Any unsaved changes will be lost!",
-                title="New session",
+                message="This action will clear the current session "
+                "And any unsaved changes will be lost!\n"
+                "Would you like to proceed?",
+                title="Unsaved changes will be lost!",
                 icon="warning",
                 default="cancel",
             )
             if not pop:
                 return
-        self.tslr = tesliper.Tesliper()
-        for tab in self.notebook.tabs():
-            self.notebook.forget(tab)
-        self.main_tab = Loader(self)
-        self.notebook.add(self.main_tab, text="Main")
-        self.spectra_tab = Spectra(self)
-        self.notebook.add(self.spectra_tab, text="Spectra")
-        self.conf_tab = Conformers(self)
-        self.notebook.add(self.conf_tab, text="Conformers")
-        # establish new overview
-        if self.main_tab.overview is not None:
-            self.main_tab.overview.destroy()
-            for checked, _all, __ in self.main_tab.overview_control.values():
-                checked.set(0)
-                _all.set(0)
-        self.main_tab.overview = guicom.ConformersOverview(
-            self.main_tab.label_overview, self.main_tab
-        )
-        self.main_tab.overview.frame.grid(column=0, row=0, sticky="nswe")
-        # establish new conf_list
-        if self.conf_tab.conf_list is not None:
-            self.conf_tab.conf_list.destroy()
-        self.conf_tab.conf_list = guicom.EnergiesView(
-            self.conf_tab.overview, parent_tab=self.conf_tab
-        )
-        self.conf_tab.conf_list.frame.grid(column=0, row=0, sticky="nswe")
-        self.conf_tab.established = False
+        self.tesliper.clear()
+        self.event_generate("<<Clear>>")
+        self.changer.set_states()
 
     def on_closing(self):
         if self.thread.is_alive():
