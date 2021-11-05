@@ -41,7 +41,6 @@ class Tesliper:
     """
     TO DO
     -----
-    Finish saving functionality.
     Add trimming support.
     Supplement docstrings.
     ? separate spectra types ?
@@ -427,6 +426,35 @@ class Tesliper:
             *gw.VibrationalData.associated_genres,
             *gw.ElectronicData.associated_genres,
             *gw.ScatteringData.associated_genres,
+        )
+        data = [self[g] for g in genres if g] + [b for b in bands if b]
+        wrt.write(data)
+
+    # TODO: separate to vibrational and electronic ?
+    def export_activities(self, fmt: str = "txt", mode: str = "x"):
+        """Saves unprocessed spectral activities to disk in given file format.
+
+        File formats available by default are: "txt", "csv", "xlsx".
+        Files produced are written to `Tesliper.output_dir` directory with filenames
+        automatically generated using adequate genre's name and conformers' identifiers.
+        In case of "xlsx" format only one file is produced and different data genres are
+        written to separate sheets.
+
+        Parameters
+        ----------
+        fmt : str
+            File format of output files, defaults to "txt".
+        mode : str
+            Specifies how writing to file should be handled. May be one of:
+            "a" (append to existing file), "x" (only write if file doesn't exist yet),
+            "w" (overwrite file if it already exists). Defaults to "x".
+        """
+        wrt = wr.writer(fmt=fmt, destination=self.output_dir, mode=mode)
+        bands = [self["freq"], self["wavelen"]]
+        genres = (
+            *gw.VibrationalActivities.associated_genres,
+            *gw.ElectronicActivities.associated_genres,
+            *gw.ScatteringActivities.associated_genres,
         )
         data = [self[g] for g in genres if g] + [b for b in bands if b]
         wrt.write(data)
