@@ -180,8 +180,31 @@ class Tesliper:
     def standard_parameters(self):
         return {key: params.copy() for key, params in self._standard_parameters.items()}
 
-    def update(self, *args, **kwargs):
-        self.conformers.update(*args, **kwargs)
+    def update(self, other=None, **kwargs):
+        """Update stored conformers with given data.
+
+        Works like `dict.update`, but if key is already present, it updates
+        dictionary associated with given key rather than assigning new value.
+        Keys of dictionary passed as positional parameter (or additional keyword
+        arguments given) should be conformers' identifiers and its values should be
+        dictionaries of {"genre": values} for those conformers.
+
+        Please note, that values of status genres like 'optimization_completed'
+        and 'normal_termination' will be updated as well for such key,
+        if are present in given new values.
+
+        >>> tslr.conformers
+        Conformers([('one', {'scf': -100, 'stoichiometry': 'CH4'})])
+        >>> tslr.update(
+        ...     {'one': {'scf': 97}, 'two': {'scf': 82, 'stoichiometry': 'CH4'}}
+        ... )
+        >>> tslr.conformers
+        Conformers([
+            ('one', {'scf': 97, 'stoichiometry': 'CH4'}),
+            ('two', {'scf': 82, 'stoichiometry': 'CH4'}),
+        ])
+        """
+        self.conformers.update(other, **kwargs)
 
     @property
     def input_dir(self) -> Path:
