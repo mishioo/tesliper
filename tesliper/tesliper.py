@@ -2,7 +2,17 @@
 import logging as lgg
 import os
 from pathlib import Path
-from typing import Iterable, Optional, Sequence, Set, Union, Dict
+from typing import (
+    Callable,
+    Dict,
+    Generator,
+    Iterable,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+    Union,
+)
 
 from . import datawork as dw
 from . import extraction as ex
@@ -177,7 +187,12 @@ class Tesliper:
         self._wanted_files = None if not files else {Path(f).stem for f in files}
 
     @property
-    def standard_parameters(self):
+    def standard_parameters(self) -> Dict[str, Dict[str, Union[int, float, Callable]]]:
+        """Default parameters for spectra calculation for each spectra type
+        (vibrational, electronic, and scattering). This returns a dictionary,
+        but in fact it is a convenience, read-only attribute,
+        modifying it will have no persisting effect.
+        """
         return {key: params.copy() for key, params in self._standard_parameters.items()}
 
     def update(self, other=None, **kwargs):
@@ -208,6 +223,7 @@ class Tesliper:
 
     @property
     def input_dir(self) -> Path:
+        """Directory, from which files should be read."""
         return self.__input_dir
 
     @input_dir.setter
@@ -222,6 +238,7 @@ class Tesliper:
 
     @property
     def output_dir(self) -> Path:
+        """Directory, to which generated files should be written."""
         return self.__output_dir
 
     @output_dir.setter
@@ -231,13 +248,64 @@ class Tesliper:
         logger.info("Current output directory is: {}".format(path))
         self.__output_dir = path
 
-    def extract_iterate(self, path=None, wanted_files=None):
+    def extract_iterate(
+        self,
+        path: Optional[Union[str, Path]] = None,
+        wanted_files: Optional[Iterable[str]] = None,
+    ) -> Generator[Tuple[str, dict], None, None]:
+        """Extracts data from chosen Gaussian output files present in given directory
+        and yields data for each conformer found.
+
+        Uses `Tesliper.input_dir` as source directory and `Tesliper.wanted_files`
+        list of chosen files if these are not explicitly given as 'path' and
+        'wanted_files' parameters.
+
+        It is important to note that extracted data is yielded as dictionary BEFORE
+        updating known conformers in underlying `Conformers` instance, so all changes
+        introduced to this data will be persistent.
+
+        Parameters
+        ----------
+        path : str or pathlib.Path, optional
+            Path to directory, from which Gaussian files should be read.
+            If not given or is `None`, `Tesliper.output_dir` will be used.
+        wanted_files : list of str, optional
+            Filenames (without a file extension) of conformers that should be extracted.
+            If not given or is `None`, `Tesliper.wanted_files` will be used.
+            If `Tesliper.wanted_files` is also `None`, all found Gaussian output files
+            will be parsed.
+
+        Yields
+        ------
+        tuple
+            Two item tuple with name of parsed file as first and extracted
+            data as second item, for each Gaussian output file parsed.
+        """
         soxhlet = ex.Soxhlet(path or self.input_dir, wanted_files or self.wanted_files)
         for file, data in soxhlet.extract_iter():
             self.update(((file, data),))
             yield file, data
 
-    def extract(self, path=None, wanted_files=None):
+    def extract(
+        self,
+        path: Optional[Union[str, Path]] = None,
+        wanted_files: Optional[Iterable[str]] = None,
+    ):
+        """Extracts data from chosen Gaussian output files present in given directory.
+
+        Uses `Tesliper.input_dir` as source directory and `Tesliper.wanted_files`
+        list of chosen files if these are not explicitly given as 'path' and
+        'wanted_files' parameters.
+
+        Parameters
+        ----------
+        path : str or pathlib.Path, optional
+            Path to directory, from which Gaussian files should be read.
+            If not given or is `None`, `Tesliper.output_dir` will be used.
+        wanted_files : list of str, optional
+            Filenames (without a file extension) of conformers that should be extracted.
+            If not given or is `None`, `Tesliper.wanted_files` will be used.
+        """
         for f, d in self.extract_iterate(path, wanted_files):
             _ = f, d
 
@@ -262,6 +330,7 @@ class Tesliper:
     def _calc_spc_with_settings(
         self, activities: gw.SpectralActivities, settings: dict
     ) -> gw.Spectra:
+        """Helper method fot calculating spectra."""
         sett = self.parameters[activities.spectra_type].copy()
         sett.update(settings)
         return activities.calculate_spectra(**sett)
