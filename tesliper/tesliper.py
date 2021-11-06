@@ -268,7 +268,7 @@ class Tesliper:
 
     def calculate_single_spectrum(
         self,
-        spectra_name,
+        genre,
         conformer,
         start=None,
         stop=None,
@@ -277,7 +277,10 @@ class Tesliper:
         fitting=None,
     ):
         # TODO: add error handling when no data for requested spectrum
-        bar_name = dw.DEFAULT_ACTIVITIES[spectra_name]
+        try:
+            bar_name = dw.DEFAULT_ACTIVITIES[genre]
+        except KeyError:
+            bar_name = genre
         with self.conformers.trimmed_to([conformer]) as confs:
             bar = confs.arrayed(bar_name)
         sett_from_args = {
