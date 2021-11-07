@@ -77,7 +77,12 @@ class Tesliper:
     # TODO: introduce more sophisticated parameters proxy that enables using
     #       same or different params for genres of same type (e.g. "ir" and "vcd")
 
-    def __init__(self, input_dir=".", output_dir=".", wanted_files=None):
+    def __init__(
+        self,
+        input_dir: str = ".",
+        output_dir: str = ".",
+        wanted_files: Optional[Iterable[Union[str, Path]]] = None,
+    ):
         """
         Parameters
         ----------
@@ -197,7 +202,7 @@ class Tesliper:
         """
         return {key: params.copy() for key, params in self._standard_parameters.items()}
 
-    def update(self, other=None, **kwargs):
+    def update(self, other: Optional[Dict[str, dict]] = None, **kwargs):
         """Update stored conformers with given data.
 
         Works like `dict.update`, but if key is already present, it updates
