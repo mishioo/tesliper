@@ -1,8 +1,10 @@
 import builtins
 from pathlib import Path
 from unittest import mock
-from tesliper.extraction import soxhlet as sx
+
 import pytest
+
+from tesliper.extraction import soxhlet as sx
 
 
 @pytest.fixture
@@ -170,18 +172,18 @@ def test_rsox_no_recursive_output_files(rsox, tmp_path):
 
 def test_settings_file_found(sox, monkeypatch):
     monkeypatch.setattr(sox.params_parser, "parse", mock.Mock(side_effect=lambda x: x))
-    assert sox.load_settings() == Path("setup.txt")
+    assert sox.load_parameters() == Path("setup.txt")
 
 
 def test_settings_recursive(rsox, monkeypatch, files):
     monkeypatch.setattr(rsox.params_parser, "parse", mock.Mock(side_effect=lambda x: x))
-    assert rsox.load_settings().name == "setup.txt"
+    assert rsox.load_parameters().name == "setup.txt"
 
 
 def test_settings_file_not_found(sox, monkeypatch, mixed_files):
     monkeypatch.setattr(sx.Path, "iterdir", mock.Mock(return_value=mixed_files))
     with pytest.raises(FileNotFoundError):
-        sox.load_settings()
+        sox.load_parameters()
 
 
 def test_settings_multiple_files(sox, monkeypatch, mixed_files):
@@ -193,19 +195,19 @@ def test_settings_multiple_files(sox, monkeypatch, mixed_files):
         ),
     )
     with pytest.raises(FileNotFoundError):
-        sox.load_settings()
+        sox.load_parameters()
 
 
 def test_settings_valid_given(sox, monkeypatch):
     monkeypatch.setattr(sox.params_parser, "parse", mock.Mock(side_effect=lambda x: x))
     setupfile = "setupfile.txt"
-    assert sox.load_settings(setupfile) == Path(setupfile)
+    assert sox.load_parameters(setupfile) == Path(setupfile)
 
 
 def test_settings_invalid_given(sox, monkeypatch):
     monkeypatch.setattr(sx.Path, "is_file", mock.Mock(return_value=False))
     with pytest.raises(FileNotFoundError):
-        sox.load_settings("nosetupfile.txt")
+        sox.load_parameters("nosetupfile.txt")
 
 
 def test_load_spectra_no_file(sox, monkeypatch):

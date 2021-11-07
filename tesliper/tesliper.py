@@ -361,7 +361,7 @@ class Tesliper:
         refer to `ParametersParser` documentation.
         """
         soxhlet = ex.Soxhlet(path or self.input_dir)
-        settings = soxhlet.load_settings()
+        settings = soxhlet.load_parameters()
         if spectra_type is not None:
             self.parameters[spectra_type].update(settings)
         return settings
