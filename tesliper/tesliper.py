@@ -483,13 +483,43 @@ class Tesliper:
         return output
 
     def get_averaged_spectrum(self, spectrum: str, energy: str) -> gw.SingleSpectrum:
+        """Average previously calculated spectra using populations derived from
+        specified energies.
+
+        Parameters
+        ----------
+        spectrum : str
+            Genre of spectrum that sould be averaged. This spectrum should be
+            previously calculated using `Tesliper.calculate_spectra` method.
+        energy : str
+            Genre of energies, that should be used to calculate populations
+            of conformers. These populations will be used as weights for averaging.
+
+        Returns
+        -------
+        SingleSpectrum
+            Calculated averaged spectrum.
+        """
+        # TODO: add fallback if spectra was nat calculated yet
         spectra = self.spectra[spectrum]
         with self.conformers.trimmed_to(spectra.filenames):
             en = self.conformers.arrayed(energy)
         output = spectra.average(en)
         return output
 
-    def average_spectra(self) -> Dict[str, gw.SingleSpectrum]:
+    def average_spectra(self) -> Dict[Tuple[str, str], gw.SingleSpectrum]:
+        """For each previously calculated spectra (stored in `Tesliper.spectra`
+         attribute) calculate it's average using population derived from each available
+         energies genre.
+
+        Returns
+        -------
+        dict
+            Averaged spectrum for each previously calculated spectra and energies known
+            as a dictionary. It's keys are tuples of genres used for averaging
+            and values are `SingleSpectrum` instances (so this dictionary is of form
+            {tuple("spectra", "energies"): `SingleSpectrum`}).
+        """
         for genre, spectra in self.spectra.items():
             with self.conformers.trimmed_to(spectra.filenames):
                 for energies in self.energies.values():
