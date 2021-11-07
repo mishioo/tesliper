@@ -254,6 +254,8 @@ class Tesliper:
         self,
         path: Optional[Union[str, Path]] = None,
         wanted_files: Optional[Iterable[str]] = None,
+        extension: Optional[str] = None,
+        recursive: bool = False,
     ) -> Generator[Tuple[str, dict], None, None]:
         """Extracts data from chosen Gaussian output files present in given directory
         and yields data for each conformer found.
@@ -276,6 +278,12 @@ class Tesliper:
             If not given or is `None`, `Tesliper.wanted_files` will be used.
             If `Tesliper.wanted_files` is also `None`, all found Gaussian output files
             will be parsed.
+        extension : str, optional
+            Only files with given extension will be parsed. If omitted, Tesliper will
+            try to guess the extension from contents of input directory.
+        recursive : bool
+            If `True`, also subdirectories are searched for files to parse, otherwise
+            subdirectories are ignored. Defaults to `False`.
 
         Yields
         ------
@@ -283,7 +291,12 @@ class Tesliper:
             Two item tuple with name of parsed file as first and extracted
             data as second item, for each Gaussian output file parsed.
         """
-        soxhlet = ex.Soxhlet(path or self.input_dir, wanted_files or self.wanted_files)
+        soxhlet = ex.Soxhlet(
+            path or self.input_dir,
+            wanted_files or self.wanted_files,
+            extension=extension,
+            recursive=recursive,
+        )
         for file, data in soxhlet.extract_iter():
             self.update(((file, data),))
             yield file, data
@@ -292,6 +305,8 @@ class Tesliper:
         self,
         path: Optional[Union[str, Path]] = None,
         wanted_files: Optional[Iterable[str]] = None,
+        extension: Optional[str] = None,
+        recursive: bool = False,
     ):
         """Extracts data from chosen Gaussian output files present in given directory.
 
@@ -307,19 +322,15 @@ class Tesliper:
         wanted_files : list of str, optional
             Filenames (without a file extension) of conformers that should be extracted.
             If not given or is `None`, `Tesliper.wanted_files` will be used.
+        extension : str, optional
+            Only files with given extension will be parsed. If omitted, Tesliper will
+            try to guess the extension from contents of input directory.
+        recursive : bool
+            If `True`, also subdirectories are searched for files to parse, otherwise
+            subdirectories are ignored. Defaults to `False`.
         """
-        for f, d in self.extract_iterate(path, wanted_files):
+        for f, d in self.extract_iterate(path, wanted_files, extension, recursive):
             _ = f, d
-
-    def smart_extract(self, deep_search=True):
-        # TODO: should also parse settings
-        soxhlet = ex.Soxhlet(self.input_dir, self.wanted_files, recursive=deep_search)
-        for file, data in soxhlet.extract_iter():
-            self.update(((file, data),))
-
-    def smart_calculate(self, average=True):
-        # TODO: implement it
-        pass
 
     def load_settings(self, path=None, spectra_type=None):
         # TODO: remove soxhlet.spectra_type dependence
