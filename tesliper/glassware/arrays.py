@@ -571,7 +571,7 @@ def _as_is(values, *_args, **_kwargs):
 
 class _VibAct(_VibData, SpectralActivities):
     def calculate_spectra(self, start, stop, step, width, fitting):
-        """Calculates spectrum of desired type for each individual conformer.
+        """Calculates spectrum for each individual conformer.
 
         Parameters
         ----------
@@ -589,10 +589,8 @@ class _VibAct(_VibData, SpectralActivities):
 
         Returns
         -------
-        numpy.ndarray
-            Array of 2d arrays containing spectrum (arr[0] is list of
-            wavelengths/wave numbers, arr[1] is list of corresponding
-            intensity values).
+        SingleSpectrum
+            Calculated spectrum.
         """
         abscissa = np.arange(start, stop, step)
         freqs = self.frequencies
@@ -728,7 +726,7 @@ class ElectronicActivities(ElectronicData, SpectralActivities):
     }
 
     def calculate_spectra(self, start, stop, step, width, fitting):
-        """Calculates spectrum of desired type for each individual conformer.
+        """Calculates spectrum for each individual conformer.
 
         Parameters
         ----------
@@ -746,10 +744,8 @@ class ElectronicActivities(ElectronicData, SpectralActivities):
 
         Returns
         -------
-        numpy.ndarray
-            Array of 2d arrays containing spectrum (arr[0] is list of
-            wavelengths/wave numbers, arr[1] is list of corresponding
-            intensity values).
+        SingleSpectrum
+            Calculated spectrum.
         """
         abscissa = np.arange(start, stop, step)
         _width = convert_band(
