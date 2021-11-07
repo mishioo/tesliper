@@ -1,7 +1,7 @@
 # IMPORTS
 import logging as lgg
 import math
-from typing import Sequence, Tuple, Union
+from typing import Callable, Sequence, Tuple, Union
 
 import numpy as np
 
@@ -11,11 +11,13 @@ logger.setLevel(lgg.DEBUG)
 
 
 # TYPES
+Number = Union[int, float]
 Numbers = Sequence[Union[int, float]]
+FittingFunctionType = Callable[[np.ndarray, np.ndarray, np.ndarray, float], np.ndarray]
 
 
 # MODULE FUNCTIONS
-def count_imaginary(frequencies):
+def count_imaginary(frequencies: np.ndarray):
     """Finds number of imaginary frequencies of each conformer.
 
     Parameters
@@ -46,7 +48,7 @@ def count_imaginary(frequencies):
         )
 
 
-def find_imaginary(frequencies):
+def find_imaginary(frequencies: np.ndarray):
     """Finds all conformers with imaginary frequency values.
 
     Parameters
@@ -70,7 +72,12 @@ def find_imaginary(frequencies):
     return np.nonzero(imag)[0]
 
 
-def gaussian(intensities, frequencies, abscissa, width):
+def gaussian(
+    intensities: np.ndarray,
+    frequencies: np.ndarray,
+    abscissa: np.ndarray,
+    width: Number,
+) -> np.ndarray:
     """Gaussian fitting function for spectra calculation.
 
     Parameters
@@ -114,7 +121,12 @@ def gaussian(intensities, frequencies, abscissa, width):
     return it.operands[1]
 
 
-def lorentzian(intensities, frequencies, abscissa, width):
+def lorentzian(
+    intensities: np.ndarray,
+    frequencies: np.ndarray,
+    abscissa: np.ndarray,
+    width: Number,
+) -> np.ndarray:
     """Lorentzian fitting function for spectra calculation.
 
     Parameters
@@ -159,7 +171,13 @@ def lorentzian(intensities, frequencies, abscissa, width):
     return it.operands[1]
 
 
-def calculate_spectra(frequencies, intensities, abscissa, width, fitting):
+def calculate_spectra(
+    frequencies: np.ndarray,
+    intensities: np.ndarray,
+    abscissa: np.ndarray,
+    width: Number,
+    fitting: FittingFunctionType,
+):
     """Calculates spectrum for each individual conformer.
 
     Parameters
@@ -198,7 +216,9 @@ def calculate_spectra(frequencies, intensities, abscissa, width, fitting):
     return spectra
 
 
-def calculate_average(values, populations):
+def calculate_average(
+    values: Union[Numbers, np.ndarray], populations: Union[Numbers, np.ndarray]
+) -> np.ndarray:
     """Calculates weighted average of `values`, where `populations` are used as
     weights.
 

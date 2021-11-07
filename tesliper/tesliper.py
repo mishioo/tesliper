@@ -18,10 +18,12 @@ from . import datawork as dw
 from . import extraction as ex
 from . import glassware as gw
 from . import writing as wr
+from .datawork.spectra import FittingFunctionType, Number
 
 # GLOBAL VARIABLES
 __author__ = "Michał M. Więcław"
 __version__ = "0.7.4"
+
 _DEVELOPMENT = "ENV" in os.environ and os.environ["ENV"] == "prod"
 
 
@@ -337,14 +339,14 @@ class Tesliper:
 
     def calculate_single_spectrum(
         self,
-        genre,
-        conformer,
-        start=None,
-        stop=None,
-        step=None,
-        width=None,
-        fitting=None,
-    ):
+        genre: str,
+        conformer: str,
+        start: Number = None,
+        stop: Number = None,
+        step: Number = None,
+        width: Number = None,
+        fitting: FittingFunctionType = None,
+    ) -> gw.SingleSpectrum:
         # TODO: add error handling when no data for requested spectrum
         try:
             bar_name = dw.DEFAULT_ACTIVITIES[genre]
@@ -374,7 +376,13 @@ class Tesliper:
         )
 
     def calculate_spectra(
-        self, genres=(), start=None, stop=None, step=None, width=None, fitting=None
+        self,
+        genres: Iterable[str] = (),
+        start: Number = None,
+        stop: Number = None,
+        step: Number = None,
+        width: Number = None,
+        fitting: FittingFunctionType = None,
     ):
         if not genres:
             bars = self.activities.values()
@@ -407,14 +415,14 @@ class Tesliper:
         self.spectra.update(output)
         return output
 
-    def get_averaged_spectrum(self, spectrum, energy):
+    def get_averaged_spectrum(self, spectrum: str, energy: str) -> gw.SingleSpectrum:
         spectra = self.spectra[spectrum]
         with self.conformers.trimmed_to(spectra.filenames):
             en = self.conformers.arrayed(energy)
         output = spectra.average(en)
         return output
 
-    def average_spectra(self):
+    def average_spectra(self) -> Dict[str, gw.SingleSpectrum]:
         for genre, spectra in self.spectra.items():
             with self.conformers.trimmed_to(spectra.filenames):
                 for energies in self.energies.values():
