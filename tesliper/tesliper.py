@@ -366,25 +366,51 @@ class Tesliper:
             self.parameters[spectra_type].update(settings)
         return settings
 
-    def _calc_spc_with_settings(
-        self, activities: gw.SpectralActivities, settings: dict
-    ) -> gw.Spectra:
-        """Helper method fot calculating spectra."""
-        sett = self.parameters[activities.spectra_type].copy()
-        sett.update(settings)
-        return activities.calculate_spectra(**sett)
-
     def calculate_single_spectrum(
         self,
         genre: str,
-        conformer: str,
+        conformer: Union[str, int],
         start: Number = None,
         stop: Number = None,
         step: Number = None,
         width: Number = None,
         fitting: FittingFunctionType = None,
     ) -> gw.SingleSpectrum:
-        # TODO: add error handling when no data for requested spectrum
+        """Calculates spectrum for requested conformer.
+
+        'start', 'stop', 'step', 'width', and 'fitting' parameters, if given, will
+        be used instead of the parameters stored in `Tesliper.parameters` attribute.
+        'start', 'stop', and 'step' values will be interpreted as cm^-1 for vibrational
+        or scattering spectra/activities and as nm for electronic ones.
+        Similarly, 'width' will be interpreted as cm^-1 or eV.
+
+        Parameters
+        ----------
+        genre : str
+            Spectra genre (or related spectral activities genre) that should
+            be calculated. If given spectral activity genre, this genre will be used
+            to calculate spectra instead of the default activities.
+        conformer : str or int
+            Conformer, specified as it's identifier or it's index, for which
+            spectrum should be calculated.
+        start : int or float
+            Number representing start of spectral range.
+        stop : int or float
+            Number representing end of spectral range.
+        step : int or float
+            Number representing step of spectral range.
+        width : int or float
+            Number representing half width of maximum peak height.
+        fitting : function
+            Function, which takes spectral data, freqs, abscissa, width as parameters
+            and returns numpy.array of calculated, non-corrected spectrum points.
+            Basically one of `datawork.gaussian` or `datawork.lorentzian`.
+
+        Returns
+        -------
+        SingleSpectrum
+            Calculated spectrum.
+        """
         try:
             bar_name = dw.DEFAULT_ACTIVITIES[genre]
         except KeyError:
@@ -399,7 +425,9 @@ class Tesliper:
             )
             if v is not None
         }
-        spc = self._calc_spc_with_settings(bar, sett_from_args)
+        sett = self.parameters[bar.spectra_type].copy()
+        sett.update(sett_from_args)
+        spc = bar.calculate_spectra(**sett)
         # TODO: maybe Spectra class should provide such conversion ?
         return gw.SingleSpectrum(
             spc.genre,
@@ -412,15 +440,25 @@ class Tesliper:
             filenames=spc.filenames,
         )
 
-    def calculate_spectra(
-        self,
-        genres: Iterable[str] = (),
-        start: Number = None,
-        stop: Number = None,
-        step: Number = None,
-        width: Number = None,
-        fitting: FittingFunctionType = None,
-    ):
+    def calculate_spectra(self, genres: Iterable[str] = ()) -> Dict[str, gw.Spectra]:
+        """Calculates spectra for each requested genre using parameters stored
+        in `Tesliper.parameters` attribute.
+
+        Parameters
+        ----------
+        genres : iterable of str
+            List of spectra genres (or related spectral activities genres) that should
+            be calculated. If given spectral activity genre, this genre will be used
+            to calculate spectra instead of the default activities. If given empty
+            sequence (default), all available spectra will be calculated using default
+            activities.
+
+        Returns
+        -------
+        dict of str: Spectra
+            Dictionary with calculated spectra genres as keys and `Spectra` objects
+            as values.
+        """
         if not genres:
             bars = self.activities.values()
         else:
@@ -430,17 +468,9 @@ class Tesliper:
             query = [default_act[v] if v in default_act else v for v in genres]
             query_set = set(query)  # ensure no duplicates
             bars = (self[g] for g in query_set)
-        sett_from_args = {
-            k: v
-            for k, v in zip(
-                ("start", "stop", "step", "width", "fitting"),
-                (start, stop, step, width, fitting),
-            )
-            if v is not None
-        }
         output = {}
         for bar in bars:
-            spectra = self._calc_spc_with_settings(bar, sett_from_args)
+            spectra = bar.calculate_spectra(**self.parameters[bar.spectra_type])
             if spectra:
                 output[bar.spectra_name] = spectra
             else:
