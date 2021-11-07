@@ -332,13 +332,39 @@ class Tesliper:
         for f, d in self.extract_iterate(path, wanted_files, extension, recursive):
             _ = f, d
 
-    def load_settings(self, path=None, spectra_type=None):
-        # TODO: remove soxhlet.spectra_type dependence
+    def load_parameters(
+        self,
+        path: Optional[Union[str, Path]] = None,
+        spectra_type: Optional[str] = None,
+    ) -> dict:
+        """Load calculation parameters from a file.
+
+        Parameters
+        ----------
+        path : str or pathlib.Path, optional
+            Path to the file with desired parameters specification. If omitted,
+            Tesliper will try to find appropriate file in the default input directory.
+        spectra_type : str, optional
+            Type of spectra that loaded parameters concerns. If given, should be one of
+            "vibrational", "electronic", or "scattering" -- parameters for that
+            type of spectra will be updated with loaded values. Otherwise no update
+            is done, only parsed data is returned.
+
+        Returns
+        -------
+        dict
+            Parameters read from the file.
+
+        Notes
+        -----
+        For information on supported format of parameters configuration file, please
+        refer to `ParametersParser` documentation.
+        """
         soxhlet = ex.Soxhlet(path or self.input_dir)
-        spectra_type = spectra_type if spectra_type else soxhlet.spectra_type
         settings = soxhlet.load_settings()
-        self.settings[spectra_type].update(settings)
-        return self.settings
+        if spectra_type is not None:
+            self.parameters[spectra_type].update(settings)
+        return settings
 
     def _calc_spc_with_settings(
         self, activities: gw.SpectralActivities, settings: dict
