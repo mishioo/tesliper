@@ -493,8 +493,9 @@ class Tesliper:
         for genre, spectra in self.spectra.items():
             with self.conformers.trimmed_to(spectra.filenames):
                 for energies in self.energies.values():
-                    av = spectra.average(energies)
-                    self.averaged[(genre, energies.genre)] = av
+                    if energies:
+                        av = spectra.average(energies)
+                        self.averaged[(genre, energies.genre)] = av
         return self.averaged
 
     # TODO: supplement docstrings
