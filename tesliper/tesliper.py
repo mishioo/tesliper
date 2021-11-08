@@ -102,7 +102,7 @@ class Tesliper:
         self.averaged = dict()
         self.parameters = self.standard_parameters
 
-    def __getitem__(self, item):
+    def __getitem__(self, item: str) -> gw.conformers.AnyArray:
         try:
             return self.conformers.arrayed(item)
         except ValueError:
