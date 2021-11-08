@@ -14,7 +14,8 @@ setup(
     author_email="wieclawmm@gmail.com",
     url="https://github.com/Mishioo/tesliper",
     packages=find_packages(),
-    install_requires=['numpy', 'openpyxl'],
-    scripts=['bin/tesliper_gui.py'],
-    package_data={'tesliper': ['tesliper.ico']}
+    install_requires=["numpy", "openpyxl"],
+    extras_require={"gui": ["matplotlib"]},
+    scripts=["bin/tesliper_gui.py"],
+    package_data={"tesliper": ["tesliper.ico"]},
 )

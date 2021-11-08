@@ -27,6 +27,10 @@ AnyArray = Union[
     ar.InfoArray,
     ar.BooleanArray,
     ar.IntegerArray,
+    ar.Bands,
+    ar.VibrationalData,
+    ar.ScatteringData,
+    ar.ElectronicData,
     ar.VibrationalActivities,
     ar.ScatteringActivities,
     ar.ElectronicActivities,
@@ -331,8 +335,12 @@ class Conformers(OrderedDict):
             )
 
     def update(self, other=None, **kwargs):
-        """Works like dict.update, but if key is already present, it updates
-        dictionary associated with given key rather than changing its value.
+        """Works like `dict.update`, but if key is already present, it updates
+        dictionary associated with given key rather than assigning new value.
+        Keys of dictionary passed as positional parameter (or additional keyword
+        arguments given) should be conformers' identifiers and its values should be
+        dictionaries of {"genre": values} for those conformers.
+
         Please note, that values of status genres like 'optimization_completed'
         and 'normal_termination' will be updated as well for such key,
         if are present in given new values.

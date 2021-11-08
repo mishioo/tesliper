@@ -9,7 +9,7 @@ logger.setLevel(lgg.DEBUG)
 
 
 # GLOBAL VARIABLES
-Boltzmann = 0.0019872041  # kcal/(mol*K)
+BOLTZMANN = 0.0019872041  # kcal/(mol*K)
 HARTREE_TO_KCAL_PER_MOL = 627.5095
 
 
@@ -62,7 +62,7 @@ def calculate_min_factors(energies, t=298.15):
         List of conformers' Boltzmann factors respective to lowest
         energy conformer."""
     arr = -calculate_deltas(energies)
-    return np.exp(arr / (t * Boltzmann))
+    return np.exp(arr / (t * BOLTZMANN))
 
 
 def calculate_populations(energies, t=298.15):

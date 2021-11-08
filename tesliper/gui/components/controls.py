@@ -1004,7 +1004,7 @@ class CalculateSpectra(CollapsiblePane):
         # should be called in execution thread
         if conformer is not None:
             spc = self.tesliper.calculate_single_spectrum(
-                spectra_name=spectra_name,
+                genre=spectra_name,
                 conformer=conformer,
                 **self.calculation_params,
             )

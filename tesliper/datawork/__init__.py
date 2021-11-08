@@ -1,6 +1,6 @@
 from .atoms import Atom, atomic_number, symbol_of_element, validate_atoms
 from .energies import (
-    Boltzmann,
+    BOLTZMANN,
     calculate_deltas,
     calculate_min_factors,
     calculate_populations,

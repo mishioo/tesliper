@@ -194,7 +194,7 @@ class Soxhlet:
             return ".log" if logs else ".out"
 
     def extract_iter(self) -> Generator[Tuple[str, dict], None, None]:
-        """Extracts data from gaussian files associated with Soxhlet instance.
+        """Extracts data from Gaussian files associated with Soxhlet instance.
         Implemented as generator. If Soxhlet instance's `recursive` attribute is
         `True`, also files from subdirectories are parsed.
 
@@ -212,7 +212,7 @@ class Soxhlet:
             yield file.stem, data
 
     def extract(self) -> dict:
-        """Extracts data from gaussian files associated with Soxhlet instance.
+        """Extracts data from Gaussian files associated with Soxhlet instance.
         If its `recursive` attribute is `True`, also files from subdirectories
         are parsed.
 
@@ -224,7 +224,7 @@ class Soxhlet:
         """
         return {f: d for f, d in self.extract_iter()}
 
-    def load_settings(self, source: Optional[Union[str, Path]] = None) -> dict:
+    def load_parameters(self, source: Optional[Union[str, Path]] = None) -> dict:
         """Parses setup file specifying spectra calculation parameters and returns
         dict with extracted values. If `source` file is not given, file named
         "setup.txt" or "setup.cfg" (with any prefix, case-insensitive) will be searched
