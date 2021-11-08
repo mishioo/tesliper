@@ -1,0 +1,9 @@
+numpy
+openpyxl
+black
+pre-commit
+flake8
+coverage
+pytest
+hypothesis
+isort

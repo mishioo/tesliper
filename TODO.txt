@@ -1,0 +1,21 @@
+supplement documentation
+supplement logging
+add finding optimal spectra range
+gui - correct displaying of checkboxes
+gui - bind <<enter>> to entry widgets
+add support for jaguar & other packages
+add option for using cclib
+gui - add drag&drop support
+export spectra as image
+spectra colour by population
+
+FUTURE:
+gui - add tooltips
+add spectra comparition feature
+add velo and lenght electronic spectra comparition
+add anharmonic spectra support ?
+add molecule dispay window ?
+
+CONSIDER:
+energies extraction from spectra outputs
+create spectra.move_max_to(x_position)
