@@ -1,3 +1,46 @@
+"""`tesliper` is a package for batch processing of Gaussian output files, focusing
+on extraction and processing of data related to simulation of optical spectra.
+
+Simulation of optical spectra of organic compounds becomes one of the routine tasks
+for chemical analysts -- it is a necessary step in one of the increasingly popular
+methods of establishing compound's absolute configuration. However, the process
+of obtaining a simulated spectrum may be cumbersome, as it usually involves analysing
+a large number of potentially stable conformers of the studied molecule.
+`tesliper` was created to aid in such work.
+
+Software offers a Python API and a graphical user interface (GUI), allowing for your
+preferred style of interaction with the computer: visual or textual. It was designed
+for working with multiple conformers of a compound, represented by a number of files
+obtained from Gaussian quantum-chemical computations software. It allows to easily
+exclude conformers that are not suitable for further analysis: erroneous,
+not optimized, of higher energy or lower contribution than a user-given threshold.
+It also implements an RMSD sieve, enabling one to filter out similar structures.
+Finally, it lets you calculate theoretical IR, VCD, UV, ECD, Raman, and ROA spectra
+for all conformers or as a population-weighted average and export obtained spectral
+data in one of supported file formats: .txt, .csv, or .xlsx.
+
+There are some conventions that are important to note:
+- `tesliper` stores multiple data entries of various types for each conformer.
+To prevent confusion with Python's data ``type`` and with data itself,
+`tesliper` refers to specific kinds of data as "genres". Genres in code are represented
+by specific strings, used as identifiers. To learn about data genres
+known to `tesliper`, see documentation for `GaussianParser`, which lists them.
+- `tesliper` identifies conformers using stem of an extracted file (i.e. its filename
+without extension). When files with identical names are extracted in course of
+subsequent `Tesliper.extract` calls or in recursive extraction using
+``Tesliper.extract(recursive=True)``, they are treated as data for one conformer.
+This enables to join data from subsequent calculations steps, e.g. geometry
+optimization, vibrational spectra simulation, and electronic spectra simulation.
+Please note that if specific data genre is available from more than one calculation
+job, only recently extracted values will be stored.
+- `tesliper` was designed to deal with multiple conformers of single molecule and may
+not work properly when used to process data concerning different molecules (i.e.
+having different number of atoms, different number of degrees of freedom, etc.).
+If you want to use it for such purpose anyway, you may set
+`Tesliper.conformers.allow_data_inconsistency` to ``True``. `tesliper` will then stop
+complaining and try to do its best.
+"""
+
 # IMPORTS
 import logging as lgg
 import os
@@ -48,15 +91,145 @@ _activities_types = Union[
 
 # CLASSES
 class Tesliper:
-    """
-    TO DO
-    -----
-    Add trimming support.
-    Supplement docstrings.
-    ? separate spectra types ?
-    ? make it inherit mapping ?
+    """This class is a main access point to `tesliper`'s functionality. It allows you
+    to extract data from specified files, provides a proxy to the trimming
+    functionality, gives access to data in form of specialized arrays, enables you
+    to calculate and average desired spectra, and provides an easy way to export data.
+
+    Most basic use might look like this:
+    >>> tslr = Tesliper()
+    >>> tslr.extract()
+    >>> tslr.calculate_spectra()
+    >>> tslr.average_spectra()
+    >>> tslr.export_averaged()
+    This extracts data from files in the current working directory, calculates
+    available spectra using standard parameters, averages them using available energy
+    values, and exports to current working directory in .txt format.
+
+    You can customize this process by specifying call parameters for used methods
+    and modifying `Tesliper`'s configuration attributes:
+    - to change source directory
+    or location of exported files instantiate `Tesliper` object with `input_dir`
+    and `output_dir` parameters specified, respectively. You can also set appropriate
+    attributes on the instance directly.
+    - To extract only selected files in `input_dir` use `wanted_files` init parameter.
+    It should be given an iterable of filenames you want to parse. Again, you can
+    also directly set an identically named attribute.
+    - To change parameters used for calculation of spectra, modify appropriate entries
+    of `parameters` attribute.
+    - Use other export methods to export more data and specify `fmt` parameter
+    in method's call to export to other file formats.
+
+    >>> tslr = Tesliper(input_dir="./myjob/optimization/", output_dir="./myjob/output/")
+    >>> tslr.wanted_files = ["one", "two", "three"]  # only files with this names
+    >>> tslr.extract()  # use tslr.input_dir as source
+    >>> tslr.extract(path="./myjob/vcd_sim/")  # use other input_dir
+    >>> tslr.conformers.trim_not_optimized()  # trimming out unwanted conformers
+    >>> tslr.parameters["vibrational"].update({"start": 500, "stop": 2500, "width": 2})
+    >>> tslr.calculate_spectra(genres=["vcd"])  # we want only VCD spectrum
+    >>> tslr.average_spectra()
+    >>> tslr.export_averaged(mode="w")  # overwrite previously exported files
+    >>> tslr.export_activities(fmt="csv")  # save activities for analysis elsewhere
+    >>> tslr.output_dir = "./myjob/ecd_sim/"
+    >>> tslr.export_job_file(  # prepare files for next step of calculations
+    ...     route="# td=(singlets,nstates=80) B3LYP/Def2TZVP"
+    ... )
+
+    When modifying `Tesliper.parameters` be cerfull to not delete any of the parameters.
+    If you need to revert to standard parameters values, you can find them in
+    `Tesliper.standard_parameters`.
+    >>> tslr.parameters["vibrational"] = {
+    ...     "start": 500, "stop": 2500, "width": 2
+    ... }  # this will cause problems!
+    >>> tslr.parameters = tslr.standard_parameters  # revert to default values
+
+    Trimming functionality, used in previous example in
+    `tslr.conformers.trim_not_optimized()`, allows you to filter out conformers that
+    shouldn't be used in further processing and analysis. You can trim off conformers
+    that were not optimized, contain imaginary frequencies, or have other unwanted
+    qualities. Conformers with similar geometry may be discarded using an RMSD sieve.
+    For more information about trimming, please refer to the documentation
+    of `Conformers` class.
+
+    For more exploratory analysis, `Tesliper` provides an easy way to access desired
+    data as an instance of specialized `DataArray` class. Those objects implement
+    a number of convenience methods for dealing with specific data genres. A more
+    detailed information on `DataArray`s see `glassware.arrays` module documentation.
+    To get data in this form use `array = tslr["genre"]` were `"genre"` is string with
+    the name of desired data genre. For more control over instantiation of `DataArray`s
+    you may use `Tesliper.conformers.arrayed` factory method.
+    >>> energies = tslr["gib"]
+    >>> energies.values
+    array([-304.17061762, -304.17232455, -304.17186735])
+    >>> energies.populations
+    array([0.0921304 , 0.56174031, 0.3461293 ])
+    >>> energies.full_name
+    'Thermal Free Energy'
+
+    Please note, that if some conformers do not provide values for a specific data
+    genre, it will be ignored when retriving data for `DataArray` instantiation,
+    regardles if it were trimmed off or not.
+    >>> tslr = Tesliper()
+    >>> tslr.conformers.update([
+    >>> ...     ('one', {'gib': -304.17061762}),
+    >>> ...     ('two', {'gib': -304.17232455}),
+    >>> ...     ('three', {'gib': -304.17186735}),
+    >>> ...     ('four', {})
+    >>> ... ])
+    >>> tslr.conformers.kept
+    [True, True, True, True]
+    >>> energies = tslr["gib"]
+    >>> energies.filenames
+    array(['one', 'two', 'three'], dtype='<U5')
+
+    Parameters
+    ----------
+    input_dir : str or path-like object, optional
+        Path to directory containing files for extraction, defaults to current
+        working directory.
+    output_dir : str or path-like object, optional
+        Path to directory for output files, defaults to current working directory.
+    wanted_files : list of str or list of Path, optional
+        List of files or filenames representing wanted files. If not given, all
+        files are considered wanted. File extensions are ignored.
+
+    Attributes
+    ----------
+    conformers : Conformers
+        Container for data extracted from Gaussian output files. It provides trimming
+        functionality, enabling to filter out conformers of unwanted qualities.
+    spectra : dict of str: Spectra
+        Spectra calculated so far, using `Tesliper.calculate_spectra` method.
+        Possible keys are spectra genres: "ir", "vcd", "uv", "ecd", "raman", and "roa".
+        Values are `Spectra` instances with lastly calculated spetra of this genre.
+    averaged : dict of str: (dict of str: float or callable)
+        Spectra averaged using available energies genres, calculated with last call
+        to `Tesliper.average_spectra` method. Keys are tuples of two strings: averaged
+        spectra genre and energies genre used for averaging.
+    parameters : dict of str: (dict of str: float or callable)
+        Parameters for calculation of each type of spectra: "vibrational", "electronic",
+        and "scattering". Avaliable parameters are:
+            "start" - float ot int, the beginning of the spectral range,
+            "stop" - float ot int, the end of the spectral range,
+            "step" - float ot int, step of the abscissa,
+            "width" - float ot int, width of the peak,
+            "fitting" - callable, function used to simulate peaks as curves, preferably
+                        one of `datawork.gaussian` or `datawork.lorentzian`.
+        "start", "stop", and "step" expect its values to by in cm^-1 units for
+        vibrational and scattering spectra, and nm units for electronic spectra.
+        "width" expects its value to be in cm^-1 units for vibrational and scattering
+        spectra, and eV units for electronic spectra.
+    standard_parameters
+    input_dir
+    output_dir
+    wanted_files
+    energies
+    activities
     """
 
+    # TODO?: add proxy for trimming ?
+    # TODO?: separate spectra types ?
+    # TODO?: make it inherit mapping ?
     _standard_parameters = {
         "vibrational": {
             "width": 6,
@@ -83,17 +256,6 @@ class Tesliper:
         output_dir: str = ".",
         wanted_files: Optional[Iterable[Union[str, Path]]] = None,
     ):
-        """
-        Parameters
-        ----------
-        input_dir : str or path-like object, optional
-            Path to directory containing files for extraction, defaults to current
-            working directory.
-        output_dir : str or path-like object, optional
-            Path to directory for output files, defaults to current working directory.
-        wanted_files : list, optional
-            List filenames representing wanted files.
-        """
         self.conformers = gw.Conformers()
         self.wanted_files = wanted_files
         self.input_dir = input_dir
@@ -268,10 +430,6 @@ class Tesliper:
         Uses `Tesliper.input_dir` as source directory and `Tesliper.wanted_files`
         list of chosen files if these are not explicitly given as 'path' and
         'wanted_files' parameters.
-
-        It is important to note that extracted data is yielded as dictionary BEFORE
-        updating known conformers in underlying `Conformers` instance, so all changes
-        introduced to this data will be persistent.
 
         Parameters
         ----------
@@ -494,7 +652,7 @@ class Tesliper:
         Parameters
         ----------
         spectrum : str
-            Genre of spectrum that sould be averaged. This spectrum should be
+            Genre of spectrum that should be averaged. This spectrum should be
             previously calculated using `Tesliper.calculate_spectra` method.
         energy : str
             Genre of energies, that should be used to calculate populations
@@ -730,7 +888,7 @@ class Tesliper:
             Contents of title section, i.e. a comment about the calculations.
         post_spec : str
             Anything that should be placed after conformers geometry specification.
-            Will be writen to file as given.
+            Will be written to file as given.
         """
         wrt = wr.writer(
             fmt=fmt,
