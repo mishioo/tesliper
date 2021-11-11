@@ -20,6 +20,7 @@ from typing import (
 )
 
 from ..glassware.arrays import (
+    Bands,
     DataArray,
     ElectronicActivities,
     ElectronicData,
@@ -597,7 +598,7 @@ class Writer(ABC):
     def transitions(
         self,
         transitions: Transitions,
-        wavelengths: ElectronicActivities,
+        wavelengths: Bands,
         only_highest: bool = True,
         name_template: Union[str, Template] = "",
     ):

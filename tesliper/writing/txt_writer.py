@@ -358,7 +358,7 @@ class TxtWriter(Writer):
     def transitions(
         self,
         transitions: Transitions,
-        wavelengths: ElectronicActivities,
+        wavelengths: Bands,
         only_highest=True,
         name_template: Union[str, Template] = "${conf}.${cat}-${det}.${ext}",
     ):
