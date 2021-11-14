@@ -623,7 +623,8 @@ class Tesliper:
             as values.
         """
         if not genres:
-            bars = self.activities.values()
+            # use default genres, ignoring empty
+            bars = {k: v for k, v in self.activities.items() if v}
         else:
             # convert to spectra name if bar name passed
             default_act = dw.DEFAULT_ACTIVITIES
