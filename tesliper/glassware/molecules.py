@@ -436,7 +436,7 @@ class Molecules(OrderedDict):
         #       attribute or module level variable
         if wanted is None:
             wanted = 'dip rot vosc vrot losc lrot raman1 roa1 scf zpe ent ' \
-                     'ten gib h_mst c_mst fermi'.split()
+                     'ten gib'.split()
         elif isinstance(wanted, str):
             wanted = wanted.split()
         elif not isinstance(wanted, (list, tuple)):

@@ -295,35 +295,6 @@ class GaussianParser(Parser):
             line = next(iterator)
         self.workhorse = self.wait
 
-    @Parser.state(trigger=re.compile(r'[\w\s]*Magnetic shielding tensor'))
-    def shielding(self, line: str) -> None:
-        match = shielding_reg.search(line)
-        if match:
-            atom, iso, aniso = match.groups()
-            self.data.setdefault(f'{atom.lower()}_mst', []).append(float(iso))
-            self.data.setdefault(
-                f'{atom.lower()}_amst', []
-            ).append(float(aniso))
-        elif line == '\n':
-            self.workhorse = self.wait
-
-    @Parser.state(
-        trigger=re.compile(r'^ Fermi Contact \(FC\) contribution to J'))
-    def coupling(self, line: str) -> None:
-        data = self.data.setdefault(
-            'fermi', [[] for _ in self.data['molecule_atoms']]
-        )
-        match = fc_reg.search(line)
-        if match:
-            atom, *values = match.groups()
-            data[int(atom)-1].extend(
-                float(num.replace('D', 'e')) for num in values if num
-            )
-        else:
-            if re.match(r'^ \w', line):
-                self.data['fermi'] = [num for nums in data for num in nums]
-                self.workhorse = self.wait
-
 
 # FUNCTIONS
 def _geom_parse(text):

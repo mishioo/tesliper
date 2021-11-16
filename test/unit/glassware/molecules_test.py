@@ -18,10 +18,6 @@ class TestMolecules(ut.TestCase):
             'stoichiometry': 'CH3F',
             'molecule_atoms': (6, 1, 1, 1, 9),
             'geometry': [],
-            'c_mst': [100],
-            'h_mst': [10, 20, 30],
-            'f_mst': [250],
-            'fermi': [0, 11, 0, 12, 1, 0, 13, 2, 3, 0, 14, 200, 110, 120, 130],
             'freq': [1, 2, 3, 4, 5],
             'mass': [2, 1, 3, 2, 1],
             'iri': [27, 8, 569, 1, 3],
@@ -32,6 +28,7 @@ class TestMolecules(ut.TestCase):
                             ((13, 25, -0.1), (15, 25, 0.3), (18, 25, -0.4))],
             'zpecorr': 0.5,
             'zpe': -200,
+            'scf': 0,
         }
         noopt = {**base, 'zpe': -210, 'optimization_completed': False}
         imag = {**base, 'zpe': -220, 'freq': [-1, 2, 3, 4, 5]}
@@ -39,7 +36,7 @@ class TestMolecules(ut.TestCase):
         term = {**base, 'zpe': -240, 'normal_termination': False}
         size = {**base, 'zpe': -250, 'mass': [1, 2, 3]}
         incom = {**base, 'zpe': -260}
-        del incom['c_mst']
+        del incom['scf']
         self.full = ml.Molecules(
             base=base,
             noopt=noopt,
@@ -140,10 +137,6 @@ class TestMolecules(ut.TestCase):
         self.assertIs(gw.ExcitedStateBars, type(vdip))
         emang = self.full.arrayed('emang')
         self.assertIs(gw.FloatArray, type(emang))
-        h_mst = self.full.arrayed('h_mst')
-        self.assertIs(gw.Shieldings, type(h_mst))
-        fermi = self.full.arrayed('fermi')
-        self.assertIs(gw.Couplings, type(fermi))
 
     def test_arrayed_trimmed(self):
         arr = self.full.arrayed('zpe')
