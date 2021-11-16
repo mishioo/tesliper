@@ -4,5 +4,4 @@ from .arrays import (
     DataArray, FloatArray, InfoArray, BooleanArray, Energies,
     Bars, GroundStateBars, ExcitedStateBars
 )
-from .nmr import Shieldings, Couplings
 from .molecules import Molecules
