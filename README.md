@@ -31,7 +31,3 @@ To install Tesliper to your python distribution you will need to download (and e
 ### Installing as standalone application
 
 This option is currently available only for Windows users. To get your copy of Tesliper up and running, download and run a Windows installer from [latest relase](https://github.com/Mishioo/tesliper/releases/tag/0.7.4). It will extract all needed files, including Python iterpreter, to choosen directory and create shortcut on desktop.
-
-## Build With
-
-Installer for standalone was created with InnoSetup and uses WinPython.
