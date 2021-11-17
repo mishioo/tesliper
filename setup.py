@@ -47,6 +47,7 @@ setup(
         "a package for batch processing of spectra-related Gaussian output files"
     ),
     long_description=long_desc,
+    long_description_content_type="text/markdown",
     author=tesliper.__author__,
     author_email="wieclawmm@gmail.com",
     url="https://github.com/mishioo/tesliper",
