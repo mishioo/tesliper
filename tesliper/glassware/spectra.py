@@ -40,6 +40,14 @@ class SingleSpectrum:
         _units[u].update(_vibrational_units)
     for u in ("uv", "ecd"):
         _units[u].update(_electronic_units)
+    _spectra_type_ref = dict(
+        vcd="vibrational",
+        ir="vibrational",
+        roa="scattering",
+        raman="scattering",
+        ecd="electronic",
+        uv="electronic",
+    )
 
     def __init__(
         self,
@@ -69,6 +77,11 @@ class SingleSpectrum:
     filenames = ArrayProperty(check_against=None, dtype=str)
     abscissa = ArrayProperty(check_against=None)
     values = ArrayProperty(check_against="abscissa")
+
+    @property
+    def spectra_type(self):
+        """Returns type of spectra: 'vibrational', 'electronic', or 'scattering'."""
+        return self._spectra_type_ref[self.genre]
 
     @property
     def units(self) -> Dict[str, str]:
