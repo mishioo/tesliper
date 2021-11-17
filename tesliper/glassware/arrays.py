@@ -401,7 +401,7 @@ class SpectralData(FloatArray, ABC):
 
     @property
     def wavelengths(self):
-        return self.freq
+        return self.wavelen
 
 
 class _VibData(SpectralData):
