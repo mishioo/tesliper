@@ -43,8 +43,9 @@ setup(
     cmdclass={"binary": BuildBinaryCommand},
     name="tesliper",
     version=tesliper.__version__,
-    description="package for batch processing of Gaussian output files "
-    "with spectral data",
+    description=(
+        "a package for batch processing of spectra-related Gaussian output files"
+    ),
     long_description=long_desc,
     author=tesliper.__author__,
     author_email="wieclawmm@gmail.com",
@@ -54,4 +55,19 @@ setup(
     extras_require={"gui": ["matplotlib"]},
     scripts=["bin/tesliper_gui.py"],
     package_data={"tesliper": ["tesliper.ico"]},
+    classifiers=[
+        "Intended Audience :: Science/Research",
+        "License :: OSI Approved :: BSD License",
+        "Programming Language :: Python :: 3.6",
+        "Topic :: Scientific/Engineering :: Chemistry",
+        "Development Status :: 4 - Beta",
+    ],
+    keywords=[
+        "chemistry",
+        "chemical computing",
+        "optical spectroscopy",
+        "spectral simulations",
+        "spectroscopy",
+        "Gaussian",
+    ],
 )
