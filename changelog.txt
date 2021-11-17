@@ -1,7 +1,21 @@
 v. 0.8.0
 API:
-    - added support for handling and exporting electronic transitions
     - added RMSD-based trimming of conformers with similar geometry
+    - added auto saling and shifting spectra to match reference
+    - added support for handling and exporting electronic transitions
+    - added export to .gjf files
+    - added serialization of `Tesliper` class
+    - renamed `Molecules` class to `Conformers`
+    - significant changes to `...Writer` classes
+    - significant changes to `DataArray` subclasses
+    - major code refactoring
+    - many smaller changes and improvements
+GUI:
+    - new application layout
+    - added scroll response to numeric fields
+    - changed available and default colour schemes
+    - supplemented data export options
+
 v. 0.7.4
 API:
     - Tesliper's method 'average_spectra' returns reference to dict of averaged spectra
