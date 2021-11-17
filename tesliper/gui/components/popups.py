@@ -157,8 +157,7 @@ class SpectraDetails(ttk.Frame):
         calculations = master.master.winfo_toplevel().controls.calculate
         for idx, spc in enumerate(spectra):
             spectra_name = spc.lower()
-            spectra_type = SpectralActivities.spectra_type_ref[spectra_name]
-            default_params = master.tesliper.standard_parameters[spectra_type]
+            default_params = master.tesliper.standard_parameters[spectra_name]
             last_used = {
                 k: calculations.last_used_settings[spectra_name][k]
                 for k in "start stop step width fitting".split(" ")

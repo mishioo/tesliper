@@ -900,10 +900,9 @@ class CalculateSpectra(CollapsiblePane):
 
     def visualize_settings(self):
         spectra_name = self.s_name.get()
-        spectra_type = gw.SpectralActivities.spectra_type_ref[spectra_name]
         tslr = self.tesliper
         last_used = self.last_used_settings[spectra_name]
-        settings = tslr.parameters[spectra_type].copy()
+        settings = tslr.parameters[spectra_name].copy()
         settings.update(last_used)
         for name, sett in settings.items():
             if name == "fitting":
