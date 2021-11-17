@@ -1,5 +1,6 @@
 numpy
 openpyxl
+matplotlib
 black
 pre-commit
 flake8

@@ -345,20 +345,26 @@ class TxtWriter(Writer):
             f'{spectra.units["y"]}'
         )
         template_params = {"genre": spectra.genre, "cat": "spectra"}
+        abscissa_genre = "wavelen" if spectra.spectra_type == "electronic" else "freq"
+        values_template = "\t".join(
+            (self._formatters[abscissa_genre], self._formatters[spectra.genre])
+        )
         for handle, values in zip(
             self._iter_handles(spectra.filenames, name_template, template_params),
             spectra.y,
         ):
             handle.write(title + "\n")
             handle.write(
-                "\n".join(f"{int(a):>4d}\t{v: .4f}" for a, v in zip(abscissa, values))
+                "\n".join(
+                    values_template.format(a, v) for a, v in zip(abscissa, values)
+                )
             )
         logger.info("Spectra export to text files done.")
 
     def transitions(
         self,
         transitions: Transitions,
-        wavelengths: ElectronicActivities,
+        wavelengths: Bands,
         only_highest=True,
         name_template: Union[str, Template] = "${conf}.${cat}-${det}.${ext}",
     ):

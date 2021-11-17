@@ -8,9 +8,10 @@ from typing import Iterable, Optional, Sequence, Union
 import numpy as np
 import openpyxl as oxl
 
+from ._writer import Writer
 from ..glassware.arrays import (
+    Bands,
     DataArray,
-    ElectronicActivities,
     Energies,
     FloatArray,
     InfoArray,
@@ -19,7 +20,6 @@ from ..glassware.arrays import (
     Transitions,
 )
 from ..glassware.spectra import SingleSpectrum, Spectra
-from ._writer import Writer
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -372,7 +372,7 @@ class XlsxWriter(Writer):
     def transitions(
         self,
         transitions: Transitions,
-        wavelengths: ElectronicActivities,
+        wavelengths: Bands,
         only_highest=True,
         name_template: Union[str, Template] = "${conf}.${cat}-${det}",
     ):

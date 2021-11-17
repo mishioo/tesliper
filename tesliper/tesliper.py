@@ -125,7 +125,7 @@ class Tesliper:
     >>> tslr.extract()  # use tslr.input_dir as source
     >>> tslr.extract(path="./myjob/vcd_sim/")  # use other input_dir
     >>> tslr.conformers.trim_not_optimized()  # trimming out unwanted conformers
-    >>> tslr.parameters["vibrational"].update({"start": 500, "stop": 2500, "width": 2})
+    >>> tslr.parameters["vcd"].update({"start": 500, "stop": 2500, "width": 2})
     >>> tslr.calculate_spectra(genres=["vcd"])  # we want only VCD spectrum
     >>> tslr.average_spectra()
     >>> tslr.export_averaged(mode="w")  # overwrite previously exported files
@@ -138,7 +138,7 @@ class Tesliper:
     When modifying `Tesliper.parameters` be cerfull to not delete any of the parameters.
     If you need to revert to standard parameters values, you can find them in
     `Tesliper.standard_parameters`.
-    >>> tslr.parameters["vibrational"] = {
+    >>> tslr.parameters["ir"] = {
     ...     "start": 500, "stop": 2500, "width": 2
     ... }  # this will cause problems!
     >>> tslr.parameters = tslr.standard_parameters  # revert to default values
@@ -231,14 +231,14 @@ class Tesliper:
     # TODO?: separate spectra types ?
     # TODO?: make it inherit mapping ?
     _standard_parameters = {
-        "vibrational": {
+        "ir": {
             "width": 6,
             "start": 800,
             "stop": 2900,
             "step": 2,
             "fitting": dw.lorentzian,
         },
-        "electronic": {
+        "uv": {
             "width": 0.35,
             "start": 150,
             "stop": 800,
@@ -246,9 +246,12 @@ class Tesliper:
             "fitting": dw.gaussian,
         },
     }
-    _standard_parameters["scattering"] = _standard_parameters["vibrational"].copy()
+    _standard_parameters["vcd"] = _standard_parameters["ir"].copy()
+    _standard_parameters["raman"] = _standard_parameters["ir"].copy()
+    _standard_parameters["roa"] = _standard_parameters["ir"].copy()
+    _standard_parameters["ecd"] = _standard_parameters["uv"].copy()
     # TODO: introduce more sophisticated parameters proxy that enables using
-    #       same or different params for genres of same type (e.g. "ir" and "vcd")
+    #       same or different params for genres of same type (e.g. "vibrational")
 
     def __init__(
         self,
@@ -357,8 +360,8 @@ class Tesliper:
 
     @property
     def standard_parameters(self) -> Dict[str, Dict[str, Union[int, float, Callable]]]:
-        """Default parameters for spectra calculation for each spectra type
-        (vibrational, electronic, and scattering). This returns a dictionary,
+        """Default parameters for spectra calculation for each spectra genre
+        (ir, vcd, uv, ecd, raman, roa). This returns a dictionary,
         but in fact it is a convenience, read-only attribute,
         modifying it will have no persisting effect.
         """
@@ -498,7 +501,7 @@ class Tesliper:
     def load_parameters(
         self,
         path: Optional[Union[str, Path]] = None,
-        spectra_type: Optional[str] = None,
+        spectra_genre: Optional[str] = None,
     ) -> dict:
         """Load calculation parameters from a file.
 
@@ -507,10 +510,10 @@ class Tesliper:
         path : str or pathlib.Path, optional
             Path to the file with desired parameters specification. If omitted,
             Tesliper will try to find appropriate file in the default input directory.
-        spectra_type : str, optional
-            Type of spectra that loaded parameters concerns. If given, should be one of
-            "vibrational", "electronic", or "scattering" -- parameters for that
-            type of spectra will be updated with loaded values. Otherwise no update
+        spectra_genre : str, optional
+            Genre of spectra that loaded parameters concerns. If given, should be one of
+            "ir", "vcd", "uv", "ecd", "raman", or "roa" -- parameters for that
+            spectra will be updated with loaded values. Otherwise no update
             is done, only parsed data is returned.
 
         Returns
@@ -525,8 +528,8 @@ class Tesliper:
         """
         soxhlet = ex.Soxhlet(path or self.input_dir)
         settings = soxhlet.load_parameters()
-        if spectra_type is not None:
-            self.parameters[spectra_type].update(settings)
+        if spectra_genre is not None:
+            self.parameters[spectra_genre].update(settings)
         return settings
 
     def calculate_single_spectrum(
@@ -545,7 +548,8 @@ class Tesliper:
         be used instead of the parameters stored in `Tesliper.parameters` attribute.
         'start', 'stop', and 'step' values will be interpreted as cm^-1 for vibrational
         or scattering spectra/activities and as nm for electronic ones.
-        Similarly, 'width' will be interpreted as cm^-1 or eV.
+        Similarly, 'width' will be interpreted as cm^-1 or eV. If not given, values
+        stored in appropriate `Tesliper.parameters` are used.
 
         Parameters
         ----------
@@ -556,15 +560,15 @@ class Tesliper:
         conformer : str or int
             Conformer, specified as it's identifier or it's index, for which
             spectrum should be calculated.
-        start : int or float
+        start : int or float, optional
             Number representing start of spectral range.
-        stop : int or float
+        stop : int or float, optional
             Number representing end of spectral range.
-        step : int or float
+        step : int or float, optional
             Number representing step of spectral range.
-        width : int or float
+        width : int or float, optional
             Number representing half width of maximum peak height.
-        fitting : function
+        fitting : function, optional
             Function, which takes spectral data, freqs, abscissa, width as parameters
             and returns numpy.array of calculated, non-corrected spectrum points.
             Basically one of `datawork.gaussian` or `datawork.lorentzian`.
@@ -588,7 +592,7 @@ class Tesliper:
             )
             if v is not None
         }
-        sett = self.parameters[bar.spectra_type].copy()
+        sett = self.parameters[bar.spectra_name].copy()
         sett.update(sett_from_args)
         spc = bar.calculate_spectra(**sett)
         # TODO: maybe Spectra class should provide such conversion ?
@@ -623,7 +627,8 @@ class Tesliper:
             as values.
         """
         if not genres:
-            bars = self.activities.values()
+            # use default genres, ignoring empty
+            bars = {k: v for k, v in self.activities.items() if v}
         else:
             # convert to spectra name if bar name passed
             default_act = dw.DEFAULT_ACTIVITIES
@@ -633,7 +638,7 @@ class Tesliper:
             bars = (self[g] for g in query_set)
         output = {}
         for bar in bars:
-            spectra = bar.calculate_spectra(**self.parameters[bar.spectra_type])
+            spectra = bar.calculate_spectra(**self.parameters[bar.spectra_name])
             if spectra:
                 output[bar.spectra_name] = spectra
             else:

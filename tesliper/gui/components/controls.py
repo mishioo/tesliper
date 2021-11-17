@@ -900,10 +900,9 @@ class CalculateSpectra(CollapsiblePane):
 
     def visualize_settings(self):
         spectra_name = self.s_name.get()
-        spectra_type = gw.SpectralActivities.spectra_type_ref[spectra_name]
         tslr = self.tesliper
         last_used = self.last_used_settings[spectra_name]
-        settings = tslr.parameters[spectra_type].copy()
+        settings = tslr.parameters[spectra_name].copy()
         settings.update(last_used)
         for name, sett in settings.items():
             if name == "fitting":
@@ -929,10 +928,11 @@ class CalculateSpectra(CollapsiblePane):
     def live_preview_callback(self, _event=None, mode=False):
         if _event is not None:
             logger.debug(f"Event caught by {self}.live_preview_callback handler.")
-        # TO DO: separate things, that don't need recalculation
-        # TO DO: show/hide bars/experimental plots when checkbox clicked
-        # TO DO: rewrite this function with sense
+        # TODO: show/hide bars/experimental plots when checkbox clicked
         spectra_name = self.s_name.get()
+        # update appropriate tesliper.parameters with current calculation settings
+        self.tesliper.parameters[spectra_name].update(self.calculation_params)
+        # TODO: rewrite condisions' checks more elegantly
         mode_con = self.mode.get() == mode if mode else True
         settings_con = (
             spectra_name not in self.last_used_settings
@@ -1004,16 +1004,11 @@ class CalculateSpectra(CollapsiblePane):
         # should be called in execution thread
         if conformer is not None:
             spc = self.tesliper.calculate_single_spectrum(
-                genre=spectra_name,
-                conformer=conformer,
-                **self.calculation_params,
+                genre=spectra_name, conformer=conformer
             )
         else:
-            spc = self.tesliper.calculate_spectra(
-                spectra_name, **self.calculation_params
-            )[
-                spectra_name
-            ]  # tslr.calculate_spectra returns dictionary
+            spectra = self.tesliper.calculate_spectra(spectra_name)
+            spc = spectra[spectra_name]  # tslr.calculate_spectra returns dictionary
         offset = self.offset.var.get()
         scaling = self.scaling.var.get()
         if offset:  # if not chosen, ignore

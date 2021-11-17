@@ -127,6 +127,7 @@ class FilenamesArray(DataArray):
 
     @values.setter
     def values(self, values):
+        # ignore attempts at setting values
         pass
 
 
@@ -386,8 +387,21 @@ class SpectralData(FloatArray, ABC):
 
     @property
     @abstractmethod
+    def freq(self):
+        return convert_band(self.wavelen, from_genre="wavelen", to_genre="freq")
+
+    @property
     def frequencies(self):
-        return NotImplemented
+        return self.freq
+
+    @property
+    @abstractmethod
+    def wavelen(self):
+        return convert_band(self.wavelen, from_genre="freq", to_genre="wavelen")
+
+    @property
+    def wavelengths(self):
+        return self.wavelen
 
 
 class _VibData(SpectralData):
@@ -406,8 +420,8 @@ class _VibData(SpectralData):
         self.freq = freq
 
     @property
-    def frequencies(self):
-        return self.freq
+    def wavelen(self):
+        return super().wavelen
 
 
 class VibrationalData(_VibData):
@@ -426,7 +440,7 @@ class ScatteringData(_VibData):
         "depu",
         "alpha2",
         "beta2",
-        "alphag ",
+        "alphag",
         "gamma2",
         "delta2",
         "cid1",
@@ -441,7 +455,7 @@ class ScatteringData(_VibData):
         "depu": "Depolar-U ROA",
         "alpha2": "Raman invariant Alpha2",
         "beta2": "Raman invariant Beta2",
-        "alphag ": "ROA invariant AlphaG",
+        "alphag": "ROA invariant AlphaG",
         "gamma2": "ROA invariant Gamma2",
         "delta2": "ROA invariant Delta2",
         "cid1": "CID ICPu/SCPu(180)",
@@ -452,7 +466,7 @@ class ScatteringData(_VibData):
     _units = {
         "alpha2": "(A**4/AMU)",
         "beta2": "(A**4/AMU)",
-        "alphag ": "(10**4 A**5/AMU)",
+        "alphag": "(10**4 A**5/AMU)",
         "gamma2": "(10**4 A**5/AMU)",
         "delta2": "(10**4 A**5/AMU)",
     }
@@ -490,8 +504,8 @@ class ElectronicData(SpectralData):
         self.wavelen = wavelen  # in nm
 
     @property
-    def frequencies(self):
-        return convert_band(self.wavelen, from_genre="wavelen", to_genre="freq")
+    def freq(self):
+        return super().freq
 
 
 class SpectralActivities(SpectralData, Averagable, ABC):

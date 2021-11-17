@@ -19,7 +19,7 @@ class ArchiveWriter:
     Structure of the produced archive:
     .
     ├───arguments: {input_dir=str, output_dir=str, wanted_files=[str]}
-    ├───parameters: {"vibrational": {params}, "electronic": {params}}
+    ├───parameters: {"ir": {params}, ..., "roa": {params}}
     ├───conformers
     │   ├───arguments: {"allow_data_inconsistency": bool}
     │   ├───filenames: [str]

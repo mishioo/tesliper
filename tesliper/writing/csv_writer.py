@@ -9,8 +9,9 @@ from typing import IO, Any, AnyStr, Dict, Iterable, Iterator, List, Optional, Un
 
 import numpy as np
 
+from ._writer import Writer
 from ..glassware.arrays import (
-    ElectronicActivities,
+    Bands,
     Energies,
     FloatArray,
     SpectralActivities,
@@ -18,7 +19,6 @@ from ..glassware.arrays import (
     Transitions,
 )
 from ..glassware.spectra import SingleSpectrum, Spectra
-from ._writer import Writer
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -365,7 +365,7 @@ class CsvWriter(_CsvMixin, Writer):
     def transitions(
         self,
         transitions: Transitions,
-        wavelengths: ElectronicActivities,
+        wavelengths: Bands,
         only_highest=True,
         name_template: Union[str, Template] = "${conf}.${cat}-${det}.${ext}",
     ):
