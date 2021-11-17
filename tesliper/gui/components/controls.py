@@ -931,7 +931,9 @@ class CalculateSpectra(CollapsiblePane):
         # TODO: show/hide bars/experimental plots when checkbox clicked
         spectra_name = self.s_name.get()
         # update appropriate tesliper.parameters with current calculation settings
-        self.tesliper.parameters[spectra_name].update(self.calculation_params)
+        if spectra_name:
+            # but only if spectra already chosen
+            self.tesliper.parameters[spectra_name].update(self.calculation_params)
         # TODO: rewrite condisions' checks more elegantly
         mode_con = self.mode.get() == mode if mode else True
         settings_con = (
