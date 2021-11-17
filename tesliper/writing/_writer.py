@@ -120,6 +120,12 @@ class Writer(ABC):
     )
 
     _formatters = dict(
+        ir="{:> .4e}",
+        vcd="{:> .4e}",
+        uv="{:> .4e}",
+        ecd="{:> .4e}",
+        raman="{:> .4e}",
+        roa="{:> .4e}",
         rot="{:> 10.4f}",
         dip="{:> 10.4f}",
         roa1="{:> 10.4f}",
@@ -143,7 +149,6 @@ class Writer(ABC):
         wavelen="{:> 10.2f}",
         mass="{:> 11.4f}",
         frc="{:> 10.4f}",
-        raman="{:> 11.4f}",
         depolarp="{:> 11.4f}",
         depolaru="{:> 11.4f}",
         ramact="{:> 10.4f}",
