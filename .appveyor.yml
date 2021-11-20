@@ -1,0 +1,31 @@
+version: 0.8.0-{branch}-{build}
+
+image:
+  - Visual Studio 2019
+  - Ubuntu
+
+stack: python 3.6
+
+environment:
+  PYTHON: "C:\\Python36"
+  COVERALLS_REPO_TOKEN:
+    secure: 64bL5OipIuqAwg0nGwbra4tIVBheT7jwIKgDuGuV2SefqhwLATu0dSgc/w+ecUE0
+
+init:
+  - cmd: set PATH=%PYTHON%;%PYTHON%\Scripts;%PATH%
+
+build: false
+
+install:
+  - python -m pip install -U pip
+  - python -m pip install -r requirements.txt
+  - python -m pip install pytest
+  - python -m pip install pytest-cov
+  - python -m pip install hypothesis
+  - python -m pip install coveralls
+
+test_script:
+  - python -m pytest --cov=tesliper --cov-config=.coveragerc test
+
+after_test:
+  - coveralls

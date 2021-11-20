@@ -1,8 +1,8 @@
-[![Build Status](https://travis-ci.com/mishioo/tesliper.svg)](https://travis-ci.com/mishioo/tesliper)
+[![Build status](https://ci.appveyor.com/api/projects/status/vh0t6udj7mnpnfoe?svg=true)](https://ci.appveyor.com/project/mishioo/tesliper-jjshl)
 [![Coverage Status](https://coveralls.io/repos/github/mishioo/tesliper/badge.svg)](https://coveralls.io/github/mishioo/tesliper)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-<img align="right" width="100" height="100" src="https://raw.githubusercontent.com/mishioo/tesliper/master/tesliper/tesliper.ico">
 [![License](https://img.shields.io/badge/License-BSD_2--Clause-orange.svg)](https://opensource.org/licenses/BSD-2-Clause)
+<img align="right" width="100" height="100" src="https://raw.githubusercontent.com/mishioo/tesliper/master/tesliper/tesliper.ico">
 
 # Tesliper
 
