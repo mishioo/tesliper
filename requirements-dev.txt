@@ -9,3 +9,4 @@ pytest
 hypothesis
 isort
 pyinstaller
+twine
