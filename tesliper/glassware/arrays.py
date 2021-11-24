@@ -605,8 +605,21 @@ class _VibAct(_VibData, SpectralActivities):
         -------
         SingleSpectrum
             Calculated spectrum.
+
+        Raises
+        ------
+        ValueError
+            If given `start`, `stop`, and `step` values would produce an empty
+            or one-element sequence; i.e. if `start` is grater than `stop` or if
+            `start - stop < step`, assuming `step` is a positive value.
         """
         abscissa = np.arange(start, stop, step)
+        if abscissa.size <= 1:
+            raise ValueError(
+                f"Not enough data points between start = {start} and stop = {stop} "
+                f"with step = {step}. Please provide start, stop, and step values "
+                "that will produce at least two-element sequence."
+            )
         freqs = self.frequencies
         inten = self.intensities
         values = dw.calculate_spectra(freqs, inten, abscissa, width, fitting)
@@ -760,8 +773,21 @@ class ElectronicActivities(ElectronicData, SpectralActivities):
         -------
         SingleSpectrum
             Calculated spectrum.
+
+        Raises
+        ------
+        ValueError
+            If given `start`, `stop`, and `step` values would produce an empty
+            or one-element sequence; i.e. if `start` is grater than `stop` or if
+            `start - stop < step`, assuming `step` is a positive value.
         """
         abscissa = np.arange(start, stop, step)
+        if abscissa.size <= 1:
+            raise ValueError(
+                f"Not enough data points between start = {start} and stop = {stop} "
+                f"with step = {step}. Please provide start, stop, and step values "
+                "that will produce at least two-element sequence."
+            )
         _width = convert_band(
             width, from_genre="ex_en", to_genre="freq"
         )  # from eV to cm-1

@@ -969,6 +969,9 @@ class CalculateSpectra(CollapsiblePane):
     def _draw(self, queue_, **kwargs):
         try:
             spc = queue_.get(0)  # data put to queue by self._calculate_spectra
+            if spc is None:
+                # invalid parameters for spectra calculation given, abort
+                return
             self.view.draw_spectra(spc, **kwargs)
             self.lastly_drawn_spectra = spc
         except queue.Empty:
@@ -1022,10 +1025,15 @@ class CalculateSpectra(CollapsiblePane):
 
     @ThreadedMethod(progbar_msg="Calculating...")
     def _calculate_spectra(self, spectra_name, option, mode):
-        spc = self._exec_calculate_spectra(
-            spectra_name=spectra_name,
-            conformer=option if mode == "single" else None,
-        )
+        try:
+            spc = self._exec_calculate_spectra(
+                spectra_name=spectra_name,
+                conformer=option if mode == "single" else None,
+            )
+        except ValueError as error:
+            # happens on invalid start/stop/step combination
+            logger.warning(error)
+            return
         if mode == "average":
             en_name = self.average.get_genre()
             spc = self.tesliper.get_averaged_spectrum(spectra_name, en_name)
