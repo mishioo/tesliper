@@ -97,11 +97,13 @@ class Tesliper:
     to calculate and average desired spectra, and provides an easy way to export data.
 
     Most basic use might look like this:
+
     >>> tslr = Tesliper()
     >>> tslr.extract()
     >>> tslr.calculate_spectra()
     >>> tslr.average_spectra()
     >>> tslr.export_averaged()
+
     This extracts data from files in the current working directory, calculates
     available spectra using standard parameters, averages them using available energy
     values, and exports to current working directory in .txt format.
@@ -138,6 +140,7 @@ class Tesliper:
     When modifying `Tesliper.parameters` be cerfull to not delete any of the parameters.
     If you need to revert to standard parameters values, you can find them in
     `Tesliper.standard_parameters`.
+
     >>> tslr.parameters["ir"] = {
     ...     "start": 500, "stop": 2500, "width": 2
     ... }  # this will cause problems!
@@ -158,6 +161,7 @@ class Tesliper:
     To get data in this form use `array = tslr["genre"]` were `"genre"` is string with
     the name of desired data genre. For more control over instantiation of `DataArray`s
     you may use `Tesliper.conformers.arrayed` factory method.
+
     >>> energies = tslr["gib"]
     >>> energies.values
     array([-304.17061762, -304.17232455, -304.17186735])
@@ -169,6 +173,7 @@ class Tesliper:
     Please note, that if some conformers do not provide values for a specific data
     genre, it will be ignored when retriving data for `DataArray` instantiation,
     regardles if it were trimmed off or not.
+
     >>> tslr = Tesliper()
     >>> tslr.conformers.update([
     >>> ...     ('one', {'gib': -304.17061762}),

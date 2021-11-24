@@ -84,7 +84,7 @@ class Soxhlet:
     def files(self):
         """List of all wanted files available in given directory. If wanted_files
         is not specified, evaluates to all files in said directory. If Soxhlet
-         object's `recursive` attribute is `True`, also files from subdirectories
+        object's `recursive` attribute is `True`, also files from subdirectories
         are included."""
         wanted_empty = not self.wanted_files
         return [
