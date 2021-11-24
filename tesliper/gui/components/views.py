@@ -104,17 +104,19 @@ class SpectraView(ttk.Frame):
                 freqs = freqs + spc.offset
                 # show only activities within range requested in calculations
                 blade = (freqs >= min(spc.x)) & (freqs <= max(spc.x))
-                markerline, stemlines, baseline = bars_ax.stem(
-                    freqs[blade],
-                    bars.values[0][blade],
-                    linefmt="b-",
-                    markerfmt=" ",
-                    basefmt=" ",
-                )
-                stemlines.set_linewidth(width)
-                bars_ax.set_ylabel(bars.units)
-                bars_ax.tick_params(axis="y", colors="b")
-                axes.append(bars_ax)
+                # but only if there are any in this range
+                if blade.any():
+                    markerline, stemlines, baseline = bars_ax.stem(
+                        freqs[blade],
+                        bars.values[0][blade],
+                        linefmt="b-",
+                        markerfmt=" ",
+                        basefmt=" ",
+                    )
+                    stemlines.set_linewidth(width)
+                    bars_ax.set_ylabel(bars.units)
+                    bars_ax.tick_params(axis="y", colors="b")
+                    axes.append(bars_ax)
             if experimental is not None:
                 extremes = [
                     max(abs(max(experimental.y)), abs(min(experimental.y))),
