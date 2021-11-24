@@ -58,6 +58,7 @@ class FilterRange(ttk.Frame):
             scroll_modifier=self.scroll_modifier,
             keep_trailing_zeros=True,
             decimal_digits=6,
+            rounding="down",
         )
         self.lower_entry.grid(column=1, row=0, sticky="new")
         self.upper_entry = NumericEntry(
@@ -67,6 +68,7 @@ class FilterRange(ttk.Frame):
             scroll_modifier=self.scroll_modifier,
             keep_trailing_zeros=True,
             decimal_digits=6,
+            rounding="up",
         )
         self.upper_entry.grid(column=1, row=1, sticky="new")
 

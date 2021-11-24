@@ -1,4 +1,5 @@
 import logging
+import math
 import operator
 import sys
 import tkinter as tk
@@ -206,6 +207,7 @@ class NumericEntry(ttk.Entry):
         scroll_factor=None,
         scroll_modifier=None,
         decimal_digits=4,
+        rounding=None,  # or "up" or "down"
         keep_trailing_zeros=False,
         min_value=float("-inf"),
         max_value=float("inf"),
@@ -217,6 +219,7 @@ class NumericEntry(ttk.Entry):
         self.scroll_rate = scroll_rate
         self.scroll_modifier = scroll_modifier
         self.decimal_digits = decimal_digits
+        self.rounding = rounding
         self.keep_trailing_zeros = keep_trailing_zeros
         self.min_value = min_value
         self.max_value = max_value
@@ -280,11 +283,21 @@ class NumericEntry(ttk.Entry):
         super().configure(cnf, **kwargs)
         self.update()
 
+    def round(self, value):
+        factor = 10 ** self.decimal_digits
+        if self.rounding == "up":
+            return math.ceil(value * factor) / factor
+        elif self.rounding == "down":
+            return math.floor(value * factor) / factor
+        else:
+            return round(value, self.decimal_digits)
+
     def update(self, value=None):
         if value is None and not self.get():
             logger.debug(f"Update aborted, {self} deliberately empty.")
             return
         value = value if value is not None else self.get()
+        value = self.round(value) if isinstance(value, float) else value
         try:
             self.var.set(self.format(value))
         except ValueError:
