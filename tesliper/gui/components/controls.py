@@ -269,6 +269,7 @@ class FilterEnergies(CollapsiblePane):
         self.energies_choice.bind("<<ComboboxSelected>>", self.on_energies_selected)
         root = self.winfo_toplevel()
         root.bind("<<DataExtracted>>", self.on_show_selected, "+")
+        root.bind("<<KeptChanged>>", self.on_show_selected, "+")
         root.changer.register([self.show_combo, self.energies_choice], "energies")
 
     @property
