@@ -58,6 +58,8 @@ class IntegerEntry(ttk.Entry):
         # For Linux
         self.bind("<Button-4>", self._on_mousewheel)
         self.bind("<Button-5>", self._on_mousewheel)
+        # loose focus to parent on Enter key press
+        self.bind("<Return>", lambda _e, p=parent: p.focus_set())
 
     def configure(self, cnf=None, **kwargs):
         customs = [
@@ -251,6 +253,8 @@ class NumericEntry(ttk.Entry):
         # For Linux
         self.bind("<Button-4>", self._on_mousewheel)
         self.bind("<Button-5>", self._on_mousewheel)
+        # loose focus to parent on Enter key press
+        self.bind("<Return>", lambda _e, p=parent: p.focus_set())
 
     def is_in_bounds(self, value):
         upper_op = operator.le if self.include_max_value else operator.lt

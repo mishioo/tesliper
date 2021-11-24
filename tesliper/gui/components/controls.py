@@ -73,6 +73,10 @@ class FilterRange(ttk.Frame):
         b_filter = ttk.Button(self, text="Limit to...", command=self.filter_energy)
         b_filter.grid(column=0, row=2, columnspan=3, sticky="new")
 
+        # trigger action on Enter key press
+        self.lower_entry.bind("<Return>", self.filter_energy, "+")
+        self.upper_entry.bind("<Return>", self.filter_energy, "+")
+
         root = self.winfo_toplevel()
         # root.bind("<<KeptChanged>>", self.set_upper_and_lower, "+")
         root.bind("<<DataExtracted>>", self.set_upper_and_lower, "+")
@@ -133,7 +137,7 @@ class FilterRange(ttk.Frame):
             self.upper_entry.update(upper)
             self.units_var.set(units)
 
-    def filter_energy(self):
+    def filter_energy(self, _event=None):
         showing = self.proxy["show"]()
         energy = self.proxy["genre"]()
         factor = 1e-2 if showing == "populations" else 1
@@ -190,6 +194,10 @@ class FilterRMSD(ttk.Frame):
         button = ttk.Button(self, text="Filter similar", command=self._filter)
         button.grid(column=0, row=4, columnspan=3, sticky="nwe")
 
+        # trigger action on Enter key press
+        window_size.bind("<Return>", self._filter, "+")
+        threshold.bind("<Return>", self._filter, "+")
+
         self.winfo_toplevel().changer.register(
             [window_size, threshold, ignore_hydrogens, button], "energies"
         )
@@ -199,7 +207,7 @@ class FilterRMSD(ttk.Frame):
         return self.winfo_toplevel().tesliper
 
     @ThreadedMethod(progbar_msg="Finding similar conformers...")
-    def _filter(self):
+    def _filter(self, _event=None):
         self.tesliper.conformers.trim_rmsd(
             threshold=float(self.threshold.get()),
             window_size=float(self.window_size.get()),
