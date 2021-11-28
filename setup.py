@@ -70,5 +70,7 @@ setup(
         "spectral simulations",
         "spectroscopy",
         "Gaussian",
+        "workflow automation",
+        "batch processing",
     ],
 )
