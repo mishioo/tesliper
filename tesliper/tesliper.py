@@ -65,7 +65,7 @@ from .datawork.spectra import FittingFunctionType, Number
 
 # GLOBAL VARIABLES
 __author__ = "Michał M. Więcław"
-__version__ = "0.8.0"
+__version__ = "0.8.1"
 
 _DEVELOPMENT = "ENV" in os.environ and os.environ["ENV"] == "prod"
 
