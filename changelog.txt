@@ -1,3 +1,12 @@
+v. 0.8.1
+API:
+    - Corrected handling of invalid start, stop, step parameters combination when calculating spectra.
+GUI:
+    - Fixed incorrect floats' rounding in numeric entries.
+    - Added reaction (trim conformers/redraw spectra) to "Enter" key press, when editing a numeric entry.
+    - Fixed an error occurring when "show activities" is checked but there are no activities in a plotting range.
+    - Added auto-update of energies-related values after trimming.
+
 v. 0.8.0
 API:
     - added RMSD-based trimming of conformers with similar geometry
