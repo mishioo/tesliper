@@ -1,3 +1,10 @@
+"""All core algorithms for data handling live here, along with some helpers.
+
+This package implements functions used by `tesliper` to provide its core functionality:
+comparing conformers, calculating spectra, averaging them, etc.
+It is divided into few modules based on a field that given function is related to.
+"""
+
 from .atoms import Atom, atomic_number, symbol_of_element, validate_atoms
 from .energies import (
     BOLTZMANN,

@@ -1,3 +1,9 @@
+"""Conformers geometry-related functions, primarily an RMSD sieve implementation.
+
+This module provides an implementation of RMSD sieve, allowing for easy mathematical
+comparision of conformers' geometry and filtering out similar ones, based on
+user-provided "threshold of similarity".
+"""
 import math
 from typing import Iterable, Sequence, Union
 
@@ -227,12 +233,12 @@ def calc_rmsd(a: MoleculeOrList, b: MoleculeOrList) -> np.ndarray:
     a : [Sequence of ]Sequence of Sequence of float
         Set of points representing atoms or list thereof.
     b : [Sequence of ]Sequence of Sequence of float
-        Set of points representing atoms  or list thereof.
+        Set of points representing atoms or list thereof.
 
     Returns
     -------
     float or numpy.ndarray
-        Value of RMSD od two conformers or list of values, if list of conformers given.
+        Value of RMSD of two conformers or list of values, if list of conformers given.
 
     Links
     -----

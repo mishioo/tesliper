@@ -1,3 +1,5 @@
+"""Converters between string and integer representations of atoms."""
+
 from enum import IntEnum
 from typing import List, Union
 
@@ -15,6 +17,13 @@ _atoms = (
 atomicnums = {at: num + 1 for num, at in enumerate(_atoms.split())}
 atoms_symbols = {v: k for k, v in atomicnums.items()}
 Atom = IntEnum("Atom", _atoms)
+Atom.__doc__ = """An enumeration that maps symbols of atoms to respective atomic numbers.
+
+This enumeration is introduced for your convenience: whenever you need to reference
+an atom by its atomic number, you may use appropriate symbol-value of this Enum instead.
+Providing e.g. `Atom.Au` rather than an integer 79 for Au's atomic number is probably
+a bit easier and definitely more readable.
+"""
 
 
 def symbol_of_element(element: Union[int, str]) -> str:
