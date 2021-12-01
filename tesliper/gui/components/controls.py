@@ -1253,18 +1253,6 @@ class ExportData(ttk.LabelFrame):
         query = popup.get_query()
         return query
 
-    def _should_override(self, existing: list):
-        if not existing:
-            return False
-        many = len(existing) > 1
-        joined = join_with_and(existing)
-        title = "Files already exist!"
-        message = (
-            f"{joined} file{'s' if many else ''} already exist in this directory. "
-            f"Would you like to overwrite {'them' if many else 'it'}?"
-        )
-        return messagebox.askokcancel(parent=self, title=title, message=message)
-
     @ThreadedMethod(progbar_msg="Saving...")
     def execute_save_command(self, categories, fmt):
         root = self.winfo_toplevel()
@@ -1281,83 +1269,56 @@ class ExportData(ttk.LabelFrame):
                 averaged = self.tesliper.get_averaged_spectrum(spectrum=spc, energy=en)
                 self.tesliper.averaged[(spc, en)] = averaged
             root.progtext.set("Saving...")
-        existing = self._exec_save(categories, fmt, mode="x")
-        if self._should_override(existing):
-            # for "xlsx" retry whole process, for other retry only unsuccessful
-            cats = (
-                {cat: categories[cat] for cat in existing}
-                if fmt != "xlsx"
-                else categories
-            )
-            self._exec_save(cats, fmt, mode="w")
-
-    def _save_all_transitions(self, fmt, mode, transitions, wavelengths):
-        wrt = wr.writer(fmt=fmt, destination=self.tesliper.output_dir, mode=mode)
-        wrt.transitions(
-            transitions=transitions, wavelengths=wavelengths, only_highest=False
-        )
+        self._exec_save(categories, fmt, mode="x")
 
     def _exec_save(self, categories, fmt, mode):
-        """Executes save command, calling appropriate "export" methods of Tesliper
-        instance. Returns list of genres' categories, for which the associated method
-        raised `FileExistsError`.
-
-        Execution is a little different, if `fmt` is "xlsx", as only one file is
-        produced for the whole batch: if `FileExistsError` is raised on first category,
-        this method returns `["xlsx"]` and ignores the rest of `categories`.
+        """Executes save command, by selecting writer object appropriate for given fmt
+        and invoking its `write` method with selected data.
+        If `FileExistsError` or `PermissionError` occurres, it gives a popup, asking
+        if retry should be attempted. Changed mode to "write" for retry, if necessary.
         """
-        savers = []
-        for thing, genres in categories.items():
-            try:
-                idx = genres.index("transitions-all")
-            except ValueError:
-                logger.debug("transitions-all not requested")
-            else:
-                _ = genres.pop(idx)
-                savers.append(
-                    (
-                        functools.partial(
-                            self._save_all_transitions,
-                            transitions=self.tesliper["transitions"],
-                            wavelengths=self.tesliper["wavelen"],
-                        ),
-                        thing,
-                    )
+        genres = ["freq", "stoichiometry", "wavelen"]
+        genres += categories.get("energies", [])
+        genres += categories.get("spectral data", [])
+        try:
+            idx = genres.index("transitions-all")
+        except ValueError:
+            transitions_all = False
+            logger.debug("transitions-all not requested")
+        else:
+            _ = genres.pop(idx)
+            transitions_all = False
+        data = [self.tesliper[g] for g in genres]
+        if "spectra" in categories:
+            data += [s for s in self.tesliper.spectra.values() if s]
+        if "averaged" in categories:
+            data += [s for s in self.tesliper.averaged.values() if s]
+        retry_mode = None
+        try:
+            wrt = wr.writer(fmt=fmt, destination=self.tesliper.output_dir, mode=mode)
+            wrt.write(data=data)
+            if transitions_all:
+                wrt.transitions(
+                    transitions=self.tesliper["transitions"],
+                    wavelengths=self.tesliper["wavelen"],
+                    only_highest=False,
                 )
-            if thing == "energies":
-                saver = functools.partial(
-                    self.tesliper.export_data,
-                    genres=["freq", "stoichiometry", *genres],
-                )
-            elif thing == "spectral data":
-                saver = functools.partial(self.tesliper.export_data, genres=genres)
-            elif thing == "spectra":
-                saver = self.tesliper.export_spectra
-            elif thing == "averaged":
-                saver = self.tesliper.export_averaged
-            else:
-                logger.warning(f"Unrecognised export category: '{thing}'.")
-                continue
-            savers.append((saver, thing))
-        existing = set()
-        for saver, thing in savers:
-            try:
-                saver(fmt=fmt, mode=mode)
-            except FileExistsError:
-                # one .xlsx file for whole batch
-                if fmt == "xlsx":
-                    return ["xlsx"]
-                # must append other data chunks
-                existing.add(thing)
-            except PermissionError as error:
-                answer = messagebox.askokcancel(
-                    "Permission Error", f"Cannot write to file: {error}. Continue?"
-                )
-                if not answer:
-                    return []  # empty to abort retry
-            # next chunks must be appended to .xlsx file
-            mode = "a" if fmt == "xlsx" else mode
-        return list(existing)
+        except FileExistsError:
+            message = (
+                "Some files already exist in this directory. "
+                "Would you like to overwrite them?"
+            )
+            should_override = messagebox.askokcancel(
+                parent=self, title="Files already exist!", message=message
+            )
+            retry_mode = "w" if should_override else None
+        except PermissionError as error:
+            answer = messagebox.askokcancel(
+                "Permission Error", f"Cannot write to file: {error}. Retry?"
+            )
+            retry_mode = mode if answer else None
+        if retry_mode:
+            self._exec_save(categories, fmt, mode=retry_mode)
 
     def save(self, fmt):
         query = self.get_save_query()
