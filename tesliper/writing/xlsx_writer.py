@@ -3,12 +3,11 @@ import logging as lgg
 from itertools import chain, repeat, zip_longest
 from pathlib import Path
 from string import Template
-from typing import Iterable, Optional, Sequence, Union
+from typing import Iterable, List, Optional, Sequence, Union
 
 import numpy as np
 import openpyxl as oxl
 
-from ._writer import Writer
 from ..glassware.arrays import (
     Bands,
     DataArray,
@@ -20,6 +19,7 @@ from ..glassware.arrays import (
     Transitions,
 )
 from ..glassware.spectra import SingleSpectrum, Spectra
+from ._writer import Writer
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -54,11 +54,21 @@ class XlsxWriter(Writer):
         super().__init__(destination=destination, mode=mode)
         file = self.destination / Template(filename).substitute(ext=self.extension)
         self.file = self.check_file(file)
+        self.manual_save = False
         if self.mode == "a":
             self.workbook = oxl.load_workbook(self.file)
         else:
             self.workbook = oxl.Workbook()
             self.workbook.remove(self.workbook.active)
+
+    def write(self, data: List) -> None:
+        self.manual_save, orig_manual = True, self.manual_save
+        try:
+            super().write(data)
+            if not orig_manual:
+                self.workbook.save(self.file)
+        finally:
+            self.manual_save = orig_manual
 
     def overview(
         self,
@@ -138,7 +148,8 @@ class XlsxWriter(Writer):
                 width = max(len(str(cell.value)) for cell in column) + 2
             column_letter = oxl.utils.get_column_letter(column[0].column)
             ws.column_dimensions[column_letter].width = width
-        wb.save(self.file)
+        if not self.manual_save:
+            wb.save(self.file)
         logger.info("Overview export to xlsx files done.")
 
     def energies(
@@ -207,7 +218,8 @@ class XlsxWriter(Writer):
                 width = max(len(str(cell.value)) for cell in column) + 2
             column_letter = oxl.utils.get_column_letter(column[0].column)
             ws.column_dimensions[column_letter].width = width
-        wb.save(self.file)
+        if not self.manual_save:
+            wb.save(self.file)
         logger.info("Energies export to xlsx files done.")
 
     def spectral_data(
@@ -304,7 +316,8 @@ class XlsxWriter(Writer):
                     cell = ws.cell(row=row_num + 2, column=col_num + 1)
                     cell.value = v
                     cell.number_format = fmt
-        wb.save(self.file)
+        if not self.manual_save:
+            wb.save(self.file)
         logger.info("SpectralActivities export to xlsx files done.")
 
     def spectra(
@@ -337,7 +350,8 @@ class XlsxWriter(Writer):
         ws["A1"].comment = oxl.comments.Comment(title, "Tesliper")
         for line in zip(spectra.x, *spectra.y):
             ws.append(line)
-        wb.save(self.file)
+        if not self.manual_save:
+            wb.save(self.file)
         logger.info("Spectra export to xlsx file done.")
 
     def single_spectrum(
@@ -366,7 +380,8 @@ class XlsxWriter(Writer):
         ws.append([spectrum.units["x"], spectrum.units["y"]])
         for row in zip(spectrum.x, spectrum.y):
             ws.append(row)
-        wb.save(self.file)
+        if not self.manual_save:
+            wb.save(self.file)
         logger.info("Spectrum export to xlsx files done.")
 
     def transitions(
@@ -452,5 +467,6 @@ class XlsxWriter(Writer):
                         cell = ws.cell(row=row_num, column=col_num)
                         cell.value = v_
                         cell.number_format = fmt
-        wb.save(self.file)
+        if not self.manual_save:
+            wb.save(self.file)
         logger.info("Transitions export to xlsx files done.")
