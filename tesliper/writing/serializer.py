@@ -248,28 +248,6 @@ class ArchiveWriter:
         ).encode(self.encoding)
 
 
-class ConformerDecoder(json.JSONDecoder):
-    """JSONDecoder subclass, that transforms all inner lists into tuples."""
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        in_array = False
-
-        def parse_array(*_args, **_kwargs):
-            nonlocal in_array
-            if not in_array:
-                in_array = True
-                values, end = JSONArray(*_args, **_kwargs)
-                in_array = False
-            else:
-                values, end = JSONArray(*_args, **_kwargs)
-                values = tuple(values)
-            return values, end
-
-        self.parse_array = parse_array
-        self.scan_once = py_make_scanner(self)
-
-
 class ArchiveLoader:
     """Class for deserialization of Tesliper objects."""
 
@@ -321,10 +299,7 @@ class ArchiveLoader:
             mols = (
                 (
                     name,
-                    self.jsondecode(
-                        self.root.read(f"conformers/data/{name}.json"),
-                        cls=ConformerDecoder,
-                    ),
+                    self.jsondecode(self.root.read(f"conformers/data/{name}.json")),
                 )
                 for name in filenames
             )  # iterator producing key-value pairs

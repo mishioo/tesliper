@@ -226,7 +226,7 @@ class GaussianParser(Parser):
         oscillator strengths
     losc : list of floats, available from td job
         oscillator strengths
-    transitions : list of tuples of tuples of (int, int, float), available from td job
+    transitions : list of lists of lists of (int, int, float), available from td job
         transitions (first to second) and their coefficients (third)
     scf : float, always available
         SCF energy
@@ -260,13 +260,13 @@ class GaussianParser(Parser):
         molecule's spin multiplicity
     input_atoms : list of str, always available
         input atoms as a list of atoms' symbols
-    input_geom : list of tuples of floats, always available
+    input_geom : list of lists of floats, always available
         input geometry as X, Y, Z coordinates of atoms
     stoichiometry : str, always available
         molecule's stoichiometry
     molecule_atoms : list of ints, always available
         molecule's atoms as atomic numbers
-    geometry : list of tuples of floats, always available
+    geometry : list of lists of floats, always available
         molecule's geometry (last one found in file) as X, Y, Z coordinates of atoms
 
     Attributes
@@ -352,7 +352,7 @@ class GaussianParser(Parser):
         while line:
             atom = re.match(pattern, line)
             label, *coordinates = atom.groups()
-            input_geom.append((label, tuple(map(float, coordinates))))
+            input_geom.append([label, list(map(float, coordinates))])
             line = next(iterator).strip()
         data["input_atoms"], data["input_geom"] = map(list, zip(*input_geom))
         self.workhorse = self.wait
@@ -404,8 +404,8 @@ class GaussianParser(Parser):
             geom.append(match.groups())
             line = next(iterator)
             match = geom_line_.match(line)
-        geom = ((int(a), (float(x), float(y), float(z))) for _, a, _, x, y, z in geom)
-        # produce list and list of tuples instead of tuple and tuple of tuples
+        geom = ((int(a), [float(x), float(y), float(z)]) for _, a, _, x, y, z in geom)
+        # produce list and list of lists instead of tuple and tuple of lists
         data["molecule_atoms"], data["geometry"] = map(list, zip(*geom))
         self.workhorse = self.wait
 
@@ -525,10 +525,7 @@ class GaussianParser(Parser):
             data.setdefault("wavelen", []).append(wavelen)
             data.setdefault("ex_en", []).append(energy)
             data.setdefault("transitions", []).append(
-                tuple(
-                    (int(low), int(high), float(coef))
-                    for low, high, coef in transitions
-                )
+                [[int(low), int(high), float(coef)] for low, high, coef in transitions]
             )
             line = next(iterator)
         self.workhorse = self.wait
