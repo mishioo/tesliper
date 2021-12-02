@@ -5,6 +5,8 @@ import pytest
 
 import tesliper.glassware.arrays as ar
 from tesliper.exceptions import InconsistentDataError
+from tesliper.glassware.array_base import _ARRAY_CONSTRUCTORS
+from tesliper.glassware.conformers import Conformers
 
 
 def test_filenames_array_empty():
@@ -347,3 +349,7 @@ def test_transitions_highest(transitions):
     np.testing.assert_array_equal(c, [[2 * (-0.6) ** 2, 2 * 0.9 ** 2]])
     np.testing.assert_array_equal(e, [[22, 32]])
     np.testing.assert_array_equal(g, [[12, 31]])
+
+
+def test_all_define_full_name(any_genre):
+    assert Conformers().arrayed(any_genre).full_name

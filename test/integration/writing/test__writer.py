@@ -4,6 +4,7 @@ from unittest.mock import Mock
 
 import pytest
 
+from tesliper.glassware import DataArray
 from tesliper.writing import Writer
 
 
@@ -183,3 +184,15 @@ def test_forbidden_double(writer_implemented, tmp_path, forbidden_double_arrays)
     wrt = writer_implemented(tmp_path)
     with pytest.raises(ValueError):
         wrt.write(forbidden_double_arrays)
+
+
+def test_all_define_header(any_genre):
+    assert any_genre in Writer._header
+
+
+def test_all_define_formatters(any_genre):
+    assert any_genre in Writer._header
+
+
+def test_all_define_excel_formats(any_genre):
+    assert any_genre in Writer._excel_formats

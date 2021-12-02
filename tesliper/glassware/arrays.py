@@ -57,6 +57,7 @@ class DataArray(ArrayBase):
 class IntegerArray(DataArray):
 
     associated_genres = ("charge", "multiplicity")
+    full_name_ref = {"charge": "Charge", "multiplicity": "Multiplicity"}
     values = ArrayProperty(dtype=int, check_against="filenames")
 
 
@@ -84,7 +85,11 @@ class FloatArray(DataArray):
 
 
 class InfoArray(DataArray):
-    full_name_ref = {}
+    full_name_ref = {
+        "command": "Command",
+        "cpu_time": "CPU Time",
+        "stoichiometry": "Stoichiometry",
+    }
     _units = {}
     associated_genres = (
         "command",
@@ -296,9 +301,9 @@ class Bands(FloatArray):
     full_name_ref = {
         "ex_en": "Excitation energy",
         "freq": "Frequency",
-        "wave": "Wavelength",
+        "wavelen": "Wavelength",
     }
-    _units = {"freq": "cm^(-1)", "wave": "nm", "ex_en": "eV"}
+    _units = {"freq": "cm^(-1)", "wavelen": "nm", "ex_en": "eV"}
 
     def __init__(
         self,
@@ -665,6 +670,7 @@ class VibrationalActivities(VibrationalData, _VibAct):
 
 class ScatteringActivities(ScatteringData, _VibAct):
     associated_genres = (
+        "ramanactiv",
         "ramact",
         "raman1",
         "roa1",
@@ -674,6 +680,7 @@ class ScatteringActivities(ScatteringData, _VibAct):
         "roa3",
     )
     full_name_ref = dict(
+        ramanactiv="Raman scatt. activities",
         ramact="Raman scatt. activities",
         roa1="ROA inten. ICPu/SCPu(180)",
         raman1="Raman inten. ICPu/SCPu(180)",
@@ -683,6 +690,7 @@ class ScatteringActivities(ScatteringData, _VibAct):
         raman3="Raman inten. DCPI(180)",
     )
     _units = dict(
+        ramanactiv="A^4/AMU",
         ramact="A^4/AMU",
         roa1="10^4 K",
         raman1="K",
@@ -692,6 +700,7 @@ class ScatteringActivities(ScatteringData, _VibAct):
         raman3="K",
     )
     _intensities_converters = {
+        "ramanactiv": _as_is,
         "ramact": _as_is,
         "raman1": _as_is,
         "roa1": _as_is,
@@ -976,7 +985,7 @@ class Geometry(FloatArray):
     """
 
     associated_genres = ("geometry", "input_geom")
-    full_name_ref = dict(geometry="Geometry")
+    full_name_ref = dict(geometry="Geometry", input_geom="Input Geometry")
     _units = dict(geometry="Angstrom")
     values = ArrayProperty(dtype=float, check_against="filenames")
     molecule_atoms = CollapsibleArrayProperty(
