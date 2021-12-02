@@ -232,7 +232,7 @@ class TxtWriter(Writer):
         self,
         band: SpectralActivities,
         data: List[SpectralActivities],
-        name_template: Union[str, Template] = "${conf}.${cat}-${genre}.${ext}",
+        name_template: Union[str, Template] = "${conf}.${cat}-${det}.${ext}",
     ):
         """Writes SpectralActivities objects to txt files (one for each conformer).
 
@@ -244,9 +244,15 @@ class TxtWriter(Writer):
             excitation energies for electronic data
         data: list of glassware.SpectralActivities
             SpectralActivities objects that are to be serialized; all should contain
-            information for the same conformers
+            information for the same conformers. Assumes that all `data`'s elements have
+            the same `spectra_type`, which is passed to the `name_template` as "det".
         name_template : str or string.Template
             Template that will be used to generate filenames.
+
+        Raises
+        ------
+        ValueError
+            if `data` is an empty sequence
         """
         self._spectral(
             band=band,
@@ -259,7 +265,7 @@ class TxtWriter(Writer):
         self,
         band: SpectralActivities,
         data: List[SpectralData],
-        name_template: Union[str, Template] = "${conf}.${cat}-${genre}.${ext}",
+        name_template: Union[str, Template] = "${conf}.${cat}-${det}.${ext}",
     ):
         """Writes SpectralData objects to txt files (one for each conformer).
 
@@ -271,9 +277,15 @@ class TxtWriter(Writer):
             excitation energies for electronic data
         data: list of glassware.SpectralData
             SpectralData objects that are to be serialized; all should contain
-            information for the same conformers
+            information for the same conformers. Assumes that all `data`'s elements have
+            the same `spectra_type`, which is passed to the `name_template` as "det".
         name_template : str or string.Template
             Template that will be used to generate filenames.
+
+        Raises
+        ------
+        ValueError
+            if `data` is an empty sequence
         """
         self._spectral(
             band=band, data=data, name_template=name_template, category="data"
@@ -296,19 +308,29 @@ class TxtWriter(Writer):
             excitation energies for electronic data
         data: list of glassware.SpectralData
             SpectralData objects that are to be serialized; all should contain
-            information for the same conformers
+            information for the same conformers. Assumes that all `data`'s elements have
+            the same `spectra_type`, which is passed to the `name_template` as "det".
         name_template : str or string.Template
             Template that will be used to generate filenames.
         category : str
             category of exported data genres
+
+        Raises
+        ------
+        ValueError
+            if `data` is an empty sequence
         """
+        try:
+            spectra_type = data[0].spectra_type
+        except IndexError:
+            raise ValueError("No data to export.")
         data = [band] + data
         genres = [bar.genre for bar in data]
         headers = [self._header[genre] for genre in genres]
         widths = [self._formatters[genre][4:-4] for genre in genres]
         formatted = [f"{h: <{w}}" for h, w in zip(headers, widths)]
         values = zip(*[bar.values for bar in data])
-        template_params = {"genre": band.genre, "cat": category}
+        template_params = {"genre": band.genre, "cat": category, "det": spectra_type}
         for handle, values_ in zip(
             self._iter_handles(band.filenames, name_template, template_params),
             values,
@@ -344,7 +366,11 @@ class TxtWriter(Writer):
             f'fitting, shown as {spectra.units["x"]} vs. '
             f'{spectra.units["y"]}'
         )
-        template_params = {"genre": spectra.genre, "cat": "spectra"}
+        template_params = {
+            "genre": spectra.genre,
+            "cat": "spectra",
+            "det": spectra.spectra_type,
+        }
         abscissa_genre = "wavelen" if spectra.spectra_type == "electronic" else "freq"
         values_template = "\t".join(
             (self._formatters[abscissa_genre], self._formatters[spectra.genre])

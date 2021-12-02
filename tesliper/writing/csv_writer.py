@@ -9,7 +9,6 @@ from typing import IO, Any, AnyStr, Dict, Iterable, Iterator, List, Optional, Un
 
 import numpy as np
 
-from ._writer import Writer
 from ..glassware.arrays import (
     Bands,
     Energies,
@@ -19,6 +18,7 @@ from ..glassware.arrays import (
     Transitions,
 )
 from ..glassware.spectra import SingleSpectrum, Spectra
+from ._writer import Writer
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -249,7 +249,7 @@ class CsvWriter(_CsvMixin, Writer):
         self,
         band: SpectralActivities,
         data: List[SpectralActivities],
-        name_template: Union[str, Template] = "${conf}.${cat}-${genre}.${ext}",
+        name_template: Union[str, Template] = "${conf}.${cat}-${det}.${ext}",
     ):
         """Writes SpectralActivities objects to csv files (one file for each conformer).
 
@@ -262,8 +262,15 @@ class CsvWriter(_CsvMixin, Writer):
         data: list of glassware.SpectralActivities
             SpectralActivities objects that are to be serialized; all should contain
             information for the same set of conformers and correspond to given band.
+            Assumes that all `data`'s elements have the same `spectra_type`, which is
+            passed to the `name_template` as "det".
         name_template : str or string.Template
             Template that will be used to generate filenames.
+
+        Raises
+        ------
+        ValueError
+            if `data` is an empty sequence
         """
         self._spectral(
             band=band,
@@ -276,21 +283,28 @@ class CsvWriter(_CsvMixin, Writer):
         self,
         band: SpectralData,
         data: List[SpectralData],
-        name_template: Union[str, Template] = "${conf}.${cat}-${genre}.${ext}",
+        name_template: Union[str, Template] = "${conf}.${cat}-${det}.${ext}",
     ):
         """Writes SpectralData objects to csv files (one file for each conformer).
 
-        Parameters
-        ----------
-        band: glassware.SpectralData
-            Object containing information about band at which transitions occur;
-            it should be frequencies for vibrational data and wavelengths or
-            excitation energies for electronic data.
-        data: list of glassware.SpectralData
-            SpectralData objects that are to be serialized; all should contain
-            information for the same set of conformers and correspond to given band.
+         Parameters
+         ----------
+         band: glassware.SpectralData
+             Object containing information about band at which transitions occur;
+             it should be frequencies for vibrational data and wavelengths or
+             excitation energies for electronic data.
+         data: list of glassware.SpectralData
+             SpectralData objects that are to be serialized; all should contain
+             information for the same set of conformers and correspond to given band.
+             Assumes that all `data`'s elements have the same `spectra_type`, which is
+             passed to the `name_template` as "det".
         name_template : str or string.Template
-            Template that will be used to generate filenames.
+             Template that will be used to generate filenames.
+
+         Raises
+         ------
+         ValueError
+             if `data` is an empty sequence
         """
         self._spectral(
             band=band, data=data, name_template=name_template, category="data"
@@ -314,15 +328,26 @@ class CsvWriter(_CsvMixin, Writer):
         data: list of glassware.SpectralData
             SpectralData objects that are to be serialized; all should contain
             information for the same set of conformers and correspond to given band.
+            Assumes that all `data`'s elements have the same `spectra_type`, which is
+            passed to the `name_template` as "det".
         name_template : str or string.Template
             Template that will be used to generate filenames.
         category : str
             category of exported data genres
+
+        Raises
+        ------
+        ValueError
+            if `data` is an empty sequence
         """
+        try:
+            spectra_type = data[0].spectra_type
+        except IndexError:
+            raise ValueError("No data to export.")
         data = [band] + data
         headers = [self._header[bar.genre] for bar in data]
         values = zip(*[bar.values for bar in data])
-        template_params = {"genre": band.genre, "cat": category}
+        template_params = {"genre": band.genre, "cat": category, "det": spectra_type}
         for handle, values_ in zip(
             self._iter_handles(band.filenames, name_template, template_params),
             values,
