@@ -780,7 +780,9 @@ class Tesliper:
             *gw.ElectronicData.associated_genres,
             *gw.ScatteringData.associated_genres,
         )
-        data = [self[g] for g in genres if g] + [b for b in bands if b]
+        data = (self[g] for g in genres)
+        data = [d for d in data if d]  # ignore empty DataArrays
+        data += [b for b in bands if b]
         wrt.write(data)
 
     # TODO: separate to vibrational and electronic ?
@@ -809,7 +811,9 @@ class Tesliper:
             *gw.ElectronicActivities.associated_genres,
             *gw.ScatteringActivities.associated_genres,
         )
-        data = [self[g] for g in genres if g] + [b for b in bands if b]
+        data = (self[g] for g in genres)
+        data = [d for d in data if d]  # ignore empty DataArrays
+        data += [b for b in bands if b]
         wrt.write(data)
 
     def export_spectra(self, fmt: str = "txt", mode: str = "x"):
