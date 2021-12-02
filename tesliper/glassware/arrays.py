@@ -387,6 +387,11 @@ class SpectralData(FloatArray, ABC):
 
     @property
     @abstractmethod
+    def spectra_type(self):
+        return NotImplemented
+
+    @property
+    @abstractmethod
     def freq(self):
         return convert_band(self.wavelen, from_genre="wavelen", to_genre="freq")
 
@@ -431,6 +436,10 @@ class VibrationalData(_VibData):
     )
     _units = dict(mass="AMU", frc="mDyne/A", emang="deg")
 
+    @property
+    def spectra_type(self):
+        return "vibrational"
+
 
 class ScatteringData(_VibData):
     associated_genres = (
@@ -471,6 +480,10 @@ class ScatteringData(_VibData):
         "delta2": "(10**4 A**5/AMU)",
     }
 
+    @property
+    def spectra_type(self):
+        return "scattering"
+
     def __init__(
         self,
         genre,
@@ -491,6 +504,10 @@ class ElectronicData(SpectralData):
     associated_genres = ("eemang",)
     full_name_ref = dict(eemang="E-M Angle")
     _units = dict(eemang="deg")
+
+    @property
+    def spectra_type(self):
+        return "electronic"
 
     def __init__(
         self,
@@ -530,14 +547,6 @@ class SpectralActivities(SpectralData, Averagable, ABC):
         vdip="uv",
         ldip="uv",
     )
-    spectra_type_ref = dict(
-        vcd="vibrational",
-        ir="vibrational",
-        roa="scattering",
-        raman="scattering",
-        ecd="electronic",
-        uv="electronic",
-    )
     full_name_ref = dict()
     _units = dict()
     _intensities_converters = {}
@@ -546,11 +555,6 @@ class SpectralActivities(SpectralData, Averagable, ABC):
     def spectra_name(self):
         if self.genre in self.spectra_name_ref:
             return self.spectra_name_ref[self.genre]
-
-    @property
-    def spectra_type(self):
-        if self.genre in self.spectra_name_ref:
-            return self.spectra_type_ref[self.spectra_name]
 
     @property
     def intensities(self):
