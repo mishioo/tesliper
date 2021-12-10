@@ -331,9 +331,9 @@ class TxtWriter(Writer):
         formatted = [f"{h: <{w}}" for h, w in zip(headers, widths)]
         values = zip(*[bar.values for bar in data])
         template_params = {"genre": band.genre, "cat": category, "det": spectra_type}
-        for handle, values_ in zip(
-            self._iter_handles(band.filenames, name_template, template_params),
+        for values_, handle in zip(
             values,
+            self._iter_handles(band.filenames, name_template, template_params),
         ):
             handle.write("\t".join(formatted))
             handle.write("\n")
@@ -375,9 +375,9 @@ class TxtWriter(Writer):
         values_template = "\t".join(
             (self._formatters[abscissa_genre], self._formatters[spectra.genre])
         )
-        for handle, values in zip(
-            self._iter_handles(spectra.filenames, name_template, template_params),
+        for values, handle in zip(
             spectra.y,
+            self._iter_handles(spectra.filenames, name_template, template_params),
         ):
             handle.write(title + "\n")
             handle.write(
@@ -429,10 +429,10 @@ class TxtWriter(Writer):
             "cat": "transitions",
             "det": "highest" if only_highest else "all",
         }
-        for handle, grounds, exciteds, values, contribs, bands in zip(
-            self._iter_handles(transitions.filenames, name_template, template_params),
+        for grounds, exciteds, values, contribs, bands, handle in zip(
             *transtions_data,
             wavelengths.wavelen,
+            self._iter_handles(transitions.filenames, name_template, template_params),
         ):
             handle.write(title + "\n")
             handle.write(legend + "\n\n")

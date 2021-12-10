@@ -127,13 +127,10 @@ def test_export_data(averaged, wanted_files):
     assert {f.stem for f in files} == expected
 
 
-def test_export_data_empty(averaged, wanted_files):
+def test_export_data_empty(averaged):
     averaged.export_data(["rot", "gib"])
     files = list(averaged.output_dir.iterdir())
-    expected = {
-        Path(f).with_suffix(".activities-scattering").name for f in wanted_files
-    }
-    expected.update({"overview", "distribution-gib"})
+    expected = {"overview", "distribution-gib"}
     assert {f.stem for f in files} == expected
 
 

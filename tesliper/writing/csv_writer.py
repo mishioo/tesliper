@@ -348,9 +348,9 @@ class CsvWriter(_CsvMixin, Writer):
         headers = [self._header[bar.genre] for bar in data]
         values = zip(*[bar.values for bar in data])
         template_params = {"genre": band.genre, "cat": category, "det": spectra_type}
-        for handle, values_ in zip(
-            self._iter_handles(band.filenames, name_template, template_params),
+        for values_, handle in zip(
             values,
+            self._iter_handles(band.filenames, name_template, template_params),
         ):
             csvwriter = csv.writer(handle, dialect=self.dialect, **self.fmtparams)
             if self.include_header:
@@ -376,9 +376,9 @@ class CsvWriter(_CsvMixin, Writer):
         abscissa = spectra.x
         header = [spectra.units["y"], spectra.units["x"]]
         template_params = {"genre": spectra.genre, "cat": "spectra"}
-        for handle, values in zip(
-            self._iter_handles(spectra.filenames, name_template, template_params),
+        for values, handle in zip(
             spectra.y,
+            self._iter_handles(spectra.filenames, name_template, template_params),
         ):
             csvwriter = csv.writer(handle, dialect=self.dialect, **self.fmtparams)
             if self.include_header:
@@ -425,10 +425,10 @@ class CsvWriter(_CsvMixin, Writer):
             "cat": "transitions",
             "det": "highest" if only_highest else "all",
         }
-        for handle, grounds, exciteds, values, contribs, bands in zip(
-            self._iter_handles(transitions.filenames, name_template, template_params),
+        for grounds, exciteds, values, contribs, bands, handle in zip(
             *transtions_data,
             wavelengths.wavelen,
+            self._iter_handles(transitions.filenames, name_template, template_params),
         ):
             csvwriter = csv.writer(handle, dialect=self.dialect, **self.fmtparams)
             if self.include_header:

@@ -83,12 +83,12 @@ class GjfWriter(Writer):
             mult = [mult] if not isinstance(mult, Iterable) else mult
         mult = cycle(mult)
         template_params = {"genre": geometry.genre, "cat": "geometry"}
-        for handle, *params in zip(
-            self._iter_handles(geometry.filenames, name_template, template_params),
+        for *params, handle in zip(
             geom,
             atoms,
             char,
             mult,
+            self._iter_handles(geometry.filenames, name_template, template_params),
         ):
             self._write_conformer(handle, *params)
 
