@@ -752,7 +752,7 @@ class Conformers(OrderedDict):
         -----
         RMSD threshold and size of the energy window should be chosen depending on the
         parameters of conformers' set: number of conformers, size of the conformer,
-        its lability, etc. However, `threshold` of 0.5 angstrom and `windoe_size`
+        its lability, etc. However, `threshold` of 0.5 angstrom and `window_size`
         of 5 to 10 kcal/mol is a good place to start if in doubt.
 
         Parameters
@@ -805,7 +805,10 @@ class Conformers(OrderedDict):
             if ignore_hydrogen
             else geometry.values
         )
-        wanted = dw.rmsd_sieve(geom, energy.as_kcal_per_mol, window_size, threshold)
+        windows = dw.stretching_windows(
+            energy.as_kcal_per_mol, window_size, hard_bound=False
+        )
+        wanted = dw.rmsd_sieve(geom, windows, threshold)
         self.kept = geometry.filenames[wanted]
 
     def select_all(self) -> None:

@@ -1,8 +1,9 @@
 from unittest import mock
 
-import pytest
 import numpy as np
-from hypothesis import given, strategies as st, assume
+import pytest
+from hypothesis import assume, given
+from hypothesis import strategies as st
 
 from tesliper.datawork import geometry
 from tesliper.datawork.atoms import Atom
@@ -421,12 +422,14 @@ def rmsd_mock(monkeypatch):
     )
 
 
-def test_geometry_rmsd_sieve(rmsd_mock):
+@pytest.mark.usefixtures("rmsd_mock")
+def test_geometry_rmsd_sieve():
     molecule = np.random.normal(1, 3, 15).reshape(5, 3)
     scale = np.array([0.1, 0.2, 3, 3.1, 3.7, 0.1, 5, 0.3, 0.5, 3])
     kept = np.array([1, 0, 1, 0, 1, 1, 1, 0, 1, 1], dtype=bool)
-    ens = np.arange(10)
+    # as in stretching_windows(np.arange(10), 2, hard_bound=False)
+    windows = [np.arange(n, n + 3) for n in range(8)]
     values = molecule[None, ...] + scale[..., None, None]
     np.testing.assert_array_equal(
-        geometry.rmsd_sieve(values, ens, window_size=2, rmsd_threshold=0.5), kept
+        geometry.rmsd_sieve(values, windows, threshold=0.5), kept
     )

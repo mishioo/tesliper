@@ -1,5 +1,5 @@
 import math
-from typing import Iterable, Sequence, Union
+from typing import Iterable, Iterator, Sequence, Union
 
 import numpy as np
 
@@ -36,7 +36,8 @@ def find_atoms(
 
 
 def select_atoms(
-    values: Union[Sequence, np.ndarray], indices: Union[Sequence[int], np.ndarray],
+    values: Union[Sequence, np.ndarray],
+    indices: Union[Sequence[int], np.ndarray],
 ) -> np.ndarray:
     """Filter given values to contain values only corresponding to atoms on given
     indices. Recognizes if given values are a list of values for one or for many
@@ -290,10 +291,10 @@ def stretching_windows(
     size: Union[int, float],
     keep_hermits: bool = False,
     hard_bound: bool = True,
-) -> np.ndarray:
+) -> Iterator[np.ndarray]:
     """Implements a sliding window of a variable size, where values in each window are
     at most `size` bigger than the lowest value in given window. Values yielded
-    are np.arrays of indices of sorted values, that constitute each window.
+    are `np.ndarray`s of indices of sorted values, that constitute each window.
 
     When window reaches a border, that is an end of the `values` array or a gap between
     values that is larger than given `size`, it immediately moves to its other side.
@@ -302,9 +303,9 @@ def stretching_windows(
     [[0, 1, 2], [1, 2, 3], [4, 5]]
 
     This "hard" right bound may be "softened" by passing `hard_bound=False`
-    as a parameter to function call. A window will then be "squezed", when pressed
+    as a parameter to a function call. A window will then be "squeezed", when pressed
     against the border, producing subsequences of the first view that touches a border.
-    This may be usfull when one wants to form a window for each value in the original
+    This may be usefull, when one wants to form a window for each value in the original
     array.
 
     >>> list(stretching_windows([1, 2, 3, 4], 3), hard_bound=False)
@@ -318,8 +319,8 @@ def stretching_windows(
     >>> list(stretching_windows(arr, 5))
     [[0, 1], [3, 4]]
 
-    If such behaviour is not desired, it may be turnd off with `keep_hermits = True`.
-    One must remember that, whan a bound is "soft", the last window is always a hermit.
+    If such behavior is not desired, it may be turned off with `keep_hermits = True`.
+    One must remember that, when a bound is "soft", the last window is always a hermit.
 
     >>> list(stretching_windows(arr, 5, keep_hermits=True))
     [[0, 1], [2], [3, 4]]
@@ -338,7 +339,7 @@ def stretching_windows(
     hard_bound : bool
         How window should behave close to borders. With hard bound (True) it will move
         to the other side of border as soon, as it is reached. With soft bound (False)
-        it will "squeze" when pressed against the border, producing subsequences of
+        it will "squeeze" when pressed against the border, producing subsequences of
         the first view that includes border value. True by default.
 
     Yields
@@ -376,15 +377,61 @@ def stretching_windows(
 
 def rmsd_sieve(
     geometry: Sequence[Sequence[Sequence[float]]],
-    energies: Sequence[float],
-    window_size: float = 10,
-    rmsd_threshold: float = 1,
-):
-    # TODO: Add docs
-    blade = np.ones_like(energies, dtype=bool)
+    windows: Iterable[Sequence[int]],
+    threshold: float = 1,
+) -> np.ndarray:
+    """Compare conformers' geometry to keep only those that differ at least by a given
+    threshold.
+
+    This function calculates how similar conformers are one to another, using a RMSD
+    measure, that is is a root-mean-square deviation of atomic positions, and signalizes
+    which of the conformers are duplicates, according to a given similarity threshold.
+    Returned array of booleans may be trated as "originality" indicators for each
+    conformer: `True` means given conformer has distinct structure, `False` means given
+    conformer is similar to some other conformer marked as "original".
+
+    The measure of conformers' similarity, the `threshold` parameter, is a minimum value
+    of RMSD needed to consider two conformers different. In other words, if two
+    conformers give a RMSD value that is lower then `threshold`, one of them will be
+    marked as similar, producing a `False` in the output array.
+
+    To lower a computational expense, similarity measurement is performed in "chunks",
+    using a sliding window technique. Windows consist of a portion of conformers from
+    the original data, or more precisely, indices of conformers that should be included
+    in the particular window. First item from the window is compared to all the others
+    that are in the same window, and if any of them is similar to the reference item,
+    it is marked as duplicate (not "original"). The process is repeated for each window.
+
+    The windows itself should be provided by user as `windows` parameter. This provides
+    a flexibility in the process: you may choose to sacrifice accuracy to lower
+    neccessary computational time or vice versa. You may also choose a different
+    windowing strategy or reject it alltogether, and calculate one-to-each similarity in
+    the whole set. Iterables of windows accepted by this function may be generated with
+    one of the dedicated windowing funcions: `stretching_windows` or `fixed_windows`.
+    Refer to their documentation for more information.
+
+    Parameters
+    ----------
+    geometry : sequence of sequence of sequence of float
+        A list of conformers, where each conformer is represented by a sequence of
+        coordinates in 3-dimensional space. It is assumed that order of atoms in each
+        conformers' representation is identical.
+    windows : iterable of sequence of int
+        An iterable of windows, where each window is a list of indices. Comparision of
+        RMSD values will be performed inside each window.
+    threshold : float
+        Minimum RMSD value to consider two compared conformers different.
+
+    Returns
+    -------
+    np.ndarray(dtype=bool)
+        Array of booleans for each conformer: `True` if conformer's structure is
+        "original" and should be kept, `False` if it is a duplicate of other, "original"
+        structure (at least according to `threshold` given), and should be discarded.
+    """
+    blade = np.ones(len(geometry), dtype=bool)
     # zero-center all conformers
     geometry = center(geometry)
-    windows = stretching_windows(energies, window_size, hard_bound=False)
     for window in windows:
         # don't include values already discarded
         reduced_window = window[blade[window]]
@@ -398,6 +445,6 @@ def rmsd_sieve(
         # calculate RMSD list of mols to first mol
         rmsd = calc_rmsd(head, tail)
         # if RMSD <= threshold mark in blade as False, first one is always kept
-        blade[reduced_window[1:]] = rmsd > rmsd_threshold
+        blade[reduced_window[1:]] = rmsd > threshold
     # return blade with True for each molecule kept
     return blade
