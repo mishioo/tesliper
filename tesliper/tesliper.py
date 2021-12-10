@@ -708,7 +708,8 @@ class Tesliper:
         Files produced are written to `Tesliper.output_dir` directory with filenames
         automatically generated using adequate genre's name and conformers' identifiers.
         In case of "xlsx" format only one file is produced and different data genres are
-        written to separate sheets.
+        written to separate sheets. If there are no values for given genre, no files
+        will be created for this genre.
 
         Parameters
         ----------
@@ -722,7 +723,8 @@ class Tesliper:
             "w" (overwrite file if it already exists). Defaults to "x".
         """
         wrt = wr.writer(fmt=fmt, destination=self.output_dir, mode=mode)
-        data = [self[g] for g in genres]
+        data = (self[g] for g in genres)
+        data = [d for d in data if d]
         if any(isinstance(arr, gw.arrays._VibData) for arr in data):
             data += [self["freq"]]
         if any(isinstance(arr, (gw.ElectronicData, gw.Transitions)) for arr in data):
