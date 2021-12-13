@@ -1,4 +1,79 @@
-# IMPORTS
+"""Core functionality of `DataArray` classes.
+
+This module implements the base class for `DataArray`s and its core functionality,
+namely the validation of array-like data, along with some helper functions. To implement
+a `DataArray`-like container, subclass the `ArrayBase` class and use one of the
+`ArrayProperty` classes to create a validated array-like instance attribute for your new
+class. You should also provide `associated_genres` class attribute to signalize, which
+genres this new `DataArray`-like class should be used for.
+
+The most basic example may look like this:
+
+>>> class MyDataArray(ArrayBase):
+>>>     associated_genres = ("foo",)
+>>>     filenames = ArrayProperty(dtype=str)
+>>>     values = ArrayProperty(check_against="filenames")
+>>>     def __init__(genre, filenames, values, allow_data_inconsistency=False):
+>>>         super().__init__(genre, filenames, values, allow_data_inconsistency)
+
+>>> foo_array = MyDataArray("foo", ["a", "b", "c"], values=[1, 2, 3])
+
+This definition would be almost a re-implementation of what `ArrayBase` already
+provides, but is a good starting point for explanation, so lets elaborate on it a
+little. `ArrayBase` expects 4 parameters on initialization of its subclass: `genre` is a
+genre of data stored, `filenames` is a list of conformer identifiers, `values` are - not
+surprisingly - a list of data values for each conformer, and `allow_data_inconsistency`
+is a boolean flag that controls process of validation of array-like attributes.
+
+`filenames` and `values` are `ArrayProperty` instances - values passed to the
+constructor as parameters of these names will be checked and validated, and stored as
+`numpy.ndarray`s. Moreover, filenames will be stored as strings, because we told the
+`ArrayProperty` this is our desired data type for this array-like attribute, using
+`dtype=str`. The default data type is `float`, so values will be converted to floats.
+
+>>> foo_array.filenames
+array(["a", "b", "c"], dtype=str)
+>>> foo_array.values
+array([1.0, 2.0, 3.0], dtype=float)
+
+`check_against="filenames"` tells `ArrayProperty` to validate `values` using `filenames`
+as a reference for desired shape of `values` array. If shape is different than shape of
+the reference, `InconsistentDataError` is raised. If you will deal with multidimensional
+data, you can utilize `check_depth` parameter to signalize that arrays should have
+identical shapes only to some certain depth, for example `check_depth=2` would accept
+arrays of shapes (10, 20) and (10, 20, 3). However, in our simple example it wouldn't
+make much sense to check more than default depth of 1, since `filenames` have only one
+dimension.
+
+>>> MyDataArray("foo", ["a", "b", "c"], values=[1, 2, 3, 4])
+Traceback (most recent call last):
+     ...
+InconsistentDataError: values and filenames must have the same shape up to 1 dimensions.
+Arrays of shape (3,) and (4,) were given.
+
+The above exception is also raised if values given to `ArrayProperty` are a jagged
+sequence, that is not all entries of the array have identical number of sub-entries. An
+example of jagged array would be `[[1, 2], [3]]`. Data in this format usually comes from
+reading calculations of different molecules rather than conformers, or from corrupted or
+incomplete output files, so it is not allowed by default. However, if you are sure that
+you want to work with such data, you can pass `allow_data_inconsistency=True` to your
+`MyDataArray` constructor and `ArrayProperty` will try to fill-in missing values,
+producing `numpy.ma.masked_array` or at least will ignore inconsistencies. You can chose
+the fill value by specifying `fill_value` parameter on `ArrayProperty` instantiation.
+
+Finally we specify `associated_genres = ("foo",)`, which is the only thing not already
+defined by `ArrayBase`. This class attribute informs `Conformers` object that it should
+use this `ArrayBase` subclass to instantiate `DataArray`-like objects for data genres
+specified in `associated_genres`. It must be specified as a tuple of strings, buy may
+be left empty, if no genre should be associated with this particular class.
+
+`genre`, `filenames`, `values`, and `allow_data_inconsistency` are stored on `ArrayBase`
+subclass automatically, if `super().__init__()` is called. However, if you introduce any
+new init parameters, you must bind them to the object by yourself. Moreover, if you wish
+to use `Conformers` automatic initialization of `ArrayBase` subclasses, you should name
+those additional parameters with a name of genre you'd like to be retrived or give them
+a default value, otherwise `Conformers.arrayed` won't know how to initialize such class.
+"""
 import inspect
 import logging as lgg
 from typing import Any, Callable, Iterable, Iterator, Optional, Sequence, Tuple, Union
