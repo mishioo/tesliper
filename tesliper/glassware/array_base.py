@@ -1,7 +1,7 @@
 """Core functionality of `DataArray` classes.
 
 This module implements the base class for `DataArray`s and its core functionality,
-namely the validation of array-like data, along with some helper functions. To implement
+namely validation of array-like data, along with some helper functions. To implement
 a `DataArray`-like container, subclass the `ArrayBase` class and use one of the
 `ArrayProperty` classes to create a validated array-like instance attribute for your new
 class. You should also provide `associated_genres` class attribute to signalize, which
@@ -10,18 +10,18 @@ genres this new `DataArray`-like class should be used for.
 The most basic example may look like this:
 
 >>> class MyDataArray(ArrayBase):
->>>     associated_genres = ("foo",)
->>>     filenames = ArrayProperty(dtype=str)
->>>     values = ArrayProperty(check_against="filenames")
->>>     def __init__(genre, filenames, values, allow_data_inconsistency=False):
->>>         super().__init__(genre, filenames, values, allow_data_inconsistency)
+...     associated_genres = ("foo",)
+...     filenames = ArrayProperty(dtype=str)
+...     values = ArrayProperty(check_against="filenames")
+...     def __init__(genre, filenames, values, allow_data_inconsistency=False):
+...         super().__init__(genre, filenames, values, allow_data_inconsistency)
 
 >>> foo_array = MyDataArray("foo", ["a", "b", "c"], values=[1, 2, 3])
 
 This definition would be almost a re-implementation of what `ArrayBase` already
 provides, but is a good starting point for explanation, so lets elaborate on it a
 little. `ArrayBase` expects 4 parameters on initialization of its subclass: `genre` is a
-genre of data stored, `filenames` is a list of conformer identifiers, `values` are - not
+genre of data stored, `filenames` is a list of conformer identifiers, `values` is - not
 surprisingly - a list of data values for each conformer, and `allow_data_inconsistency`
 is a boolean flag that controls process of validation of array-like attributes.
 
@@ -29,7 +29,7 @@ is a boolean flag that controls process of validation of array-like attributes.
 constructor as parameters of these names will be checked and validated, and stored as
 `numpy.ndarray`s. Moreover, filenames will be stored as strings, because we told the
 `ArrayProperty` this is our desired data type for this array-like attribute, using
-`dtype=str`. The default data type is `float`, so values will be converted to floats.
+`dtype=str`. The default data type is `float`, so `values` will be converted to floats.
 
 >>> foo_array.filenames
 array(["a", "b", "c"], dtype=str)
@@ -41,9 +41,9 @@ as a reference for desired shape of `values` array. If shape is different than s
 the reference, `InconsistentDataError` is raised. If you will deal with multidimensional
 data, you can utilize `check_depth` parameter to signalize that arrays should have
 identical shapes only to some certain depth, for example `check_depth=2` would accept
-arrays of shapes (10, 20) and (10, 20, 3). However, in our simple example it wouldn't
-make much sense to check more than default depth of 1, since `filenames` have only one
-dimension.
+arrays of shapes (10, 20) and (10, 20, 3) but would raise exception on arrays shaped
+(10,) and (10, 3). However, in our simple example it wouldn't make much sense to check
+more than default depth of 1, since `filenames` have only one dimension.
 
 >>> MyDataArray("foo", ["a", "b", "c"], values=[1, 2, 3, 4])
 Traceback (most recent call last):
@@ -61,11 +61,30 @@ you want to work with such data, you can pass `allow_data_inconsistency=True` to
 producing `numpy.ma.masked_array` or at least will ignore inconsistencies. You can chose
 the fill value by specifying `fill_value` parameter on `ArrayProperty` instantiation.
 
-Finally we specify `associated_genres = ("foo",)`, which is the only thing not already
-defined by `ArrayBase`. This class attribute informs `Conformers` object that it should
-use this `ArrayBase` subclass to instantiate `DataArray`-like objects for data genres
-specified in `associated_genres`. It must be specified as a tuple of strings, buy may
-be left empty, if no genre should be associated with this particular class.
+Finally we specify `associated_genres = ("foo",)`, which is the only thing in our
+example that's not already defined by `ArrayBase`. This class attribute informs
+`Conformers` object that it should use this `ArrayBase` subclass to instantiate
+`DataArray`-like objects for data genres specified in `associated_genres`. It must be
+specified as a tuple of strings, buy may be left empty, if no genre should be associated
+with this particular class. However, the main pourpose of `ArrayBase` is to provide
+integration with `Conformers` machinery - if you wish to use `ArrayProperty`'s
+validation features only, you may safely use if in a custom class, as long as it defines
+`allow_data_inconsistency` attribute.
+
+>>> class CustomDataHolder:
+...     allow_data_inconsistency=True  # class-level attribute will also work
+...     points = ArrayProperty(fill_value=0)
+...     def __init__(self, points):
+...         self.points = points
+
+>>> d = CustomDataHolder(points=((1,2,3),(1,2)))
+>>> d.points
+masked_array(
+  data=[[1.0, 2.0, 3.0],
+        [1.0, 2.0, --]],
+  mask=[[False, False, False],
+        [False, False,  True]],
+  fill_value=0)
 
 `genre`, `filenames`, `values`, and `allow_data_inconsistency` are stored on `ArrayBase`
 subclass automatically, if `super().__init__()` is called. However, if you introduce any
@@ -332,8 +351,37 @@ def to_masked(
 
 # CLASSES
 class ArrayProperty(property):
-    """
-    Property, that validates value given to its setter and stores it as a numpy.ndarray.
+    """Property, that validates value given to its setter and stores it as a
+    `numpy.ndarray`.
+
+    Parameters
+    ----------
+    fget
+        Custom getter for attribute. Default one just returns the stored value.
+    fset
+        Custom setter for attribute. Default one stores validated values in instance's
+        `__dict__`.
+    fdel
+        Custom deleter for attribute. Deleting attribute is not supported by default.
+    doc
+        Attribute's docstring.
+    dtype
+        Data type of elements of this array-like attribute.
+    check_against
+        Which other instance's attribute should be used as a reference for array's
+        shape. If shape of this attribute and reference attribute's are different, an
+        exception is raised. Only first `check_depth` dimensions are compared.
+    check_depth
+        How many dimensions should be compared when checking shape of the array.
+    fill_value
+        If values are a jagged array and `instance.allow_data_inconsistency is True`,
+        this value will be passed to `numpy.ma.masked_array` constructor as a
+        `fill_value`.
+    fsan
+        Custom sanitizer for attribute. "Sanitizer" is here understood as a function
+        that transforms value received by the setter, before the value is validated
+        (checked for corectness) and stored on the instance. `fsan` should return a
+        sanitized value.
     """
 
     # TODO: supplement documentation with in-depth explanation
@@ -503,7 +551,7 @@ class ArrayProperty(property):
                 )
                 raise InconsistentDataError(error_msg) from error
             else:
-                values = to_masked(values, dtype=self.dtype)
+                values = to_masked(values, dtype=self.dtype)  # FIXME: add fill_value
                 logger.info(
                     f"{genre} values' lists were appended with zeros to "
                     f"match length of longest entry."
@@ -581,7 +629,7 @@ class CollapsibleArrayProperty(ArrayProperty):
         without change. Otherwise it is validated using `ArrayProperty.check_input()`,
         and collapsed to single value if all values are identical.
         If values are non-uniform and instance doesn't allow data inconsistency,
-        InconsistentDataError is raised.
+        `InconsistentDataError` is raised.
 
         Parameters
         ----------
