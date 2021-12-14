@@ -375,6 +375,40 @@ def stretching_windows(
         yield order[start : (stop if stop <= indices.size else None)]
 
 
+def pyramid_windows(series: Sequence) -> Iterator[np.ndarray]:
+    """Produces windows of shrinking sizes, from full sequence to last element only.
+
+    This function yields `numpy.ndarray`s with indices that may be used to index an
+    original sequence (assuming original sequence is `numpy.ndarray` as well). The first
+    window yielded represents a whole `series` sequence and each consecutive window is
+    reduced by the first element, leaving only the last element in the final window.
+    This allows for easy setup of efficient calculations in symmetric each-to-each
+    relationship.
+
+    >>> series = [3, 6, 3, 5, 7]
+    >>> for window in pyramid_windows(series):
+    ...     print(window)
+    [0 1 2 3 4]
+    [1 2 3 4]
+    [2 3 4]
+    [3 4]
+    [4]
+
+    Parameters
+    ----------
+    series : sequence
+        Sequence of elements, for which windows should be generated.
+
+    Yields
+    ------
+    np.ndarray(dtype=int)
+        Windows as np.ndarray of indices.
+    """
+    length = len(series)
+    for idx in range(length):
+        yield np.arange(start=idx, stop=length, step=1, dtype=int)
+
+
 def rmsd_sieve(
     geometry: Sequence[Sequence[Sequence[float]]],
     windows: Iterable[Sequence[int]],
@@ -407,8 +441,8 @@ def rmsd_sieve(
     neccessary computational time or vice versa. You may also choose a different
     windowing strategy or reject it alltogether, and calculate one-to-each similarity in
     the whole set. Iterables of windows accepted by this function may be generated with
-    one of the dedicated windowing funcions: `stretching_windows` or `fixed_windows`.
-    Refer to their documentation for more information.
+    one of the dedicated windowing funcions: `stretching_windows`, `fixed_windows`, or
+    `pyramid_windows`. Refer to their documentation for more information.
 
     Parameters
     ----------
