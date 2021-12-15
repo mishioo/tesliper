@@ -1,9 +1,9 @@
-"""Implements `DataArray`-like objects for handling arrayed data.
+"""Implements :class:`DataArray`-like objects for handling arrayed data.
 
-`DataArray`-like objects are concrete implementations of `ArrayBase` base class that
-collect specific data for multiple conformers and provide an easy access to
-genre-specific functionality. Instances of `DataArray` subclasses are produced by the
-`Conformers.arrayed` method and `Tesliper`'s subscription mechanism.
+:class:`DataArray`-like objects are concrete implementations of :class:`.ArrayBase` base
+class that collect specific data for multiple conformers and provide an easy access to
+genre-specific functionality. Instances of :class:`DataArray` subclasses are produced by
+the :meth:`.Conformers.arrayed` method and :class:`Tesliper`'s subscription mechanism.
 """
 
 # IMPORTS
@@ -258,8 +258,8 @@ class Averagable:
 
         Parameters
         ----------
-        energies : Energies object instance or iterable
-            Object with `populations` and `genre` attributes, containing
+        energies : Energies or iterable
+            Object with ``populations`` and ``genre`` attributes, containing
             respectively: list of populations values as numpy.ndarray and
             string specifying energy type. Alternatively, list of weights
             for each conformer.
@@ -319,42 +319,42 @@ class Bands(FloatArray):
     @property
     def freq(self):
         """Values converted to frequencies in cm^(-1).
-        Same as `Bands.frequencies`
+        Same as :attr:`Bands.frequencies`
         """
         return convert_band(self.values, from_genre=self.genre, to_genre="freq")
 
     @property
     def frequencies(self):
         """Values converted to frequencies in cm^(-1).
-        Same as `Bands.freq`
+        Same as :attr:`Bands.freq`
         """
         return self.freq
 
     @property
     def wavelen(self):
         """Values converted to wavelengths in nm.
-        Same as `Bands.wavelengths`
+        Same as :attr:`Bands.wavelengths`
         """
         return convert_band(self.values, from_genre=self.genre, to_genre="wavelen")
 
     @property
     def wavelengths(self):
         """Values converted to wavelengths in nm.
-        Same as `Bands.wavelen`
+        Same as :attr:`Bands.wavelen`
         """
         return self.wavelen
 
     @property
     def ex_en(self):
         """Values converted to excitation energy in eV.
-        Same as `Bands.excitation_energy`
+        Same as :attr:`Bands.excitation_energy`
         """
         return convert_band(self.values, from_genre=self.genre, to_genre="ex_en")
 
     @property
     def excitation_energy(self):
         """Values converted to excitation energy in eV.
-        Same as `Bands.ex_en`
+        Same as :attr:`Bands.ex_en`
         """
         return self.ex_en
 
@@ -795,12 +795,12 @@ class Transitions(DataArray):
     """DataArray that stores information about electronic transitions from ground
     to excited state contributing to each band.
 
-    Data is stored in three attributes: `ground`, `excited`, and `values`, which are
-    respectively: list of ground state electronic subshells, list of excited state
-    electronic subshells, and list of coefficients of transitions from corresponding
-    ground to excited subshell. Each of these arrays is of shape (conformers, bands,
-    max_transitions), where 'max_transitions' is a highest number of transitions
-    contributing to single band across all bands of all conformers.
+    Data is stored in three attributes: :attr:`.ground`, :attr:`.excited`, and
+    :attr:`.values`, which are respectively: list of ground state electronic subshells,
+    list of excited state electronic subshells, and list of coefficients of transitions
+    from corresponding ground to excited subshell. Each of these arrays is of shape
+    (conformers, bands, max_transitions), where 'max_transitions' is a highest number of
+    transitions contributing to single band across all bands of all conformers.
 
     Attributes
     ----------
@@ -821,7 +821,7 @@ class Transitions(DataArray):
         Genre of given data.
     allow_data_inconsistency : bool, optional
         Specifies if inconsistency of data should be allowed when creating instance
-        of this class and setting it's attributes. Defaults to `True`, as different
+        of this class and setting it's attributes. Defaults to ``True``, as different
         number of transitions may be contributing to each band.
 
     """
@@ -949,7 +949,7 @@ class Geometry(FloatArray):
         Genre of given data.
     allow_data_inconsistency : bool, optional
         Specifies if inconsistency of data should be allowed when creating instance
-        of this class and setting it's attributes. Defaults to `False`.
+        of this class and setting it's attributes. Defaults to ``False``.
     """
 
     associated_genres = ("geometry", "input_geom")

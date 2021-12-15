@@ -378,8 +378,8 @@ class TxtWriter(Writer):
             Object containing information about wavelength at which transitions occur.
         only_highest : bool
             Specifies if only transition of highest contribution to given band should
-            be reported. If `False` all transition are saved to file.
-            Defaults to `True`.
+            be reported. If ``False`` all transition are saved to file.
+            Defaults to ``True``.
         name_template : str or string.Template
             Template that will be used to generate filenames.
 

@@ -9,7 +9,6 @@ from typing import IO, Any, AnyStr, Dict, Iterable, Iterator, List, Optional, Un
 
 import numpy as np
 
-from ._writer import Writer
 from ..glassware.arrays import (
     Bands,
     Energies,
@@ -19,6 +18,7 @@ from ..glassware.arrays import (
     Transitions,
 )
 from ..glassware.spectra import SingleSpectrum, Spectra
+from ._writer import Writer
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -379,8 +379,8 @@ class CsvWriter(_CsvMixin, Writer):
             Object containing information about wavelength at which transitions occur.
         only_highest : bool
             Specifies if only transition of highest contribution to given band should
-            be reported. If `False` all transition are saved to file.
-            Defaults to `True`.
+            be reported. If ``False`` all transition are saved to file.
+            Defaults to ``True``.
         name_template : str or string.Template
             Template that will be used to generate filenames.
         """

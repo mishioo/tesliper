@@ -25,7 +25,7 @@ def find_atoms(
         Element or list of elements, represented by their atomic numbers, which indices
         should be find in `atoms` array.
     reverse : bool
-        If `True`, indices of atoms NOT specified in `find` will be returned.
+        If ``True``, indices of atoms NOT specified in `find` will be returned.
 
     Returns
     -------
@@ -42,7 +42,8 @@ def find_atoms(
 
 
 def select_atoms(
-    values: Union[Sequence, np.ndarray], indices: Union[Sequence[int], np.ndarray],
+    values: Union[Sequence, np.ndarray],
+    indices: Union[Sequence[int], np.ndarray],
 ) -> np.ndarray:
     """Filter given values to contain values only corresponding to atoms on given
     indices. Recognizes if given values are a list of values for one or for many
@@ -141,7 +142,7 @@ def is_triangular(n: int) -> bool:
     Returns
     -------
     bool
-        True is number `n` is triangular, else False
+        True if number `n` is triangular, else False
     """
     if n < 0:
         return False

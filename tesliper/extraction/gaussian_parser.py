@@ -147,10 +147,11 @@ class GaussianParser(Parser):
     >>> with open('path/to/file.out') as file:
     >>>     data = parser.parse(file)
 
-    Dictionary with data extracted is also stored as `data` attribute of instance used
-    for parsing. Each key in said dictionary is a name of its value data type, called
-    from now on a 'data genre' (to avoid confusion with Python's data type). Below is
-    a full list of data genres recognised by this parser, with their description:
+    Dictionary with data extracted is also stored as :attr:`.data` attribute of instance
+    used for parsing. Each key in said dictionary is a name of its value data type,
+    called from now on a 'data genre' (to avoid confusion with Python's data type).
+    Below is a full list of data genres recognized by this parser, with their
+    description:
 
     freq : list of floats, available from freq job
         harmonic vibrational frequencies (cm^-1)
@@ -413,7 +414,8 @@ class GaussianParser(Parser):
     def optimization(self, line: str) -> None:
         """This method scans optimization data in Gaussian output file, updating
         parser.data dictionary with 'stoichiometry', 'scf', 'optimization_completed',
-        'molecule_atoms', and 'geometry' data genres (last two via `geometry()` method).
+        'molecule_atoms', and 'geometry' data genres (last two via :meth:`.geometry`
+        method).
 
         Parameters
         ----------

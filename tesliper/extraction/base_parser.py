@@ -203,7 +203,7 @@ class Parser(ABC):
         Notes
         -----
         After execution - either successful or interrupted by exception -
-        `workhorse` is set back to `initial` method.
+        :attr:`.workhorse` is set back to :meth:`.initial` method.
 
         Parameters
         ----------

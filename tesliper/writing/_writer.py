@@ -354,9 +354,9 @@ class Writer(ABC):
             ${genre} - genre of exported data;
             ${cat} - category of produced output;
             ${det} - category-specific detail.
-        The ${ext} identifier is filled with the value of Writers `extension` attribute
-        if not explicitly given as parameter to this method's call. Default values
-        for other identifiers are just empty strings.
+        The ${ext} identifier is filled with the value of Writers :attr:`.extension`
+        attribute if not explicitly given as parameter to this method's call. Default
+        values for other identifiers are just empty strings.
 
         Parameters
         ----------
@@ -423,7 +423,8 @@ class Writer(ABC):
         open_params: Optional[dict] = None,
     ) -> Iterator[IO[AnyStr]]:
         """Helper method for creating files. Given additional kwargs will be passed to
-        `open()` method. Implemented as context manager for use with `with` statement.
+        :meth:`Path.open` method. Implemented as context manager for use with ``with``
+        statement.
 
         Parameters
         ----------
@@ -432,12 +433,12 @@ class Writer(ABC):
         template_params : dict
             Dictionary of {identifier: value} for `.make_name` method.
         open_params : dict, optional
-            Arguments for `Path.open()` used to open file.
+            Arguments for :meth:`Path.open` used to open file.
 
         Yields
         ------
         IO
-            file handle, will be closed automatically after `with` statement exits
+            file handle, will be closed automatically after ``with`` statement exits
         """
         open_params = open_params or {}  # empty dict by default
         filename = self.make_name(template=template, **template_params)
@@ -454,7 +455,7 @@ class Writer(ABC):
         open_params: Optional[dict] = None,
     ) -> Iterator[IO[AnyStr]]:
         """Helper method for iteration over generated files. Given additional kwargs
-        will be passed to `open()` method.
+        will be passed to :meth:`Path.open` method.
 
         Parameters
         ----------
@@ -464,7 +465,7 @@ class Writer(ABC):
         template_params : dict
             Dictionary of {identifier: value} for `.make_name` method.
         open_params : dict, optional
-            arguments for `Path.open()` used to open file.
+            arguments for :meth:`Path.open` used to open file.
 
         Yields
         ------

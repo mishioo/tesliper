@@ -21,7 +21,7 @@ Atom.__doc__ = """An enumeration that maps symbols of atoms to respective atomic
 
 This enumeration is introduced for your convenience: whenever you need to reference
 an atom by its atomic number, you may use appropriate symbol-value of this Enum instead.
-Providing e.g. `Atom.Au` rather than an integer 79 for Au's atomic number is probably
+Providing e.g. ``Atom.Au`` rather than an integer 79 for Au's atomic number is probably
 a bit easier and definitely more readable.
 """
 
