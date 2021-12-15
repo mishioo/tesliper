@@ -1,3 +1,11 @@
+"""Implements `DataArray`-like objects for handling arrayed data.
+
+`DataArray`-like objects are concrete implementations of `ArrayBase` base class that
+collect specific data for multiple conformers and provide an easy access to
+genre-specific functionality. Instances of `DataArray` subclasses are produced by the
+`Conformers.arrayed` method and `Tesliper`'s subscription mechanism.
+"""
+
 # IMPORTS
 import logging as lgg
 from abc import ABC, abstractmethod
@@ -23,20 +31,19 @@ logger.setLevel(lgg.DEBUG)
 
 # CLASSES
 class DataArray(ArrayBase):
-    """Base class for data holding objects. It provides trimming functionality
-    for filtering data based on other objects content or arbitrary choice.
-    ^ this is no longer true, TODO: correct this
+    """Base class for data holding objects.
 
     Parameters
     ----------
     filenames : numpy.ndarray(dtype=str)
-        List of filenames of gaussian output files, from whitch data were
+        List of filenames of gaussian output files, from which data were
         extracted.
     values : numpy.ndarray(dtype=float)
         List of appropriate data values.
     """
 
-    full_name_ref = {}
+    # TODO: should have empty associated_genres
+    full_name_ref = {}  # TODO: should be protected
     _units = {}
 
     @property
@@ -339,14 +346,14 @@ class Bands(FloatArray):
 
     @property
     def ex_en(self):
-        """Values converted to excitation_energy in eV.
+        """Values converted to excitation energy in eV.
         Same as `Bands.excitation_energy`
         """
         return convert_band(self.values, from_genre=self.genre, to_genre="ex_en")
 
     @property
     def excitation_energy(self):
-        """Values converted to excitation_energy in eV.
+        """Values converted to excitation energy in eV.
         Same as `Bands.ex_en`
         """
         return self.ex_en
