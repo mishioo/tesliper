@@ -36,8 +36,8 @@ class XlsxWriter(Writer):
         Directory, to which generated files should be written.
     mode : str
         Specifies how writing to file should be handled. Should be one of characters:
-         'a' (append to existing file), 'x' (only write if file doesn't exist yet),
-         or 'w' (overwrite file if it already exists).
+        'a' (append to existing file), 'x' (only write if file doesn't exist yet),
+        or 'w' (overwrite file if it already exists).
     filename : str or string.Template
         Filename of created .xlsx file or a template for generation of the name using
         :meth:`.Writer.make_name` method.
