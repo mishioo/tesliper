@@ -68,8 +68,8 @@ example that's not already defined by `ArrayBase`. This class attribute informs
 specified as a tuple of strings, buy may be left empty, if no genre should be associated
 with this particular class. However, the main pourpose of `ArrayBase` is to provide
 integration with `Conformers` machinery - if you wish to use `ArrayProperty`'s
-validation features only, you may safely use if in a custom class, as long as it defines
-`allow_data_inconsistency` attribute.
+validation features only, you may safely use if in a custom class. It may define
+`allow_data_inconsistency` attribute, but it is optional (`False` is assumed).
 
 >>> class CustomDataHolder:
 ...     allow_data_inconsistency=True  # class-level attribute will also work
@@ -95,7 +95,17 @@ a default value, otherwise `Conformers.arrayed` won't know how to initialize suc
 """
 import inspect
 import logging as lgg
-from typing import Any, Callable, Iterable, Iterator, Optional, Sequence, Tuple, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    Iterator,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+)
 
 import numpy as np
 
@@ -351,8 +361,34 @@ def to_masked(
 
 # CLASSES
 class ArrayProperty(property):
-    """Property, that validates value given to its setter and stores it as a
+    """Property, that validates array-like value given to its setter and stores it as
     `numpy.ndarray`.
+
+    Value given to property setter is:
+        1. (optionally) sanitized with user-provided sanitizer function;
+        2. (optionally) compared with another array-like attribute of the owner
+        regarding their shape;
+        3. transformed to `numpy.ndarray` of desired data type;
+        4. stored in owner's `__dict__`.
+
+    Setting, getting and deletition of the value may be customized using standard
+    `setter`, `getter` and `deleter` decorators. Additionally,`ArrayProperty` provides
+    an `ArrayProperty.sanitizer` decorator. If sanitizer function is provided, it is
+    called as a first step of data validation and should return sanitized array-like
+    value (given original value as a positional parameter).
+
+    Validation regarding shape of the value is triggered if `check_against`
+    parameter is provided. It should be a name of owner's other array-like attribute
+    as a string. Shape of the value is than compared to the shape of this reference
+    attribute. If shapes are not identical up to the first `check_depth` dimensions,
+    `InconsistentDataError` is raised.
+
+    Value is always transformed to `numpy.ndarray` of specified `dtype` (`float` by
+    default.) If such conversion cannot be done because value is a jagged array,
+    `InconsistentDataError` will be raised. However, if owner allows for data
+    inconsistency by defining `owner.allow_data_inconsistency = True`, non-matching
+    shapes will be ignored and jugged arrays will be padded with `fill_value` and stored
+    as `numpy.ma.masked_array`.
 
     Parameters
     ----------
@@ -384,7 +420,6 @@ class ArrayProperty(property):
         sanitized value.
     """
 
-    # TODO: supplement documentation with in-depth explanation
     def __init__(
         self,
         fget: Optional[Callable[[Any], np.ndarray]] = None,
@@ -560,8 +595,8 @@ class ArrayProperty(property):
 
 
 class JaggedArrayProperty(ArrayProperty):
-    """ArrayProperty for storing intentionally jagged arrays of data.
-    InconsistentDataError is only raised if `check_shape()` fails. Given values are
+    """`ArrayProperty` for storing intentionally jagged arrays of data.
+    `InconsistentDataError` is only raised if `check_shape()` fails. Given values are
     converted to masked array and expanded as needed, regardless value of
     `allow_data_inconsistency` attribute."""
 
@@ -571,7 +606,7 @@ class JaggedArrayProperty(ArrayProperty):
 
 
 class CollapsibleArrayProperty(ArrayProperty):
-    """ArrayProperty that stores only one value, if all entries are identical."""
+    """`ArrayProperty` that stores only one value, if all entries are identical."""
 
     def __init__(
         self,
@@ -674,13 +709,37 @@ class CollapsibleArrayProperty(ArrayProperty):
 
 
 _ARRAY_CONSTRUCTORS = {}
+"""Registry of classes used to represent certain data genres.
+It is a dictionary of {str: ArrayBase}."""
 
 
-class ArrayBase:
-    """Base class for data holding objects."""
+class ArrayBase:  # TODO: make it ABC
+    """Base class for data holding objects.
 
-    # TODO: signalize that this should be overridden in subclass
-    #       consider implementing stronger protection ?
+    It provides an automatic registration of its subclasses as a `DataArray`-like
+    representations of all `associated_genres` declared by said subclass. A subclass
+    should provide an `associated_genres` class attribute, even if it's not supposed to
+    be directly instantiated with data for any genre, it should be an empty tuple in
+    such case. Otherwise, `associated_genres` should be a tuple of genre names as
+    strings.
+
+    This base class provides the most basic set of attributes, a `DataArray`-like object
+    should implement, listed in the Parameters section.
+
+    Parameters
+    ----------
+    genre
+        Name of the data genre that `values` represent.
+    allow_data_inconsistency
+        Flag signalizing if instance should allow data inconsistency (see `ArrayPropety`
+        for details).
+    filenames
+        Sequence of conformers identifiers.
+    values
+        Sequence of values for `genre` for each conformer in `filenames`.
+    """
+
+    # TODO: make it an abstract classmethod property
     associated_genres: Tuple[str, ...] = NotImplemented
 
     def __init_subclass__(cls, **kwargs):
@@ -688,12 +747,19 @@ class ArrayBase:
         if cls.associated_genres is not NotImplemented:
             _ARRAY_CONSTRUCTORS.update((genre, cls) for genre in cls.associated_genres)
 
-    def __init__(self, genre, filenames, values, allow_data_inconsistency=False):
+    def __init__(
+        self,
+        genre: str,
+        filenames: Sequence[str],
+        values: Sequence,
+        allow_data_inconsistency: bool = False,
+    ):
         self.genre = genre
         self.allow_data_inconsistency = allow_data_inconsistency
         self.filenames = filenames
         self.values = values
 
+    # TODO make it an ArrayProperty
     @property
     def filenames(self):
         return self._filenames
@@ -704,7 +770,9 @@ class ArrayBase:
 
     values = ArrayProperty(check_against="filenames")
 
-    def get_repr_args(self):
+    def get_repr_args(self) -> Dict[str, Any]:
+        """Returns dictionary that can be used as keword-value pairs to instantiate
+        identical object."""
         signature = inspect.signature(type(self))
         args = {
             name: getattr(self, name)
@@ -715,7 +783,8 @@ class ArrayBase:
         return args
 
     @classmethod
-    def get_init_params(cls):
+    def get_init_params(cls) -> Dict[str, inspect.Parameter]:
+        "Returns copy of this class' init signature."
         signature = inspect.signature(cls)
         return signature.parameters.copy()
 
