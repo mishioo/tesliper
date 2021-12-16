@@ -1,6 +1,4 @@
-numpy
-openpyxl
-matplotlib
+-r requirements-gui.txt
 black
 pre-commit
 flake8
