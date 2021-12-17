@@ -290,28 +290,26 @@ def stretching_windows(
     values: Sequence[float],
     size: Union[int, float],
     keep_hermits: bool = False,
-    hard_bound: bool = True,
+    hard_bound: bool = False,
 ) -> Iterator[np.ndarray]:
     """Implements a sliding window of a variable size, where values in each window are
     at most `size` bigger than the lowest value in given window. Values yielded
     are `np.ndarray`s of indices of sorted values, that constitute each window.
 
     When window reaches a border, that is an end of the `values` array or a gap between
-    values that is larger than given `size`, it immediately moves to its other side.
+    values that is larger than given `size`, it is "squeezed", when pressed against the
+    border, producing subsequences of the first view that touches a border. This is
+    usefull, when one wants to form a window for each value in the original array.
 
     >>> list(stretching_windows([1, 2, 3, 4, 7, 8], 3))
+    [[0, 1, 2], [1, 2, 3], [2, 3], [4, 5]]
+
+    This "soft" right bound may be "hardened" by passing `hard_bound=True` as a
+    parameter to a function call. A window will than move immediately to the border's
+    other side.
+
+    >>> list(stretching_windows([1, 2, 3, 4, 7, 8], 3), hard_bound=True)
     [[0, 1, 2], [1, 2, 3], [4, 5]]
-
-    This "hard" right bound may be "softened" by passing `hard_bound=False`
-    as a parameter to a function call. A window will then be "squeezed", when pressed
-    against the border, producing subsequences of the first view that touches a border.
-    This may be usefull, when one wants to form a window for each value in the original
-    array.
-
-    >>> list(stretching_windows([1, 2, 3, 4], 3), hard_bound=False)
-    [[0, 1, 2], [1, 2, 3], [2, 3]]
-    >>> list(stretching_windows([1, 2, 3, 7, 8], 3), hard_bound=False)
-    [[0, 1, 2], [1, 2], [3, 4]]
 
     Windows of size 1, called hermits, are by default ignored.
 
@@ -323,9 +321,9 @@ def stretching_windows(
     One must remember that, when a bound is "soft", the last window is always a hermit.
 
     >>> list(stretching_windows(arr, 5, keep_hermits=True))
-    [[0, 1], [2], [3, 4]]
-    >>> list(stretching_windows(arr, 5, keep_hermits=True, hard_bound=False))
     [[0, 1], [1], [2], [3, 4], [4]]
+    >>> list(stretching_windows(arr, 5, keep_hermits=True, hard_bound=True))
+    [[0, 1], [2], [3, 4]]
 
     Parameters
     ----------
@@ -340,7 +338,7 @@ def stretching_windows(
         How window should behave close to borders. With hard bound (True) it will move
         to the other side of border as soon, as it is reached. With soft bound (False)
         it will "squeeze" when pressed against the border, producing subsequences of
-        the first view that includes border value. True by default.
+        the first view that includes border value. False by default.
 
     Yields
     ------
