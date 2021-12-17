@@ -1,4 +1,4 @@
-# IMPORTS
+"""A ``tesliper``'s main data storage."""
 import logging as lgg
 from collections import Counter, ItemsView, KeysView, OrderedDict, ValuesView
 from contextlib import contextmanager

@@ -1,3 +1,4 @@
+"""Parser for spectra files."""
 import csv
 import logging as lgg
 from pathlib import Path

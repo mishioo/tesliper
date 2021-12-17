@@ -1,3 +1,4 @@
+"""This module contains a definition of Abstract Base Class for file parsers."""
 import re
 from abc import ABC, abstractmethod
 from typing import Callable, Iterable, Union
@@ -6,22 +7,22 @@ from ..exceptions import InvalidStateError
 
 
 class Parser(ABC):
-    """Abstract base class for parsers implemented as finite state machines.
+    """Abstract Base Class for parsers implemented as finite state machines.
 
-    This base class defines some methods to organize work parsers implemented as
-    finite state machines: automates registration of methods and functions
-    as parser's states, manages its execution, and registers derived class
-    as parser used for certain type of files (which registry is used by Soxhlet
-    object).
+    This base class defines some methods to organize work parsers implemented as finite
+    state machines: automates registration of methods and functions as parser's states,
+    manages its execution, and registers derived class as parser used for certain type
+    of files (which registry is used by :class:`.Soxhlet` object).
 
     The default parsing flow goes as follow:
-    1. method 'parse' is called with file handle as argument;
-    2. method 'initial' is set as a 'workhorse'
+
+    1. method :meth:`.parse` is called with file handle as argument;
+    2. method :meth:`.initial` is set as a 'workhorse'
     3. 'workhorse' is called for consecutive lines in file handle
-    4. 'initial' checks if any registered trigger matches current line
-    5. 'workhorse' is changed to method associated with first matching trigger
+    4. :meth:`.initial` checks if any registered trigger matches current line
+    5. :meth:`.workhorse` is changed to method associated with first matching trigger
     6. calling 'workhorse' on consecutive lines continues
-    7. 'parse' returns dictionary with extracted values
+    7. :meth:`.parse` returns dictionary with extracted values
 
     To make this possible, each method marked as state should return dictionary
     (or sequence convertible to dict) and handle changing 'workhorse' to next
@@ -29,15 +30,15 @@ class Parser(ABC):
     decorator in class definition or add a state directly to parser instance
     using 'add_state' method.
 
-    When subclassing Parser, one should implement 'initial' and 'parse' methods.
-    Those abstract methods implement basic functionality, described above. See
-    methods' documentation for more details. If you wish not to use default
-    Parser's protocol, simply override those methods to your liking.
+    When subclassing Parser, one should implement :meth:`.initial` and :meth:`.parse`
+    methods. Those abstract methods implement basic functionality, described above. See
+    methods' documentation for more details. If you wish not to use default Parser's
+    protocol, simply override those methods to your liking.
 
-    To register class derived from Parser for use by Soxhlet object, simply
-    set 'purpose' class attribute to name, under which class should be
+    To register class derived from Parser for use by :class:`.Soxhlet` object, simply
+    set :attr:`.purpose` class attribute to name, under which class should be
     registered. Setting it to one of names already defined (e.g. 'gaussian')
-    will override the default parser used by Soxhlet object.
+    will override the default parser used by :class:`.Soxhlet` object.
 
     Attributes
     ----------
@@ -55,13 +56,11 @@ class Parser(ABC):
     ----------------
     parsers: dict
         class attribute, which is a registry, implemented as dictionary,
-        of classes subclassing Parser and defining 'purpose' class attribute
+        of classes subclassing Parser and defining :attr:`.purpose` class attribute
     purpose: str
-        attribute, that helps Soxhlet to identify Parser's subclass purpose
-
-    TO DO
-    -----
-    make states' triggers can be string, regex or callable"""
+        attribute, that helps :class:`.Soxhlet` to identify Parser's subclass purpose
+    """
+    # TODO: make states' triggers can be string, regex or callable
 
     parsers = {}
     purpose = ""
@@ -93,7 +92,7 @@ class Parser(ABC):
         Setter can take a callable or a string as a parameter. If name as
         string is passed to setter, it will be translated to a method
         registered as state. If no method was registered under this name,
-        InvalidStateError will be raised. No other checks are performed
+        :class:`.InvalidStateError` will be raised. No other checks are performed
         when argument is callable."""
         return self._workhorse
 
@@ -112,9 +111,9 @@ class Parser(ABC):
     def add_state(self, state: Callable, name: str = "", trigger: str = ""):
         """Register callable as parser's state.
 
-        This method registers a callable under 'name' key in parser.states
-        dictionary. If 'trigger' parameter is given, it is registered under the
-        same key in parser.triggers dictionary.
+        This method registers a callable under `name` key in :attr:`.states`
+        dictionary. If `trigger` parameter is given, it is registered under the
+        same key in :attr:`.triggers` dictionary.
 
         Parameters
         ----------
@@ -167,7 +166,7 @@ class Parser(ABC):
         a line and sets an associated state as parser's workhorse, if it does.
         This is an abstract method and should be overridden in subclass.
         Its default implementation can be used, however, by calling
-        'super().initial(line)' in subclass's method.
+        ``super().initial(line)`` in subclass's method.
 
         Notes
         -----
@@ -198,7 +197,7 @@ class Parser(ABC):
         so all states should return dictionary or compatible sequence.
         This is an abstract method and should be overridden in subclass.
         Its default implementation can be used, however, by calling
-        'data = super().parse(lines)' in subclass's method.
+        ``data = super().parse(lines)`` in subclass's method.
 
         Notes
         -----
@@ -245,20 +244,22 @@ class Parser(ABC):
     def state(state=None, trigger=None):
         """Convenience decorator for registering a method as parser's state.
         It can be with or without 'trigger' parameter, like this:
+
         >>> @Parser.state
         ... def method(self, arg): pass
 
         or
+
         >>> @Parser.state(trigger='triggering regex')
         ... def method(self, arg): pass
 
-        This function marks a method 'state' as parser's state by defining
-        'is_state' attribute on said method and setting its values to True.
-        If 'trigger' is given, it is stored in method's attribute 'trigger'.
-        During instantiation of Parser's subclass, methods marked as states are
-        registered under method.__name__ key in tis 'states' (and possibly
-        'triggers') attribute. It is meaningless if used outside of Parser's
-        subclass definition.
+        This function marks a method `state` as parser's state by defining `is_state`
+        attribute on said method and setting its values to ``True``. If `trigger` is
+        given, it is stored in method's attribute `trigger`. During instantiation of
+        :class:`.Parser`'s subclass, methods marked as states are registered under
+        ``method.__name__`` key in its :attr:`.states` (and possibly :attr:`.triggers`)
+        attribute. It is meaningless if used outside of :class:`.Parser`'s subclass
+        definition.
 
         Parameters
         ----------
@@ -278,7 +279,7 @@ class Parser(ABC):
         TypeError
             if no arguments given
         InvalidStateError
-            if 'state' argument is not callable
+            if `state` argument is not callable
         """
         if callable(state):
             state.is_state = True

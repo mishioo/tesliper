@@ -1,3 +1,4 @@
+"""Parser for reading spectra calculation parameters from file."""
 import logging
 import re
 from configparser import ConfigParser, MissingSectionHeaderError, ParsingError
@@ -67,7 +68,7 @@ class ParametersParser:
 
     The parser is case-insensitive and knows some alias names of expected parameters:
     for instance, "hwhm", "half width of band in half height", "half width at half
-    maximum" will be all recognised as "width" parameter. If you wish to add custom
+    maximum" will be all recognized as "width" parameter. If you wish to add custom
     aliases, update :attr:`ParametersParser.ALIASES` dictionary with appropriate
     "alias": "target" pair.
 

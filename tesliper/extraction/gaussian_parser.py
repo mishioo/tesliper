@@ -285,8 +285,7 @@ class GaussianParser(Parser):
         self.data = {}
 
     def parse(self, lines) -> dict:
-        """Parses content of Gaussian output file and returns dictionary of found
-        data. TODO: elaborate
+        """Parses content of Gaussian output file and returns dictionary of found data.
 
         Parameters
         ----------
@@ -300,6 +299,7 @@ class GaussianParser(Parser):
         -------
         dict
             Dictionary of extracted data."""
+        # TODO: supplement docstring
         self.workhorse = self.initial
         self.data = {}
         self._iterator = iter(lines)
@@ -421,10 +421,8 @@ class GaussianParser(Parser):
         ----------
         line : str
             Line of text to parse.
-
-        TO DO
-        -----
-            modify this to only run if optimization requested"""
+        """
+        # TODO: modify this to only run if optimization requested
         if self.triggers["geometry"].match(line):
             self.geometry(line)
             self.workhorse = self.optimization

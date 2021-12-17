@@ -1,4 +1,4 @@
-# IMPORTS
+"""Functions that deal with spectra and spectral data."""
 import logging as lgg
 import math
 from typing import Callable, Sequence, Tuple, Union
@@ -22,7 +22,7 @@ def count_imaginary(frequencies: np.ndarray):
 
     Parameters
     ----------
-    frequencies : numpy.ndarray
+    frequencies
         List of conformers' frequencies. Array with one dimension is interpreted
         as list of frequencies for single conformer.
 
@@ -53,7 +53,7 @@ def find_imaginary(frequencies: np.ndarray):
 
     Parameters
     ----------
-    frequencies : numpy.ndarray
+    frequencies
         List of conformers' frequencies.
 
     Returns
@@ -82,13 +82,13 @@ def gaussian(
 
     Parameters
     ----------
-    intensities: numpy.ndarray
+    intensities
         Appropriate values extracted from gaussian output files.
-    frequencies: numpy.ndarray
+    frequencies
         Frequencies extracted from gaussian output files.
-    abscissa: numpy.ndarray
+    abscissa
         List of wavelength/wave number points on spectrum x axis.
-    width: int or float
+    width
         Number representing half width of peak at 1/e its maximum height.
 
     Returns
@@ -131,13 +131,13 @@ def lorentzian(
 
     Parameters
     ----------
-    intensities: numpy.ndarray
+    intensities
         Appropriate values extracted from gaussian output files.
-    frequencies: numpy.ndarray
+    frequencies
         Frequencies extracted from gaussian output files.
-    abscissa: numpy.ndarray
+    abscissa
         List of wavelength/wave number points on spectrum x axis.
-    width: int or float
+    width
         Number representing half width of peak at half its maximum height.
 
     Returns
@@ -182,13 +182,13 @@ def calculate_spectra(
 
     Parameters
     ----------
-    frequencies : numpy.ndarray
+    frequencies
         List of conformers' frequencies in cm^(-1). Should be of shape
         (number _of_conformers, number_of_frequencies).
-    intensities : numpy.ndarray
+    intensities
         List of calculated signal intensities for each conformer. Should be
         of same shape as frequencies.
-    abscissa : numpy.ndarray
+    abscissa
         List of points on x axis in output spectrum in cm^(-1).
     width : int or float
         Number representing peak width in cm^(-1), used by fitting function.
@@ -224,10 +224,10 @@ def calculate_average(
 
     Parameters
     ----------
-    values : numpy.ndarray or iterable
+    values
         List of values for each conformer, should be of shape (N, M), where N is
         number of conformers and M is number of values.
-    populations : numpy.ndarray or iterable
+    populations
         List of conformers' populations, should be of shape (N,) where N is
         number of conformers. Should add up to 1.
 
@@ -267,9 +267,9 @@ def idx_offset(a: Numbers, b: Numbers) -> int:
 
     Parameters
     ----------
-    a : sequence of ints or floats
+    a
         `x` values` of the first spectrum.
-    b : sequence of ints or floats
+    b
         `x` values` of the second spectrum.
 
     Returns
@@ -306,15 +306,15 @@ def unify_abscissa(
 
     Parameters
     ----------
-    ax : sequence of ints or floats
+    ax
         Abscissa of the first spectrum.
-    ay : sequence of ints or floats
+    ay
         Values of the first spectrum.
-    bx : sequence of ints or floats
+    bx
         Abscissa of the second spectrum.
-    by : sequence of ints or floats
+    by
         Values of the second spectrum.
-    upscale : bool
+    upscale
         If interpolation should be done on more loosely spaced spectrum (default).
         When set to False, spectrum with lower resolution will be treated as reference.
 
@@ -357,15 +357,15 @@ def find_offset(
 
     Parameters
     ----------
-    ax : sequence of ints or floats
+    ax
         Abscissa of the first spectrum.
-    ay : sequence of ints or floats
+    ay
         Values of the first spectrum.
-    bx : sequence of ints or floats
+    bx
         Abscissa of the second spectrum.
-    by : sequence of ints or floats
+    by
         Values of the second spectrum.
-    upscale : bool
+    upscale
         If interpolation should be done on more loosely spaced spectrum (default).
         When set to False, spectrum with lower resolution will be treated as reference
         for density of data points.
@@ -389,9 +389,9 @@ def find_scaling(a: Numbers, b: Numbers) -> float:
 
     Parameters
     ----------
-    a : sequence of ints or floats
+    a
         `x` values` of the first spectrum.
-    b : sequence of ints or floats
+    b
         `x` values` of the second spectrum.
 
     Returns
@@ -424,12 +424,12 @@ def convert_band(
 
     Parameters
     ----------
-    value : float or np.ndarray
+    value
         Value(s) to convert.
-    from_genre : str
+    from_genre
         Genre specifying a representation of band of input data.
         Should be one of: 'freq', 'wavelen', 'ex_en'.
-    to_genre : str
+    to_genre
         Genre specifying a representation of band, to which you want to convert.
         Should be one of: 'freq', 'wavelen', 'ex_en'.
 

@@ -1,4 +1,4 @@
-# IMPORTS
+"""A tool for batch parsing files from specified directory."""
 import logging as lgg
 from pathlib import Path
 from typing import Generator, Iterable, List, Optional, Set, Tuple, Union
@@ -14,6 +14,7 @@ logger.setLevel(lgg.DEBUG)
 
 # CLASSES
 # TODO: Consider integration with gauopen interface: http://gaussian.com/interfacing/
+# TODO: supplement class docstring
 class Soxhlet:
     """A tool for data extraction from files in specific directory. Typical use:
 
@@ -178,11 +179,8 @@ class Soxhlet:
             If both *.log and *.out files are present in list of filenames.
         FileNotFoundError
             If neither *.log nor *.out files are present in list of filenames.
-
-        TO DO
-        -----
-        add support for other extensions when new parsers implemented
         """
+        # TODO: add support for other extensions when new parsers implemented
         logs, outs = (
             any(f.name.endswith(ext) for f in self.all_files)
             for ext in (".log", ".out")
@@ -250,7 +248,6 @@ class Soxhlet:
         ------
         FileNotFoundError
             If no or multiple possible setup files found.
-
         """
         if source:
             source = Path(source)
