@@ -14,6 +14,7 @@ from .geometry import (
     get_triangular_base,
     is_triangular,
     kabsch_rotate,
+    pyramid_windows,
     rmsd_sieve,
     stretching_windows,
     take_atoms,

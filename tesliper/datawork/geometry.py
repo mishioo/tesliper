@@ -407,6 +407,13 @@ def pyramid_windows(series: Sequence) -> Iterator[np.ndarray]:
         yield np.arange(start=idx, stop=length, step=1, dtype=int)
 
 
+WINDOWING_STRATEGIES = {
+    "fixed": fixed_windows,
+    "stretching": stretching_windows,
+    "pyramid": pyramid_windows,
+}
+
+
 def rmsd_sieve(
     geometry: Sequence[Sequence[Sequence[float]]],
     windows: Iterable[Sequence[int]],
