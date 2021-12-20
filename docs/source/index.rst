@@ -149,6 +149,10 @@ and allows to easily filter parsed data.
    :caption: Contents:
 
    Home page <self>
+   Installation <installation>
+   Graphical interface <gui>
+   Scripting basics <tutorial>
+   Extending ``tesliper`` <extend>
    API reference <_autosummary/tesliper>
 
 Indices and tables
