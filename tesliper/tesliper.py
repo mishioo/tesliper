@@ -1,23 +1,4 @@
-"""``tesliper`` is a package for batch processing of Gaussian output files, focusing
-on extraction and processing of data related to simulation of optical spectra.
-
-Simulation of optical spectra of organic compounds becomes one of the routine tasks
-for chemical analysts -- it is a necessary step in one of the increasingly popular
-methods of establishing compound's absolute configuration. However, the process
-of obtaining a simulated spectrum may be cumbersome, as it usually involves analysing
-a large number of potentially stable conformers of the studied molecule.
-``tesliper`` was created to aid in such work.
-
-Software offers a Python API and a graphical user interface (GUI), allowing for your
-preferred style of interaction with the computer: visual or textual. It was designed
-for working with multiple conformers of a compound, represented by a number of files
-obtained from Gaussian quantum-chemical computations software. It allows to easily
-exclude conformers that are not suitable for further analysis: erroneous,
-not optimized, of higher energy or lower contribution than a user-given threshold.
-It also implements an RMSD sieve, enabling one to filter out similar structures.
-Finally, it lets you calculate theoretical IR, VCD, UV, ECD, Raman, and ROA spectra
-for all conformers or as a population-weighted average and export obtained spectral
-data in one of supported file formats: .txt, .csv, or .xlsx.
+"""Provides a facade-like interface for easy access to ``tesliper``'s functionality.
 
 There are some conventions that are important to note:
 
@@ -26,15 +7,15 @@ There are some conventions that are important to note:
   refers to specific kinds of data as "genres". Genres in code are represented by
   specific strings, used as identifiers. To learn about data genres known to
   ``tesliper``, see documentation for
-  :class:`tesliper.extraction.gaussian_parser.GaussianParser`, which lists them.
+  :class:`.GaussianParser`, which lists them.
 - ``tesliper`` identifies conformers using stem of an extracted file (i.e. its filename
   without extension). When files with identical names are extracted in course of
-  subsequent :meth:`Tesliper.extract` calls or in recursive extraction using
-  ``Tesliper.extract(recursive=True)``, they are treated as data for one conformer. This
-  enables to join data from subsequent calculations steps, e.g. geometry optimization,
-  vibrational spectra simulation, and electronic spectra simulation. Please note that if
-  specific data genre is available from more than one calculation job, only recently
-  extracted values will be stored.
+  subsequent :meth:`.Tesliper.extract` calls or in recursive extraction using
+  ``tesliper_object.extract(recursive=True)``, they are treated as data for one
+  conformer. This enables to join data from subsequent calculations steps, e.g. geometry
+  optimization, vibrational spectra simulation, and electronic spectra simulation.
+  Please note that if specific data genre is available from more than one calculation
+  job, only recently extracted values will be stored.
 - ``tesliper`` was designed to deal with multiple conformers of single molecule and may
   not work properly when used to process data concerning different molecules (i.e.
   having different number of atoms, different number of degrees of freedom, etc.). If
