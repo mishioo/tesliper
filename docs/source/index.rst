@@ -46,17 +46,17 @@ below summarizes other available GUI tools and compares features they offer.
 Among listed ``tesliper`` is the only one that is open source, readily extendible,
 and allows to easily filter parsed data.
 
-.. list-table:: How ``tesliper`` fits into the market?
+.. list-table:: How does ``tesliper`` fit into the market?
    :widths: 23 8 7 10 9 10 9
    :header-rows: 1
    
    *  -
       - Tesliper
-      - SpecDis
-      - CDspecTech
-      - ComputeVOA
-      - GaussView
-      - ChemCraft
+      - SpecDis [1]_
+      - CDspecTech [2]_
+      - ComputeVOA [3]_
+      - GaussView [4]_
+      - ChemCraft [5]_
    *  - Free
       - |check|        
       - |check|          
@@ -142,7 +142,6 @@ and allows to easily filter parsed data.
       - |check|           
       - |check|   
 
-.. TODO: add references to other software
 
 .. toctree::
    :maxdepth: 2
@@ -162,6 +161,18 @@ Indices and tables
 * :ref:`modindex`
 * :ref:`search`
 
+References
+----------
+
+.. [1] **SpecDis**: T. Bruhn, A. Schaumlöffel, Y. Hemberger, G. Pescitelli,
+   *SpecDis version 1.71*, Berlin, Germany, **2017**, http://specdis-software.jimdo.com
+.. [2] **CDspecTech**: C. L. Covington, P. L. Polavarapu, Chirality, **2017**, 29, 5,
+   p. 178, DOI: `10.1002/chir.22691 <https://doi.org/10.1002/chir.22691>`_
+.. [3] **ComputeVOA**: E. Debie, P. Bultinck, L. A. Nafie, R. K. Dukor, BioTools Inc.,
+   Jupiter, FL, **2010**, https://biotools.us/software-2
+.. [4] **GaussView**: R. Dennington, T. A. Keith, J. M. Millam, Semichem Inc.,
+   *GaussView version 6.1*, Shawnee Mission, KS, **2016**
+.. [5] **ChemCraft**: https://www.chemcraftprog.com
 
 .. |check| unicode:: U+2714
 .. |cross| unicode:: U+2718
