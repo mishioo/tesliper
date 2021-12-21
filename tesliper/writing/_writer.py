@@ -1,4 +1,4 @@
-# IMPORTS
+# TODO: module docstring with explanation of Writer subclass registration mechanism
 import logging as lgg
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
@@ -47,7 +47,37 @@ logger.setLevel(lgg.DEBUG)
 _WRITERS: Dict[str, Type["Writer"]] = {}
 
 
-def writer(fmt: str, destination, mode="x", **kwargs) -> "Writer":
+def writer(
+    fmt: str, destination: Union[str, Path], mode: str = "x", **kwargs
+) -> "Writer":
+    """Factory function that returns concrete implementation of :class:`.Writer`
+    subclass, most recently defined for export to *fmt* file format.
+
+    Parameters
+    ----------
+    fmt : str
+        File format, to which export will be done.
+    destination : Union[str, Path]
+        Path to file or direcotry, to which export will be done.
+    mode : str
+        Specifies how writing to file should be handled. Should be one of
+        characters: "a" (append to existing file), "x" (only write if file doesn't
+        exist yet), or "w" (overwrite file if it already exists). Defaults to "x".
+    kwargs
+        Any additional keword arguments will be passed as-is to the constructor of the
+        retrieved :class:`.Writer` subclass.
+
+    Returns
+    -------
+    Writer
+        Initialized :class:`.Writer` subclass most recently defined for export to *fmt*
+        file format.
+
+    Raises
+    ------
+    ValueError
+        If :class:`.Writer` subclass for export to *fmt* file format was not defined.
+    """
     try:
         return _WRITERS[fmt](destination, mode, **kwargs)
     except KeyError:
@@ -56,13 +86,7 @@ def writer(fmt: str, destination, mode="x", **kwargs) -> "Writer":
 
 # CLASSES
 class Writer(ABC):
-    """Base class for writers, that produce single file from multiple conformers.
-
-    Attributes
-    ----------
-    destination
-    mode
-    """
+    """Base class for writers, that produce single file from multiple conformers."""
 
     _header = dict(
         # TODO: add missing headers
