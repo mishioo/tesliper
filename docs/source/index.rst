@@ -1,5 +1,5 @@
-Welcome to tesliper's documentation!
-====================================
+.. image:: /_static/banner.png
+==============================
 
 ``tesliper`` is a package for batch processing of Gaussian output files, focusing on
 extraction and processing of data related to simulation of optical spectra. The software
