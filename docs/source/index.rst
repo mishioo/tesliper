@@ -143,24 +143,6 @@ and allows to easily filter parsed data.
       - |check|   
 
 
-.. toctree::
-   :maxdepth: 2
-   :caption: Contents:
-
-   Home page <self>
-   Installation <installation>
-   Graphical interface <gui>
-   Scripting basics <tutorial>
-   Extending ``tesliper`` <extend>
-   API reference <_autosummary/tesliper>
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
-
 References
 ----------
 
@@ -173,6 +155,36 @@ References
 .. [4] **GaussView**: R. Dennington, T. A. Keith, J. M. Millam, Semichem Inc.,
    *GaussView version 6.1*, Shawnee Mission, KS, **2016**
 .. [5] **ChemCraft**: https://www.chemcraftprog.com
+
+
+.. toctree::
+   :hidden:
+   :caption: Introduction
+
+   Home page <self>
+   Installation <installation>
+
+.. toctree::
+   :hidden:
+   :caption: Tutorials
+
+   Graphical interface <gui>
+   Scripting basics <tutorial>
+   Extending ``tesliper`` <extend>
+
+.. toctree::
+   :hidden:
+   :caption: Reference
+
+   API reference <_autosummary/tesliper>
+
+.. toctree::
+   :hidden:
+   :caption: Appendix
+
+   Index <genindex>
+   Change Log <changelog>
+
 
 .. |check| unicode:: U+2714
 .. |cross| unicode:: U+2718
