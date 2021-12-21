@@ -127,20 +127,6 @@ class Conformers(OrderedDict):
     in this class or by direct changes to :attr:`.kept` attribute. See its
     documentation for more information.
 
-    Parameters
-    ----------
-    *args
-        list of arguments for creation of underlying dictionary
-    allow_data_inconsistency : bool, optional
-        specifies if data inconsistency should be allowed in created DataArray
-        object instances, defaults to False
-    **kwargs
-        list of arbitrary keyword arguments for creation of underlying
-        dictionary
-    primary_genres
-        Class attribute. Data genres considered most important, used as default when
-        checking for conformers completeness (see :meth:`.trim_incomplete` method).
-
     Notes
     -----
     Inherits from collections.OrderedDict.
@@ -151,6 +137,21 @@ class Conformers(OrderedDict):
     )
 
     def __init__(self, *args, allow_data_inconsistency=False, **kwargs):
+        """
+        Parameters
+        ----------
+        *args
+            list of arguments for creation of underlying dictionary
+        allow_data_inconsistency : bool, optional
+            specifies if data inconsistency should be allowed in created DataArray
+            object instances, defaults to False
+        **kwargs
+            list of arbitrary keyword arguments for creation of underlying
+            dictionary
+        primary_genres
+            Class attribute. Data genres considered most important, used as default when
+            checking for conformers completeness (see :meth:`.trim_incomplete` method).
+        """
         self.allow_data_inconsistency = allow_data_inconsistency
         self.kept = []
         self.filenames = []

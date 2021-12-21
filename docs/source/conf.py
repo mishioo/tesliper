@@ -39,6 +39,10 @@ extensions = [
     "sphinx.ext.mathjax",
 ]
 autosummary_generate = True
+autosummary_mock_imports = [
+    "tesliper.gui",  # ignore a gui module, it is not documented
+]
+autoclass_content = "both"  # include __init__ docs
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
@@ -58,7 +62,3 @@ html_theme = "sphinx_rtd_theme"
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ["_static"]
 html_favicon = "../../tesliper/tesliper.ico"
-
-autosummary_mock_imports = [
-    "tesliper.gui",  # ignore a gui module, it is not documented
-]

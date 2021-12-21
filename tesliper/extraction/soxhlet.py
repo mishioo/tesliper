@@ -29,8 +29,7 @@ class Soxhlet:
         extension: Optional[str] = None,
         recursive: bool = False,
     ):
-        """Initialization of Soxhlet object.
-
+        """
         Parameters
         ----------
         path: str or pathlib.Path

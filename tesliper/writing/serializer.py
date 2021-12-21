@@ -45,6 +45,18 @@ class ArchiveWriter:
     def __init__(
         self, destination: Union[str, Path], mode: str = "x", encoding: str = "utf-8"
     ):
+        """
+        Parameters
+        ----------
+        destination : Union[str, Path]
+            Path to target file.
+        mode : str, optional
+            Specifies how writing to file should be handled. Should be one of
+            characters: 'a' (append to existing file), 'x' (only write if file doesn't
+            exist yet), or 'w' (overwrite file if it already exists). Defaults to "x".
+        encoding : str, optional
+            Encoding of the output, by default "utf-8"
+        """
         self.mode = mode
         self.destination = destination
         self.encoding = encoding
@@ -276,6 +288,14 @@ class ArchiveLoader:
     """Class for deserialization of Tesliper objects."""
 
     def __init__(self, source: Union[str, Path], encoding: str = "utf-8"):
+        """
+        Parameters
+        ----------
+        source : Union[str, Path]
+            Path to the source file.
+        encoding : str, optional
+            Source file encoding, by default "utf-8".
+        """
         self.source = source
         self.encoding = encoding
         self.root = None

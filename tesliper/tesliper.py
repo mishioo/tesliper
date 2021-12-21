@@ -176,17 +176,6 @@ class Tesliper:
     >>> energies.filenames
     array(['one', 'two', 'three'], dtype='<U5')
 
-    Parameters
-    ----------
-    input_dir : str or path-like object, optional
-        Path to directory containing files for extraction, defaults to current
-        working directory.
-    output_dir : str or path-like object, optional
-        Path to directory for output files, defaults to current working directory.
-    wanted_files : list of str or list of Path, optional
-        List of files or filenames representing wanted files. If not given, all
-        files are considered wanted. File extensions are ignored.
-
     Attributes
     ----------
     conformers : Conformers
@@ -251,6 +240,18 @@ class Tesliper:
         output_dir: str = ".",
         wanted_files: Optional[Iterable[Union[str, Path]]] = None,
     ):
+        """
+        Parameters
+        ----------
+        input_dir : str or path-like object, optional
+            Path to directory containing files for extraction, defaults to current
+            working directory.
+        output_dir : str or path-like object, optional
+            Path to directory for output files, defaults to current working directory.
+        wanted_files : list of str or list of Path, optional
+            List of files or filenames representing wanted files. If not given, all
+            files are considered wanted. File extensions are ignored.
+        """
         self.conformers = gw.Conformers()
         self.wanted_files = wanted_files
         self.input_dir = input_dir

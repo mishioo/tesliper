@@ -31,16 +31,7 @@ logger.setLevel(lgg.DEBUG)
 
 # CLASSES
 class DataArray(ArrayBase):
-    """Base class for data holding objects.
-
-    Parameters
-    ----------
-    filenames : numpy.ndarray(dtype=str)
-        List of filenames of gaussian output files, from which data were
-        extracted.
-    values : numpy.ndarray(dtype=float)
-        List of appropriate data values.
-    """
+    """Base class for data holding objects."""
 
     # TODO: should have empty associated_genres
     full_name_ref = {}  # TODO: should be protected
@@ -104,15 +95,6 @@ class InfoArray(DataArray):
 class FilenamesArray(DataArray):
     """Special case of DataArray, holds only filenames. *values* property returns
     same as *filenames* and ignores any value given to its setter.
-
-    Parameters
-    ----------
-    genre : str
-        Name of genre, should be 'filenames'.
-    filenames : numpy.ndarray(dtype=str)
-        List of filenames of gaussian output files, from which data were extracted.
-    values : numpy.ndarray(dtype=str)
-        Always returns same as *filenames*.
     """
 
     associated_genres = ("filenames",)
@@ -126,6 +108,16 @@ class FilenamesArray(DataArray):
         values: Any = None,
         allow_data_inconsistency: bool = False,
     ):
+        """
+        Parameters
+        ----------
+        genre : str
+            Name of genre, should be 'filenames'.
+        filenames : numpy.ndarray(dtype=str)
+            List of filenames of gaussian output files, from which data were extracted.
+        values : numpy.ndarray(dtype=str)
+            Always returns same as *filenames*.
+        """
         super().__init__(genre, filenames, values, allow_data_inconsistency)
 
     @property
@@ -149,18 +141,6 @@ class BooleanArray(DataArray):
 
 
 class Energies(FloatArray):
-    """
-    Parameters
-    ----------
-    genre : str
-        genre of energy.
-    filenames : numpy.ndarray(dtype=str)
-        List of filenames of gaussian output files, from which data were
-        extracted.
-    values : numpy.ndarray(dtype=float)
-        Energy value for each conformer.
-    t : int or float
-        Temperature of calculated state in K."""
 
     full_name_ref = dict(
         zpe="Zero-point Energy",
@@ -187,6 +167,19 @@ class Energies(FloatArray):
     def __init__(
         self, genre, filenames, values, t=298.15, allow_data_inconsistency=False
     ):
+        """
+        Parameters
+        ----------
+        genre : str
+            genre of energy.
+        filenames : numpy.ndarray(dtype=str)
+            List of filenames of gaussian output files, from which data were
+            extracted.
+        values : numpy.ndarray(dtype=float)
+            Energy value for each conformer.
+        t : int or float
+            Temperature of calculated state in K.
+        """
         super().__init__(genre, filenames, values, allow_data_inconsistency)
         self.t = t  # temperature in K
 
@@ -307,15 +300,6 @@ class Bands(FloatArray):
     }
     _units = {"freq": "cm^(-1)", "wave": "nm", "ex_en": "eV"}
 
-    def __init__(
-        self,
-        genre,
-        filenames,
-        values,
-        allow_data_inconsistency=False,
-    ):
-        super().__init__(genre, filenames, values, allow_data_inconsistency)
-
     @property
     def freq(self):
         """Values converted to frequencies in cm^(-1).
@@ -423,6 +407,21 @@ class _VibData(SpectralData):
         freq,
         allow_data_inconsistency=False,
     ):
+        """
+        Parameters
+        ----------
+        genre
+            Name of the data genre that *values* represent.
+        filenames
+            Sequence of conformers' identifiers.
+        values
+            Sequence of values for *genre* for each conformer in *filenames*.
+        freq
+            Frequency for each value in each conformer.
+        allow_data_inconsistency
+            Flag signalizing if instance should allow data inconsistency (see
+            :class:`ArrayPropety` for details).
+        """
         super().__init__(genre, filenames, values, allow_data_inconsistency)
         self.freq = freq
 
@@ -813,17 +812,12 @@ class Transitions(DataArray):
         List of ground state electronic subshells, stored as integers assigned to them
         by used quantum computations program. It is a 3-dimensional of shape
         (conformers, bands, max_transitions).
-    ground : numpy.ndarray(dtype=int)
-        List of excited state electronic subshells, stored as integers assigned to them
-        by used quantum computations program. It is a 3-dimensional of shape
-        (conformers, bands, max_transitions).
     genre : str
         Genre of given data.
     allow_data_inconsistency : bool, optional
         Specifies if inconsistency of data should be allowed when creating instance
         of this class and setting it's attributes. Defaults to ``True``, as different
         number of transitions may be contributing to each band.
-
     """
 
     associated_genres = ("transitions",)

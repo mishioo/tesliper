@@ -398,35 +398,6 @@ class ArrayProperty(property):
     inconsistency by defining ``owner.allow_data_inconsistency = True``, non-matching
     shapes will be ignored and jugged arrays will be padded with *fill_value* and stored
     as ``numpy.ma.masked_array``.
-
-    Parameters
-    ----------
-    fget
-        Custom getter for attribute. Default one just returns the stored value.
-    fset
-        Custom setter for attribute. Default one stores validated values in instance's
-        ``__dict__``.
-    fdel
-        Custom deleter for attribute. Deleting attribute is not supported by default.
-    doc
-        Attribute's docstring.
-    dtype
-        Data type of elements of this array-like attribute.
-    check_against
-        Which other instance's attribute should be used as a reference for array's
-        shape. If shape of this attribute and reference attribute's are different, an
-        exception is raised. Only first *check_depth* dimensions are compared.
-    check_depth
-        How many dimensions should be compared when checking shape of the array.
-    fill_value
-        If values are a jagged array and ``instance.allow_data_inconsistency is True``,
-        this value will be passed to ``numpy.ma.masked_array`` constructor as a
-        *fill_value*.
-    fsan
-        Custom sanitizer for attribute. "Sanitizer" is here understood as a function
-        that transforms value received by the setter, before the value is validated
-        (checked for corectness) and stored on the instance. *fsan* should return a
-        sanitized value.
     """
 
     def __init__(
@@ -441,6 +412,37 @@ class ArrayProperty(property):
         fill_value: Any = 0,
         fsan: Optional[Callable[[Sequence], Sequence]] = None,
     ):
+        """
+        Parameters
+        ----------
+        fget
+            Custom getter for attribute. Default one just returns the stored value.
+        fset
+            Custom setter for attribute. Default one stores validated values in
+            instance's ``__dict__``.
+        fdel
+            Custom deleter for attribute. Deleting attribute is not supported by
+            default.
+        doc
+            Attribute's docstring.
+        dtype
+            Data type of elements of this array-like attribute.
+        check_against
+            Which other instance's attribute should be used as a reference for array's
+            shape. If shape of this attribute and reference attribute's are different,
+            an exception is raised. Only first *check_depth* dimensions are compared.
+        check_depth
+            How many dimensions should be compared when checking shape of the array.
+        fill_value
+            If values are a jagged array and ``instance.allow_data_inconsistency is
+            True``, this value will be passed to ``numpy.ma.masked_array`` constructor
+            as a *fill_value*.
+        fsan
+            Custom sanitizer for attribute. "Sanitizer" is here understood as a function
+            that transforms value received by the setter, before the value is validated
+            (checked for corectness) and stored on the instance. *fsan* should return a
+            sanitized value.
+        """
         super().__init__(fget=fget, fset=fset, fdel=fdel, doc=doc)
         self.dtype = dtype
         self.check_against = check_against
@@ -630,6 +632,42 @@ class CollapsibleArrayProperty(ArrayProperty):
         fsan: Optional[Callable[[Sequence], Sequence]] = None,
         strict: bool = False,
     ):
+        """
+        Parameters
+        ----------
+        fget
+            Custom getter for attribute. Default one just returns the stored value.
+        fset
+            Custom setter for attribute. Default one stores validated values in
+            instance's ``__dict__``.
+        fdel
+            Custom deleter for attribute. Deleting attribute is not supported by
+            default.
+        doc
+            Attribute's docstring.
+        dtype
+            Data type of elements of this array-like attribute.
+        check_against
+            Which other instance's attribute should be used as a reference for array's
+            shape. If shape of this attribute and reference attribute's are different,
+            an exception is raised. Only first *check_depth* dimensions are compared.
+        check_depth
+            How many dimensions should be compared when checking shape of the array.
+        fill_value
+            If values are a jagged array and ``instance.allow_data_inconsistency is
+            True``, this value will be passed to ``numpy.ma.masked_array`` constructor
+            as a *fill_value*.
+        fsan
+            Custom sanitizer for attribute. "Sanitizer" is here understood as a function
+            that transforms value received by the setter, before the value is validated
+            (checked for corectness) and stored on the instance. *fsan* should return a
+            sanitized value.
+        strict
+            Boolean flag indicating if :meth:`.check_input` should disallow values that
+            are not all identical. If *strict* is ``True`` it will raise
+            :class:`.InconsistentDataError` when setter is given such values. Defaults
+            to ``False``.
+        """
         self.strict = strict
         super().__init__(
             fget=fget,
@@ -679,7 +717,9 @@ class CollapsibleArrayProperty(ArrayProperty):
         Parameters
         ----------
         instance
+            Instance of owner class.
         values
+            Values to validate.
 
         Returns
         -------
@@ -735,18 +775,6 @@ class ArrayBase:  # TODO: make it ABC
 
     This base class provides the most basic set of attributes, a
     :class:`.DataArray`-like object should implement, listed in the Parameters section.
-
-    Parameters
-    ----------
-    genre
-        Name of the data genre that *values* represent.
-    allow_data_inconsistency
-        Flag signalizing if instance should allow data inconsistency (see
-        :class:`ArrayPropety` for details).
-    filenames
-        Sequence of conformers identifiers.
-    values
-        Sequence of values for *genre* for each conformer in *filenames*.
     """
 
     # TODO: make it an abstract classmethod property
@@ -764,6 +792,19 @@ class ArrayBase:  # TODO: make it ABC
         values: Sequence,
         allow_data_inconsistency: bool = False,
     ):
+        """
+        Parameters
+        ----------
+        genre
+            Name of the data genre that *values* represent.
+        filenames
+            Sequence of conformers' identifiers.
+        values
+            Sequence of values for *genre* for each conformer in *filenames*.
+        allow_data_inconsistency
+            Flag signalizing if instance should allow data inconsistency (see
+            :class:`ArrayPropety` for details).
+        """
         self.genre = genre
         self.allow_data_inconsistency = allow_data_inconsistency
         self.filenames = filenames

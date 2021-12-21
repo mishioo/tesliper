@@ -32,16 +32,6 @@ class _CsvMixin:
     It should be used as a first base class to ensure proper cooperation with other
     base classes. It will pass all given *args and **kwargs to the next base class
     in MRO.
-
-    Parameters
-    ----------
-    dialect: str or csv.Dialect
-        Name of a dialect or csv.Dialect object, which will be used by csv.writer.
-    fmtparams: dict, optional
-        Additional formatting parameters for csv.writer to use.
-        For list of valid parameters consult csv.Dialect documentation.
-    include_header: bool, optional
-        Determines if file should contain a header with column names, True by default.
     """
 
     _known_fmt_params = {
@@ -63,6 +53,19 @@ class _CsvMixin:
         include_header: bool = True,
         **kwargs,
     ):
+        """
+        Parameters
+        ----------
+        dialect: str or csv.Dialect
+            Name of a dialect or :class:`csv.Dialect` object, which will be used by
+            :class:`.csv.writer`.
+        fmtparams: dict, optional
+            Additional formatting parameters for :class:`.csv.writer` to use.
+            For list of valid parameters consult :class:`csv.Dialect` documentation.
+        include_header: bool, optional
+            Determines if file should contain a header with column names, ``True`` by
+            default.
+        """
         self.dialect = dialect
         self.fmtparams = fmtparams or {}
         self.include_header = include_header
