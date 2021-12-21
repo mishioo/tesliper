@@ -15,7 +15,7 @@ FITTINGCRE = re.compile(r"lorentzian|gaussian")
 
 
 def quantity(s: str) -> float:
-    """Convert to float first occurrence of float-looking part of string `s`, ignoring
+    """Convert to float first occurrence of float-looking part of string *s*, ignoring
     anything else. Raise :class:`configparser.ParsingError` if float cannot be found.
 
     Parameters
@@ -36,7 +36,7 @@ def quantity(s: str) -> float:
 
 
 def fitting(s: str) -> Callable:
-    """Get fitting function mentioned in a given string `s`, ignoring anything else.
+    """Get fitting function mentioned in a given string *s*, ignoring anything else.
     Raise :class:`configparser.ParsingError` if known function name cannot be found.
 
     Parameters

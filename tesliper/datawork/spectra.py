@@ -100,11 +100,11 @@ def gaussian(
     ------
     ValueError
         If given width is not greater than zero.
-        If `intensities` and `frequencies` are not of the sane shape."""
+        If *intensities* and *frequencies* are not of the sane shape."""
     if width <= 0:
         raise ValueError("Peak width must be a positive value!")
     if intensities.shape != frequencies.shape:
-        raise ValueError("`intensities` and `frequencies` must be of same shape!")
+        raise ValueError("*intensities* and *frequencies* must be of same shape!")
     if abscissa.size == 0:
         return np.array([])
     sigm = width / 1.4142135623730951  # math.sqrt(2)
@@ -149,11 +149,11 @@ def lorentzian(
     ------
     ValueError
         If given width is not greater than zero.
-        If `intensities` and `frequencies` are not of the same shape."""
+        If *intensities* and *frequencies* are not of the same shape."""
     if width <= 0:
         raise ValueError("Peak width must be a positive value!")
     if intensities.shape != frequencies.shape:
-        raise ValueError("`intensities` and `frequencies` must be of same shape!")
+        raise ValueError("*intensities* and *frequencies* must be of same shape!")
     if abscissa.size == 0:
         return np.array([])
     hwhmsqrd = width ** 2
@@ -205,9 +205,9 @@ def calculate_spectra(
     ------
     ValueError
         If given width is not greater than zero.
-        If `intensities` and `frequencies` are not of the same shape."""
+        If *intensities* and *frequencies* are not of the same shape."""
     if intensities.shape != frequencies.shape:
-        raise ValueError("`intensities` and `frequencies` must be of same shape!")
+        raise ValueError("*intensities* and *frequencies* must be of same shape!")
     if not intensities.size:
         return np.zeros(0)  # return early to avoid (0, N) shape of output array
     spectra = np.zeros([len(frequencies), abscissa.shape[0]])  # template
@@ -219,7 +219,7 @@ def calculate_spectra(
 def calculate_average(
     values: Union[Numbers, np.ndarray], populations: Union[Numbers, np.ndarray]
 ) -> np.ndarray:
-    """Calculates weighted average of `values`, where `populations` are used as
+    """Calculates weighted average of *values*, where *populations* are used as
     weights.
 
     Parameters
@@ -247,7 +247,7 @@ def calculate_average(
             "Exactly one population value for each conformer must be provided."
         )
     if not values.size:
-        return np.zeros([0])  # just return an empty array if `values` is empty
+        return np.zeros([0])  # just return an empty array if *values* is empty
     popsum = populations.sum()
     if not np.isclose(popsum, 1):
         # normalize population data, if needed
@@ -260,24 +260,24 @@ def calculate_average(
 
 
 def idx_offset(a: Numbers, b: Numbers) -> int:
-    """Calculate offset by which `b` should be shifted to best overlap with `a`.
-    Both `a` and `b` should be sets of points, interpreted as spectral data. Returned
-    offset is a number of data points, by which `b` should be moved relative to `a`,
+    """Calculate offset by which *b* should be shifted to best overlap with *a*.
+    Both *a* and *b* should be sets of points, interpreted as spectral data. Returned
+    offset is a number of data points, by which *b* should be moved relative to *a*,
     to get the best overlap of given spectra.
 
     Parameters
     ----------
     a
-        `x` values` of the first spectrum.
+        *x* values` of the first spectrum.
     b
-        `x` values` of the second spectrum.
+        *x* values` of the second spectrum.
 
     Returns
     -------
     int
-        Offset, in number of data points, by which spectrum `b` should be shifted
-        to best match spectrum `a`. Positive value means it should be shifted to the
-        right and negative value means it should be shifted to the left of `a`.
+        Offset, in number of data points, by which spectrum *b* should be shifted
+        to best match spectrum *a*. Positive value means it should be shifted to the
+        right and negative value means it should be shifted to the left of *a*.
 
     Notes
     -----
@@ -323,7 +323,7 @@ def unify_abscissa(
     tuple of np.arrays of numbers
         Spectra, one unchanged and one interpolated, as a tuple of numpy arrays
         of x and y values. I.e. `tuple(ax, ay, new_bx, new_by)` or
-        `tuple(new_ax, new_ay, bx, by)`, depending on values of `upscale` parameter.
+        `tuple(new_ax, new_ay, bx, by)`, depending on values of *upscale* parameter.
     """
     ax, ay, bx, by = (
         np.asanyarray(ax),
@@ -335,7 +335,7 @@ def unify_abscissa(
     if ad == bd:
         return ax, ay, bx, by  # no need to do anything
     elif (np.abs(ad) < np.abs(bd)) ^ upscale:  # xor on booleans
-        # `ad` is smaller than `bd`, but we don't want to upscale or vice-versa
+        # *ad* is smaller than *bd*, but we don't want to upscale or vice-versa
         nbx, nby, nax, nay = unify_abscissa(bx, by, ax, ay, upscale)  # swap spectra
         # but return in the same order as given in parameters
     else:
@@ -385,23 +385,23 @@ def find_offset(
 
 
 def find_scaling(a: Numbers, b: Numbers) -> float:
-    """Find factor by which values `b` should be scaled to best match values `a`.
+    """Find factor by which values *b* should be scaled to best match values *a*.
 
     Parameters
     ----------
     a
-        `x` values` of the first spectrum.
+        *x* values` of the first spectrum.
     b
-        `x` values` of the second spectrum.
+        *x* values` of the second spectrum.
 
     Returns
     -------
     float
-        Scaling factor for `b` values.
+        Scaling factor for *b* values.
 
     Notes
     -----
-    If scaling factor cannot be reasonably given, i.e. when `b` is an empty list
+    If scaling factor cannot be reasonably given, i.e. when *b* is an empty list
     or list of zeros or NaNs, `1.0` is returned.
     """
     scaling = np.mean(np.abs(a)) / np.mean(np.abs(b))
@@ -436,8 +436,8 @@ def convert_band(
     Returns
     -------
     float or np.ndarray
-        Requested representation of bands. If `from_genre` is same as `to_genre`,
-        then simply `value` is returned.
+        Requested representation of bands. If *from_genre* is same as *to_genre*,
+        then simply *value* is returned.
     """
     if from_genre == to_genre:
         return value

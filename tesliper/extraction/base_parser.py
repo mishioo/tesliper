@@ -110,8 +110,8 @@ class Parser(ABC):
     def add_state(self, state: Callable, name: str = "", trigger: str = ""):
         """Register callable as parser's state.
 
-        This method registers a callable under `name` key in :attr:`.states`
-        dictionary. If `trigger` parameter is given, it is registered under the
+        This method registers a callable under *name* key in :attr:`.states`
+        dictionary. If *trigger* parameter is given, it is registered under the
         same key in :attr:`.triggers` dictionary.
 
         Parameters
@@ -252,9 +252,9 @@ class Parser(ABC):
         >>> @Parser.state(trigger='triggering regex')
         ... def method(self, arg): pass
 
-        This function marks a method `state` as parser's state by defining `is_state`
-        attribute on said method and setting its values to ``True``. If `trigger` is
-        given, it is stored in method's attribute `trigger`. During instantiation of
+        This function marks a method *state* as parser's state by defining ``is_state``
+        attribute on said method and setting its values to ``True``. If *trigger* is
+        given, it is stored in method's attribute *trigger*. During instantiation of
         :class:`.Parser`'s subclass, methods marked as states are registered under
         ``method.__name__`` key in its :attr:`.states` (and possibly :attr:`.triggers`)
         attribute. It is meaningless if used outside of :class:`.Parser`'s subclass
@@ -278,7 +278,7 @@ class Parser(ABC):
         TypeError
             if no arguments given
         InvalidStateError
-            if `state` argument is not callable
+            if *state* argument is not callable
         """
         if callable(state):
             state.is_state = True

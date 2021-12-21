@@ -27,7 +27,7 @@ a bit easier and definitely more readable.
 
 
 def symbol_of_element(element: Union[int, str]) -> str:
-    """Returns symbol of given element. If `element` is a symbol of an element
+    """Returns symbol of given element. If *element* is a symbol of an element
     already, it is capitalized and returned (so input's letters case doesn't
     matter).
 
@@ -44,11 +44,11 @@ def symbol_of_element(element: Union[int, str]) -> str:
     Raises
     ------
     ValueError
-        when `element` is not a whole number or cannot be converted to integer
+        when *element* is not a whole number or cannot be converted to integer
     TypeError
-        if `element` cannot be interpreted as integer
+        if *element* cannot be interpreted as integer
     InvalidElementError
-        if `element` is not an atomic number of any known element"""
+        if *element* is not an atomic number of any known element"""
     stringified = str(element).capitalize()
     if stringified in atomicnums:
         return stringified
@@ -71,7 +71,7 @@ def symbol_of_element(element: Union[int, str]) -> str:
 
 
 def atomic_number(element: Union[int, str]) -> int:
-    """Returns atomic number of given element. If `element` is an atomic number
+    """Returns atomic number of given element. If *element* is an atomic number
     already, it is returned without change.
 
     Parameters
@@ -88,9 +88,9 @@ def atomic_number(element: Union[int, str]) -> int:
     Raises
     ------
     InvalidElementError
-        when `element` cannot be converted to element's atomic number
+        when *element* cannot be converted to element's atomic number
     TypeError
-        if `element` cannot be interpreted as integer or string"""
+        if *element* cannot be interpreted as integer or string"""
     stringified = str(element).capitalize()
     if stringified in atomicnums:
         return atomicnums[stringified]
@@ -103,7 +103,7 @@ def atomic_number(element: Union[int, str]) -> int:
 
 
 def validate_atoms(atoms: Union[int, str, List[Union[int, str]]]) -> List[int]:
-    """Checks if given `atoms` represent a list of valid atom identifiers
+    """Checks if given *atoms* represent a list of valid atom identifiers
     (symbols or atomic numbers). Returns list of atomic numbers of those atoms
     if it does or rises an exception if it doesn't.
 
@@ -120,7 +120,7 @@ def validate_atoms(atoms: Union[int, str, List[Union[int, str]]]) -> List[int]:
     Raises
     ------
     InvalidElementError
-        if `atoms` cannot be interpreted as list of atoms' identifiers"""
+        if *atoms* cannot be interpreted as list of atoms' identifiers"""
     if isinstance(atoms, (str, np.str_)):
         atoms = atoms.split()
     elif isinstance(atoms, (int, np.integer, float, np.float64)):

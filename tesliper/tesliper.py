@@ -470,7 +470,7 @@ class Tesliper:
 
         Uses :attr:`Tesliper.input_dir` as source directory and
         :attr:`Tesliper.wanted_files` list of chosen files if these are not explicitly
-        given as `path` and `wanted_files` parameters.
+        given as *path* and *wanted_files* parameters.
 
         Parameters
         ----------

@@ -302,7 +302,7 @@ class Writer(ABC):
             list of :class:`.DataArray` objects of this type}.
         extras : dict
             Spacial-case genres: extra information used by some writer methods
-            when exporting data. Available {key: value} pairs (if given in `data`) are:
+            when exporting data. Available {key: value} pairs (if given in *data*) are:
 
             | corrections: dict of {"energy genre": :class:`.FloatArray`},
             | frequencies: :class:`.Bands`,
@@ -466,7 +466,7 @@ class Writer(ABC):
         ----------
         filenames: list of str
             list of source filenames, used as value for `${conf}` placeholder
-            in `name_template`
+            in *name_template*
         template_params : dict
             Dictionary of {identifier: value} for `.make_name` method.
         open_params : dict, optional
@@ -531,7 +531,7 @@ class Writer(ABC):
     ) -> None:
         if len(data) > 1:
             raise ValueError(
-                "Got multiple `Transitions` objects, but can write contents "
+                "Got multiple *Transitions* objects, but can write contents "
                 "of only one such object for .write() call."
             )
         self.transitions(transitions=data[0], wavelengths=extras["wavelengths"])
@@ -539,7 +539,7 @@ class Writer(ABC):
     def _geometry_handler(self, data: List[Geometry], extras: Dict[str, Any]) -> None:
         if len(data) > 1:
             raise ValueError(
-                "Got multiple `Geometry` objects, but can write contents "
+                "Got multiple *Geometry* objects, but can write contents "
                 "of only one such object for .write() call."
             )
         self.geometry(

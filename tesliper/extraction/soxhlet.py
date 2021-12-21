@@ -42,11 +42,11 @@ class Soxhlet:
         extension: str, optional
             A string representing file extension of output files, that should be
             parsed. If omitted, Soxhlet will try to resolve it based on
-            contents of directory given in `path` parameter.
+            contents of directory given in *path* parameter.
         recursive : bool
-            If True, given `path` will be searched recursively, extracting data from
+            If True, given *path* will be searched recursively, extracting data from
             subdirectories, otherwise subdirectories are ignored and only files
-            placed directly in `path` will be parsed.
+            placed directly in *path* will be parsed.
 
         Raises
         ------
@@ -76,7 +76,7 @@ class Soxhlet:
     @property
     def all_files(self):
         """List of all files present in directory bounded to Soxhlet instance.
-        If its `recursive` attribute is ``True``, also files from subdirectories
+        If its *recursive* attribute is ``True``, also files from subdirectories
         are included."""
         iterable = self.path.iterdir() if not self.recursive else self.path.rglob("*")
         return [v for v in iterable if v.is_file()]
@@ -85,7 +85,7 @@ class Soxhlet:
     def files(self):
         """List of all wanted files available in given directory. If wanted_files
         is not specified, evaluates to all files in said directory. If Soxhlet
-        object's `recursive` attribute is ``True``, also files from subdirectories
+        object's *recursive* attribute is ``True``, also files from subdirectories
         are included."""
         wanted_empty = not self.wanted_files
         return [
@@ -148,13 +148,13 @@ class Soxhlet:
         Raises
         ------
         ValueError
-            If parameter `ext` is not given and attribute :attr:`.extension` in
+            If parameter *ext* is not given and attribute :attr:`.extension` in
             ``None``.
         """
         ext = ext if ext is not None else self.extension
         if ext is None:
             raise ValueError(
-                "Parameter `ext` must be given if attribute `extension` is `None`."
+                "Parameter *ext* must be given if attribute *extension* is *None*."
             )
         filtered = [f for f in self.files if f.name.endswith(ext)]
         return filtered
@@ -225,7 +225,7 @@ class Soxhlet:
 
     def load_parameters(self, source: Optional[Union[str, Path]] = None) -> dict:
         """Parses setup file specifying spectra calculation parameters and returns
-        dict with extracted values. If `source` file is not given, file named
+        dict with extracted values. If *source* file is not given, file named
         "setup.txt" or "setup.cfg" (with any prefix, case-insensitive) will be searched
         for in the Soxhlet's directory (recursively if it was requested on object's
         creation). If no or multiple such files is found, exception will be raised.

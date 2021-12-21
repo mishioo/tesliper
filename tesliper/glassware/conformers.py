@@ -123,7 +123,7 @@ class Conformers(OrderedDict):
     use of :meth:`.arrayed` method. It provides some control over this transformation,
     especially in terms of including/excluding particular conformers' data
     on creation of new DataArray instance. This type of control is here called
-    trimming. Trimming can be achieved by use of various `trim` methods defined
+    trimming. Trimming can be achieved by use of various *trim* methods defined
     in this class or by direct changes to :attr:`.kept` attribute. See its
     documentation for more information.
 
@@ -521,15 +521,15 @@ class Conformers(OrderedDict):
     ) -> None:
         """Mark incomplete conformers as "not kept".
 
-        Conformers that does not contain one or more data genres specified as `wanted`
-        will be marked as "not kept". If `wanted` parameter is not given, it evaluates
-        to :attr:`.primary_genres`. If no conformer contains all `wanted` genres,
+        Conformers that does not contain one or more data genres specified as *wanted*
+        will be marked as "not kept". If *wanted* parameter is not given, it evaluates
+        to :attr:`.primary_genres`. If no conformer contains all *wanted* genres,
         conformers that match the specification most closely are kept. The "closeness"
-        is defined by number of conformer's genres matching `wanted` genres in the first
-        place (the more, the better) and the position of particular genre in `wanted`
+        is defined by number of conformer's genres matching *wanted* genres in the first
+        place (the more, the better) and the position of particular genre in *wanted*
         list in the second place (the closer to the beginning, the better). This
         "match closest" behaviour may be turned off by setting parameter
-        `strict` to ``True``. In such case, only conformers containing all `wanted`
+        *strict* to ``True``. In such case, only conformers containing all *wanted*
         genres will be kept.
 
         Parameters
@@ -538,7 +538,7 @@ class Conformers(OrderedDict):
             List of data genres used as completeness reference.
             If not given, evaluates to :attr:`.primary_genres`.
         strict
-            Indicates if all `wanted` genres must be present in the kept conformers
+            Indicates if all *wanted* genres must be present in the kept conformers
             (``strict=True``) or if "match closest" mechanism should be used
             as a fallback (``strict=False``, this is the default).
 
@@ -574,8 +574,8 @@ class Conformers(OrderedDict):
                 self._kept[index] = False
 
     def trim_non_matching_stoichiometry(self, wanted: Optional[str] = None) -> None:
-        """Mark all conformers with stoichiometry other than `wanted` as "not kept".
-        If not given, `wanted` evaluates to the most common stoichiometry.
+        """Mark all conformers with stoichiometry other than *wanted* as "not kept".
+        If not given, *wanted* evaluates to the most common stoichiometry.
 
         Parameters
         ----------
@@ -672,8 +672,8 @@ class Conformers(OrderedDict):
         attribute: str = "values",
     ) -> None:
         """Marks as "not kept" all conformers, which numeric value of data
-        of specified genre is outside of the range specified by `minimum`
-        and `maximum` values.
+        of specified genre is outside of the range specified by *minimum*
+        and *maximum* values.
 
         Parameters
         ----------
@@ -682,26 +682,26 @@ class Conformers(OrderedDict):
             minimum and maximum values.
         minimum
             Minimal accepted value - every conformer, which genre value evaluates
-            to less than `minimum` will be marked as "not kept".
+            to less than *minimum* will be marked as "not kept".
             Defaults to ``float(-inf)``.
         maximum
             Maximal accepted value - every conformer, which genre value evaluates
-            to more than `maximum` will be marked as "not kept".
+            to more than *maximum* will be marked as "not kept".
             Defaults to ``float(inf)``.
         attribute
-            Attribute of DataArray of specified `genre` that contains one-dimensional
+            Attribute of DataArray of specified *genre* that contains one-dimensional
             array of numeric values. defaults to `"values"`.
 
         Raises
         ------
         AttributeError
-            If DataArray associated with `genre` genre has no attribute `attribute`.
+            If DataArray associated with *genre* genre has no attribute *attribute*.
         ValueError
             If data retrieved from specified genre's attribute is not in the form of
             one-dimensional array.
         TypeError
             If comparision cannot be made between elements of specified genre's
-            attribute and `minimum` or `maximum` values.
+            attribute and *minimum* or *maximum* values.
 
         Notes
         -----
@@ -739,9 +739,9 @@ class Conformers(OrderedDict):
     ) -> None:
         """Marks as "not kept" all conformers, that are not identical, according
         to provided RMSD threshold and energy difference. Conformers, which energy
-        difference (dE) is higher than given `window_size` are always treated as
-        different, while those with dE smaller than `window_size` and RMSD value
-        smaller than given `threshold` are considered identical. From two identical
+        difference (dE) is higher than given *window_size* are always treated as
+        different, while those with dE smaller than *window_size* and RMSD value
+        smaller than given *threshold* are considered identical. From two identical
         conformers, the one with lower energy is "kept", and the other is discarded
         (marked as "not kept").
 
@@ -749,7 +749,7 @@ class Conformers(OrderedDict):
         -----
         RMSD threshold and size of the energy window should be chosen depending on the
         parameters of conformers' set: number of conformers, size of the conformer,
-        its lability, etc. However, `threshold` of 0.5 angstrom and `window_size`
+        its lability, etc. However, *threshold* of 0.5 angstrom and *window_size*
         of 5 to 10 kcal/mol is a good place to start if in doubt.
 
         Parameters

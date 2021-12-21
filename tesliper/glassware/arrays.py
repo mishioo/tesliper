@@ -102,8 +102,8 @@ class InfoArray(DataArray):
 
 
 class FilenamesArray(DataArray):
-    """Special case of DataArray, holds only filenames. `values` property returns
-    same as `filenames` and ignores any value given to its setter.
+    """Special case of DataArray, holds only filenames. *values* property returns
+    same as *filenames* and ignores any value given to its setter.
 
     Parameters
     ----------
@@ -112,7 +112,7 @@ class FilenamesArray(DataArray):
     filenames : numpy.ndarray(dtype=str)
         List of filenames of gaussian output files, from which data were extracted.
     values : numpy.ndarray(dtype=str)
-        Always returns same as `filenames`.
+        Always returns same as *filenames*.
     """
 
     associated_genres = ("filenames",)
@@ -267,7 +267,7 @@ class Averagable:
         Returns
         -------
         DataArray
-            New instance of DataArray's subclass, on which `average` method was
+            New instance of DataArray's subclass, on which *average* method was
             called, containing averaged values.
 
         Raises
@@ -881,7 +881,7 @@ class Transitions(DataArray):
 
     @property
     def coefficients(self) -> np.ndarray:
-        """Coefficients of each transition, alias for `values`."""
+        """Coefficients of each transition, alias for *values*."""
         return self.values
 
     @coefficients.setter
@@ -919,7 +919,7 @@ class Transitions(DataArray):
         indices = self.indices_highest
         # could be also achieved by the following:
         # np.take_along_axis(values, indices[..., np.newaxis], axis=2).squeeze(axis=2)
-        # but indexing is much quicker, once `indices` is established
+        # but indexing is much quicker, once *indices* is established
         return (
             self.ground[indices],
             self.excited[indices],

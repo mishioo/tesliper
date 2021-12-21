@@ -280,7 +280,7 @@ class Spectra(SingleSpectrum):
     ) -> None:
         """Establishes a scaling factor to best match a scale of the *spectrum* values.
         An average spectrum is calculated prior to calculating the factor.
-        If `average_by` is given, it is used to average by population of each conformer.
+        If *average_by* is given, it is used to average by population of each conformer.
         Otherwise an arithmetic average of spectra is calculated, which may lead
         to inaccurate results.
 

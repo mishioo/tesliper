@@ -70,7 +70,7 @@ class XlsxWriter(Writer):
         """Writes summarized information from multiple :class:`.Energies` objects to
         xlsx file. Creates a worksheet with energy values and calculated populations for
         each energy object given, as well as number of imaginary frequencies and
-        stoichiometry of conformers if `frequencies` and `stoichiometry` are provided,
+        stoichiometry of conformers if *frequencies* and *stoichiometry* are provided,
         respectively.
 
         Parameters

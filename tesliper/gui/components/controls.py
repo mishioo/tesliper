@@ -1281,11 +1281,11 @@ class ExportData(ttk.LabelFrame):
     def _exec_save(self, categories, fmt, mode):
         """Executes save command, calling appropriate "export" methods of Tesliper
         instance. Returns list of genres' categories, for which the associated method
-        raised `FileExistsError`.
+        raised ``FileExistsError``.
 
-        Execution is a little different, if `fmt` is "xlsx", as only one file is
-        produced for the whole batch: if `FileExistsError` is raised on first category,
-        this method returns `["xlsx"]` and ignores the rest of `categories`.
+        Execution is a little different, if *fmt* is "xlsx", as only one file is
+        produced for the whole batch: if ``FileExistsError`` is raised on first
+        category, this method returns `["xlsx"]` and ignores the rest of *categories*.
         """
         savers = []
         for thing, genres in categories.items():
