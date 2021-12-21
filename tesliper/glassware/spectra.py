@@ -1,5 +1,7 @@
+"""Objects representing spectra."""
+
 import logging as lgg
-from typing import Dict, Optional, Union
+from typing import Dict, Optional, Sequence, Union
 
 import numpy as np
 
@@ -13,6 +15,9 @@ logger = lgg.getLogger(__name__)
 
 
 class SingleSpectrum:
+    """Represents a single spectrum: experimental, averaged from set of conformers, or
+    calculated for only one conformer.
+    """
 
     _vibrational_units = {
         "width": "cm-1",
@@ -51,16 +56,42 @@ class SingleSpectrum:
 
     def __init__(
         self,
-        genre,
-        values,
-        abscissa,
-        width=0.0,
-        fitting="n/a",
-        scaling=1.0,
-        offset=0.0,
-        filenames=None,
-        averaged_by=None,
+        genre: str,
+        values: Sequence[float],
+        abscissa: Sequence[float],
+        width: float = 0.0,
+        fitting: str = "n/a",
+        scaling: float = 1.0,
+        offset: float = 0.0,
+        filenames: Optional[Sequence[str]] = None,
+        averaged_by: Optional[str] = None,
     ):
+        """
+        Parameters
+        ----------
+        genre : str
+            Name of data genre that this object represents.
+        values : Sequence[float]
+            List of intensity values for each point on the x-axis.
+        abscissa : Sequence[float]
+            List of x-axis values.
+        width : float, optional
+            Full width at half maximum used to calculate spectrum, if applies. Provided
+            for the record only, by default 0.0.
+        fitting : str, optional
+            Name of the fitting function used to calculate spectrum, if applies.
+            Provided for the record only, by default "n/a".
+        scaling : float, optional
+            Multiplyier for correction of signal intensity, by default 1.0.
+        offset : float, optional
+            Correction of the spectrum's shift. Positive value indicates a bathochromic
+            shift, negative value indicates a hypsochromic shift. By default 0.0.
+        filenames : Optional[Sequence[str]], optional
+            List of identifiers of conformers that were used to calculate average
+            spectrum, if applies.
+        averaged_by : Optional[str], optional
+            Energies genre used to calculate average spectrum, if applies.
+        """
         self.genre = genre
         self.filenames = [] if filenames is None else filenames
         self.averaged_by = averaged_by
@@ -85,16 +116,17 @@ class SingleSpectrum:
 
     @property
     def units(self) -> Dict[str, str]:
-        """Units in which spectral data is stored. It provides a unit for `.width`,
-        `.start`, `.stop`, `.step`, `.x`, and `.y`. `.abscissa` and `.values` are
-        stored in the same units as `.x` and `.y` respectively.
+        """Units in which spectral data is stored. It provides a unit for
+        :attr:`.width`, :attr:`.start`, :attr:`.stop`, :attr:`.step`, :attr:`.x`, and
+        :attr:`.y`. :attr:`.abscissa` and :attr:`.values` are stored in the same units
+        as :attr:`.x` and :attr:`.y` respectively.
         """
         return self._units[self.genre]
 
     @property
     def scaling(self) -> Union[int, float]:
         """A factor for correcting the scale of spectra. Setting it to new value changes
-        the `y` attribute as well. It should be an `int` or `float`.
+        the :attr:`.y` attribute as well. It should be an ``int`` or ``float``.
         """
         return vars(self)["scaling"]
 
@@ -105,8 +137,10 @@ class SingleSpectrum:
 
     @property
     def offset(self) -> Union[int, float]:
-        """A factor for correcting the shift of spectra. Setting it to new value changes
-        the `x` attribute as well. It should be an `int` or `float`.
+        """A factor for correcting the shift of spectra. Positive value indicates a
+        bathochromic shift, negative value indicates a hypsochromic shift. Setting
+        it to new value changes the :attr:`.x` attribute as well. It should be an
+        ``int`` or ``float``.
         """
         return vars(self)["offset"]
 
@@ -117,32 +151,34 @@ class SingleSpectrum:
 
     @property
     def x(self) -> np.ndarray:
-        """Spectra's x-values corrected by adding its `.offset` to `.abscissa`."""
+        """Spectra's x-values corrected by adding its :attr:`.offset` to
+        :attr:`.abscissa`."""
         return vars(self)["x"]
 
     @property
     def y(self) -> np.ndarray:
-        """Spectra's y-values corrected by multiplying its `.values` by `.scaling`."""
+        """Spectra's y-values corrected by multiplying its :attr:`.values` by
+        :attr:`.scaling`."""
         return vars(self)["y"]
 
     def scale_to(self, spectrum: "SingleSpectrum") -> None:
-        """Establishes a scaling factor to best match a scale of the `spectrum` values.
+        """Establishes a scaling factor to best match a scale of the *spectrum* values.
 
         Parameters
         ----------
         spectrum : SingleSpectrum
-            This spectrum's y-axis values will be treated as a reference. If `spectrum`
+            This spectrum's y-axis values will be treated as a reference. If *spectrum*
             has its own scaling factor, it will be taken into account.
         """
         self.scaling = dw.find_scaling(spectrum.y, self.values)
 
     def shift_to(self, spectrum: "SingleSpectrum") -> None:
-        """Establishes an offset factor to best match given `spectrum`.
+        """Establishes an offset factor to best match given *spectrum*.
 
         Parameters
         ----------
         spectrum : SingleSpectrum
-            This spectrum will be treated as a reference. If `spectrum`
+            This spectrum will be treated as a reference. If *spectrum*
             has its own offset factor, it will be taken into account.
         """
         self.offset = dw.find_offset(spectrum.x, spectrum.y, self.abscissa, self.values)
@@ -152,6 +188,7 @@ class SingleSpectrum:
 
 
 class Spectra(SingleSpectrum):
+    """Represents a collection of spectra calculated for a number of conformers."""
 
     filenames = ArrayProperty(check_against=None, dtype=str)
     abscissa = ArrayProperty(check_against=None)
@@ -159,16 +196,43 @@ class Spectra(SingleSpectrum):
 
     def __init__(
         self,
-        genre,
-        filenames,
-        values,
-        abscissa,
-        width=0.0,
-        fitting="n/a",
-        scaling=1.0,
-        offset=0.0,
-        allow_data_inconsistency=False,
+        genre: str,
+        filenames: Sequence[str],
+        values: Sequence[Sequence[float]],
+        abscissa: Sequence[float],
+        width: float = 0.0,
+        fitting: str = "n/a",
+        scaling: float = 1.0,
+        offset: float = 0.0,
+        allow_data_inconsistency: bool = False,
     ):
+        """
+        Parameters
+        ----------
+        genre : str
+            Name of data genre that this object represents.
+        filenames : Optional[Sequence[str]], optional
+            List of conformers' identifiers that were used to calculate spectra.
+        values : Sequence[float]
+            List of intensity values for each point on the x-axis.
+        abscissa : Sequence[float]
+            List of x-axis values.
+        width : float, optional
+            Full width at half maximum used to calculate spectra. Provided
+            for the record only, by default 0.0.
+        fitting : str, optional
+            Name of the fitting function used to calculate spectra.
+            Provided for the record only, by default "n/a".
+        scaling : float, optional
+            Multiplyier for correction of signal intensity, by default 1.0.
+        offset : float, optional
+            Correction of the spectra's shift. Positive value indicates a bathochromic
+            shift, negative value indicates a hypsochromic shift. By default 0.0.
+        allow_data_inconsistency : bool, optional
+            Flag signalizing if instance should allow data inconsistency (see
+            :class:`.ArrayPropety` for details).
+        """
+
         self.allow_data_inconsistency = allow_data_inconsistency
         SingleSpectrum.__init__(
             self, genre, values, abscissa, width, fitting, scaling, offset, filenames
@@ -180,10 +244,10 @@ class Spectra(SingleSpectrum):
 
         Parameters
         ----------
-        energies : Energies object instance
-            Object with populations and type attributes containing
-            respectively: list of populations values as numpy.ndarray and
-            string specifying energy type.
+        energies : Energies
+            Object with ``populations`` and ``genre`` attributes containing
+            respectively: list of populations values as ``numpy.ndarray`` and
+            string specifying energy genre.
 
         Returns
         -------
@@ -214,7 +278,7 @@ class Spectra(SingleSpectrum):
         spectrum: SingleSpectrum,
         average_by: Optional["tesliper.glassware.Energies"] = None,
     ) -> None:
-        """Establishes a scaling factor to best match a scale of the `spectrum` values.
+        """Establishes a scaling factor to best match a scale of the *spectrum* values.
         An average spectrum is calculated prior to calculating the factor.
         If `average_by` is given, it is used to average by population of each conformer.
         Otherwise an arithmetic average of spectra is calculated, which may lead
@@ -223,7 +287,7 @@ class Spectra(SingleSpectrum):
         Parameters
         ----------
         spectrum : SingleSpectrum
-            This spectrum's y-axis values will be treated as a reference. If `spectrum`
+            This spectrum's y-axis values will be treated as a reference. If *spectrum*
             has its own scaling factor, it will be taken into account.
         average_by : Energies, optional
             Energies object, used to calculate average spectrum prior to calculating
@@ -248,16 +312,16 @@ class Spectra(SingleSpectrum):
         spectrum: SingleSpectrum,
         average_by: Optional["tesliper.glassware.Energies"] = None,
     ) -> None:
-        """Establishes an offset factor to best match given `spectrum`.
+        """Establishes an offset factor to best match given *spectrum*.
         An average spectrum is calculated prior to calculating the factor.
-        If `average_by` is given, it is used to average by population of each conformer.
+        If *average_by* is given, it is used to average by population of each conformer.
         Otherwise an arithmetic average of spectra is calculated, which may lead
         to inaccurate results.
 
         Parameters
         ----------
         spectrum : SingleSpectrum
-            This spectrum will be treated as a reference. If `spectrum`
+            This spectrum will be treated as a reference. If *spectrum*
             has its own offset factor, it will be taken into account.
         average_by : Energies, optional
             Energies object, used to calculate average spectrum prior to calculating
