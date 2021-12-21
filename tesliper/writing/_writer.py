@@ -58,15 +58,6 @@ def writer(fmt: str, destination, mode="x", **kwargs) -> "Writer":
 class Writer(ABC):
     """Base class for writers, that produce single file from multiple conformers.
 
-    Parameters
-    ----------
-    destination: str or pathlib.Path
-        File, to which generated files should be written.
-    mode: str
-        Specifies how writing to file should be handled. Should be one of characters:
-         "a" (append to existing file); "x" (only write if file does'nt exist yet);
-         or "w" (overwrite file if it already exists). Defaults to "x".
-
     Attributes
     ----------
     destination
@@ -228,6 +219,16 @@ class Writer(ABC):
         _WRITERS[cls.extension] = cls
 
     def __init__(self, destination: Union[str, Path], mode: str = "x"):
+        """
+        Parameters
+        ----------
+        destination: str or pathlib.Path
+            Directory, to which generated files should be written.
+        mode: str
+            Specifies how writing to file should be handled. Should be one of
+            characters: 'a' (append to existing file), 'x' (only write if file doesn't
+            exist yet), or 'w' (overwrite file if it already exists).
+        """
         self.mode = mode
         self.destination = destination
         self._handle = None

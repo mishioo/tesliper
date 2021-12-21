@@ -1,3 +1,4 @@
+"""Serialization and deserialization of :class:`.Tesliper` objects."""
 import json
 import logging
 import zipfile
@@ -16,7 +17,8 @@ logger = logging.getLogger(__name__)
 class ArchiveWriter:
     """Class for serialization of Tesliper objects.
 
-    Structure of the produced archive:
+    Structure of the produced archive::
+
     .
     ├───arguments: {input_dir=str, output_dir=str, wanted_files=[str]}
     ├───parameters: {"ir": {params}, ..., "roa": {params}}

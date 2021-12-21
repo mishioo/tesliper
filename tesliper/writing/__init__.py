@@ -1,3 +1,4 @@
+"""Objects for data serialization."""
 from ._writer import Writer, writer
 from .csv_writer import CsvWriter
 from .gjf_writer import GjfWriter

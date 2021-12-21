@@ -1,9 +1,9 @@
-# IMPORTS
+"""Export of Gaussian input files (.gjf) for setting up new calculation step."""
 import logging
 from itertools import cycle
 from pathlib import Path
 from string import Template
-from typing import Iterable, List, Sequence, TextIO, Union
+from typing import Dict, Iterable, List, Optional, Sequence, TextIO, Union
 
 from ..datawork.atoms import symbol_of_element
 from ..glassware import Geometry, IntegerArray
@@ -22,7 +22,7 @@ def _format_coordinates(coords: Sequence[Sequence[float]], atoms: Sequence[int])
 
 # CLASSES
 class GjfWriter(Writer):
-    """"""
+    """Generates Gaussian input files for each conformer given."""
 
     # TODO: Add per-file parametrization of link0 commands
 
@@ -50,11 +50,35 @@ class GjfWriter(Writer):
         self,
         destination: Union[str, Path],
         mode: str = "x",
-        link0: dict = None,
-        route: Union[str, List[str]] = "",
+        link0: Optional[Dict[str, Union[str, bool]]] = None,
+        route: str = "",
         comment: str = "No information provided.",
         post_spec: str = "",
     ):
+        """
+        Parameters
+        ----------
+        destination: str or pathlib.Path
+            Directory, to which generated files should be written.
+        mode: str, optional
+            Specifies how writing to file should be handled. Should be one of
+            characters: "a" (append to existing file); "x" (only write if file doesn't
+            exist yet); or "w" (overwrite file if it already exists). Defaults to "x".
+        link0 : Dict[str, Union[str, bool]], optional
+            Link0 commands that should be included in generated files, as a dictionary
+            of {"command": "value"}. Refer to :attr:`link0` for more information. If
+            omitted, no link0 commands are added.
+        route : str
+            Calculation directives for Gaussan, refer to the Gaussian documentation for
+            information on how to construct the calculations route.
+        comment : str, optional
+            Additional text, describing the calculations, by default "No information
+            provided."
+        post_spec : str, optional
+            Additional specification written after the molecule specification, written
+            to generated files as provided by the user (you need to take care of line
+            breaks). If omitted, no additional specification is added.
+        """
         super().__init__(destination=destination, mode=mode)
         self.link0 = link0 or {}
         self.route = route
@@ -68,6 +92,24 @@ class GjfWriter(Writer):
         multiplicity: Union[IntegerArray, Sequence[int], int, None] = None,
         name_template: Union[str, Template] = "${conf}.${ext}",
     ):
+        """Write given conformers' geometries to multiple Gaussian input files.
+
+        Parameters
+        ----------
+        geometry : Geometry
+            :class:`.Geometry` object containing data for each confomer that should be
+            exported as Gaussian input file.
+        charge : Union[IntegerArray, Sequence[int], int, None], optional
+            Molecule's charge for each conformer. May be a sequence of values or one
+            value that will be repeated for each conformer. By default 0 for each.
+        multiplicity : Union[IntegerArray, Sequence[int], int, None], optional
+            Molecule's multiplicity for each conformer. May be a sequence of values or
+            one value that will be repeated for each conformer. By default 1 for each.
+        name_template : Union[str, Template], optional
+            Template that will be used to generate filenames, by default
+            "${conf}.${ext}". Refer to :meth:`.make_name` documentation for details on
+            supported placeholders.
+        """
         geom = geometry.values
         atoms = cycle(geometry.molecule_atoms)
         try:
@@ -118,11 +160,30 @@ class GjfWriter(Writer):
         file.write("\n" * self.empty_lines_at_end)
 
     @property
-    def link0(self):
+    def link0(self) -> Dict[str, Union[str, bool]]:
+        """Link0 commands, in a form of {"command": "value"}, that will be placed in the
+        beginning of each Gaussian input file created. If anny *command* is an unknown
+        keword, an exception will be raised. Accepted *command* keywords are as follows:
+
+        :Mem: str specifying required memory
+        :Chk: str with file path
+        :OldChk: str with file path
+        :SChk: str with file path
+        :RWF: str with file path
+        :OldMatrix: str with file path
+        :OldRawMatrix: str with file path
+        :Int: str with spec
+        :D2E: str with spec
+        :KJob: str with link number and, optionally, space-separated number
+        :Save: boolean
+        :ErrorSave: boolean
+        :NoSave: boolean, same as ErrorSave
+        :Subst: str with link number and space-separated file path
+        """
         return self._link0
 
     @link0.setter
-    def link0(self, commands):
+    def link0(self, commands: Dict[str, Union[str, bool]]):
         unknown = {k for k in commands if k.lower() not in self._link0_commands}
         if unknown:
             raise ValueError(f"Unknown link 0 commands provided: {', '.join(unknown)}.")
@@ -130,6 +191,11 @@ class GjfWriter(Writer):
 
     @property
     def route(self) -> str:
+        """Also known as *# lines*, specifies desired calculation type, model chemistry,
+        and other options for Gaussian. If pound sign is missing, it is added in the
+        beginning. For supported keywords and syntax refer to the Gaussian's
+        documentation.
+        """
         return " ".join(self._route)
 
     @route.setter
@@ -137,9 +203,7 @@ class GjfWriter(Writer):
         try:
             commands_ = commands.split()
         except AttributeError as error:
-            raise TypeError(
-                "Expected object of type str or Sequence of str."
-            ) from error
+            raise TypeError("Expected object of type str.") from error
         length = len(commands_)
         if not length:
             commands_ = ["#"]
