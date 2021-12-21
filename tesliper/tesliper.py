@@ -210,8 +210,8 @@ class Tesliper:
         - "step": float ot int, step of the abscissa,
         - "width": float ot int, width of the peak,
         - "fitting": callable, function used to simulate peaks as curves, preferably
-        one of :func:`datawork.gaussian <.gaussian>` or :func:`datawork.lorentzian
-        <.lorentzian>`.
+          one of :func:`datawork.gaussian <.gaussian>` or :func:`datawork.lorentzian
+          <.lorentzian>`.
 
         "start", "stop", and "step" expect its values to by in cm^-1 units for
         vibrational and scattering spectra, and nm units for electronic spectra.

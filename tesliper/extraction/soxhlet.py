@@ -170,15 +170,15 @@ class Soxhlet:
         Returns
         -------
         str
-            '.log' if *.log files are present in filenames list or '.out' if
-            *.out files are present in filenames list.
+            '.log' if \\*.log files are present in filenames list or '.out' if
+            \\*.out files are present in filenames list.
 
         Raises
         ------
         ValueError
-            If both *.log and *.out files are present in list of filenames.
+            If both \\*.log and \\*.out files are present in list of filenames.
         FileNotFoundError
-            If neither *.log nor *.out files are present in list of filenames.
+            If neither \\*.log nor \\*.out files are present in list of filenames.
         """
         # TODO: add support for other extensions when new parsers implemented
         logs, outs = (

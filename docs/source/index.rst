@@ -19,7 +19,7 @@ calculated may be exported to other file formats for storage or further analysis
 other tools. Below is a quick overview of features it provides:
 
 - Batch processing of Gaussian output files regarding structure optimization and
-simulation of spectral properties
+  simulation of spectral properties
 - Conditional, property-based filtering of conformers
 - Geometry comparison via the RMSD sieve
 - Calculation of Boltzmann distribution—based populations of conformers
