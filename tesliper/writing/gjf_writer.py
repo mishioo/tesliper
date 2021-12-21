@@ -161,9 +161,11 @@ class GjfWriter(Writer):
 
     @property
     def link0(self) -> Dict[str, Union[str, bool]]:
-        """Link0 commands, in a form of {"command": "value"}, that will be placed in the
-        beginning of each Gaussian input file created. If anny *command* is an unknown
-        keword, an exception will be raised. Accepted *command* keywords are as follows:
+        """
+        Link0 commands, in a form of ``{"command": "value"}``, that will be placed in
+        the beginning of each Gaussian input file created. If anny *command* is an
+        unknown keword, an exception will be raised. Accepted *command* keywords are as
+        follows:
 
         :Mem: str specifying required memory
         :Chk: str with file path

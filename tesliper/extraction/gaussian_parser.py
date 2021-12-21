@@ -1,3 +1,4 @@
+"""Paser for Gaussian output files."""
 import logging as lgg
 import re
 

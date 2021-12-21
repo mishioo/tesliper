@@ -117,8 +117,8 @@ def validate_atoms(atoms: Union[int, str, List[Union[int, str]]]) -> List[int]:
     list of int
         List of given atoms' atomic numbers.
 
-    Rises
-    -----
+    Raises
+    ------
     InvalidElementError
         if `atoms` cannot be interpreted as list of atoms' identifiers"""
     if isinstance(atoms, (str, np.str_)):

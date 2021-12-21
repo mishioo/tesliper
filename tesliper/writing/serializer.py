@@ -19,27 +19,27 @@ class ArchiveWriter:
 
     Structure of the produced archive::
 
-    .
-    ├───arguments: {input_dir=str, output_dir=str, wanted_files=[str]}
-    ├───parameters: {"ir": {params}, ..., "roa": {params}}
-    ├───conformers
-    │   ├───arguments: {"allow_data_inconsistency": bool}
-    │   ├───filenames: [str]
-    │   ├───kept: [bool]
-    │   └───data
-    │       ├───filename_1: {genre=str: data}
-    |       ...
-    │       └───filename_N: {genre=str: data}
-    └───spectra
-        ├───experimental  # not implemented yet
-        ├───calculated
-        │   ├───spectra_genre_1: {attr_name: Spectra.attr}
-        |   ...
-        │   └───spectra_genre_N: {attr_name: Spectra.attr}
-        └───averaged
-            ├───spectra_genre_1-energies-genre-1: {attr_name: SingleSpectrum.attr}
-            ...
-            └───spectra_genre_N-energies-genre-N: {attr_name: SingleSpectrum.attr}
+        .
+        ├───arguments: {input_dir=str, output_dir=str, wanted_files=[str]}
+        ├───parameters: {"ir": {params}, ..., "roa": {params}}
+        ├───conformers
+        │   ├───arguments: {"allow_data_inconsistency": bool}
+        │   ├───filenames: [str]
+        │   ├───kept: [bool]
+        │   └───data
+        │       ├───filename_1: {genre=str: data}
+        |       ...
+        │       └───filename_N: {genre=str: data}
+        └───spectra
+            ├───experimental  # not implemented yet
+            ├───calculated
+            │   ├───spectra_genre_1: {attr_name: Spectra.attr}
+            |   ...
+            │   └───spectra_genre_N: {attr_name: Spectra.attr}
+            └───averaged
+                ├───spectra_genre_1-energies-genre-1: {attr_name: SingleSpectrum.attr}
+                ...
+                └───spectra_genre_N-energies-genre-N: {attr_name: SingleSpectrum.attr}
     """
 
     def __init__(

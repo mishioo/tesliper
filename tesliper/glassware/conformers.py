@@ -137,12 +137,9 @@ class Conformers(OrderedDict):
     **kwargs
         list of arbitrary keyword arguments for creation of underlying
         dictionary
-
-    Class Attributes
-    ----------------
     primary_genres
-        Data genres considered most important, used as default when checking
-        for conformers completeness (see :meth:`.trim_incomplete` method).
+        Class attribute. Data genres considered most important, used as default when
+        checking for conformers completeness (see :meth:`.trim_incomplete` method).
 
     Notes
     -----
@@ -752,7 +749,7 @@ class Conformers(OrderedDict):
         -----
         RMSD threshold and size of the energy window should be chosen depending on the
         parameters of conformers' set: number of conformers, size of the conformer,
-        its lability, etc. However, `threshold` of 0.5 angstrom and `windoe_size`
+        its lability, etc. However, `threshold` of 0.5 angstrom and `window_size`
         of 5 to 10 kcal/mol is a good place to start if in doubt.
 
         Parameters

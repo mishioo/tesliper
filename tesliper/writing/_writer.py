@@ -297,19 +297,20 @@ class Writer(ABC):
         Returns
         -------
         distr : dict
-            Dictionary with DataArray objects sorted by their type.
+            Dictionary with :class:`.DataArray` objects sorted by their type.
             Each {key: value} pair is {name of the type in lowercase format:
-            list of DataArray objects of this type}.
+            list of :class:`.DataArray` objects of this type}.
         extras : dict
             Spacial-case genres: extra information used by some writer methods
             when exporting data. Available {key: value} pairs (if given in `data`) are:
-                corrections: dict of {energy genre: FloatArray},
-                frequencies: Bands,
-                wavelengths: Bands,
-                excitation: Bands,
-                stoichiometry: InfoArray,
-                charge: IntegerArray,
-                multiplicity: IntegerArray
+
+            | corrections: dict of {"energy genre": :class:`.FloatArray`},
+            | frequencies: :class:`.Bands`,
+            | wavelengths: :class:`.Bands`,
+            | excitation: :class:`.Bands`,
+            | stoichiometry: :class:`.InfoArray`,
+            | charge: :class:`.IntegerArray`,
+            | multiplicity: :class:`.IntegerArray`
         """
         distr: Dict[str, List] = dict()
         extras: Dict[str, Any] = dict()
@@ -347,17 +348,19 @@ class Writer(ABC):
     ) -> str:
         """Create filename using given template and given or global values
         for known identifiers. The identifier should be used in the template as
-        "${identifier}" where "identifier" is the name of identifier.
+        ``"${identifier}"`` where "identifier" is the name of identifier.
         Available names and their meaning are:
-            ${ext} - appropriate file extension;
-            ${conf} - name of the conformer;
-            ${num} - number of the file according to internal counter;
-            ${genre} - genre of exported data;
-            ${cat} - category of produced output;
-            ${det} - category-specific detail.
-        The ${ext} identifier is filled with the value of Writers :attr:`.extension`
-        attribute if not explicitly given as parameter to this method's call. Default
-        values for other identifiers are just empty strings.
+
+        | ``${ext}`` - appropriate file extension
+        | ``${conf}`` - name of the conformer
+        | ``${num}`` - number of the file according to internal counter
+        | ``${genre}`` - genre of exported data
+        | ``${cat}`` - category of produced output
+        | ``${det}`` - category-specific detail
+
+        The ``${ext}`` identifier is filled with the value of Writers :attr:`.extension`
+        attribute if not explicitly given as parameter to this method's call. Values for
+        other identifiers should be provided by the caller.
 
         Parameters
         ----------
@@ -365,17 +368,17 @@ class Writer(ABC):
             Template that will be used to generate filenames. It should contain only
             known identifiers, listed above.
         conf : str
-            value for ${conf} identifier, defaults to empty string.
+            value for ``${conf}`` identifier, defaults to empty string.
         num : str or int
-            value for ${str} identifier, defaults to empty string.
+            value for ``${str}`` identifier, defaults to empty string.
         genre : str
-            value for ${genre} identifier, defaults to empty string.
+            value for ``${genre}`` identifier, defaults to empty string.
         cat : str
-            value for ${cat} identifier, defaults to empty string.
+            value for ``${cat}`` identifier, defaults to empty string.
         det : str
-            value for ${det} identifier, defaults to empty string.
+            value for ``${det}`` identifier, defaults to empty string.
         ext : str
-            value for ${ext} identifier, defaults to empty string.
+            value for ``${ext}`` identifier, defaults to empty string.
 
         Raises
         ------
@@ -385,6 +388,7 @@ class Writer(ABC):
         Examples
         --------
         Must be first subclassed and instantiated:
+
         >>> class MyWriter(Writer):
         >>>     extension = "foo"
         >>> wrt = MyWriter("/path/to/some/directory/")
@@ -398,7 +402,7 @@ class Writer(ABC):
         >>> wrt.make_name(template="Unknown_identifier_${bla}.${ext}")
         Traceback (most recent call last):
         ValueError: Unexpected identifiers given: bla.
-        """
+        """  # TODO: update examples
         if isinstance(template, str):
             template = Template(template)
         try:

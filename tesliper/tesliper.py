@@ -217,12 +217,6 @@ class Tesliper:
         vibrational and scattering spectra, and nm units for electronic spectra.
         "width" expects its value to be in cm^-1 units for vibrational and scattering
         spectra, and eV units for electronic spectra.
-    standard_parameters
-    input_dir
-    output_dir
-    wanted_files
-    energies
-    activities
     """
 
     # TODO?: add proxy for trimming ?
@@ -676,8 +670,8 @@ class Tesliper:
 
     def average_spectra(self) -> Dict[Tuple[str, str], gw.SingleSpectrum]:
         """For each previously calculated spectra (stored in :attr:`Tesliper.spectra`
-         attribute) calculate it's average using population derived from each available
-         energies genre.
+        attribute) calculate it's average using population derived from each available
+        energies genre.
 
         Returns
         -------

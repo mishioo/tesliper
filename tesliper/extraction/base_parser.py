@@ -43,23 +43,22 @@ class Parser(ABC):
     Attributes
     ----------
     states: dict
-        dictionary of parser states, created automatically on object
+        Dictionary of parser states, created automatically on object
         instantiation from object methods marked as states; method name is used
-        as a key by default
+        as a key by default.
     triggers: dict
-        dictionary of triggers for parser states, created automatically on
+        Dictionary of triggers for parser states, created automatically on
         object instantiation from object methods marked as states with triggers;
         key for a particular state trigger should be the same as state's key in
-        self.states dictionary
-
-    Class Attributes
-    ----------------
+        :attr:`.states` dictionary.
     parsers: dict
-        class attribute, which is a registry, implemented as dictionary,
-        of classes subclassing Parser and defining :attr:`.purpose` class attribute
+        Class attribute, which is a registry of classes subclassing Parser and defining
+        :attr:`.purpose` class attribute.
     purpose: str
-        attribute, that helps :class:`.Soxhlet` to identify Parser's subclass purpose
+        Class attribute, that helps :class:`.Soxhlet` to identify Parser's subclass
+        purpose.
     """
+
     # TODO: make states' triggers can be string, regex or callable
 
     parsers = {}
@@ -144,12 +143,12 @@ class Parser(ABC):
 
         Parameters
         ----------
-        name: str
+        name : str
             name of state, that should be unregistered
 
         Raises
         ------
-        InvalidStateError:
+        InvalidStateError
             if no callable was registered under the name 'name'
         """
         if name not in self.states:
@@ -170,7 +169,7 @@ class Parser(ABC):
 
         Notes
         -----
-        'initial' method is always registered as parser's state.
+        :meth:`.initial` method is always registered as parser's state.
 
         Parameters
         ----------

@@ -241,7 +241,7 @@ def calc_rmsd(a: MoleculeOrList, b: MoleculeOrList) -> np.ndarray:
     float or numpy.ndarray
         Value of RMSD of two conformers or list of values, if list of conformers given.
 
-    Links
+    Notes
     -----
     https://en.wikipedia.org/wiki/Root-mean-square_deviation_of_atomic_positions
     """

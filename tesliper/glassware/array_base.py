@@ -1,6 +1,6 @@
 """Core functionality of :class:`.DataArray` classes.
 
-This module implements the base class for :class:`.DataArray`s and its core
+This module implements the base class for :class:`.DataArray`\\s and its core
 functionality, namely validation of array-like data, along with some helper functions.
 To implement a :class:`.DataArray`-like container, subclass the :class:`ArrayBase` class
 and use one of the :class:`ArrayProperty` classes to create a validated array-like
@@ -39,7 +39,7 @@ array(["a", "b", "c"], dtype=str)
 >>> foo_array.values
 array([1.0, 2.0, 3.0], dtype=float)
 
-`check_against="filenames"` tells :class:`ArrayProperty` to validate `values` using
+``check_against="filenames"`` tells :class:`ArrayProperty` to validate `values` using
 `filenames` as a reference for desired shape of `values` array. If shape is different
 than shape of the reference, :class:`.InconsistentDataError` is raised. If you will deal
 with multidimensional data, you can utilize `check_depth` parameter to signalize that
@@ -57,11 +57,11 @@ Arrays of shape (3,) and (4,) were given.
 
 The above exception is also raised if values given to :class:`ArrayProperty` are a
 jagged sequence, that is not all entries of the array have identical number of
-sub-entries. An example of jagged array would be `[[1, 2], [3]]`. Data in this format
+sub-entries. An example of jagged array would be ``[[1, 2], [3]]``. Data in this format
 usually comes from reading calculations of different molecules rather than conformers,
 or from corrupted or incomplete output files, so it is not allowed by default. However,
 if you are sure that you want to work with such data, you can pass
-``allow_data_inconsistency=True`` to your `MyDataArray` constructor and
+``allow_data_inconsistency=True`` to your ``MyDataArray`` constructor and
 :class:`ArrayProperty` will try to fill-in missing values, producing
 ``numpy.ma.masked_array`` or at least will ignore inconsistencies. You can chose the
 fill value by specifying `fill_value` parameter on :class:`ArrayProperty` instantiation.
@@ -82,7 +82,7 @@ attribute, but it is optional (``False`` is assumed).
 ...     points = ArrayProperty(fill_value=0)
 ...     def __init__(self, points):
 ...         self.points = points
-
+...
 >>> d = CustomDataHolder(points=((1,2,3),(1,2)))
 >>> d.points
 masked_array(
@@ -372,15 +372,16 @@ class ArrayProperty(property):
     ``numpy.ndarray``.
 
     Value given to property setter is:
-        1. (optionally) sanitized with user-provided sanitizer function;
-        2. (optionally) compared with another array-like attribute of the owner
-        regarding their shape;
-        3. transformed to ``numpy.ndarray`` of desired data type;
-        4. stored in owner's ``__dict__``.
+
+    1. (optionally) sanitized with user-provided sanitizer function;
+    2. (optionally) compared with another array-like attribute of the owner
+    regarding their shape;
+    3. transformed to ``numpy.ndarray`` of desired data type;
+    4. stored in owner's ``__dict__``.
 
     Setting, getting and deletition of the value may be customized using standard
     :attr:`.setter`, :attr:`.getter` and :attr:`.deleter` decorators.
-    Additionally,:class:`ArrayProperty` provides an :attr:`.ArrayProperty.sanitizer`
+    Additionally, :class:`ArrayProperty` provides an :attr:`.ArrayProperty.sanitizer`
     decorator. If sanitizer function is provided, it is called as a first step of data
     validation and should return sanitized array-like value (given original value as a
     positional parameter).
