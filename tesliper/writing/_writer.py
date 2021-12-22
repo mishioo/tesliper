@@ -86,7 +86,8 @@ def writer(
 
 # CLASSES
 class Writer(ABC):
-    """Base class for writers, that produce single file from multiple conformers."""
+    """Base class for writers that handle export process based on genre of exported
+    data."""
 
     _header = dict(
         # TODO: add missing headers
