@@ -1,7 +1,8 @@
+import pytest
+
 from tesliper import glassware as gw
 from tesliper.exceptions import TesliperError
 from tesliper.glassware import conformers as cf
-import pytest
 
 
 @pytest.fixture
@@ -349,7 +350,9 @@ def test_trim_incomplete_wanted(full):
 
 def test_trim_incomplete_strict(full):
     m = gw.Conformers(
-        one={"a": 1, "b": 2}, two={"a": 1, "c": 3}, three={"a": 1, "d": 3},
+        one={"a": 1, "b": 2},
+        two={"a": 1, "c": 3},
+        three={"a": 1, "d": 3},
     )
     assert [True, True, True] == m.kept
     m.trim_incomplete(wanted=["a", "b", "c"])
@@ -386,6 +389,29 @@ def test_trim_to_range_errors(full):
         full.trim_to_range("zpe", attribute="bla")
     with pytest.raises(ValueError):
         full.trim_to_range("freq")
+
+
+@pytest.mark.parametrize("trimmed", [True, False])  # if really empty or fully trimmed
+@pytest.mark.parametrize(
+    "method,args",
+    [
+        ("trim_not_optimized", []),
+        ("trim_imaginary_frequencies", []),
+        ("trim_non_matching_stoichiometry", []),
+        ("trim_non_normal_termination", []),
+        ("trim_inconsistent_sizes", []),
+        ("trim_incomplete", []),
+        ("trim_to_range", ["gib"]),
+        ("trim_rmsd", [1, 1]),
+    ],
+)
+def test_trim_empty(empty, single, method, args, trimmed):
+    confs = empty if not trimmed else single
+    if trimmed:
+        confs.kept[0] = False
+    callable = getattr(confs, method)
+    callable(*args)
+    assert confs.kept == ([False] if trimmed else [])
 
 
 def test_select_all(full):

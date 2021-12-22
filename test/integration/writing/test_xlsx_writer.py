@@ -107,7 +107,7 @@ def test_activities(writer, mols, filenames):
     writer.spectral_activities(mols.arrayed("freq"), [mols.arrayed("iri")])
     assert writer.file.exists()
     wb = oxl.load_workbook(writer.file)
-    keys = [f"{Path(f).stem}.activities-freq" for f in filenames]
+    keys = [f"{Path(f).stem}.activities-vibrational" for f in filenames]
     assert wb.sheetnames == keys
     for file in keys:
         ws = wb[file]

@@ -41,9 +41,7 @@ def trimmed(extracted):
 
 @pytest.fixture
 def calculated(extracted):
-    # FIXME: no relevant spectral data in test set, returns empty Spectra object
-    #        should be one empty and one with data
-    extracted.calculate_spectra(["ir"])
+    extracted.calculate_spectra(["iri"])
     return extracted
 
 
@@ -117,3 +115,101 @@ def test_serialization_averaged(averaged, tmp_path):
 def test_serialization_experimental(experimental, tmp_path):
     resurrected = resurect(experimental, tmp_path)
     assert resurrected.experimental == experimental.experimental
+
+
+def test_export_data(averaged, wanted_files):
+    averaged.export_data(["iri", "scf"])
+    files = list(averaged.output_dir.iterdir())
+    expected = {
+        Path(f).with_suffix(".activities-vibrational").name for f in wanted_files
+    }
+    expected.update({"overview", "distribution-scf"})
+    assert {f.stem for f in files} == expected
+
+
+def test_export_data_empty(averaged):
+    averaged.export_data(["rot", "gib"])
+    files = list(averaged.output_dir.iterdir())
+    expected = {"overview", "distribution-gib"}
+    assert {f.stem for f in files} == expected
+
+
+@pytest.mark.parametrize("fmt", ["txt", "csv", "xlsx"])
+def test_export_energies(extracted, fmt):
+    extracted.export_energies(fmt=fmt)
+    files = list(extracted.output_dir.iterdir())
+    expected = {f"distribution-{e}" for e in ("gib", "ent", "zpe", "ten", "scf")}
+    if fmt == "xlsx":
+        assert len(files) == 1
+        assert files[0].suffix == ".xlsx"
+    elif fmt == "txt":
+        expected.add("overview")
+        assert {f.stem for f in files} == expected
+    elif fmt == "csv":
+        assert {f.stem for f in files} == expected
+
+
+@pytest.mark.parametrize("fmt", ["txt", "csv", "xlsx"])
+def test_export_spectral_data(extracted, fmt, wanted_files):
+    extracted.export_spectral_data(fmt=fmt)
+    files = list(extracted.output_dir.iterdir())
+    if fmt == "xlsx":
+        assert len(files) == 1
+        assert files[0].suffix == ".xlsx"
+    elif fmt == "txt":
+        expected = {
+            Path(f).with_suffix(f".data-{t}").name
+            for f in wanted_files
+            for t in ("vibrational", "scattering")
+        }
+        assert {f.stem for f in files} == expected
+
+
+@pytest.mark.parametrize("fmt", ["txt", "csv", "xlsx"])
+def test_export_activities(extracted, fmt, wanted_files):
+    extracted.export_activities(fmt=fmt)
+    files = list(extracted.output_dir.iterdir())
+    if fmt == "xlsx":
+        assert len(files) == 1
+        assert files[0].suffix == ".xlsx"
+    else:
+        expected = {
+            Path(f).with_suffix(f".activities-{t}").name
+            for f in wanted_files
+            for t in ("vibrational", "scattering")
+        }
+        assert {f.stem for f in files} == expected
+
+
+@pytest.mark.parametrize("fmt", ["txt", "csv", "xlsx"])
+def test_export_spectra(calculated, fmt, wanted_files):
+    calculated.export_spectra(fmt=fmt)
+    files = list(calculated.output_dir.iterdir())
+    if fmt == "xlsx":
+        assert len(files) == 1
+        assert files[0].suffix == ".xlsx"
+    else:
+        assert {f.stem for f in files} == {
+            Path(f).with_suffix(".ir").name for f in wanted_files
+        }
+
+
+@pytest.mark.parametrize("fmt", ["txt", "csv", "xlsx"])
+def test_export_averaged(averaged, fmt):
+    averaged.export_averaged(fmt=fmt)
+    files = list(averaged.output_dir.iterdir())
+    if fmt == "xlsx":
+        assert len(files) == 1
+        assert files[0].suffix == ".xlsx"
+    else:
+        assert {f.stem for f in files} == {
+            f"spectrum.ir-{e}" for e in ("gib", "ent", "zpe", "ten", "scf")
+        }
+
+
+def test_export_job_file(extracted, wanted_files):
+    extracted.export_job_file()
+    files = list(extracted.output_dir.iterdir())
+    assert {f.name for f in files} == {
+        Path(f).with_suffix(".gjf").name for f in wanted_files
+    }

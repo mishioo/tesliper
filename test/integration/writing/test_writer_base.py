@@ -183,3 +183,15 @@ def test_forbidden_double(writer_implemented, tmp_path, forbidden_double_arrays)
     wrt = writer_implemented(tmp_path)
     with pytest.raises(ValueError):
         wrt.write(forbidden_double_arrays)
+
+
+def test_all_define_header(any_genre):
+    assert any_genre in WriterBase._header
+
+
+def test_all_define_formatters(any_genre):
+    assert any_genre in WriterBase._header
+
+
+def test_all_define_excel_formats(any_genre):
+    assert any_genre in WriterBase._excel_formats

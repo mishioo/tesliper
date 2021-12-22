@@ -63,6 +63,7 @@ class IntegerArray(DataArray):
     """
 
     associated_genres = ("charge", "multiplicity")
+    full_name_ref = {"charge": "Charge", "multiplicity": "Multiplicity"}
     values = ArrayProperty(dtype=int, check_against="filenames")
 
 
@@ -113,7 +114,11 @@ class InfoArray(DataArray):
           - stoichiometry
     """
 
-    full_name_ref = {}
+    full_name_ref = {
+        "command": "Command",
+        "cpu_time": "CPU Time",
+        "stoichiometry": "Stoichiometry",
+    }
     _units = {}
     associated_genres = (
         "command",
@@ -317,8 +322,8 @@ class Averagable:
 
         Raises
         ------
-            If creation of an instance based on its' __init__ signature is
-            impossible.
+        TypeError
+            If creation of an instance based on its __init__ signature is impossible.
         """
         # TODO: make sure returning DataArray is necessary and beneficial
         #       maybe it should return just averaged value
@@ -348,9 +353,9 @@ class Bands(FloatArray):
     full_name_ref = {
         "ex_en": "Excitation energy",
         "freq": "Frequency",
-        "wave": "Wavelength",
+        "wavelen": "Wavelength",
     }
-    _units = {"freq": "cm^(-1)", "wave": "nm", "ex_en": "eV"}
+    _units = {"freq": "cm^(-1)", "wavelen": "nm", "ex_en": "eV"}
 
     @property
     def freq(self):
@@ -430,6 +435,11 @@ class SpectralData(FloatArray, ABC):
 
     @property
     @abstractmethod
+    def spectra_type(self):
+        return NotImplemented
+
+    @property
+    @abstractmethod
     def freq(self):
         return convert_band(self.wavelen, from_genre="wavelen", to_genre="freq")
 
@@ -500,6 +510,10 @@ class VibrationalData(_VibData):
     )
     _units = dict(mass="AMU", frc="mDyne/A", emang="deg")
 
+    @property
+    def spectra_type(self):
+        return "vibrational"
+
 
 class ScatteringData(_VibData):
     """:class:`DataArray` subclass for holding scattering data that is not a spectal
@@ -563,6 +577,10 @@ class ScatteringData(_VibData):
         "delta2": "(10**4 A**5/AMU)",
     }
 
+    @property
+    def spectra_type(self):
+        return "scattering"
+
     def __init__(
         self,
         genre,
@@ -592,6 +610,10 @@ class ElectronicData(SpectralData):
     associated_genres = ("eemang",)
     full_name_ref = dict(eemang="E-M Angle")
     _units = dict(eemang="deg")
+
+    @property
+    def spectra_type(self):
+        return "electronic"
 
     def __init__(
         self,
@@ -631,14 +653,6 @@ class SpectralActivities(SpectralData, Averagable, ABC):
         vdip="uv",
         ldip="uv",
     )
-    spectra_type_ref = dict(
-        vcd="vibrational",
-        ir="vibrational",
-        roa="scattering",
-        raman="scattering",
-        ecd="electronic",
-        uv="electronic",
-    )
     full_name_ref = dict()
     _units = dict()
     _intensities_converters = {}
@@ -647,11 +661,6 @@ class SpectralActivities(SpectralData, Averagable, ABC):
     def spectra_name(self):
         if self.genre in self.spectra_name_ref:
             return self.spectra_name_ref[self.genre]
-
-    @property
-    def spectra_type(self):
-        if self.genre in self.spectra_name_ref:
-            return self.spectra_type_ref[self.spectra_name]
 
     @property
     def intensities(self):
@@ -776,17 +785,18 @@ class ScatteringActivities(ScatteringData, _VibAct):
     .. list-table:: Genres associated with this class:
         :width: 100%
 
-        * - ramact
+        * - ramanactiv
+          - ramact
           - raman1
           - roa1
-          - raman2
+        * - raman2
           - roa2
           - raman3
           - roa3
     """
 
-    # TODO: add ramanactiv genre
     associated_genres = (
+        "ramanactiv",
         "ramact",
         "raman1",
         "roa1",
@@ -796,6 +806,7 @@ class ScatteringActivities(ScatteringData, _VibAct):
         "roa3",
     )
     full_name_ref = dict(
+        ramanactiv="Raman scatt. activities",
         ramact="Raman scatt. activities",
         roa1="ROA inten. ICPu/SCPu(180)",
         raman1="Raman inten. ICPu/SCPu(180)",
@@ -805,6 +816,7 @@ class ScatteringActivities(ScatteringData, _VibAct):
         raman3="Raman inten. DCPI(180)",
     )
     _units = dict(
+        ramanactiv="A^4/AMU",
         ramact="A^4/AMU",
         roa1="10^4 K",
         raman1="K",
@@ -814,6 +826,7 @@ class ScatteringActivities(ScatteringData, _VibAct):
         raman3="K",
     )
     _intensities_converters = {
+        "ramanactiv": _as_is,
         "ramact": _as_is,
         "raman1": _as_is,
         "roa1": _as_is,
@@ -1108,7 +1121,7 @@ class Geometry(FloatArray):
     """
 
     associated_genres = ("geometry", "input_geom")
-    full_name_ref = dict(geometry="Geometry")
+    full_name_ref = dict(geometry="Geometry", input_geom="Input Geometry")
     _units = dict(geometry="Angstrom")
     values = ArrayProperty(dtype=float, check_against="filenames")
     molecule_atoms = CollapsibleArrayProperty(

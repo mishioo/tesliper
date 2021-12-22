@@ -228,7 +228,7 @@ class XlsxWriter(WriterBase):
         self,
         band: SpectralActivities,
         data: Iterable[SpectralData],
-        name_template: Union[str, Template] = "${conf}.${cat}-${genre}",
+        name_template: Union[str, Template] = "${conf}.${cat}-${det}",
     ):
         """Writes :class:`.SpectralData` objects to xlsx file (one sheet for each
         conformer).
@@ -241,11 +241,17 @@ class XlsxWriter(WriterBase):
             excitation energies for electronic data
         data: iterable of glassware.SpectralData
             SpectralData objects that are to be serialized; all should contain
-            information for the same conformers.
+            information for the same conformers. Assumes that all `data`'s elements have
+            the same `spectra_type`, which is passed to the `name_template` as "det".
         name_template : str or string.Template
             Template that will be used to generate filenames, defaults to
-            "${conf}.${cat}-${genre}".  Refer to :meth:`.make_name` documentation for
+            "${conf}.${cat}-${det}".  Refer to :meth:`.make_name` documentation for
             details on supported placeholders.
+
+        Raises
+        ------
+        ValueError
+            if `data` is an empty sequence
         """
         self._spectral(
             band=band, data=data, name_template=name_template, category="data"
@@ -255,7 +261,7 @@ class XlsxWriter(WriterBase):
         self,
         band: SpectralActivities,
         data: Iterable[SpectralActivities],
-        name_template: Union[str, Template] = "${conf}.${cat}-${genre}",
+        name_template: Union[str, Template] = "${conf}.${cat}-${det}",
     ):
         """Writes :class:`.SpectralActivities` objects to xlsx file (one sheet for each
         conformer).
@@ -268,11 +274,17 @@ class XlsxWriter(WriterBase):
             excitation energies for electronic data
         data: iterable of glassware.SpectralActivities
             SpectralActivities objects that are to be serialized; all should contain
-            information for the same conformers.
+            information for the same conformers. Assumes that all `data`'s elements have
+            the same `spectra_type`, which is passed to the `name_template` as "det".
         name_template : str or string.Template
             Template that will be used to generate filenames, defaults to
-            "${conf}.${cat}-${genre}". Refer to :meth:`.make_name` documentation for
+            "${conf}.${cat}-${det}". Refer to :meth:`.make_name` documentation for
             details on supported placeholders.
+
+        Raises
+        ------
+        ValueError
+            if `data` is an empty sequence
         """
         self._spectral(
             band=band, data=data, name_template=name_template, category="activities"
@@ -294,22 +306,33 @@ class XlsxWriter(WriterBase):
             it should be frequencies for vibrational data and wavelengths or
             excitation energies for electronic data
         data: iterable of glassware.SpectralActivities or iterable of SpectralData
-            SpectralActivities or SpectralData objects that are to be serialized;
-            all should contain information for the same conformers.
+            SpectralActivities or SpectralData objects that are to be serialized; all
+            should contain information for the same conformers. Assumes that all
+            `data`'s elements have the same `spectra_type`, which is passed to the
+            `name_template` as "det".
         name_template : str or string.Template
             Template that will be used to generate filenames. Refer to
             :meth:`.make_name` documentation for details on supported placeholders.
         category : str
             Category of exported data genres.
+
+        Raises
+        ------
+        ValueError
+            if `data` is an empty sequence
         """
         wb = self.workbook
         data = [band] + list(data)
+        try:
+            spectra_type = data[1].spectra_type
+        except IndexError:
+            raise ValueError("No data to export.")
         genres = [bar.genre for bar in data]
         headers = [self._header[genre] for genre in genres]
         widths = [max(len(h), 10) for h in headers]
         fmts = [self._excel_formats[genre] for genre in genres]
         values = list(zip(*[bar.values for bar in data]))
-        template_params = {"genre": band.genre, "cat": category}
+        template_params = {"genre": band.genre, "cat": category, "det": spectra_type}
         for num, (fname, values_) in enumerate(zip(data[0].filenames, values)):
             template_params.update({"conf": fname, "num": num})
             ws = wb.create_sheet(title=self.make_name(name_template, **template_params))

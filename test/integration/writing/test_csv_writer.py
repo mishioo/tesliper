@@ -171,7 +171,9 @@ def test_serial_activities(writer, mols):
     values = list(zip(freq.values, *[b.values for b in bars]))
     header = [CsvWriter._header[bar.genre] for bar in [freq, *bars]]
     for name, values in zip(freq.filenames, values):
-        file = writer.destination.joinpath(name).with_suffix(".activities-freq.csv")
+        file = writer.destination.joinpath(name).with_suffix(
+            ".activities-vibrational.csv"
+        )
         with file.open("r", newline="") as file:
             reader = csv.reader(file)
             assert next(reader) == header
@@ -185,7 +187,9 @@ def test_serial_activities_no_header(writer, mols):
     writer.spectral_activities(freq, bars)
     values = list(zip(freq.values, *[b.values for b in bars]))
     for name, values in zip(freq.filenames, values):
-        file = writer.destination.joinpath(name).with_suffix(".activities-freq.csv")
+        file = writer.destination.joinpath(name).with_suffix(
+            ".activities-vibrational.csv"
+        )
         with file.open("r", newline="") as file:
             reader = csv.reader(file)
             for *given, got in zip(*values, reader):

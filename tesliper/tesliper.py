@@ -49,7 +49,7 @@ from .datawork.spectra import FittingFunctionType, Number
 
 # GLOBAL VARIABLES
 __author__ = "Michał M. Więcław"
-__version__ = "0.8.1"
+__version__ = "0.8.2"
 
 _DEVELOPMENT = "ENV" in os.environ and os.environ["ENV"] == "prod"
 
@@ -750,7 +750,6 @@ class Tesliper:
         stoichiometry = self["stoichiometry"]
         wrt.write(data=[*energies, frequencies, stoichiometry, *corrections])
 
-    # TODO: separate to vibrational and electronic ?
     def export_spectral_data(self, fmt: str = "txt", mode: str = "x"):
         """Saves unprocessed spectral data to disk in given file format.
 
@@ -776,10 +775,11 @@ class Tesliper:
             *gw.ElectronicData.associated_genres,
             *gw.ScatteringData.associated_genres,
         )
-        data = [self[g] for g in genres if g] + [b for b in bands if b]
+        data = (self[g] for g in genres)
+        data = [d for d in data if d]  # ignore empty DataArrays
+        data += [b for b in bands if b]
         wrt.write(data)
 
-    # TODO: separate to vibrational and electronic ?
     def export_activities(self, fmt: str = "txt", mode: str = "x"):
         """Saves unprocessed spectral activities to disk in given file format.
 
@@ -805,7 +805,9 @@ class Tesliper:
             *gw.ElectronicActivities.associated_genres,
             *gw.ScatteringActivities.associated_genres,
         )
-        data = [self[g] for g in genres if g] + [b for b in bands if b]
+        data = (self[g] for g in genres)
+        data = [d for d in data if d]  # ignore empty DataArrays
+        data += [b for b in bands if b]
         wrt.write(data)
 
     def export_spectra(self, fmt: str = "txt", mode: str = "x"):

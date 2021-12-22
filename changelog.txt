@@ -1,3 +1,9 @@
+v. 0.8.2
+API:
+    - Corrected data export when `Tesliper`'s default genres used.
+    - Corrected error when `Tesliper.calculate_spectra` called with default values.
+    - Corrected default filenames generated for spectral data and activities.
+    - Supplemented genres' full names and other metadata.
 v. 0.8.1
 API:
     - Corrected handling of invalid start, stop, step parameters combination when calculating spectra.
