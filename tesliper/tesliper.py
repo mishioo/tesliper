@@ -47,10 +47,6 @@ from . import glassware as gw
 from . import writing as wr
 from .datawork.spectra import FittingFunctionType, Number
 
-# GLOBAL VARIABLES
-__author__ = "Michał M. Więcław"
-__version__ = "0.8.2"
-
 _DEVELOPMENT = "ENV" in os.environ and os.environ["ENV"] == "prod"
 
 

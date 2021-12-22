@@ -14,16 +14,16 @@ import os
 import sys
 
 sys.path.insert(0, os.path.abspath("../.."))
-
+import tesliper  # noqa: E402
 
 # -- Project information -----------------------------------------------------
 
 project = "tesliper"
-copyright = "2021, Michał M. Więcław"
-author = "Michał M. Więcław"
+author = tesliper.__author__
+copyright = "2021, " + author
 
 # The full version, including alpha/beta/rc tags
-release = "0.8.0"
+release = tesliper.__version__
 
 
 # -- General configuration ---------------------------------------------------

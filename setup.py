@@ -3,7 +3,7 @@ import subprocess
 
 from setuptools import find_packages, setup
 
-from tesliper import tesliper
+import tesliper
 
 
 class BuildBinaryCommand(distutils.cmd.Command):
