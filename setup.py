@@ -16,7 +16,6 @@ class BuildBinaryCommand(distutils.cmd.Command):
     def finalize_options(self):
         pass
 
-    # noinspection PyShadowingNames
     def run(self):
         command = [
             "pyinstaller",
@@ -60,6 +59,9 @@ setup(
         "Intended Audience :: Science/Research",
         "License :: OSI Approved :: BSD License",
         "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
         "Topic :: Scientific/Engineering :: Chemistry",
         "Development Status :: 4 - Beta",
     ],
