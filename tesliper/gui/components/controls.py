@@ -1273,9 +1273,10 @@ class ExportData(ttk.LabelFrame):
 
     def _exec_save(self, categories, fmt, mode):
         """Executes save command, by selecting writer object appropriate for given fmt
-        and invoking its `write` method with selected data.
-        If `FileExistsError` or `PermissionError` occurres, it gives a popup, asking
-        if retry should be attempted. Changed mode to "write" for retry, if necessary.
+        and invoking its :meth:`.write` method with selected data. If
+        :class:`FileExistsError` or :class:`PermissionError` occurres, it gives a popup,
+        asking if retry should be attempted. Changed mode to "write" for retry, if
+        necessary.
         """
         genres = ["freq", "stoichiometry", "wavelen"]
         genres += categories.get("energies", [])

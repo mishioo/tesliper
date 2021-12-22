@@ -1,3 +1,9 @@
+"""Conformers geometry-related functions, primarily an RMSD sieve implementation.
+
+This module provides an implementation of RMSD sieve, allowing for easy mathematical
+comparision of conformers' geometry and filtering out similar ones, based on
+user-provided "threshold of similarity".
+"""
 import math
 from typing import Iterable, Iterator, Sequence, Union
 
@@ -17,9 +23,9 @@ def find_atoms(
         List of atoms represented by their atomic numbers.
     find : int, Sequence of int, or numpy.ndarray
         Element or list of elements, represented by their atomic numbers, which indices
-        should be find in `atoms` array.
+        should be find in *atoms* array.
     reverse : bool
-        If `True`, indices of atoms NOT specified in `find` will be returned.
+        If ``True``, indices of atoms NOT specified in *find* will be returned.
 
     Returns
     -------
@@ -31,7 +37,7 @@ def find_atoms(
     else:
         blade = np.equal(atoms, find)
     blade = np.logical_xor(blade, reverse)
-    indices = np.where(blade)[0]  # `atoms` is assumed to be one-dimensional
+    indices = np.where(blade)[0]  # *atoms* is assumed to be one-dimensional
     return indices
 
 
@@ -60,10 +66,10 @@ def take_atoms(
     wanted: Union[int, Iterable[int], np.ndarray],
 ) -> np.ndarray:
     """Filters given values, returning those corresponding to atoms specified
-    as `wanted`. Roughly equivalent to:
+    as *wanted*. Roughly equivalent to:
     >>> numpy.take(values, numpy.nonzero(numpy.equal(atoms, wanted))[0], 1)
-    but returns empty array, if no atom in `atoms` matches `wanted` atom.
-    If `wanted` is list of elements, numpy.isin is used instead of numpy.equal.
+    but returns empty array, if no atom in *atoms* matches *wanted* atom.
+    If *wanted* is list of elements, numpy.isin is used instead of numpy.equal.
 
     Parameters
     ----------
@@ -95,7 +101,7 @@ def drop_atoms(
     """Filters given values, returning those corresponding to atoms not
     specified as discarded. Roughly equivalent to:
     >>> numpy.take(values, numpy.nonzero(~numpy.equal(atoms, discarded))[0], 1)
-    If `wanted` is list of elements, numpy.isin is used instead of numpy.equal.
+    If *wanted* is list of elements, numpy.isin is used instead of numpy.equal.
 
     Parameters
     ----------
@@ -120,13 +126,13 @@ def drop_atoms(
 
 
 def is_triangular(n: int) -> bool:
-    """Checks if number `n` is triangular.
+    """Checks if number *n* is triangular.
 
     Notes
     -----
-    If `n` is the mth triangular number, then n = m*(m+1)/2.
+    If *n* is the mth triangular number, then n = m*(m+1)/2.
     Solving for m using the quadratic formula: m = (sqrt(8n+1) - 1) / 2,
-    so `n` is triangular if and only if 8n+1 is a perfect square.
+    so *n* is triangular if and only if 8n+1 is a perfect square.
 
     Parameters
     ----------
@@ -136,7 +142,7 @@ def is_triangular(n: int) -> bool:
     Returns
     -------
     bool
-        True is number `n` is triangular, else False
+        True if number *n* is triangular, else False
     """
     if n < 0:
         return False
@@ -149,14 +155,14 @@ def is_triangular(n: int) -> bool:
 
 
 def get_triangular_base(n: int) -> int:
-    """Find which mth triangular number `n` is."""
+    """Find which mth triangular number *n* is."""
     if not is_triangular(n):
         raise ValueError(f'"n" should be a triangular number. {n} is not triangular.')
     return int((math.sqrt(8 * n + 1) - 1) / 2)
 
 
 def get_triangular(m: int) -> int:
-    """Find `m`th triangular number."""
+    """Find *m*th triangular number."""
     if m < 0:
         raise ValueError('"m" should be non-negative number.')
     if not m // 1 == m:
@@ -175,9 +181,9 @@ def center(a: MoleculeOrList) -> MoleculeOrList:
 
 
 def kabsch_rotate(a: MoleculeOrList, b: MoleculeOrList) -> np.ndarray:
-    """Minimize RMSD of conformers `a` and `b` by rotating molecule `a` onto `b`.
+    """Minimize RMSD of conformers *a* and *b* by rotating molecule *a* onto *b*.
     Expects given representation of conformers to be zero-centered.
-    Both `a` and `b` may be a single molecule or a set of conformers.
+    Both *a* and *b* may be a single molecule or a set of conformers.
 
     Parameters
     ----------
@@ -189,7 +195,7 @@ def kabsch_rotate(a: MoleculeOrList, b: MoleculeOrList) -> np.ndarray:
     Returns
     -------
     numpy.ndarray
-        Rotated set of points `a`.
+        Rotated set of points *a*.
 
     Notes
     -----
@@ -228,14 +234,14 @@ def calc_rmsd(a: MoleculeOrList, b: MoleculeOrList) -> np.ndarray:
     a : [Sequence of ]Sequence of Sequence of float
         Set of points representing atoms or list thereof.
     b : [Sequence of ]Sequence of Sequence of float
-        Set of points representing atoms  or list thereof.
+        Set of points representing atoms or list thereof.
 
     Returns
     -------
     float or numpy.ndarray
-        Value of RMSD od two conformers or list of values, if list of conformers given.
+        Value of RMSD of two conformers or list of values, if list of conformers given.
 
-    Links
+    Notes
     -----
     https://en.wikipedia.org/wiki/Root-mean-square_deviation_of_atomic_positions
     """
@@ -246,7 +252,7 @@ def calc_rmsd(a: MoleculeOrList, b: MoleculeOrList) -> np.ndarray:
 
 def fixed_windows(series: Sequence, size: int) -> np.ndarray:
     """Simple, vectorized implementation of basic sliding window.
-    Produces a list of windows of given `size` from given `series`.
+    Produces a list of windows of given *size* from given *series*.
 
     Parameters
     ----------
@@ -274,9 +280,9 @@ def fixed_windows(series: Sequence, size: int) -> np.ndarray:
     https://towardsdatascience.com/fast-and-robust-sliding-window-vectorization-with-numpy-3ad950ed62f5
     """
     if not isinstance(size, int):
-        raise TypeError(f"`size` must be a positive integer, but {type(size)} given.")
+        raise TypeError(f"*size* must be a positive integer, but {type(size)} given.")
     elif size <= 0:
-        raise ValueError(f"`size` must be a positive integer, but {size} given.")
+        raise ValueError(f"*size* must be a positive integer, but {size} given.")
     series = np.asanyarray(series)
     # create indices for fancy indexing [[0, 1, ..., size], [1, 2, ..., size + 1], ...]
     windows = (
@@ -293,11 +299,11 @@ def stretching_windows(
     hard_bound: bool = False,
 ) -> Iterator[np.ndarray]:
     """Implements a sliding window of a variable size, where values in each window are
-    at most `size` bigger than the lowest value in given window. Values yielded
-    are `np.ndarray`s of indices of sorted values, that constitute each window.
+    at most *size* bigger than the lowest value in given window. Values yielded
+    are :class:`np.ndarray`\\s of indices of sorted values, that constitute each window.
 
-    When window reaches a border, that is an end of the `values` array or a gap between
-    values that is larger than given `size`, it is "squeezed", when pressed against the
+    When window reaches a border, that is an end of the *values* array or a gap between
+    values that is larger than given *size*, it is "squeezed", when pressed against the
     border, producing subsequences of the first view that touches a border. This is
     usefull, when one wants to form a window for each value in the original array.
 
@@ -349,7 +355,7 @@ def stretching_windows(
     Raises
     ------
     ValueError
-        If given `size` is not a positive number.
+        If given *size* is not a positive number.
     """
     if size <= 0:
         raise ValueError("Size of the energy window must be a positive number.")

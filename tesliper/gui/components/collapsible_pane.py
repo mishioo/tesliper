@@ -10,8 +10,8 @@ class CollapsiblePane(ttk.LabelFrame):
     """LabelFrame that can be collapsed to show only its label.
     Clicking it will toggle between collapsed and unraveled states.
 
-    Adds `collapsed` parameter to `.configure()` setting it to `True` will hide
-    `CollapsiblePane`'s content, and setting to `False` will do the opposite.
+    Adds *collapsed* parameter to `.configure()` setting it to *True* will hide
+    *CollapsiblePane*'s content, and setting to *False* will do the opposite.
     """
 
     def __init__(

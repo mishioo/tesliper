@@ -1,3 +1,4 @@
+"""Paser for Gaussian output files."""
 import logging as lgg
 import re
 
@@ -147,10 +148,11 @@ class GaussianParser(Parser):
     >>> with open('path/to/file.out') as file:
     >>>     data = parser.parse(file)
 
-    Dictionary with data extracted is also stored as `data` attribute of instance used
-    for parsing. Each key in said dictionary is a name of its value data type, called
-    from now on a 'data genre' (to avoid confusion with Python's data type). Below is
-    a full list of data genres recognised by this parser, with their description:
+    Dictionary with data extracted is also stored as :attr:`.data` attribute of instance
+    used for parsing. Each key in said dictionary is a name of its value data type,
+    called from now on a 'data genre' (to avoid confusion with Python's data type).
+    Below is a full list of data genres recognized by this parser, with their
+    description:
 
     freq : list of floats, available from freq job
         harmonic vibrational frequencies (cm^-1)
@@ -284,8 +286,7 @@ class GaussianParser(Parser):
         self.data = {}
 
     def parse(self, lines) -> dict:
-        """Parses content of Gaussian output file and returns dictionary of found
-        data. TODO: elaborate
+        """Parses content of Gaussian output file and returns dictionary of found data.
 
         Parameters
         ----------
@@ -299,6 +300,7 @@ class GaussianParser(Parser):
         -------
         dict
             Dictionary of extracted data."""
+        # TODO: supplement docstring
         self.workhorse = self.initial
         self.data = {}
         self._iterator = iter(lines)
@@ -413,16 +415,15 @@ class GaussianParser(Parser):
     def optimization(self, line: str) -> None:
         """This method scans optimization data in Gaussian output file, updating
         parser.data dictionary with 'stoichiometry', 'scf', 'optimization_completed',
-        'molecule_atoms', and 'geometry' data genres (last two via `geometry()` method).
+        'molecule_atoms', and 'geometry' data genres (last two via :meth:`.geometry`
+        method).
 
         Parameters
         ----------
         line : str
             Line of text to parse.
-
-        TO DO
-        -----
-            modify this to only run if optimization requested"""
+        """
+        # TODO: modify this to only run if optimization requested
         if self.triggers["geometry"].match(line):
             self.geometry(line)
             self.workhorse = self.optimization

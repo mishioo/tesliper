@@ -1,4 +1,4 @@
-# IMPORTS
+"""A ``tesliper``'s main data storage."""
 import logging as lgg
 from collections import Counter, ItemsView, KeysView, OrderedDict, ValuesView
 from contextlib import contextmanager
@@ -120,29 +120,12 @@ class Conformers(OrderedDict):
     said file's name. Its values are dictionaries with genres name (as key)
     and appropriate data pairs. Beside this, its essential functionality is
     transformation of stored data to corresponding DataArray objects with
-    use of `arrayed` method. It provides some control over this transformation,
+    use of :meth:`.arrayed` method. It provides some control over this transformation,
     especially in terms of including/excluding particular conformers' data
     on creation of new DataArray instance. This type of control is here called
-    trimming. Trimming can be achieved by use of various `trim` methods defined
-    in this class or by direct changes to `kept` attribute. See its
+    trimming. Trimming can be achieved by use of various *trim* methods defined
+    in this class or by direct changes to :attr:`.kept` attribute. See its
     documentation for more information.
-
-    Parameters
-    ----------
-    *args
-        list of arguments for creation of underlying dictionary
-    allow_data_inconsistency : bool, optional
-        specifies if data inconsistency should be allowed in created DataArray
-        object instances, defaults to False
-    **kwargs
-        list of arbitrary keyword arguments for creation of underlying
-        dictionary
-
-    Class Attributes
-    ----------------
-    primary_genres
-        Data genres considered most important, used as default when checking
-        for conformers completeness (see `trim_incomplete` method).
 
     Notes
     -----
@@ -154,6 +137,21 @@ class Conformers(OrderedDict):
     )
 
     def __init__(self, *args, allow_data_inconsistency=False, **kwargs):
+        """
+        Parameters
+        ----------
+        *args
+            list of arguments for creation of underlying dictionary
+        allow_data_inconsistency : bool, optional
+            specifies if data inconsistency should be allowed in created DataArray
+            object instances, defaults to False
+        **kwargs
+            list of arbitrary keyword arguments for creation of underlying
+            dictionary
+        primary_genres
+            Class attribute. Data genres considered most important, used as default when
+            checking for conformers completeness (see :meth:`.trim_incomplete` method).
+        """
         self.allow_data_inconsistency = allow_data_inconsistency
         self.kept = []
         self.filenames = []
@@ -196,7 +194,7 @@ class Conformers(OrderedDict):
     def kept(self):
         """List of booleans, one for each conformer stored, defining if
         particular conformers data should be included in corresponding DataArray
-        instance, created by `arrayed` method. It may be changed by use of trim
+        instance, created by :meth:`.arrayed` method. It may be changed by use of trim
         methods, by setting its value directly, or by modification of the
         underlying list. For the first option refer to those methods
         documentation, for rest see the Examples section.
@@ -227,7 +225,7 @@ class Conformers(OrderedDict):
 
         New list of values can be set in a few ways. Firstly, it is the
         most straightforward to just assign a new list of boolean values to
-        the `kept` attribute. This list should have the same number of elements
+        the :attr:`.kept` attribute. This list should have the same number of elements
         as the number of conformers contained. A ValueError is raised if it
         doesn't.
 
@@ -268,8 +266,8 @@ class Conformers(OrderedDict):
         ...
         IndexError: Indexes out of bounds: 3.
 
-        Fourthly, assigning `True` or `False` to this attribute will mark all conformers
-        as kept or not kept respectively.
+        Fourthly, assigning ``True`` or ``False`` to this attribute will mark all
+        conformers as kept or not kept respectively.
 
         >>> c.kept = False
         >>> c.kept
@@ -280,8 +278,8 @@ class Conformers(OrderedDict):
 
         Lastly, list of kept values may be modified by setting its elements
         to True or False. It is advised against, however, as mistake such as
-        `m.kept[:2] = [True, False, False]` will break some functionality by
-        forcibly changing size of `kept` list.
+        ``m.kept[:2] = [True, False, False]`` will break some functionality by
+        forcibly changing size of :attr:`.kept` list.
 
         Notes
         -----
@@ -335,7 +333,7 @@ class Conformers(OrderedDict):
             )
 
     def update(self, other=None, **kwargs):
-        """Works like `dict.update`, but if key is already present, it updates
+        """Works like ``dict.update``, but if key is already present, it updates
         dictionary associated with given key rather than assigning new value.
         Keys of dictionary passed as positional parameter (or additional keyword
         arguments given) should be conformers' identifiers and its values should be
@@ -357,7 +355,7 @@ class Conformers(OrderedDict):
                 self[key] = value
 
     def arrayed(self, genre: str, full: bool = False, **kwargs) -> AnyArray:
-        """Lists requested data and returns as appropriate `DataArray` instance.
+        """Lists requested data and returns as appropriate :class:`.DataArray` instance.
 
         Parameters
         ----------
@@ -365,7 +363,7 @@ class Conformers(OrderedDict):
             String representing data genre. Must be one of known genres.
         full
             Boolean indicating if full set of data should be taken, ignoring
-            any trimming conducted earlier. Defaults to `False`.
+            any trimming conducted earlier. Defaults to ``False``.
         kwargs
             Additional keyword parameters passed to data array constructor.
             Any explicitly given parameters will take precedence over automatically
@@ -374,7 +372,7 @@ class Conformers(OrderedDict):
         Returns
         -------
         DataArray
-            Arrayed data of desired genre as appropriate `DataArray` object.
+            Arrayed data of desired genre as appropriate :class:`.DataArray` object.
         """
         try:
             cls = _ARRAY_CONSTRUCTORS[genre]  # ArrayBase subclasses
@@ -454,8 +452,8 @@ class Conformers(OrderedDict):
         genre : str
             Name of genre to test.
         ignore_trimming : bool
-            If all known conformers should be considered (`ignore_trimming = True`)
-            or only kept ones (`ignore_trimming = False`, default).
+            If all known conformers should be considered (``ignore_trimming = True``)
+            or only kept ones (``ignore_trimming = False``, default).
 
         Returns
         -------
@@ -479,8 +477,8 @@ class Conformers(OrderedDict):
         genres : iterable of str
             List of names of genres to test.
         ignore_trimming : bool
-            If all known conformers should be considered (`ignore_trimming = True`)
-            or only kept ones (`ignore_trimming = False`, default).
+            If all known conformers should be considered (``ignore_trimming = True``)
+            or only kept ones (``ignore_trimming = False``, default).
 
         Returns
         -------
@@ -504,8 +502,8 @@ class Conformers(OrderedDict):
         genres : iterable of str
             List of names of genres to test.
         ignore_trimming : bool
-            If all known conformers should be considered (`ignore_trimming = True`)
-            or only kept ones (`ignore_trimming = False`, default).
+            If all known conformers should be considered (``ignore_trimming = True``)
+            or only kept ones (``ignore_trimming = False``, default).
 
         Returns
         -------
@@ -524,26 +522,26 @@ class Conformers(OrderedDict):
     ) -> None:
         """Mark incomplete conformers as "not kept".
 
-        Conformers that does not contain one or more data genres specified as `wanted`
-        will be marked as "not kept". If `wanted` parameter is not given, it evaluates
-        to `conformers.primary_genres`. If no conformer contains all `wanted` genres,
+        Conformers that does not contain one or more data genres specified as *wanted*
+        will be marked as "not kept". If *wanted* parameter is not given, it evaluates
+        to :attr:`.primary_genres`. If no conformer contains all *wanted* genres,
         conformers that match the specification most closely are kept. The "closeness"
-        is defined by number of conformer's genres matching `wanted` genres in the first
-        place (the more, the better) and the position of particular genre in `wanted`
+        is defined by number of conformer's genres matching *wanted* genres in the first
+        place (the more, the better) and the position of particular genre in *wanted*
         list in the second place (the closer to the beginning, the better). This
         "match closest" behaviour may be turned off by setting parameter
-        `strict` to `True`. In such case, only conformers containing all `wanted`
+        *strict* to ``True``. In such case, only conformers containing all *wanted*
         genres will be kept.
 
         Parameters
         ----------
         wanted
             List of data genres used as completeness reference.
-            If not given, evaluates to `conformers.primary_genres`.
+            If not given, evaluates to :attr:`.primary_genres`.
         strict
-            Indicates if all `wanted` genres must be present in the kept conformers
-            (`strict=True`) or if "match closest" mechanism should be used
-            as a fallback (`strict=False`, this is the default).
+            Indicates if all *wanted* genres must be present in the kept conformers
+            (``strict=True``) or if "match closest" mechanism should be used
+            as a fallback (``strict=False``, this is the default).
 
         Notes
         -----
@@ -577,8 +575,8 @@ class Conformers(OrderedDict):
                 self._kept[index] = False
 
     def trim_non_matching_stoichiometry(self, wanted: Optional[str] = None) -> None:
-        """Mark all conformers with stoichiometry other than `wanted` as "not kept".
-        If not given, `wanted` evaluates to the most common stoichiometry.
+        """Mark all conformers with stoichiometry other than *wanted* as "not kept".
+        If not given, *wanted* evaluates to the most common stoichiometry.
 
         Parameters
         ----------
@@ -675,8 +673,8 @@ class Conformers(OrderedDict):
         attribute: str = "values",
     ) -> None:
         """Marks as "not kept" all conformers, which numeric value of data
-        of specified genre is outside of the range specified by `minimum`
-        and `maximum` values.
+        of specified genre is outside of the range specified by *minimum*
+        and *maximum* values.
 
         Parameters
         ----------
@@ -685,26 +683,26 @@ class Conformers(OrderedDict):
             minimum and maximum values.
         minimum
             Minimal accepted value - every conformer, which genre value evaluates
-            to less than `minimum` will be marked as "not kept".
-            Defaults to `float(-inf)`.
+            to less than *minimum* will be marked as "not kept".
+            Defaults to ``float(-inf)``.
         maximum
             Maximal accepted value - every conformer, which genre value evaluates
-            to more than `maximum` will be marked as "not kept".
-            Defaults to `float(inf)`.
+            to more than *maximum* will be marked as "not kept".
+            Defaults to ``float(inf)``.
         attribute
-            Attribute of DataArray of specified `genre` that contains one-dimensional
+            Attribute of DataArray of specified *genre* that contains one-dimensional
             array of numeric values. defaults to `"values"`.
 
         Raises
         ------
         AttributeError
-            If DataArray associated with `genre` genre has no attribute `attribute`.
+            If DataArray associated with *genre* genre has no attribute *attribute*.
         ValueError
             If data retrieved from specified genre's attribute is not in the form of
             one-dimensional array.
         TypeError
             If comparision cannot be made between elements of specified genre's
-            attribute and `minimum` or `maximum` values.
+            attribute and *minimum* or *maximum* values.
 
         Notes
         -----
@@ -750,11 +748,11 @@ class Conformers(OrderedDict):
         :func:`.streaching_windows`, but other are also available:
         :func:`.fixed_windows` and :func:`.pyramid_windows`. This function will be
         called with list of energies for conformers compared and (if it is not ``None``)
-        `window_size` parameter.
+        *window_size* parameter.
 
         With default `windowing_strategy` conformers, which energy difference (dE) is
-        higher than given `window_size` are always treated as different, while those
-        with dE smaller than `window_size` and RMSD value smaller than given `threshold`
+        higher than given *window_size* are always treated as different, while those
+        with dE smaller than *window_size* and RMSD value smaller than given *threshold*
         are considered identical. From two identical conformers, the one with lower
         energy is "kept", and the other is discarded (marked as "not kept").
 
@@ -762,7 +760,7 @@ class Conformers(OrderedDict):
         -----
         RMSD threshold and size of the energy window should be chosen depending on the
         parameters of conformers' set: number of conformers, size of the conformer,
-        its lability, etc. However, `threshold` of 0.5 angstrom and `window_size`
+        its lability, etc. However, *threshold* of 0.5 angstrom and *window_size*
         of 5 to 10 kcal/mol is a good place to start if in doubt.
 
         Parameters
@@ -780,7 +778,7 @@ class Conformers(OrderedDict):
             energy size. "scf" is used by default.
         ignore_hydrogen : bool
             If hydrogen atom should be discarded before RMSD calculation.
-            Defaults to `True`.
+            Defaults to ``True``.
         windowing_strategy : callable
             Function that generates windows, inside which RMSD comparisions is
             performed.
@@ -790,20 +788,20 @@ class Conformers(OrderedDict):
         InconsistentDataError
             If requested genres does not provide the same set of conformers.
         ValueError
-            When called with `ignore_hydrogen=True` but requested
-            `Geometry.molecule_atoms` cannot be collapsed to 1-D array.
+            When called with ``ignore_hydrogen=True`` but requested
+            :attr:`.Geometry.molecule_atoms` cannot be collapsed to 1-D array.
         """
         energy = self.arrayed(energy_genre)
         geometry = self.arrayed(geometry_genre)
         if not energy.filenames.size == geometry.filenames.size:
             raise InconsistentDataError(
                 "Unequal number of conformers in requested geometry and energy genres. "
-                "Trim incomplete entries before trimming with `trim_rmds`."
+                "Trim incomplete entries before trimming with :meth:`.trim_rmds`."
             )
         elif not np.array_equal(energy.filenames, geometry.filenames):
             raise InconsistentDataError(
                 "Different conformers in requested geometry and energy genres. "
-                "Trim incomplete entries before trimming with `trim_rmds`."
+                "Trim incomplete entries before trimming with :meth:`.trim_rmds`."
             )
         if not geometry:
             return  # next steps assume there are some conformers
@@ -826,19 +824,19 @@ class Conformers(OrderedDict):
         self.kept = geometry.filenames[wanted]
 
     def select_all(self) -> None:
-        """Marks all conformers as 'kept'. Equivalent to `conformers.kept = True`."""
+        """Marks all conformers as 'kept'. Equivalent to ``conformers.kept = True``."""
         self._kept = [True for _ in self._kept]
 
     def reject_all(self) -> None:
         """Marks all conformers as 'not kept'. Equivalent to
-        `conformers.kept = False`.
+        ``conformers.kept = False``.
         """
         self._kept = [False for _ in self._kept]
 
     def kept_keys(self, indices: bool = False) -> _KeptKeysView:
-        """Equivalent of `dict.keys()` but gives view only on conformers marked
+        """Equivalent of ``dict.keys()`` but gives view only on conformers marked
         as "kept". Returned view may also provide information on conformers index
-        in its Conformers instance if requested with `indices=True`.
+        in its Conformers instance if requested with ``indices=True``.
 
         >>> c = Conformers(c1={"g": 0.1}, c2={"g": 0.2}, c3={"g": 0.3}}
         >>> c.kept = [True, False, True]
@@ -861,9 +859,9 @@ class Conformers(OrderedDict):
         return _KeptKeysView(self, indices=indices)
 
     def kept_values(self, indices: bool = False) -> _KeptValuesView:
-        """Equivalent of `dict.values()` but gives view only on conformers marked
+        """Equivalent of ``dict.values()`` but gives view only on conformers marked
         as "kept". Returned view may also provide information on conformers index
-        in its Conformers instance if requested with `indices=True`.
+        in its Conformers instance if requested with ``indices=True``.
 
         >>> c = Conformers(c1={"g": 0.1}, c2={"g": 0.2}, c3={"g": 0.3}}
         >>> c.kept = [True, False, True]
@@ -886,9 +884,9 @@ class Conformers(OrderedDict):
         return _KeptValuesView(self, indices=indices)
 
     def kept_items(self, indices: bool = False) -> _KeptItemsView:
-        """Equivalent of `dict.items()` but gives view only on conformers marked
+        """Equivalent of ``dict.items()`` but gives view only on conformers marked
         as "kept". Returned view may also provide information on conformers index
-        in its Conformers instance if requested with `indices=True`.
+        in its Conformers instance if requested with ``indices=True``.
 
         >>> c = Conformers(c1={"g": 0.1}, c2={"g": 0.2}, c3={"g": 0.3}}
         >>> c.kept = [True, False, True]

@@ -1,3 +1,4 @@
+"""Serialization and deserialization of :class:`.Tesliper` objects."""
 import json
 import logging
 import zipfile
@@ -16,33 +17,46 @@ logger = logging.getLogger(__name__)
 class ArchiveWriter:
     """Class for serialization of Tesliper objects.
 
-    Structure of the produced archive:
-    .
-    ├───arguments: {input_dir=str, output_dir=str, wanted_files=[str]}
-    ├───parameters: {"ir": {params}, ..., "roa": {params}}
-    ├───conformers
-    │   ├───arguments: {"allow_data_inconsistency": bool}
-    │   ├───filenames: [str]
-    │   ├───kept: [bool]
-    │   └───data
-    │       ├───filename_1: {genre=str: data}
-    |       ...
-    │       └───filename_N: {genre=str: data}
-    └───spectra
-        ├───experimental  # not implemented yet
-        ├───calculated
-        │   ├───spectra_genre_1: {attr_name: Spectra.attr}
-        |   ...
-        │   └───spectra_genre_N: {attr_name: Spectra.attr}
-        └───averaged
-            ├───spectra_genre_1-energies-genre-1: {attr_name: SingleSpectrum.attr}
-            ...
-            └───spectra_genre_N-energies-genre-N: {attr_name: SingleSpectrum.attr}
+    Structure of the produced archive::
+
+        .
+        ├───arguments: {input_dir=str, output_dir=str, wanted_files=[str]}
+        ├───parameters: {"ir": {params}, ..., "roa": {params}}
+        ├───conformers
+        │   ├───arguments: {"allow_data_inconsistency": bool}
+        │   ├───filenames: [str]
+        │   ├───kept: [bool]
+        │   └───data
+        │       ├───filename_1: {genre=str: data}
+        |       ...
+        │       └───filename_N: {genre=str: data}
+        └───spectra
+            ├───experimental  # not implemented yet
+            ├───calculated
+            │   ├───spectra_genre_1: {attr_name: Spectra.attr}
+            |   ...
+            │   └───spectra_genre_N: {attr_name: Spectra.attr}
+            └───averaged
+                ├───spectra_genre_1-energies-genre-1: {attr_name: SingleSpectrum.attr}
+                ...
+                └───spectra_genre_N-energies-genre-N: {attr_name: SingleSpectrum.attr}
     """
 
     def __init__(
         self, destination: Union[str, Path], mode: str = "x", encoding: str = "utf-8"
     ):
+        """
+        Parameters
+        ----------
+        destination : Union[str, Path]
+            Path to target file.
+        mode : str, optional
+            Specifies how writing to file should be handled. Should be one of
+            characters: 'a' (append to existing file), 'x' (only write if file doesn't
+            exist yet), or 'w' (overwrite file if it already exists). Defaults to "x".
+        encoding : str, optional
+            Encoding of the output, by default "utf-8"
+        """
         self.mode = mode
         self.destination = destination
         self.encoding = encoding
@@ -252,6 +266,14 @@ class ArchiveLoader:
     """Class for deserialization of Tesliper objects."""
 
     def __init__(self, source: Union[str, Path], encoding: str = "utf-8"):
+        """
+        Parameters
+        ----------
+        source : Union[str, Path]
+            Path to the source file.
+        encoding : str, optional
+            Source file encoding, by default "utf-8".
+        """
         self.source = source
         self.encoding = encoding
         self.root = None

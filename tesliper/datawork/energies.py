@@ -1,3 +1,7 @@
+"""Functions for calculating populations of conformers based on their relative energies
+using Boltzmann distribution.
+"""
+
 # IMPORTS
 import logging as lgg
 
@@ -9,8 +13,11 @@ logger.setLevel(lgg.DEBUG)
 
 
 # GLOBAL VARIABLES
-BOLTZMANN = 0.0019872041  # kcal/(mol*K)
+BOLTZMANN = 0.0019872041
+"""Value of Boltzmann constant in kcal/(mol*K)."""
+
 HARTREE_TO_KCAL_PER_MOL = 627.5095
+"""Multiply by this factor to convert from Hartree/mol to kcal/mol."""
 
 
 # MODULE FUNCTIONS
@@ -44,10 +51,14 @@ def calculate_min_factors(energies, t=298.15):
     Notes
     -----
     Boltzmann factor of two states is defined as:
-    F(state_1)/F(state_2) = exp((E_1 - E_2)/kt)
-    where E_1 and E_2 are energies of states 1 and 2,
-    k is Boltzmann constant, k = 0.0019872041 kcal/(mol*K),
-    and t is temperature of the system.
+
+    .. math::
+
+        F(state_1)/F(state_2) = exp((E_1 - E_2)/kt)
+
+    where :math:`E_1` and :math:`E_2` are energies of states 1 and 2,
+    :math:`k` is Boltzmann constant, :math:`k = 0.0019872041 kcal/(mol*K)`,
+    and :math:`t` is temperature of the system.
 
     Parameters
     ----------

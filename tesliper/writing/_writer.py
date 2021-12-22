@@ -1,4 +1,4 @@
-# IMPORTS
+# TODO: module docstring with explanation of Writer subclass registration mechanism
 import logging as lgg
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
@@ -47,7 +47,37 @@ logger.setLevel(lgg.DEBUG)
 _WRITERS: Dict[str, Type["Writer"]] = {}
 
 
-def writer(fmt: str, destination, mode="x", **kwargs) -> "Writer":
+def writer(
+    fmt: str, destination: Union[str, Path], mode: str = "x", **kwargs
+) -> "Writer":
+    """Factory function that returns concrete implementation of :class:`.Writer`
+    subclass, most recently defined for export to *fmt* file format.
+
+    Parameters
+    ----------
+    fmt : str
+        File format, to which export will be done.
+    destination : Union[str, Path]
+        Path to file or direcotry, to which export will be done.
+    mode : str
+        Specifies how writing to file should be handled. Should be one of
+        characters: "a" (append to existing file), "x" (only write if file doesn't
+        exist yet), or "w" (overwrite file if it already exists). Defaults to "x".
+    kwargs
+        Any additional keword arguments will be passed as-is to the constructor of the
+        retrieved :class:`.Writer` subclass.
+
+    Returns
+    -------
+    Writer
+        Initialized :class:`.Writer` subclass most recently defined for export to *fmt*
+        file format.
+
+    Raises
+    ------
+    ValueError
+        If :class:`.Writer` subclass for export to *fmt* file format was not defined.
+    """
     try:
         return _WRITERS[fmt](destination, mode, **kwargs)
     except KeyError:
@@ -56,22 +86,8 @@ def writer(fmt: str, destination, mode="x", **kwargs) -> "Writer":
 
 # CLASSES
 class Writer(ABC):
-    """Base class for writers, that produce single file from multiple conformers.
-
-    Parameters
-    ----------
-    destination: str or pathlib.Path
-        File, to which generated files should be written.
-    mode: str
-        Specifies how writing to file should be handled. Should be one of characters:
-         "a" (append to existing file); "x" (only write if file does'nt exist yet);
-         or "w" (overwrite file if it already exists). Defaults to "x".
-
-    Attributes
-    ----------
-    destination
-    mode
-    """
+    """Base class for writers that handle export process based on genre of exported
+    data."""
 
     _header = dict(
         # TODO: add missing headers
@@ -228,6 +244,16 @@ class Writer(ABC):
         _WRITERS[cls.extension] = cls
 
     def __init__(self, destination: Union[str, Path], mode: str = "x"):
+        """
+        Parameters
+        ----------
+        destination: str or pathlib.Path
+            Directory, to which generated files should be written.
+        mode: str
+            Specifies how writing to file should be handled. Should be one of
+            characters: 'a' (append to existing file), 'x' (only write if file doesn't
+            exist yet), or 'w' (overwrite file if it already exists).
+        """
         self.mode = mode
         self.destination = destination
         self._handle = None
@@ -296,19 +322,20 @@ class Writer(ABC):
         Returns
         -------
         distr : dict
-            Dictionary with DataArray objects sorted by their type.
+            Dictionary with :class:`.DataArray` objects sorted by their type.
             Each {key: value} pair is {name of the type in lowercase format:
-            list of DataArray objects of this type}.
+            list of :class:`.DataArray` objects of this type}.
         extras : dict
             Spacial-case genres: extra information used by some writer methods
-            when exporting data. Available {key: value} pairs (if given in `data`) are:
-                corrections: dict of {energy genre: FloatArray},
-                frequencies: Bands,
-                wavelengths: Bands,
-                excitation: Bands,
-                stoichiometry: InfoArray,
-                charge: IntegerArray,
-                multiplicity: IntegerArray
+            when exporting data. Available {key: value} pairs (if given in *data*) are:
+
+            | corrections: dict of {"energy genre": :class:`.FloatArray`},
+            | frequencies: :class:`.Bands`,
+            | wavelengths: :class:`.Bands`,
+            | excitation: :class:`.Bands`,
+            | stoichiometry: :class:`.InfoArray`,
+            | charge: :class:`.IntegerArray`,
+            | multiplicity: :class:`.IntegerArray`
         """
         distr: Dict[str, List] = dict()
         extras: Dict[str, Any] = dict()
@@ -346,17 +373,19 @@ class Writer(ABC):
     ) -> str:
         """Create filename using given template and given or global values
         for known identifiers. The identifier should be used in the template as
-        "${identifier}" where "identifier" is the name of identifier.
+        ``"${identifier}"`` where "identifier" is the name of identifier.
         Available names and their meaning are:
-            ${ext} - appropriate file extension;
-            ${conf} - name of the conformer;
-            ${num} - number of the file according to internal counter;
-            ${genre} - genre of exported data;
-            ${cat} - category of produced output;
-            ${det} - category-specific detail.
-        The ${ext} identifier is filled with the value of Writers `extension` attribute
-        if not explicitly given as parameter to this method's call. Default values
-        for other identifiers are just empty strings.
+
+        | ``${ext}`` - appropriate file extension
+        | ``${conf}`` - name of the conformer
+        | ``${num}`` - number of the file according to internal counter
+        | ``${genre}`` - genre of exported data
+        | ``${cat}`` - category of produced output
+        | ``${det}`` - category-specific detail
+
+        The ``${ext}`` identifier is filled with the value of Writers :attr:`.extension`
+        attribute if not explicitly given as parameter to this method's call. Values for
+        other identifiers should be provided by the caller.
 
         Parameters
         ----------
@@ -364,17 +393,17 @@ class Writer(ABC):
             Template that will be used to generate filenames. It should contain only
             known identifiers, listed above.
         conf : str
-            value for ${conf} identifier, defaults to empty string.
+            value for ``${conf}`` identifier, defaults to empty string.
         num : str or int
-            value for ${str} identifier, defaults to empty string.
+            value for ``${str}`` identifier, defaults to empty string.
         genre : str
-            value for ${genre} identifier, defaults to empty string.
+            value for ``${genre}`` identifier, defaults to empty string.
         cat : str
-            value for ${cat} identifier, defaults to empty string.
+            value for ``${cat}`` identifier, defaults to empty string.
         det : str
-            value for ${det} identifier, defaults to empty string.
+            value for ``${det}`` identifier, defaults to empty string.
         ext : str
-            value for ${ext} identifier, defaults to empty string.
+            value for ``${ext}`` identifier, defaults to empty string.
 
         Raises
         ------
@@ -384,6 +413,7 @@ class Writer(ABC):
         Examples
         --------
         Must be first subclassed and instantiated:
+
         >>> class MyWriter(Writer):
         >>>     extension = "foo"
         >>> wrt = MyWriter("/path/to/some/directory/")
@@ -397,7 +427,7 @@ class Writer(ABC):
         >>> wrt.make_name(template="Unknown_identifier_${bla}.${ext}")
         Traceback (most recent call last):
         ValueError: Unexpected identifiers given: bla.
-        """
+        """  # TODO: update examples
         if isinstance(template, str):
             template = Template(template)
         try:
@@ -423,7 +453,8 @@ class Writer(ABC):
         open_params: Optional[dict] = None,
     ) -> Iterator[IO[AnyStr]]:
         """Helper method for creating files. Given additional kwargs will be passed to
-        `open()` method. Implemented as context manager for use with `with` statement.
+        :meth:`Path.open` method. Implemented as context manager for use with ``with``
+        statement.
 
         Parameters
         ----------
@@ -432,12 +463,12 @@ class Writer(ABC):
         template_params : dict
             Dictionary of {identifier: value} for `.make_name` method.
         open_params : dict, optional
-            Arguments for `Path.open()` used to open file.
+            Arguments for :meth:`Path.open` used to open file.
 
         Yields
         ------
         IO
-            file handle, will be closed automatically after `with` statement exits
+            file handle, will be closed automatically after ``with`` statement exits
         """
         open_params = open_params or {}  # empty dict by default
         filename = self.make_name(template=template, **template_params)
@@ -454,17 +485,17 @@ class Writer(ABC):
         open_params: Optional[dict] = None,
     ) -> Iterator[IO[AnyStr]]:
         """Helper method for iteration over generated files. Given additional kwargs
-        will be passed to `open()` method.
+        will be passed to :meth:`Path.open` method.
 
         Parameters
         ----------
         filenames: list of str
             list of source filenames, used as value for `${conf}` placeholder
-            in `name_template`
+            in *name_template*
         template_params : dict
             Dictionary of {identifier: value} for `.make_name` method.
         open_params : dict, optional
-            arguments for `Path.open()` used to open file.
+            arguments for :meth:`Path.open` used to open file.
 
         Yields
         ------
@@ -525,7 +556,7 @@ class Writer(ABC):
     ) -> None:
         if len(data) > 1:
             raise ValueError(
-                "Got multiple `Transitions` objects, but can write contents "
+                "Got multiple *Transitions* objects, but can write contents "
                 "of only one such object for .write() call."
             )
         self.transitions(transitions=data[0], wavelengths=extras["wavelengths"])
@@ -533,7 +564,7 @@ class Writer(ABC):
     def _geometry_handler(self, data: List[Geometry], extras: Dict[str, Any]) -> None:
         if len(data) > 1:
             raise ValueError(
-                "Got multiple `Geometry` objects, but can write contents "
+                "Got multiple *Geometry* objects, but can write contents "
                 "of only one such object for .write() call."
             )
         self.geometry(

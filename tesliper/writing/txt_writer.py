@@ -1,4 +1,4 @@
-# IMPORTS
+"""Data export to text files."""
 import logging as lgg
 from itertools import zip_longest
 from string import Template
@@ -26,17 +26,7 @@ logger.setLevel(lgg.DEBUG)
 
 # CLASSES
 class TxtWriter(Writer):
-    """Writes extracted data in .txt format form many conformers to one file.
-
-    Parameters
-    ----------
-    destination: str or pathlib.Path
-        Directory, to which generated files should be written.
-    mode: str
-        Specifies how writing to file should be handled. Should be one of characters:
-         'a' (append to existing file), 'x' (only write if file doesn't exist yet),
-         or 'w' (overwrite file if it already exists).
-    """
+    """Writes extracted or calculated data to .txt format files."""
 
     extension = "txt"
 
@@ -64,8 +54,8 @@ class TxtWriter(Writer):
         stoichiometry: glassware.InfoArray, optional
             InfoArray object containing stoichiometry information
         name_template : str or string.Template
-            Template that will be used to generate filenames.
-
+            Template that will be used to generate filenames. Refer to
+            :meth:`.make_name` documentation for details on supported placeholders.
         """
         filenames = energies[0].filenames
         imaginary = [] if frequencies is None else frequencies.imaginary
@@ -144,7 +134,8 @@ class TxtWriter(Writer):
         corrections: glassware.DataArray, optional
             DataArray object, containing energies corrections
         name_template : str or string.Template
-            Template that will be used to generate filenames.
+            Template that will be used to generate filenames. Refer to
+            :meth:`.make_name` documentation for details on supported placeholders.
         """
         max_fnm = max(np.vectorize(len)(energies.filenames).max(), 20)
         header = [f"{'Gaussian output file':<{max_fnm}}"]
@@ -200,7 +191,8 @@ class TxtWriter(Writer):
         spectrum: glassware.SingleSpectrum
             spectrum, that is to be serialized
         name_template : str or string.Template
-            Template that will be used to generate filenames.
+            Template that will be used to generate filenames. Refer to
+            :meth:`.make_name` documentation for details on supported placeholders.
         """
         title = (
             f"{spectrum.genre} calculated with peak width = "
@@ -246,7 +238,8 @@ class TxtWriter(Writer):
             SpectralActivities objects that are to be serialized; all should contain
             information for the same conformers
         name_template : str or string.Template
-            Template that will be used to generate filenames.
+            Template that will be used to generate filenames. Refer to
+            :meth:`.make_name` documentation for details on supported placeholders.
         """
         self._spectral(
             band=band,
@@ -273,7 +266,8 @@ class TxtWriter(Writer):
             SpectralData objects that are to be serialized; all should contain
             information for the same conformers
         name_template : str or string.Template
-            Template that will be used to generate filenames.
+            Template that will be used to generate filenames. Refer to
+            :meth:`.make_name` documentation for details on supported placeholders.
         """
         self._spectral(
             band=band, data=data, name_template=name_template, category="data"
@@ -298,7 +292,8 @@ class TxtWriter(Writer):
             SpectralData objects that are to be serialized; all should contain
             information for the same conformers
         name_template : str or string.Template
-            Template that will be used to generate filenames.
+            Template that will be used to generate filenames. Refer to
+            :meth:`.make_name` documentation for details on supported placeholders.
         category : str
             category of exported data genres
         """
@@ -334,8 +329,8 @@ class TxtWriter(Writer):
         spectra: glassware.Spectra
             Spectra object, that is to be serialized
         name_template : str or string.Template
-            Template that will be used to generate filenames.
-
+            Template that will be used to generate filenames. Refer to
+            :meth:`.make_name` documentation for details on supported placeholders.
         """
         abscissa = spectra.x
         title = (
@@ -378,10 +373,11 @@ class TxtWriter(Writer):
             Object containing information about wavelength at which transitions occur.
         only_highest : bool
             Specifies if only transition of highest contribution to given band should
-            be reported. If `False` all transition are saved to file.
-            Defaults to `True`.
+            be reported. If ``False`` all transition are saved to file.
+            Defaults to ``True``.
         name_template : str or string.Template
-            Template that will be used to generate filenames.
+            Template that will be used to generate filenames. Refer to
+            :meth:`.make_name` documentation for details on supported placeholders.
 
         """
         transtions_data = (

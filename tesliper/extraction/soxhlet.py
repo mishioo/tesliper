@@ -1,4 +1,4 @@
-# IMPORTS
+"""A tool for batch parsing files from specified directory."""
 import logging as lgg
 from pathlib import Path
 from typing import Generator, Iterable, List, Optional, Set, Tuple, Union
@@ -14,6 +14,7 @@ logger.setLevel(lgg.DEBUG)
 
 # CLASSES
 # TODO: Consider integration with gauopen interface: http://gaussian.com/interfacing/
+# TODO: supplement class docstring
 class Soxhlet:
     """A tool for data extraction from files in specific directory. Typical use:
 
@@ -28,8 +29,7 @@ class Soxhlet:
         extension: Optional[str] = None,
         recursive: bool = False,
     ):
-        """Initialization of Soxhlet object.
-
+        """
         Parameters
         ----------
         path: str or pathlib.Path
@@ -41,11 +41,11 @@ class Soxhlet:
         extension: str, optional
             A string representing file extension of output files, that should be
             parsed. If omitted, Soxhlet will try to resolve it based on
-            contents of directory given in `path` parameter.
+            contents of directory given in *path* parameter.
         recursive : bool
-            If True, given `path` will be searched recursively, extracting data from
+            If True, given *path* will be searched recursively, extracting data from
             subdirectories, otherwise subdirectories are ignored and only files
-            placed directly in `path` will be parsed.
+            placed directly in *path* will be parsed.
 
         Raises
         ------
@@ -75,7 +75,7 @@ class Soxhlet:
     @property
     def all_files(self):
         """List of all files present in directory bounded to Soxhlet instance.
-        If its `recursive` attribute is `True`, also files from subdirectories
+        If its *recursive* attribute is ``True``, also files from subdirectories
         are included."""
         iterable = self.path.iterdir() if not self.recursive else self.path.rglob("*")
         return [v for v in iterable if v.is_file()]
@@ -84,7 +84,7 @@ class Soxhlet:
     def files(self):
         """List of all wanted files available in given directory. If wanted_files
         is not specified, evaluates to all files in said directory. If Soxhlet
-         object's `recursive` attribute is `True`, also files from subdirectories
+        object's *recursive* attribute is ``True``, also files from subdirectories
         are included."""
         wanted_empty = not self.wanted_files
         return [
@@ -102,7 +102,7 @@ class Soxhlet:
         >>> s.wanted_files
         {"file_one", "file_two"}
 
-        May also be set to `None` or other "falsy" value, in such case it is ignored.
+        May also be set to ``None`` or other "falsy" value, in such case it is ignored.
         """
         return self._wanted_files
 
@@ -147,12 +147,13 @@ class Soxhlet:
         Raises
         ------
         ValueError
-            If parameter `ext` is not given and attribute `extension` in None.
+            If parameter *ext* is not given and attribute :attr:`.extension` in
+            ``None``.
         """
         ext = ext if ext is not None else self.extension
         if ext is None:
             raise ValueError(
-                "Parameter `ext` must be given if attribute `extension` is None."
+                "Parameter *ext* must be given if attribute *extension* is *None*."
             )
         filtered = [f for f in self.files if f.name.endswith(ext)]
         return filtered
@@ -168,20 +169,17 @@ class Soxhlet:
         Returns
         -------
         str
-            '.log' if *.log files are present in filenames list or '.out' if
-            *.out files are present in filenames list.
+            '.log' if \\*.log files are present in filenames list or '.out' if
+            \\*.out files are present in filenames list.
 
         Raises
         ------
         ValueError
-            If both *.log and *.out files are present in list of filenames.
+            If both \\*.log and \\*.out files are present in list of filenames.
         FileNotFoundError
-            If neither *.log nor *.out files are present in list of filenames.
-
-        TO DO
-        -----
-        add support for other extensions when new parsers implemented
+            If neither \\*.log nor \\*.out files are present in list of filenames.
         """
+        # TODO: add support for other extensions when new parsers implemented
         logs, outs = (
             any(f.name.endswith(ext) for f in self.all_files)
             for ext in (".log", ".out")
@@ -195,8 +193,8 @@ class Soxhlet:
 
     def extract_iter(self) -> Generator[Tuple[str, dict], None, None]:
         """Extracts data from Gaussian files associated with Soxhlet instance.
-        Implemented as generator. If Soxhlet instance's `recursive` attribute is
-        `True`, also files from subdirectories are parsed.
+        Implemented as generator. If Soxhlet instance's :attr:`.recursive` attribute is
+        ``True``, also files from subdirectories are parsed.
 
         Yields
         ------
@@ -213,7 +211,7 @@ class Soxhlet:
 
     def extract(self) -> dict:
         """Extracts data from Gaussian files associated with Soxhlet instance.
-        If its `recursive` attribute is `True`, also files from subdirectories
+        If its :attr:`.recursive` attribute is ``True``, also files from subdirectories
         are parsed.
 
         Returns
@@ -226,7 +224,7 @@ class Soxhlet:
 
     def load_parameters(self, source: Optional[Union[str, Path]] = None) -> dict:
         """Parses setup file specifying spectra calculation parameters and returns
-        dict with extracted values. If `source` file is not given, file named
+        dict with extracted values. If *source* file is not given, file named
         "setup.txt" or "setup.cfg" (with any prefix, case-insensitive) will be searched
         for in the Soxhlet's directory (recursively if it was requested on object's
         creation). If no or multiple such files is found, exception will be raised.
@@ -237,8 +235,8 @@ class Soxhlet:
         Parameters
         ----------
         source : str or Path, optional
-            Path or Path-like object to settings file. If not given, Soxhlet object
-            will try to identify one in its `.path`.
+            Path or Path-like object to settings file. If not given, :class:`.Soxhlet`
+            object will try to identify one in its :attr:`.path`.
 
         Returns
         -------
@@ -249,7 +247,6 @@ class Soxhlet:
         ------
         FileNotFoundError
             If no or multiple possible setup files found.
-
         """
         if source:
             source = Path(source)
@@ -283,8 +280,8 @@ class Soxhlet:
         Returns
         -------
         spectrum : np.ndarray
-            np.ndarray of shape (2, N) where N is number of data points. `spectrum[0]`
-            are x-values and `spectrum[1]` are corresponding y-values.
+            np.ndarray of shape (2, N) where N is number of data points. ``spectrum[0]``
+            are x-values and ``spectrum[1]`` are corresponding y-values.
 
         Raises
         ------

@@ -1,3 +1,4 @@
+"""Parser for spectra files."""
 import csv
 import logging as lgg
 from pathlib import Path
@@ -51,7 +52,7 @@ class SpectraParser(Parser):
         -------
         numpy.array
             two-dimensional numpy array ([[x-values], [y-values]])
-            of data type 'float'"""
+            of data type ``float``"""
         # TODO: add type checking of passed file, consider those:
         #     https://github.com/audreyr/binaryornot
         #     https://eli.thegreenplace.net/2011/10/19/\
@@ -178,8 +179,8 @@ class SpectraParser(Parser):
             two-dimensional numpy array ([[x-values], [y-values]])
             of data type 'float'
 
-        Rises
-        -----
+        Raises
+        ------
         NotImplementedError
             Whenever called, as this functionality is not implemented yet."""
         # TODO: add support for .spc files

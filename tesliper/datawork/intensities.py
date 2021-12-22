@@ -1,4 +1,5 @@
-# IMPORTS
+"""Optical activity to signal intensity converters."""
+
 import logging as lgg
 
 import numpy as np
@@ -20,7 +21,7 @@ DEFAULT_ACTIVITIES = {
 
 
 # MODULE FUNCTIONS
-def dip_to_ir(values, frequencies):
+def dip_to_ir(values: np.ndarray, frequencies: np.ndarray) -> np.ndarray:
     """Calculates signal intensity of IR spectrum.
 
     Parameters
@@ -37,7 +38,7 @@ def dip_to_ir(values, frequencies):
     return values * frequencies / 91.86108673
 
 
-def rot_to_vcd(values, frequencies):
+def rot_to_vcd(values: np.ndarray, frequencies: np.ndarray) -> np.ndarray:
     """Calculates signal intensity of VCD spectrum.
 
     Parameters
@@ -54,7 +55,7 @@ def rot_to_vcd(values, frequencies):
     return values * frequencies / 2.296e5
 
 
-def osc_to_uv(values):
+def osc_to_uv(values: np.ndarray) -> np.ndarray:
     """Calculates signal intensity of UV spectrum.
 
     Parameters
@@ -69,7 +70,7 @@ def osc_to_uv(values):
     return values * 2.315351857e08
 
 
-def rot_to_ecd(values, frequencies):
+def rot_to_ecd(values: np.ndarray, frequencies: np.ndarray) -> np.ndarray:
     """Calculates signal intensity of ECD spectrum.
 
     Parameters

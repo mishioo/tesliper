@@ -1,3 +1,5 @@
+"""Project-specific errors."""
+
 class TesliperError(Exception):
     """Base class for Exceptions used by tesliper library."""
 

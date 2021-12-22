@@ -10,3 +10,5 @@ hypothesis
 isort
 pyinstaller
 twine
+sphinx
+sphinx-rtd-theme

@@ -53,6 +53,9 @@ coverage.xml
 
 # Sphinx documentation
 docs/_build/
+**/_autosummary/
+docs/Makefile
+docs/make.bat
 
 # Environments
 devenv
