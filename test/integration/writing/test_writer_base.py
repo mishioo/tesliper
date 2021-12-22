@@ -4,12 +4,12 @@ from unittest.mock import Mock
 
 import pytest
 
-from tesliper.writing import Writer
+from tesliper.writing import WriterBase
 
 
 @pytest.fixture
 def writer_class():
-    class _Writer(Writer):
+    class _Writer(WriterBase):
         extension = "ext"
 
     return _Writer
@@ -17,7 +17,7 @@ def writer_class():
 
 @pytest.fixture
 def writer_implemented():
-    class _Writer(Writer):
+    class _Writer(WriterBase):
         extension = "ext"
 
         def overview(self, energies, frequencies, stoichiometry):

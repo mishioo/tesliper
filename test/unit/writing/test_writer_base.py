@@ -17,12 +17,12 @@ from tesliper.glassware import (
     VibrationalActivities,
     VibrationalData,
 )
-from tesliper.writing import Writer
+from tesliper.writing import WriterBase
 
 
 @pytest.fixture(scope="session")
 def writer_class():
-    class _Writer(Writer):
+    class _Writer(WriterBase):
         extension = "txt"
 
     return _Writer

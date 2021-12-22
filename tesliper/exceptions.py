@@ -1,5 +1,6 @@
 """Project-specific errors."""
 
+
 class TesliperError(Exception):
     """Base class for Exceptions used by tesliper library."""
 
@@ -14,7 +15,7 @@ class InconsistentDataError(TesliperError):
 
 
 class InvalidStateError(TesliperError, ValueError):
-    """Used by Parser class to signalize problems when handling states.
+    """Used by ParserBase class to signalize problems when handling states.
     Subclasses TesliperError and ValueError."""
 
     pass

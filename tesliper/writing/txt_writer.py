@@ -17,7 +17,7 @@ from ..glassware.arrays import (
     Transitions,
 )
 from ..glassware.spectra import SingleSpectrum, Spectra
-from ._writer import Writer
+from .writer_base import WriterBase
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -25,7 +25,7 @@ logger.setLevel(lgg.DEBUG)
 
 
 # CLASSES
-class TxtWriter(Writer):
+class TxtWriter(WriterBase):
     """Writes extracted or calculated data to .txt format files."""
 
     extension = "txt"

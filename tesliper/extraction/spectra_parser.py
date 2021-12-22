@@ -6,12 +6,12 @@ from typing import Optional, Union
 
 import numpy as np
 
-from .base_parser import Parser
+from .parser_base import ParserBase
 
 logger = lgg.getLogger(__name__)
 
 
-class SpectraParser(Parser):
+class SpectraParser(ParserBase):
     """Parser for files containing spectral data. It can parse .txt (in "x y" format)
     and .csv files, returning an numpy.ndarray with loaded spectrum. Parsing process
     may be customized by specifying what delimiter of values should be expected
@@ -71,7 +71,7 @@ class SpectraParser(Parser):
         if self.workhorse is self.initial:
             raise ValueError(f"Don't know how to parse file {filename}")
 
-    @Parser.state(trigger=r".+\.(?:txt|xy)$")
+    @ParserBase.state(trigger=r".+\.(?:txt|xy)$")
     def parse_txt(self, file: Path):
         """Loads spectral data from .txt or .xy file to numpy.array.
 
@@ -127,7 +127,7 @@ class SpectraParser(Parser):
                 arr.append(tuple(map(float, (values[xcolumn], values[ycolumn]))))
         return np.array(list(zip(*arr)))
 
-    @Parser.state(trigger=r".+\.csv$")
+    @ParserBase.state(trigger=r".+\.csv$")
     def parse_csv(self, file: Path):
         """Loads spectral data from csv file to numpy.array.
 

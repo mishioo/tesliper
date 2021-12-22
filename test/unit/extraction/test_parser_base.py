@@ -1,13 +1,17 @@
-from unittest.mock import Mock, NonCallableMock, patch
 import re
-from tesliper.extraction import Parser
-from tesliper.exceptions import InvalidStateError
+from unittest.mock import Mock, NonCallableMock, patch
+
 import pytest
+
+from tesliper.exceptions import InvalidStateError
+from tesliper.extraction import ParserBase
 
 
 @pytest.fixture
 def prs():
-    cls = type("Prsr", (Parser,), {"initial": Mock(spec=[]), "parse": Mock(spec=[])})
+    cls = type(
+        "Prsr", (ParserBase,), {"initial": Mock(spec=[]), "parse": Mock(spec=[])}
+    )
     return cls()
 
 
@@ -18,28 +22,28 @@ def method():
 
 def test_instantiated_directly():
     with pytest.raises(TypeError):
-        Parser()
+        ParserBase()
 
 
 def test_state_no_arguments():
     with pytest.raises(TypeError):
-        Parser.state()
+        ParserBase.state()
 
 
 def test_state_not_callable():
     func = NonCallableMock()
     with pytest.raises(InvalidStateError):
-        Parser.state(func)
+        ParserBase.state(func)
 
 
 def test_state_decorator(method):
-    func = Parser.state(method)
+    func = ParserBase.state(method)
     assert hasattr(func, "is_state")
     assert func.is_state
 
 
 def test_state_decorator_with_trigger(method):
-    func = Parser.state(method, "mytrigger")
+    func = ParserBase.state(method, "mytrigger")
     assert hasattr(func, "is_state")
     assert func.is_state
     assert hasattr(func, "trigger")
@@ -56,7 +60,7 @@ def test_subclassed_with_state(method):
     func.is_state = True
     cls = type(
         "Prsr",
-        (Parser,),
+        (ParserBase,),
         {"initial": Mock(spec=[]), "parse": Mock(spec=[]), "mystate": func},
     )
     obj = cls()
@@ -66,14 +70,14 @@ def test_subclassed_with_state(method):
 
 
 def test_subclassed_with_trigger():
-    class Subclass(Parser):
+    class Subclass(ParserBase):
         def parse(self, lines):
             pass
 
         def initial(self, line):
             pass
 
-        @Parser.state(trigger="trigger")
+        @ParserBase.state(trigger="trigger")
         def mystate(prs, method):
             pass
 
@@ -99,7 +103,7 @@ def test_remove_state(method):
     func.is_state = True
     cls = type(
         "Prsr",
-        (Parser,),
+        (ParserBase,),
         {"initial": Mock(spec=[]), "parse": Mock(spec=[]), "mystate": func},
     )
     obj = cls()
@@ -134,7 +138,7 @@ def test_remove_state_with_trigger(method):
     func.trigger = "regex"
     cls = type(
         "Prsr",
-        (Parser,),
+        (ParserBase,),
         {"initial": Mock(spec=[]), "parse": Mock(spec=[]), "mystate": func},
     )
     obj = cls()
@@ -161,7 +165,7 @@ def test_set_workhorse_name(method):
     func.is_state = True
     cls = type(
         "Prsr",
-        (Parser,),
+        (ParserBase,),
         {"initial": Mock(spec=[]), "parse": Mock(spec=[]), "mystate": func},
     )
     obj = cls()

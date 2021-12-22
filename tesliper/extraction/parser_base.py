@@ -6,7 +6,7 @@ from typing import Callable, Iterable, Union
 from ..exceptions import InvalidStateError
 
 
-class Parser(ABC):
+class ParserBase(ABC):
     """Abstract Base Class for parsers implemented as finite state machines.
 
     This base class defines some methods to organize work parsers implemented as finite
@@ -26,19 +26,19 @@ class Parser(ABC):
 
     To make this possible, each method marked as state should return dictionary
     (or sequence convertible to dict) and handle changing 'workhorse' to next
-    appropriate state. To mark a method as parser's state use Parser.state
+    appropriate state. To mark a method as parser's state use ParserBase.state
     decorator in class definition or add a state directly to parser instance
     using 'add_state' method.
 
-    When subclassing Parser, one should implement :meth:`.initial` and :meth:`.parse`
-    methods. Those abstract methods implement basic functionality, described above. See
-    methods' documentation for more details. If you wish not to use default Parser's
-    protocol, simply override those methods to your liking.
+    When subclassing ParserBase, one should implement :meth:`.initial` and
+    :meth:`.parse` methods. Those abstract methods implement basic functionality,
+    described above. See methods' documentation for more details. If you wish not to use
+    default ParserBase's protocol, simply override those methods to your liking.
 
-    To register class derived from Parser for use by :class:`.Soxhlet` object, simply
-    set :attr:`.purpose` class attribute to name, under which class should be
-    registered. Setting it to one of names already defined (e.g. 'gaussian')
-    will override the default parser used by :class:`.Soxhlet` object.
+    To register class derived from ParserBase for use by :class:`.Soxhlet` object,
+    simply set :attr:`.purpose` class attribute to name, under which class should be
+    registered. Setting it to one of names already defined (e.g. 'gaussian') will
+    override the default parser used by :class:`.Soxhlet` object.
 
     Attributes
     ----------
@@ -52,10 +52,10 @@ class Parser(ABC):
         key for a particular state trigger should be the same as state's key in
         :attr:`.states` dictionary.
     parsers: dict
-        Class attribute, which is a registry of classes subclassing Parser and defining
-        :attr:`.purpose` class attribute.
+        Class attribute, which is a registry of classes subclassing ParserBase and
+        defining :attr:`.purpose` class attribute.
     purpose: str
-        Class attribute, that helps :class:`.Soxhlet` to identify Parser's subclass
+        Class attribute, that helps :class:`.Soxhlet` to identify ParserBase's subclass
         purpose.
     """
 
@@ -80,7 +80,7 @@ class Parser(ABC):
 
     def __init_subclass__(cls, **kwargs):
         if cls.purpose:
-            Parser.parsers[cls.purpose] = cls
+            ParserBase.parsers[cls.purpose] = cls
         if not hasattr(cls.initial, "is_state"):
             cls.initial.is_state = True
 
@@ -244,20 +244,20 @@ class Parser(ABC):
         """Convenience decorator for registering a method as parser's state.
         It can be with or without 'trigger' parameter, like this:
 
-        >>> @Parser.state
+        >>> @ParserBase.state
         ... def method(self, arg): pass
 
         or
 
-        >>> @Parser.state(trigger='triggering regex')
+        >>> @ParserBase.state(trigger='triggering regex')
         ... def method(self, arg): pass
 
         This function marks a method *state* as parser's state by defining ``is_state``
         attribute on said method and setting its values to ``True``. If *trigger* is
         given, it is stored in method's attribute *trigger*. During instantiation of
-        :class:`.Parser`'s subclass, methods marked as states are registered under
+        :class:`.ParserBase`'s subclass, methods marked as states are registered under
         ``method.__name__`` key in its :attr:`.states` (and possibly :attr:`.triggers`)
-        attribute. It is meaningless if used outside of :class:`.Parser`'s subclass
+        attribute. It is meaningless if used outside of :class:`.ParserBase`'s subclass
         definition.
 
         Parameters
@@ -292,4 +292,4 @@ class Parser(ABC):
                 f"'state' argument should be callable, not {type(state)}"
             )
         else:
-            return lambda s, t=trigger: Parser.state(s, t)
+            return lambda s, t=trigger: ParserBase.state(s, t)

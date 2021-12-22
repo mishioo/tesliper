@@ -18,7 +18,7 @@ from ..glassware.arrays import (
     Transitions,
 )
 from ..glassware.spectra import SingleSpectrum, Spectra
-from ._writer import Writer
+from .writer_base import WriterBase
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -105,7 +105,7 @@ class _CsvMixin:
 
 
 # CLASSES
-class CsvWriter(_CsvMixin, Writer):
+class CsvWriter(_CsvMixin, WriterBase):
     """Writes extracted or calculated data to .csv format files."""
 
     extension = "csv"
@@ -217,7 +217,7 @@ class CsvWriter(_CsvMixin, Writer):
         logger.info("Energies export to csv files done.")
 
     def _energies_handler(self, data: List[Energies], extras: Dict[str, Any]) -> None:
-        # TODO: return to Writer's implementation when `.overview()` added to this class
+        # TODO: return to WriterBase's implementation when `.overview()` added
         for en in data:
             self.energies(
                 en, corrections=extras.get("corrections", dict()).get(en.genre)

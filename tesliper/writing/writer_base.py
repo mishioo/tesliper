@@ -1,4 +1,4 @@
-# TODO: module docstring with explanation of Writer subclass registration mechanism
+# TODO: module docstring with explanation of WriterBase subclass registration mechanism
 import logging as lgg
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
@@ -44,13 +44,13 @@ logger = lgg.getLogger(__name__)
 logger.setLevel(lgg.DEBUG)
 
 
-_WRITERS: Dict[str, Type["Writer"]] = {}
+_WRITERS: Dict[str, Type["WriterBase"]] = {}
 
 
 def writer(
     fmt: str, destination: Union[str, Path], mode: str = "x", **kwargs
-) -> "Writer":
-    """Factory function that returns concrete implementation of :class:`.Writer`
+) -> "WriterBase":
+    """Factory function that returns concrete implementation of :class:`.WriterBase`
     subclass, most recently defined for export to *fmt* file format.
 
     Parameters
@@ -65,18 +65,19 @@ def writer(
         exist yet), or "w" (overwrite file if it already exists). Defaults to "x".
     kwargs
         Any additional keword arguments will be passed as-is to the constructor of the
-        retrieved :class:`.Writer` subclass.
+        retrieved :class:`.WriterBase` subclass.
 
     Returns
     -------
-    Writer
-        Initialized :class:`.Writer` subclass most recently defined for export to *fmt*
-        file format.
+    WriterBase
+        Initialized :class:`.WriterBase` subclass most recently defined for export to
+        *fmt* file format.
 
     Raises
     ------
     ValueError
-        If :class:`.Writer` subclass for export to *fmt* file format was not defined.
+        If :class:`.WriterBase` subclass for export to *fmt* file format was not
+        defined.
     """
     try:
         return _WRITERS[fmt](destination, mode, **kwargs)
@@ -85,7 +86,7 @@ def writer(
 
 
 # CLASSES
-class Writer(ABC):
+class WriterBase(ABC):
     """Base class for writers that handle export process based on genre of exported
     data."""
 
@@ -414,7 +415,7 @@ class Writer(ABC):
         --------
         Must be first subclassed and instantiated:
 
-        >>> class MyWriter(Writer):
+        >>> class MyWriter(WriterBase):
         >>>     extension = "foo"
         >>> wrt = MyWriter("/path/to/some/directory/")
 

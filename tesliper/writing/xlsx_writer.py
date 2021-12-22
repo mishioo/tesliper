@@ -19,7 +19,7 @@ from ..glassware.arrays import (
     Transitions,
 )
 from ..glassware.spectra import SingleSpectrum, Spectra
-from ._writer import Writer
+from .writer_base import WriterBase
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -27,7 +27,7 @@ logger.setLevel(lgg.DEBUG)
 
 
 # CLASSES
-class XlsxWriter(Writer):
+class XlsxWriter(WriterBase):
     """Writes extracted data to .xlsx file."""
 
     extension = "xlsx"
@@ -49,7 +49,7 @@ class XlsxWriter(Writer):
             exist yet), or 'w' (overwrite file if it already exists).
         filename : str or string.Template
             Filename of created .xlsx file or a template for generation of the name
-            using :meth:`.Writer.make_name` method.
+            using :meth:`.make_name` method.
         """
         super().__init__(destination=destination, mode=mode)
         file = self.destination / Template(filename).substitute(ext=self.extension)

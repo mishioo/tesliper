@@ -7,7 +7,7 @@ from typing import Dict, Iterable, List, Optional, Sequence, TextIO, Union
 
 from ..datawork.atoms import symbol_of_element
 from ..glassware import Geometry, IntegerArray
-from ._writer import Writer
+from .writer_base import WriterBase
 
 # LOGGER
 logger = logging.getLogger(__name__)
@@ -21,7 +21,7 @@ def _format_coordinates(coords: Sequence[Sequence[float]], atoms: Sequence[int])
 
 
 # CLASSES
-class GjfWriter(Writer):
+class GjfWriter(WriterBase):
     """Generates Gaussian input files for each conformer given."""
 
     # TODO: Add per-file parametrization of link0 commands

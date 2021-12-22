@@ -2,7 +2,7 @@
 import logging as lgg
 import re
 
-from .base_parser import Parser
+from .parser_base import ParserBase
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -136,7 +136,7 @@ fc_reg = re.compile(r"(\d+)\s+" + fc_sci_not + (r"\s*" + fc_sci_not + "?") * 4)
 
 
 # CLASSES
-class GaussianParser(Parser):
+class GaussianParser(ParserBase):
     """Parser for extracting data from human-readable output files from Gaussian
     computational chemistry software (.log and .out files).
 
@@ -318,7 +318,7 @@ class GaussianParser(Parser):
             self.data["normal_termination"] = False
         return self.data
 
-    @Parser.state
+    @ParserBase.state
     def initial(self, line: str) -> None:
         """First step of parsing Gaussian output file. It populates parser.data
         dictionary with these data genes: 'normal_termination', 'version', 'command',
@@ -359,7 +359,7 @@ class GaussianParser(Parser):
         data["input_atoms"], data["input_geom"] = map(list, zip(*input_geom))
         self.workhorse = self.wait
 
-    @Parser.state
+    @ParserBase.state
     def wait(self, line: str) -> None:
         """This function searches for lines of text triggering other parsing states.
         It also updates a parser.data dictionary with 'normal_termination', 'scf',
@@ -386,7 +386,7 @@ class GaussianParser(Parser):
             # last job determines if termination was normal
             self.data["normal_termination"] = False
 
-    @Parser.state(trigger=re.compile(r"^\s+Standard orientation"))
+    @ParserBase.state(trigger=re.compile(r"^\s+Standard orientation"))
     def geometry(self, line: str) -> None:
         """Function for extracting information about molecule standard orientation
         geometry from Gaussian output files. It updates parser.data dictionary with
@@ -411,7 +411,7 @@ class GaussianParser(Parser):
         data["molecule_atoms"], data["geometry"] = map(list, zip(*geom))
         self.workhorse = self.wait
 
-    @Parser.state(trigger=re.compile("^ Search for a local minimum."))
+    @ParserBase.state(trigger=re.compile("^ Search for a local minimum."))
     def optimization(self, line: str) -> None:
         """This method scans optimization data in Gaussian output file, updating
         parser.data dictionary with 'stoichiometry', 'scf', 'optimization_completed',
@@ -438,7 +438,7 @@ class GaussianParser(Parser):
         if line.startswith((" Error termination", " Job cpu time")):
             self.workhorse = self.wait
 
-    @Parser.state(trigger=re.compile("^ Harmonic frequencies"))
+    @ParserBase.state(trigger=re.compile("^ Harmonic frequencies"))
     def frequencies(self, line: str) -> None:
         """Responsible for extracting harmonic vibrations-related data and information
         about molecule's energy.
@@ -492,7 +492,7 @@ class GaussianParser(Parser):
                 out.append(match.groups())
         return out
 
-    @Parser.state(trigger=re.compile("^ Excited states from"))
+    @ParserBase.state(trigger=re.compile("^ Excited states from"))
     def excited(self, line: str) -> None:
         """Responsible for extracting electronic transitions-related data from Gaussian
         output file. Updates parser.data dictionary with 'ldip', 'losc', 'vdip', 'vosc',
