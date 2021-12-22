@@ -162,7 +162,7 @@ def get_triangular_base(n: int) -> int:
 
 
 def get_triangular(m: int) -> int:
-    """Find *m*th triangular number."""
+    """Find *m*\\th triangular number."""
     if m < 0:
         raise ValueError('"m" should be non-negative number.')
     if not m // 1 == m:

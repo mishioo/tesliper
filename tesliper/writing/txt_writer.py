@@ -38,11 +38,11 @@ class TxtWriter(WriterBase):
         name_template: Union[str, Template] = "${cat}.${ext}",
     ):
         """Writes essential information from multiple Energies objects to
-         single txt file.
+        single txt file.
 
-         Notes
-         -----
-         All Energy objects given should contain information for the same set of files.
+        Notes
+        -----
+        All Energy objects given should contain information for the same set of files.
 
         Parameters
         ----------

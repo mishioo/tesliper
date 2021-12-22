@@ -1,5 +1,10 @@
 .. image:: /_static/banner.png
-==============================
+
+|
+.. just a vertical space to separate banner and header
+
+Welcome to tesliper's documentation!
+====================================
 
 ``tesliper`` is a package for batch processing of Gaussian output files, focusing on
 extraction and processing of data related to simulation of optical spectra. The software
@@ -47,7 +52,6 @@ Among listed ``tesliper`` is the only one that is open source, readily extendibl
 and allows to easily filter parsed data.
 
 .. list-table:: How does ``tesliper`` fit into the market?
-   :widths: 23 8 7 10 9 10 9
    :header-rows: 1
    
    *  -

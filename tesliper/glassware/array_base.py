@@ -375,7 +375,7 @@ class ArrayProperty(property):
 
     1. (optionally) sanitized with user-provided sanitizer function;
     2. (optionally) compared with another array-like attribute of the owner
-        regarding their shape;
+       regarding their shape;
     3. transformed to ``numpy.ndarray`` of desired data type;
     4. stored in owner's ``__dict__``.
 
