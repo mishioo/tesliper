@@ -1,4 +1,66 @@
-# TODO: module docstring with explanation of WriterBase subclass registration mechanism
+"""Interface for witing data to disc.
+
+This module contains :func:`.writer` factory function that enables to dynamically create
+a writer object that's responsible for saving data in a desired output format.
+:func:`.writer` instantiates a subclass of :class:`WriterBase`, an Abstract Base Class
+also defined here. :class:`WriterBase` provides an interface for all serial data writers
+(objects that export conformers' data to multiple files) used by ``tesliper``.
+
+:class:`WriterBase` expects it's subclasses to provide an *extention* class attribute,
+which is used as an extension of files produced by this particular writer, and also as
+an identifier for the output format, used by the :func:`.writer` factory function.
+``tesliper`` is shipped with four such writers: :class:`.TxtWriter` for writting to .txt
+format, :class:`.CsvWriter` for writting to .csv format, :class:`.XlsxWriter` for
+creating Excel files, and :class:`.GjfWriter` for preparing Gaussian input files.
+
+You may want to export your data to other file formats - in such case you will need to
+implement your own writer. To do this subclass :class:`WriterBase`, provide it's
+*extension* as mentioned above and implement writing methods for genres you intend to
+support in your writer. Methods used by default are:
+
+.. list-table:: Methods used by default to write certain data
+    :header-rows: 1
+
+    * - Writer's Method
+      - Description
+      - Associated ``DataArray``-like objects
+    * - :meth:`~.WriterBase.overview`
+      - General information about conformers: energies, imaginary frequencies,
+        stoichiometry.
+      - :class:`.Energies`, :class:`.Bands` (*extra*), :class:`.InfoArray` (*extra*)
+    * - :meth:`~.WriterBase.energies`
+      - Detailed information about conformers' relative energy,
+        including calculated populations
+      - :class:`.Energies`
+    * - :meth:`~.WriterBase.single_spectrum`
+      - A spectrum - calculated for single conformer or averaged.
+      - :class:`.SingleSpectrum`
+    * - :meth:`~.WriterBase.spectral_data`
+      - Data related to spectral activity, but not convertible to spectra.
+      - :class:`.SpectralData`, :class:`.Bands` (*extra*)
+    * - :meth:`~.WriterBase.spectral_activities`
+      - Data that may be used to simulate conformers' spectra.
+      - :class:`.SpectralActivities`, :class:`.Bands` (*extra*)
+    * - :meth:`~.WriterBase.spectra`
+      - Spectra for multiple conformers.
+      - :class:`.Spectra`
+    * - :meth:`~.WriterBase.transitions`
+      - Electronic transitions from ground to excited state, contributing to each band.
+      - :class:`.Transitions`, :class:`.Bands` (*extra*)
+    * - :meth:`~.WriterBase.geometry`
+      - Geometry (positions of atoms in space) of conformers.
+      - :class:`.Geometry`, :class:`.IntegerArray` (*extra*)
+
+.. note::
+
+    These methods are not abstract methods, but will still raise a
+    ``NotImplementedError`` if called. This is to let you omit implementation of methods
+    you don't need or wouldn't make sense for the particular format and still provide an
+    abstract interface. ``tesliper`` takes advantage of this in it's implementation of
+    :class:`.GjfWriter`, which only implements :meth:`~.GjfWriter.geometry` method,
+    because export of, e.g. a calculated spectrum as a Gaussian output would be
+    pointless.
+"""
 import logging as lgg
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
@@ -21,7 +83,6 @@ from typing import (
 
 from ..glassware.arrays import (
     Bands,
-    DataArray,
     ElectronicActivities,
     ElectronicData,
     Energies,
@@ -275,7 +336,10 @@ class WriterBase(ABC):
         gib="0.000000",
         scf="0.00000000",
     )
+
     energies_order = "zpe ten ent gib scf".split(" ")
+    """Default order, in which energy-related data is written to files."""
+
     # TODO: add support for generic FloatArray and InfoArray
 
     @property
@@ -639,7 +703,7 @@ class WriterBase(ABC):
     def overview(
         self,
         energies: Sequence[Energies],
-        frequencies: Optional[DataArray] = None,
+        frequencies: Optional[Bands] = None,
         stoichiometry: Optional[InfoArray] = None,
         name_template: Union[str, Template] = "",
     ):
@@ -660,7 +724,7 @@ class WriterBase(ABC):
 
     def spectral_data(
         self,
-        band: SpectralData,
+        band: Bands,
         data: List[SpectralData],
         name_template: Union[str, Template] = "",
     ):
@@ -668,7 +732,7 @@ class WriterBase(ABC):
 
     def spectral_activities(
         self,
-        band: SpectralActivities,
+        band: Bands,
         data: List[SpectralActivities],
         name_template: Union[str, Template] = "",
     ):
