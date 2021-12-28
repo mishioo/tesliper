@@ -237,7 +237,10 @@ def writer(
     try:
         return _WRITERS[fmt](destination, mode, **kwargs)
     except KeyError:
-        raise ValueError(f"Unknown file format: {fmt}.")
+        message = f"Unknown file format: {fmt}."
+        if fmt.startswith(".") and fmt[1:] in _WRITERS:
+            message += f" Did you mean '{fmt[1]}'?"
+        raise ValueError(message)
 
 
 # CLASSES
