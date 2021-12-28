@@ -131,7 +131,7 @@ writting method for this kind of data:
                 ...  # writting logic
 
         def _lengthactivities_handler(self, data, extras):
-            self.length_activities(band=extras["wavelen"], data=data)
+            self.length_activities(band=extras["wavelengths"], data=data)
 
 In both cases ``UpdatedTxtWriter`` will be picked by the :func:`.writer` instead of the
 original :class:`.TxtWriter`, thanks to the automatic registration done by the base
@@ -529,7 +529,7 @@ class WriterBase(ABC):
         Returns
         -------
         distr : dict
-            Dictionary with :class:`.DataArray` objects sorted by their type.
+            Dictionary with :class:`.DataArray`-like objects, sorted by their type.
             Each {key: value} pair is {name of the type in lowercase format:
             list of :class:`.DataArray` objects of this type}.
         extras : dict
@@ -707,7 +707,7 @@ class WriterBase(ABC):
         Yields
         ------
         TextIO
-            file handle, will be closed automatically
+            file handle, will be closed automatically on next iteration
         """
         open_params = open_params or {}  # empty dict by default
         for num, fnm in enumerate(filenames):
