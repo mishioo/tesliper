@@ -1,4 +1,4 @@
-"""Interface for witing data to disc.
+"""Interface for witing data to disk.
 
 This module contains :func:`.writer` factory function that enables to dynamically create
 a writer object that's responsible for saving data in a desired output format.
@@ -10,24 +10,26 @@ also defined here. :class:`WriterBase` provides an interface for all serial data
 which is used as an extension of files produced by this particular writer, and also as
 an identifier for the output format, used by the :func:`.writer` factory function.
 ``tesliper`` is shipped with four such writers: :class:`.TxtWriter` for writting to .txt
-format, :class:`.CsvWriter` for writting to .csv format, :class:`.XlsxWriter` for
+files, :class:`.CsvWriter` for writting in CSV format, :class:`.XlsxWriter` for
 creating Excel files, and :class:`.GjfWriter` for preparing Gaussian input files.
 
 You may want to export your data to other file formats - in such case you will need to
-implement your own writer. To do this subclass :class:`WriterBase`, provide it's
-*extension* as mentioned above and implement writing methods for genres you intend to
-support in your writer. Methods used by default are:
+implement your own writer. To do this, subclass :class:`WriterBase`, provide it's
+*extension* as mentioned above, and implement writing methods for data you intend to
+support in your writer. The table below lists these methods, along with a brief
+description and :class:`.DataArray`-like object, for which the method will be called by
+writer's :meth:`~.WriterBase.write` method.
 
 .. list-table:: Methods used by default to write certain data
     :header-rows: 1
 
     * - Writer's Method
       - Description
-      - Associated ``DataArray``-like objects
+      - Associated array
     * - :meth:`~.WriterBase.overview`
       - General information about conformers: energies, imaginary frequencies,
         stoichiometry.
-      - :class:`.Energies`, :class:`.Bands` (*extra*), :class:`.InfoArray` (*extra*)
+      - :class:`.Energies`
     * - :meth:`~.WriterBase.energies`
       - Detailed information about conformers' relative energy,
         including calculated populations
@@ -37,19 +39,19 @@ support in your writer. Methods used by default are:
       - :class:`.SingleSpectrum`
     * - :meth:`~.WriterBase.spectral_data`
       - Data related to spectral activity, but not convertible to spectra.
-      - :class:`.SpectralData`, :class:`.Bands` (*extra*)
+      - :class:`.SpectralData`
     * - :meth:`~.WriterBase.spectral_activities`
       - Data that may be used to simulate conformers' spectra.
-      - :class:`.SpectralActivities`, :class:`.Bands` (*extra*)
+      - :class:`.SpectralActivities`
     * - :meth:`~.WriterBase.spectra`
       - Spectra for multiple conformers.
       - :class:`.Spectra`
     * - :meth:`~.WriterBase.transitions`
       - Electronic transitions from ground to excited state, contributing to each band.
-      - :class:`.Transitions`, :class:`.Bands` (*extra*)
+      - :class:`.Transitions`
     * - :meth:`~.WriterBase.geometry`
       - Geometry (positions of atoms in space) of conformers.
-      - :class:`.Geometry`, :class:`.IntegerArray` (*extra*)
+      - :class:`.Geometry`
 
 .. note::
 
@@ -60,6 +62,98 @@ support in your writer. Methods used by default are:
     :class:`.GjfWriter`, which only implements :meth:`~.GjfWriter.geometry` method,
     because export of, e.g. a calculated spectrum as a Gaussian output would be
     pointless.
+
+Writer object decides which of these methods to call based on the type of each
+:class:`.DataArray`-like object passed to the :meth:`~.WriterBase.write` method. For
+some of them, it also passes additional :class:`.DataArray`-like objects, referred to as
+*extras*, e.g. correspomding :class:`.Bands` for spectral data. See documentation for
+particular method to learn, which of its parameters are mandatory, which are optional,
+and which should expect ``None`` as a possible value of *extra*.
+
+When implementing one of these methods in your writer, you should take care of opening
+and closing file files, formatting data you export, and writing to the file. For the
+first part you may use one of the helper methods that provide a ready-to-use file
+handles: :meth:`~.WriterBase._iter_handles` for writing to many files in batch or
+:meth:`~.WriterBase._get_handle` for writing to one file only. Both require a template
+that will be used to generate filename for produced files. To learn more about how these
+templates are handled by ``tesliper``, see :meth:`~.WriterBase.make_name` documentation.
+
+As mentioned before, writer object uses type of the :class:`.DataArray`-like object (or,
+more precisely, a name of its class) to decide which method to use for writing to disk.
+If you introduce a new subclass of :class:`.DataArray` for handling some genres, you
+will need to tell the Writer class, how it should handle these new objects. This is done
+by implementing a custom handler method. It's name should begin with an underscore,
+followed by the name of your subclass in lower case, followed by "_handler". Also, it
+should take two parameters: *data* and *extras*. First one is a list of instances of
+your subclass, second one is a dictionary of special-case genres, both retrieved from
+arguments given to :meth:`~.WriterBase.write` method (for details on which genres as
+treated as special cases, see :meth:`~.WriterBase.distribute_data`). Handler is
+responsible for calling appropriate writing method with arguments it needs.
+
+Here is an example: let's assume you have implemented a custom :class:`.DataArray`
+subclass for "ldip" and "lrot" genres with some additional functionality, but you'd like
+``tesliper`` to treat it as the original :class:`.ElectronicActivities` class for
+purposes of writing to disk.
+
+.. code-block:: python
+
+    class LengthActivities(ElectronicActivities):
+        associated_genres = ("ldip", "lrot")
+        ...  # custom functionality implemented here
+
+    class UpdatedTxtWriter(TxtWriter):
+        extension = "txt"
+
+        def _lengthactivities_handler(self, data, extras):
+            # written like ``ElectronicActivities``, so just delegate to its handler
+            self._electronicactivities_handler(data, extras)
+
+If you'd like to treat this new subclass differently, then you should provide a custom
+writting method for this kind of data:
+
+.. code-block:: python
+
+    class UpdatedTxtWriter(TxtWriter):
+        extension = "txt"
+
+        def length_activities(
+            self,
+            band: Bands,
+            data: List[LengthActivities],
+            name_template: Union[str, Template] = "${conf}.${cat}-${det}.${ext}",
+        ):
+            # we will use ``_iter_handles`` method for opening/closing files
+            template_params = {"genre": band.genre, "cat": "activity", "det": "length"}
+            handles = self._iter_handles(band.filenames, name_template, template_params)
+            # we will iterate conformer by conformer
+            values = zip(*[arr.values for arr in data])
+            for values, handle in zip(values, handles):
+                ...  # writting logic
+
+        def _lengthactivities_handler(self, data, extras):
+            self.length_activities(band=extras["wavelen"], data=data)
+
+In both cases ``UpdatedTxtWriter`` will be picked by the :func:`.writer` instead of the
+original :class:`.TxtWriter`, thanks to the automatic registration done by the base
+class :class:`.WriterBase `.
+
+.. warning::
+
+    If ``extension = "txt"`` line would be omitted in the ``UpdatedTxtWriter``
+    definition, it would be picked by the :func:`.writer` for "txt" format anyway,
+    because ``extension``'s value would be inherited from :class:`.TxtWriter`.
+    If you want to prevent this, provide a different ``extension`` class attribute.
+    If your custom writer should still use the same extension as one of the default
+    writers, provide ``extension`` also as an instance-level attribute:
+
+    .. code-block:: python
+
+        class UpdatedTxtWriter(TxtWriter):
+            extension = ""  # do not register
+            
+            def __init__(self, destination, mode):
+                super().__init__(destination, mode)
+                self.extension = "txt"  # use in generated filenames
 """
 import logging as lgg
 from abc import ABC, abstractmethod
