@@ -711,6 +711,8 @@ class WriterBase(ABC):
         ------
         IO
             file handle, will be closed automatically after ``with`` statement exits
+        
+        :meta public:
         """
         open_params = open_params or {}  # empty dict by default
         filename = self.make_name(template=template, **template_params)
@@ -743,6 +745,8 @@ class WriterBase(ABC):
         ------
         TextIO
             file handle, will be closed automatically on next iteration
+        
+        :meta public:
         """
         open_params = open_params or {}  # empty dict by default
         for num, fnm in enumerate(filenames):
