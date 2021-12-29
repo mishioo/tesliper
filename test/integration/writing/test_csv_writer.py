@@ -282,5 +282,4 @@ def test_serial_transitions_all(writer, molstd, filenamestd):
 def test_not_implemented_write(writer, arrays, monkeypatch):
     monkeypatch.setattr(Logger, "warning", Mock())
     writer.write(arrays)
-    #  Geometry and generic InfoArray not supported
-    assert Logger.warning.call_count == 2
+    assert Logger.warning.call_count == 0
