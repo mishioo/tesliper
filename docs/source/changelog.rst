@@ -1,10 +1,18 @@
+Change Log
+==========
+
 v. 0.8.2
+--------
+
 API:
-    - Corrected data export when `Tesliper`'s default genres used.
-    - Corrected error when `Tesliper.calculate_spectra` called with default values.
+    - Corrected data export when ``Tesliper``'s default genres used.
+    - Corrected error when ``Tesliper.calculate_spectra`` called with default values.
     - Corrected default filenames generated for spectral data and activities.
     - Supplemented genres' full names and other metadata.
+
 v. 0.8.1
+--------
+
 API:
     - Corrected handling of invalid start, stop, step parameters combination when calculating spectra.
 GUI:
@@ -13,16 +21,19 @@ GUI:
     - Fixed an error occurring when "show activities" is checked but there are no activities in a plotting range.
     - Added auto-update of energies-related values after trimming.
 
+
 v. 0.8.0
+--------
+
 API:
     - added RMSD-based trimming of conformers with similar geometry
     - added auto scaling and shifting spectra to match reference
     - added support for handling and exporting electronic transitions
     - added export to .gjf files
-    - added serialization of `Tesliper` class
-    - renamed `Molecules` class to `Conformers`
-    - significant changes to `...Writer` classes
-    - significant changes to `DataArray` subclasses
+    - added serialization of ``Tesliper`` class
+    - renamed ``Molecules`` class to ``Conformers``
+    - significant changes to ``...Writer`` classes
+    - significant changes to ``DataArray`` subclasses
     - major code refactoring
     - many smaller changes and improvements
 GUI:
@@ -31,13 +42,19 @@ GUI:
     - changed available and default colour schemes
     - supplemented data export options
 
+
 v. 0.7.4
+--------
+
 API:
     - Tesliper's method 'average_spectra' returns reference to dict of averaged spectra
 GUI:
     - fixed files export (broken in v. 0.7.3)
 
+
 v. 0.7.3
+--------
+
 API:
     - introduced exceptions.py submodule
     - glassware module turned into package
@@ -60,38 +77,56 @@ GUI:
     - added checking/unchecking inconsistent sizes
     - other minor changes and fixes
 
+
 v. 0.7.2
+--------
+
 - added support for string 'genres' parameter in Tesliper.calculate_spectra method
 - added support for .xy spectra files
 - gui: fixed problem with averaged and stacked spectra drawing 
 - gui: set "user_home_dir/tesliper/" as default location for tslr_err_log.exe
 - other minor fixes and enhancements
 
+
 v. 0.7.1
+--------
+
 - fixed crash on spectra drawing when Matplotlib 3 used
 - fixed problem with loading spectra from some txt files
 - added support for loading spectra from csv files
 - other minor fixes
 
+
 v. 0.7.0
+--------
+
 - graphical user interface redesigned
 - significant changes in code architecture
 - many fixes
 
+
 v. 0.6.4
+--------
+
 - calculated spectra precision in txt files changed to e-4
 - spectra lines width changed
 - data trimming features corrected
 - spectra plot erasing on session clearing implemented
 - inverting x axis for uv and ecd spectra added
 
+
 v. 0.6.3
+--------
+
 - fixed export error when not chosen, but all data were exported
 - fixed export error when export occurred after closing popup window
 - fixed export error when energies were not exported to separate txt files
 - entry validation improved
 
+
 v. 0.6.2
+--------
+
 - solved some problems with corrupted files extraction
 - added warning when files from mixed gaussian runs found
 - fixed RuntimeError on overlapping actions
@@ -102,8 +137,14 @@ v. 0.6.2
 - changed energies precision to .6
 - added Min. Boltzmann factor in GUI
 
+
 v. 0.6.1
+--------
+
 First beta release
 
-v. 0.6.0 =>
+
+v. 0.6.0 and earlier
+--------------------
+
 Early development stages
