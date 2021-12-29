@@ -2,7 +2,7 @@
 
 .. automodule:: {{ fullname }}
   :members:
-  :member-order: groupwise
+  :member-order: bysource
   :inherited-members:
 
   {% block attributes %}
