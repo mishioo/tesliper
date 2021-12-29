@@ -5,6 +5,7 @@ from unittest.mock import Mock
 import pytest
 
 from tesliper.writing import WriterBase
+from tesliper.writing.writer_base import _WRITERS
 
 
 @pytest.fixture
@@ -118,6 +119,17 @@ def writer_implemented():
 
     return _Writer
 
+
+def test_register(writer_class):
+    assert writer_class.extension in _WRITERS
+
+
+@pytest.mark.parametrize("ext", ["", None, False, tuple(), 0])
+def test_not_register(ext):
+    class _Writer(WriterBase):
+        extension = ext
+
+    assert ext not in _WRITERS
 
 def test_iter_handles(writer_class, tmp_path):
     wrt = writer_class(destination=tmp_path, mode="w")

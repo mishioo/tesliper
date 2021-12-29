@@ -142,7 +142,8 @@ class :class:`.WriterBase `.
     If ``extension = "txt"`` line would be omitted in the ``UpdatedTxtWriter``
     definition, it would be picked by the :func:`.writer` for "txt" format anyway,
     because ``extension``'s value would be inherited from :class:`.TxtWriter`.
-    If you want to prevent this, provide a different ``extension`` class attribute.
+    If you want to prevent this, you can provide a falsy value for the ``extension``
+    class attribute, i.e. an empty string or ``None``.
     If your custom writer should still use the same extension as one of the default
     writers, provide ``extension`` also as an instance-level attribute:
 
@@ -177,6 +178,7 @@ from typing import (
 
 from ..glassware.arrays import (
     Bands,
+    DataArray,
     ElectronicActivities,
     ElectronicData,
     Energies,
@@ -466,12 +468,14 @@ class WriterBase(ABC):
     @property
     @classmethod
     @abstractmethod
-    def extension(cls) -> str:
+    def extension(cls) -> Optional[str]:
         return ""
 
     extension.__doc__ = """
         Identifier of this writer, indicating the format of files generated,
         and a default extension of those files used by the :meth:`.make_name` method.
+        A falsy value, i.e. an empty string or ``None`` prevents this writer from
+        being registered and used by :func:`.writer` factory function.
 
         Returns
         -------
@@ -482,8 +486,8 @@ class WriterBase(ABC):
     @classmethod
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
-        # TODO: ignore empty strings
-        _WRITERS[cls.extension] = cls
+        if cls.extension:
+            _WRITERS[cls.extension] = cls
 
     def __init__(self, destination: Union[str, Path], mode: str = "x"):
         """
@@ -844,7 +848,7 @@ class WriterBase(ABC):
                 handler(data_, extras)
             except (NotImplementedError, AttributeError):
                 logger.warning(f"{type(self)} does not handle '{name}' type data.")
-
+    
     def overview(
         self,
         energies: Sequence[Energies],
