@@ -53,7 +53,7 @@ class DataArray(ArrayBase):
 
 
 class IntegerArray(DataArray):
-    """:class:`DataArray` subclass for holding data of ``int`` type.
+    """For handling data of ``int`` type.
 
     .. list-table:: Genres associated with this class:
         :width: 100%
@@ -68,8 +68,7 @@ class IntegerArray(DataArray):
 
 
 class FloatArray(DataArray):
-    """Concrete implementation of :class:`DataArray` for holding data of ``float``
-    type.
+    """For handling data of ``float`` type.
 
     .. list-table:: Genres associated with this class:
         :width: 100%
@@ -104,7 +103,7 @@ class FloatArray(DataArray):
 
 
 class InfoArray(DataArray):
-    """:class:`DataArray` subclass for holding data of ``str`` type.
+    """For handling data of ``str`` type.
 
     .. list-table:: Genres associated with this class:
         :width: 100%
@@ -168,7 +167,7 @@ class FilenamesArray(DataArray):
 
 
 class BooleanArray(DataArray):
-    """:class:`DataArray` subclass for holding data of ``bool`` type.
+    """For handling data of ``bool`` type.
 
     .. list-table:: Genres associated with this class:
         :width: 100%
@@ -187,7 +186,7 @@ class BooleanArray(DataArray):
 
 
 class Energies(FloatArray):
-    """:class:`DataArray` subclass for holding data about the energy of conformers.
+    """For handling data about the energy of conformers.
 
     .. list-table:: Genres associated with this class:
         :width: 100%
@@ -349,6 +348,17 @@ class Averagable:
 
 
 class Bands(FloatArray):
+    """Special kind of data array for band values, to which spectral data or activities
+    corespond. Provides an easy way to convert values between their different
+    representations: frequency, wavelength, and excitation energy.
+
+    .. list-table:: Genres associated with this class:
+        :width: 100%
+
+        * - freq
+          - wavelen
+          - ex_en
+    """
     associated_genres = ("freq", "wavelen", "ex_en")
     full_name_ref = {
         "ex_en": "Excitation energy",
@@ -359,43 +369,37 @@ class Bands(FloatArray):
 
     @property
     def freq(self):
-        """Values converted to frequencies in cm^(-1).
-        Same as :attr:`Bands.frequencies`
-        """
+        """Values converted to frequencies in :math:`\mathrm{cm}^{-1}`."""
         return convert_band(self.values, from_genre=self.genre, to_genre="freq")
 
     @property
     def frequencies(self):
-        """Values converted to frequencies in cm^(-1).
-        Same as :attr:`Bands.freq`
+        """Values converted to frequencies in :math:`\mathrm{cm}^{-1}`.
+        A convenience alias for :attr:`Bands.frequencies`.
         """
         return self.freq
 
     @property
     def wavelen(self):
-        """Values converted to wavelengths in nm.
-        Same as :attr:`Bands.wavelengths`
-        """
+        """Values converted to wavelengths in nm."""
         return convert_band(self.values, from_genre=self.genre, to_genre="wavelen")
 
     @property
     def wavelengths(self):
         """Values converted to wavelengths in nm.
-        Same as :attr:`Bands.wavelen`
+        A convenience alias for :attr:`Bands.wavelen`.
         """
         return self.wavelen
 
     @property
     def ex_en(self):
-        """Values converted to excitation energy in eV.
-        Same as :attr:`Bands.excitation_energy`
-        """
+        """Values converted to excitation energy in eV."""
         return convert_band(self.values, from_genre=self.genre, to_genre="ex_en")
 
     @property
     def excitation_energy(self):
         """Values converted to excitation energy in eV.
-        Same as :attr:`Bands.ex_en`
+        A convenience alias for :attr:`Bands.ex_en`.
         """
         return self.ex_en
 
@@ -413,8 +417,7 @@ class Bands(FloatArray):
             return np.array([])
 
     def find_imaginary(self):
-        """Finds all freqs with imaginary values and creates 'imag' entry with
-        list of indicants of imaginery values presence.
+        """Reports number of imaginary frequencies of each conformer that has any.
 
         Returns
         -------
@@ -427,7 +430,13 @@ class Bands(FloatArray):
 
 
 class SpectralData(FloatArray, ABC):
-    """Base class for spectral data genres, that are not spectral activities."""
+    """Base class for spectral data genres, that are not spectral activities.
+    
+    When subclassed, one of the attributes: :attr:`.freq` or :attr:`.wavelen` should
+    be overridden with a concrete setter and getter - use of :class:`.ArrayProperty`
+    is recommended. The other one may use implementation from this base class by call
+    to ``super().freq`` or ``super().wavelen`` to get converted values.
+    """
 
     # TODO: Supplement tests regarding this class' subclasses
 
@@ -436,24 +445,53 @@ class SpectralData(FloatArray, ABC):
     @property
     @abstractmethod
     def spectra_type(self):
+        """Type of spectra, that genres associated with :class:`.SpectralData`'s
+        subclass relate to. Should be a class-level attribute with value of either
+        "vibrational", "electronic", or "scattering".
+        """
         return NotImplemented
 
     @property
     @abstractmethod
     def freq(self):
+        """Bands values converted to frequencies in :math:`\mathrm{cm}^{-1}`. If
+        :attr:`.wavelen` is provided, this may be overridden with a simple call to
+        ``super()``:
+
+        .. code-block:: python
+
+            @property
+            def freq(self):
+                return super().freq()  # values converted to cm^(-1)
+        """
         return convert_band(self.wavelen, from_genre="wavelen", to_genre="freq")
 
     @property
     def frequencies(self):
+        """Bands values converted to frequencies in :math:`\mathrm{cm}^{-1}`.
+        A convenience alias for :attr:`.freq`.
+        """
         return self.freq
 
     @property
     @abstractmethod
     def wavelen(self):
+        """Bands values converted to wavelengths in nm. If :attr:`.freq` is
+        provided, this may be overridden with a simple call to ``super()``:
+
+        .. code-block:: python
+
+            @property
+            def wavelen(self):
+                return super().wavelen()  # values converted to nm
+        """
         return convert_band(self.wavelen, from_genre="freq", to_genre="wavelen")
 
     @property
     def wavelengths(self):
+        """Bands values converted to wavelengths in nm.
+        A convenience alias for :attr:`.wavelen`.
+        """
         return self.wavelen
 
 
@@ -479,7 +517,8 @@ class _VibData(SpectralData):
         values
             Sequence of values for *genre* for each conformer in *filenames*.
         freq
-            Frequency for each value in each conformer in :math:`cm^{-1}` units.
+            Frequency for each value in each conformer in :math:`\mathrm{cm}^{-1}`
+            units.
         allow_data_inconsistency
             Flag signalizing if instance should allow data inconsistency (see
             :class:`ArrayPropety` for details).
@@ -489,12 +528,12 @@ class _VibData(SpectralData):
 
     @property
     def wavelen(self):
+        """Bands values converted to wavelengths in nm."""
         return super().wavelen
 
 
 class VibrationalData(_VibData):
-    """:class:`DataArray` subclass for holding vibrational data that is not a spectal
-    activity.
+    """For handling vibrational data that is not a spectral activity.
 
     .. list-table:: Genres associated with this class:
         :width: 100%
@@ -516,8 +555,7 @@ class VibrationalData(_VibData):
 
 
 class ScatteringData(_VibData):
-    """:class:`DataArray` subclass for holding scattering data that is not a spectal
-    activity.
+    """For handling scattering data that is not a spectral activity.
 
     .. list-table:: Genres associated with this class:
         :width: 100%
@@ -597,8 +635,7 @@ class ScatteringData(_VibData):
 
 
 class ElectronicData(SpectralData):
-    """:class:`DataArray` subclass for holding electronic data that is not a spectal
-    activity.
+    """For handling electronic data that is not a spectral activity.
 
     .. list-table:: Genres associated with this class:
         :width: 100%
@@ -747,7 +784,7 @@ class _VibAct(_VibData, SpectralActivities):
 
 
 class VibrationalActivities(VibrationalData, _VibAct):
-    """:class:`DataArray` subclass for holding electronic spectal activity data.
+    """For handling electronic spectral activity data.
 
     .. list-table:: Genres associated with this class:
         :width: 100%
@@ -780,7 +817,7 @@ class VibrationalActivities(VibrationalData, _VibAct):
 
 
 class ScatteringActivities(ScatteringData, _VibAct):
-    """:class:`DataArray` subclass for holding scattering spectal activity data.
+    """For handling scattering spectral activity data.
 
     .. list-table:: Genres associated with this class:
         :width: 100%
@@ -858,7 +895,7 @@ class ScatteringActivities(ScatteringData, _VibAct):
 
 
 class ElectronicActivities(ElectronicData, SpectralActivities):
-    """:class:`DataArray` subclass for holding electronic spectal activity data.
+    """For handling electronic spectral activity data.
 
     .. list-table:: Genres associated with this class:
         :width: 100%
@@ -963,7 +1000,7 @@ class ElectronicActivities(ElectronicData, SpectralActivities):
 
 
 class Transitions(DataArray):
-    """DataArray that stores information about electronic transitions from ground
+    """For handling information about electronic transitions from ground
     to excited state contributing to each band.
 
     Data is stored in three attributes: :attr:`.ground`, :attr:`.excited`, and
@@ -1111,7 +1148,7 @@ class Transitions(DataArray):
 
 
 class Geometry(FloatArray):
-    """DataArray that stores information about geometry of conformers.
+    """For handling information about geometry of conformers.
 
     .. list-table:: Genres associated with this class:
         :width: 100%
