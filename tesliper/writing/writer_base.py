@@ -155,7 +155,7 @@ class :class:`.WriterBase `.
 
         class UpdatedTxtWriter(TxtWriter):
             extension = ""  # do not register
-            
+
             def __init__(self, destination, mode):
                 super().__init__(destination, mode)
                 self.extension = "txt"  # use in generated filenames
@@ -293,7 +293,6 @@ class WriterBase(ABC):
         command="Command",
         multiplicity="Multiplicity",
         transitions="Transitions",
-        cpu_time="CPU Time",
         gibcorr="Gibbs Corr.",
         charge="Charge",
         normal_termination="Termination",
@@ -361,7 +360,6 @@ class WriterBase(ABC):
         multiplicity="{:^ 12d}",
         charge="{:^ 6d}",
         transitions="{}",
-        cpu_time="{}",
         normal_termination="{}",
         filenames="{}",
         rot="{:> 10.4f}",
@@ -421,7 +419,6 @@ class WriterBase(ABC):
         input_geom="",
         command="",
         transitions="",
-        cpu_time="",
         normal_termination="",
         filenames="",
         freq="0.0000",
