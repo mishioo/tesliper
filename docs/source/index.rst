@@ -167,6 +167,7 @@ References
 
    Home page <self>
    Installation <installation>
+   Conventions and Terms <glossary>
 
 .. toctree::
    :hidden:
