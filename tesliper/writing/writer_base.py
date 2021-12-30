@@ -295,7 +295,7 @@ class WriterBase(ABC):
         transitions="Transitions",
         gibcorr="Gibbs Corr.",
         charge="Charge",
-        normal_termination="Termination",
+        normal_termination="Normal Termination",
         filenames="Filename",
         freq="Frequencies",
         mass="Red. masses",

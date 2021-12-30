@@ -69,6 +69,56 @@ def writer(tmp_path):
     return TxtWriter(tmp_path)
 
 
+def test_generic_booleans(writer, mols):
+    writer.generic([mols.arrayed("normal_termination")])
+    assert Path(writer._handle.name).name == "generic.boolean.txt"
+    with Path(writer._handle.name).open("r") as outcome:
+        assert outcome.read() == (
+            "Gaussian output file   Normal Termination\n"
+            "-----------------------------------------\n"
+            "meoh-1                               True\n"
+            "meoh-2                               True\n"
+        )
+
+
+def test_generic_info(writer, mols):
+    writer.generic([mols.arrayed(grn) for grn in ar.InfoArray.associated_genres])
+    assert Path(writer._handle.name).name == "generic.info.txt"
+    with Path(writer._handle.name).open("r") as outcome:
+        assert outcome.read() == (
+            "Gaussian output file   Command          Stoichiometry\n"
+            "-----------------------------------------------------\n"
+            "meoh-1                 freq hf/sto-3g            CH4O\n"
+            "meoh-2                 freq hf/sto-3g            CH4O\n"
+        )
+
+
+def test_generic_integer(writer, mols):
+    writer.generic([mols.arrayed(grn) for grn in ar.IntegerArray.associated_genres])
+    assert Path(writer._handle.name).name == "generic.integer.txt"
+    with Path(writer._handle.name).open("r") as outcome:
+        assert outcome.read() == (
+            "Gaussian output file   Charge   Multiplicity\n"
+            "--------------------------------------------\n"
+            "meoh-1                    0           1     \n"
+            "meoh-2                    0           1     \n"
+        )
+
+
+def test_generic_various(writer, mols):
+    writer.generic(
+        [mols.arrayed(grn) for grn in ["charge", "stoichiometry", "normal_termination"]]
+    )
+    assert Path(writer._handle.name).name == "generic.various.txt"
+    with Path(writer._handle.name).open("r") as outcome:
+        assert outcome.read() == (
+            "Gaussian output file   Charge   Stoichiometry   Normal Termination\n"
+            "------------------------------------------------------------------\n"
+            "meoh-1                    0              CH4O                 True\n"
+            "meoh-2                    0              CH4O                 True\n"
+        )
+
+
 def test_overview_basic(writer, mols):
     writer.overview(
         [mols.arrayed(grn) for grn in ar.Energies.associated_genres],
