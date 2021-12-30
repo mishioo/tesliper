@@ -369,12 +369,12 @@ class Bands(FloatArray):
 
     @property
     def freq(self):
-        """Values converted to frequencies in :math:`\mathrm{cm}^{-1}`."""
+        """Values converted to frequencies in :math:`\\mathrm{cm}^{-1}`."""
         return convert_band(self.values, from_genre=self.genre, to_genre="freq")
 
     @property
     def frequencies(self):
-        """Values converted to frequencies in :math:`\mathrm{cm}^{-1}`.
+        """Values converted to frequencies in :math:`\\mathrm{cm}^{-1}`.
         A convenience alias for :attr:`Bands.frequencies`.
         """
         return self.freq
@@ -454,7 +454,7 @@ class SpectralData(FloatArray, ABC):
     @property
     @abstractmethod
     def freq(self):
-        """Bands values converted to frequencies in :math:`\mathrm{cm}^{-1}`. If
+        """Bands values converted to frequencies in :math:`\\mathrm{cm}^{-1}`. If
         :attr:`.wavelen` is provided, this may be overridden with a simple call to
         ``super()``:
 
@@ -468,7 +468,7 @@ class SpectralData(FloatArray, ABC):
 
     @property
     def frequencies(self):
-        """Bands values converted to frequencies in :math:`\mathrm{cm}^{-1}`.
+        """Bands values converted to frequencies in :math:`\\mathrm{cm}^{-1}`.
         A convenience alias for :attr:`.freq`.
         """
         return self.freq
@@ -517,7 +517,7 @@ class _VibData(SpectralData):
         values
             Sequence of values for *genre* for each conformer in *filenames*.
         freq
-            Frequency for each value in each conformer in :math:`\mathrm{cm}^{-1}`
+            Frequency for each value in each conformer in :math:`\\mathrm{cm}^{-1}`
             units.
         allow_data_inconsistency
             Flag signalizing if instance should allow data inconsistency (see
