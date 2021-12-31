@@ -8,6 +8,7 @@ import pytest
 from tesliper import Energies
 from tesliper.extraction import Soxhlet
 from tesliper.glassware import Conformers, SingleSpectrum, Spectra
+from tesliper.glassware import arrays as ar
 from tesliper.writing.xlsx_writer import XlsxWriter
 
 
@@ -63,6 +64,33 @@ def test_start_with_existing_file(tmp_path):
     wb = oxl.Workbook()
     wb.save(file)
     XlsxWriter(tmp_path, mode="a")
+
+
+@pytest.mark.parametrize(
+    "det,genres",
+    [
+        ("integer", ar.IntegerArray.associated_genres),
+        ("float", ar.FloatArray.associated_genres),
+        ("boolean", ("normal_termination",)),
+        ("info", ar.InfoArray.associated_genres),
+        (
+            "various",
+            ("normal_termination",)
+            + ar.InfoArray.associated_genres
+            + ar.FloatArray.associated_genres
+            + ar.IntegerArray.associated_genres,
+        ),
+    ],
+)
+def test_generic(writer, mols, det, genres):
+    data = [mols.arrayed(grn) for grn in genres]
+    writer.generic(data)
+    assert writer.file.exists()
+    wb = oxl.load_workbook(writer.file)
+    assert wb.sheetnames == [f"generic.{det}"]
+    ws = wb[f"generic.{det}"]
+    assert len(list(ws.columns)) == 1 + len(genres)
+    assert len(list(ws.rows)) == 1 + len(list(mols.keys()))
 
 
 def test_energies(writer, mols):

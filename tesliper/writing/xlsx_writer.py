@@ -19,7 +19,7 @@ from ..glassware.arrays import (
     Transitions,
 )
 from ..glassware.spectra import SingleSpectrum, Spectra
-from .writer_base import WriterBase
+from .writer_base import WriterBase, _GenericArray
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -69,6 +69,44 @@ class XlsxWriter(WriterBase):
                 self.workbook.save(self.file)
         finally:
             self.manual_save = orig_manual
+
+    def generic(
+        self,
+        data: List[_GenericArray],
+        name_template: Union[str, Template] = "${cat}.${det}",
+    ):
+        """Writes generic data from multiple :class:`.DataArray`-like objects to a
+        single sheet. Said objects should provide a single value for each conformer.
+
+        Parameters
+        ----------
+        data
+            :class:`.DataArray` objects that are to be exported.
+        name_template
+            Template that will be used to generate filenames. Refer to
+            :meth:`.make_name` documentation for details on supported placeholders.
+        """
+        wb = self.workbook
+        genres = [arr.genre for arr in data]
+        headers = ["Gaussian output file"] + [self._header[genre] for genre in genres]
+        values = [arr.values for arr in data]
+        lines = list(zip(data[0].filenames, *values))
+        types = [type(arr).__name__.lower().replace("array", "") for arr in data]
+        detail = "various" if len(set(types)) > 1 else types[0]
+        genre = "misc" if len(genres) > 1 else genres[0]
+        template_params = {
+            "cat": "generic",
+            "conf": "multiple",
+            "det": detail,
+            "genre": genre,
+        }
+        ws = wb.create_sheet(title=self.make_name(name_template, **template_params))
+        ws.append(headers)
+        for line in lines:
+            ws.append(line)
+        if not self.manual_save:
+            wb.save(self.file)
+        logger.info("Generic export to xlsx files done.")
 
     def overview(
         self,
