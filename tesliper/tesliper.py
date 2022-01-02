@@ -41,6 +41,8 @@ from typing import (
     Union,
 )
 
+from tesliper.glassware.spectra import SingleSpectrum
+
 from . import datawork as dw
 from . import extraction as ex
 from . import glassware as gw
@@ -186,6 +188,10 @@ class Tesliper:
         Spectra averaged using available energies genres, calculated with last call
         to :meth:`.average_spectra` method. Keys are tuples of two strings: averaged
         spectra genre and energies genre used for averaging.
+    experimental : dict of str: Spectra
+        Experimental spectra loaded from disk.
+        Possible keys are spectra genres: "ir", "vcd", "uv", "ecd", "raman", and "roa".
+        Values are :class:`.Spectra` instances with experimental spetra of this genre.
     parameters : dict of str: (dict of str: float or callable)
         Parameters for calculation of each type of spectra: "vibrational", "electronic",
         and "scattering". Avaliable parameters are:
@@ -254,6 +260,7 @@ class Tesliper:
         self.output_dir = output_dir
         self.spectra = dict()
         self.averaged = dict()
+        self.experimental = dict()
         self.parameters = self.standard_parameters
 
     def __getitem__(self, item: str) -> gw.conformers.AnyArray:
@@ -270,6 +277,7 @@ class Tesliper:
         self.output_dir = ""
         self.spectra = dict()
         self.averaged = dict()
+        self.experimental = dict()
         self.parameters = self.standard_parameters
 
     @property
@@ -520,6 +528,35 @@ class Tesliper:
         if spectra_genre is not None:
             self.parameters[spectra_genre].update(settings)
         return settings
+
+    def load_experimental(
+        self,
+        path: Optional[Union[str, Path]],
+        spectrum_genre: Optional[str],
+    ) -> SingleSpectrum:
+        """Load experimental spectrum from a file. Data read from file is stored as
+        :class:`.SingleSpectrum` instance in :attr:`.Tesliper.experimental` dictionary
+        under *spectrum_genre* key.
+
+        Parameters
+        ----------
+        path : str or pathlib.Path
+            Path to the file with experimental spectrum.
+        spectrum_genre : str
+            Genre of the experimental spectrum that will be loaded. Should be one of
+            "ir", "vcd", "uv", "ecd", "raman", or "roa".
+
+        Returns
+        -------
+        SingleSpectrum
+            Experimental spectrum loaded from the file.
+        """
+        soxhlet = ex.Soxhlet()
+        spc = soxhlet.load_spectrum(path)
+        self.experimental[spectrum_genre] = gw.SingleSpectrum(
+            genre=spectrum_genre, values=spc[1], abscissa=spc[0]
+        )
+        return self.experimental[spectrum_genre]
 
     def calculate_single_spectrum(
         self,

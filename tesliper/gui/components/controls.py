@@ -803,14 +803,14 @@ class CalculateSpectra(CollapsiblePane):
     @property
     def exp_spc(self):
         try:
-            return self._exp_spc[self.s_name.get()]
+            return self.tesliper.experimental[self.s_name.get()]
         except KeyError:
             # no value selected in s_name radio
             return None
 
     @exp_spc.setter
     def exp_spc(self, value):
-        self._exp_spc[self.s_name.get()] = value
+        self.tesliper.experimental[self.s_name.get()] = value
 
     @property
     def draw_params(self):
@@ -861,8 +861,9 @@ class CalculateSpectra(CollapsiblePane):
         if filename:
             logger.debug(f"File: {filename}")
             try:
-                soxhlet = Soxhlet()
-                spc = soxhlet.load_spectrum(filename)
+                self.tesliper.load_experimental(
+                    filename, self.draw_params["spectra_name"]
+                )
             except ValueError:
                 logger.warning(
                     "Experimental spectrum couldn't be loaded. "
@@ -870,11 +871,6 @@ class CalculateSpectra(CollapsiblePane):
                     " or if file is not corrupted."
                 )
             else:
-                self.exp_spc = gw.SingleSpectrum(
-                    genre=self.draw_params["spectra_name"],
-                    values=spc[1],
-                    abscissa=spc[0],
-                )
                 self.show_exp.var.set(True)
                 self.winfo_toplevel().changer.set_states()
 
