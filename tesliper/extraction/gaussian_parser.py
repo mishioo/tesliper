@@ -15,10 +15,6 @@ number = number_group.replace("(", "").replace(")", "")
 
 command = re.compile(r"#(?:.*\n)+?(?=\s-)")
 termination = re.compile(r"Normal termination.*\n\Z")
-cpu_time_reg = re.compile(
-    r"Job cpu time:\s*(\d+)\s*days\s*(\d+)\s*hours\s*(\d+)\s*minutes"
-    r"\s*(\d+\.\d)\s*seconds"
-)  # use .findall(text)
 SCFCRE = re.compile(r"SCF Done.*?=" + number_group)  # use .search(line).group(1)
 stoich = re.compile(r"Stoichiometry\s*(\w*)\n")  # use .findall(text)
 stoich_ = re.compile(r"^ Stoichiometry\s*(\w*(?:\(\d+[+-]\))?)\n")  # use .findall(text)

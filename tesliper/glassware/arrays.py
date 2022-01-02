@@ -109,19 +109,16 @@ class InfoArray(DataArray):
         :width: 100%
 
         * - command
-          - cpu_time
           - stoichiometry
     """
 
     full_name_ref = {
         "command": "Command",
-        "cpu_time": "CPU Time",
         "stoichiometry": "Stoichiometry",
     }
     _units = {}
     associated_genres = (
         "command",
-        "cpu_time",
         "stoichiometry",
     )
     values = ArrayProperty(dtype=str, check_against="filenames")
@@ -359,6 +356,7 @@ class Bands(FloatArray):
           - wavelen
           - ex_en
     """
+
     associated_genres = ("freq", "wavelen", "ex_en")
     full_name_ref = {
         "ex_en": "Excitation energy",
@@ -431,7 +429,7 @@ class Bands(FloatArray):
 
 class SpectralData(FloatArray, ABC):
     """Base class for spectral data genres, that are not spectral activities.
-    
+
     When subclassed, one of the attributes: :attr:`.freq` or :attr:`.wavelen` should
     be overridden with a concrete setter and getter - use of :class:`.ArrayProperty`
     is recommended. The other one may use implementation from this base class by call

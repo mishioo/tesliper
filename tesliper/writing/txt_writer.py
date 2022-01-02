@@ -8,7 +8,6 @@ import numpy as np
 
 from ..glassware.arrays import (
     Bands,
-    ElectronicActivities,
     Energies,
     FloatArray,
     InfoArray,
@@ -17,7 +16,7 @@ from ..glassware.arrays import (
     Transitions,
 )
 from ..glassware.spectra import SingleSpectrum, Spectra
-from .writer_base import WriterBase
+from .writer_base import WriterBase, _GenericArray
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -29,6 +28,51 @@ class TxtWriter(WriterBase):
     """Writes extracted or calculated data to .txt format files."""
 
     extension = "txt"
+
+    def generic(
+        self,
+        data: List[_GenericArray],
+        name_template: Union[str, Template] = "${cat}.${det}.${ext}",
+    ):
+        """Writes generic data from multiple :class:`.DataArray`-like objects to a
+        single file. Said objects should provide a single value for each conformer.
+
+        Parameters
+        ----------
+        data
+            :class:`.DataArray` objects that are to be exported.
+        name_template
+            Template that will be used to generate filenames. Refer to
+            :meth:`.make_name` documentation for details on supported placeholders.
+        """
+        genres = [arr.genre for arr in data]
+        headers = ["Gaussian output file"] + [self._header[genre] for genre in genres]
+        formatters = [
+            self._formatters[g] if g in self._formatters else "{}" for g in genres
+        ]
+        values = [arr.values for arr in data]
+        formatted = [[f.format(v) for v in vs] for f, vs in zip(formatters, values)]
+        lines = list(zip(data[0].filenames, *formatted))
+        widths = [max([len(v) for v in vs]) for vs in zip(headers, *lines)]
+        types = [type(arr).__name__.lower().replace("array", "") for arr in data]
+        detail = "various" if len(set(types)) > 1 else types[0]
+        genre = "misc" if len(genres) > 1 else genres[0]
+        template_params = {
+            "cat": "generic",
+            "conf": "multiple",
+            "det": detail,
+            "genre": genre,
+        }
+        headers_line = "   ".join([f"{e:<{w}}" for e, w in zip(headers, widths)])
+        side = ["<"] + [">"] * len(genres)
+        with self._get_handle(name_template, template_params) as handle:
+            handle.write(headers_line + "\n")
+            handle.write("-" * len(headers_line) + "\n")
+            for line in lines:
+                handle.write(
+                    "   ".join([f"{e:{s}{w}}" for e, s, w in zip(line, side, widths)])
+                )
+                handle.write("\n")
 
     def overview(
         self,

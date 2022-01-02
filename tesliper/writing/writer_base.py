@@ -26,6 +26,10 @@ writer's :meth:`~.WriterBase.write` method.
     * - Writer's Method
       - Description
       - Associated array
+    * - :meth:`~.WriterBase.generic`
+      - Generic data: any genre that provides one value for each conformer.
+      - :class:`.DataArray`, :class:`.IntegerArray`,
+        :class:`.FloatArray`, :class:`.BooleanArray`, :class:`.InfoArray`.
     * - :meth:`~.WriterBase.overview`
       - General information about conformers: energies, imaginary frequencies,
         stoichiometry.
@@ -142,7 +146,8 @@ class :class:`.WriterBase `.
     If ``extension = "txt"`` line would be omitted in the ``UpdatedTxtWriter``
     definition, it would be picked by the :func:`.writer` for "txt" format anyway,
     because ``extension``'s value would be inherited from :class:`.TxtWriter`.
-    If you want to prevent this, provide a different ``extension`` class attribute.
+    If you want to prevent this, you can provide a falsy value for the ``extension``
+    class attribute, i.e. an empty string or ``None``.
     If your custom writer should still use the same extension as one of the default
     writers, provide ``extension`` also as an instance-level attribute:
 
@@ -150,7 +155,7 @@ class :class:`.WriterBase `.
 
         class UpdatedTxtWriter(TxtWriter):
             extension = ""  # do not register
-            
+
             def __init__(self, destination, mode):
                 super().__init__(destination, mode)
                 self.extension = "txt"  # use in generated filenames
@@ -177,6 +182,8 @@ from typing import (
 
 from ..glassware.arrays import (
     Bands,
+    BooleanArray,
+    DataArray,
     ElectronicActivities,
     ElectronicData,
     Energies,
@@ -243,11 +250,14 @@ def writer(
         raise ValueError(message)
 
 
+_GenericArray = Union[DataArray, IntegerArray, FloatArray, BooleanArray, InfoArray]
+
+
 # CLASSES
 class WriterBase(ABC):
     """Base class for writers that handle export process based on genre of exported
     data.
-    
+
     Subclasses should provide an :attr:`.extension` class-level attribute and writting
     methods that subclass intend to support (see below). Value of :attr:`.extension`
     will be used to register subclass as a default writer for export to files that this
@@ -283,10 +293,9 @@ class WriterBase(ABC):
         command="Command",
         multiplicity="Multiplicity",
         transitions="Transitions",
-        cpu_time="CPU Time",
         gibcorr="Gibbs Corr.",
         charge="Charge",
-        normal_termination="Termination",
+        normal_termination="Normal Termination",
         filenames="Filename",
         freq="Frequencies",
         mass="Red. masses",
@@ -351,7 +360,6 @@ class WriterBase(ABC):
         multiplicity="{:^ 12d}",
         charge="{:^ 6d}",
         transitions="{}",
-        cpu_time="{}",
         normal_termination="{}",
         filenames="{}",
         rot="{:> 10.4f}",
@@ -411,7 +419,6 @@ class WriterBase(ABC):
         input_geom="",
         command="",
         transitions="",
-        cpu_time="",
         normal_termination="",
         filenames="",
         freq="0.0000",
@@ -461,17 +468,17 @@ class WriterBase(ABC):
     energies_order = "zpe ten ent gib scf".split(" ")
     """Default order, in which energy-related data is written to files."""
 
-    # TODO: add support for generic FloatArray and InfoArray
-
     @property
     @classmethod
     @abstractmethod
-    def extension(cls) -> str:
+    def extension(cls) -> Optional[str]:
         return ""
 
     extension.__doc__ = """
         Identifier of this writer, indicating the format of files generated,
         and a default extension of those files used by the :meth:`.make_name` method.
+        A falsy value, i.e. an empty string or ``None`` prevents this writer from
+        being registered and used by :func:`.writer` factory function.
 
         Returns
         -------
@@ -482,8 +489,8 @@ class WriterBase(ABC):
     @classmethod
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
-        # TODO: ignore empty strings
-        _WRITERS[cls.extension] = cls
+        if cls.extension:
+            _WRITERS[cls.extension] = cls
 
     def __init__(self, destination: Union[str, Path], mode: str = "x"):
         """
@@ -711,7 +718,7 @@ class WriterBase(ABC):
         ------
         IO
             file handle, will be closed automatically after ``with`` statement exits
-        
+
         :meta public:
         """
         open_params = open_params or {}  # empty dict by default
@@ -745,7 +752,7 @@ class WriterBase(ABC):
         ------
         TextIO
             file handle, will be closed automatically on next iteration
-        
+
         :meta public:
         """
         open_params = open_params or {}  # empty dict by default
@@ -755,6 +762,27 @@ class WriterBase(ABC):
             file = self.check_file(self.destination.joinpath(filename))
             with file.open(self.mode, **open_params) as handle:
                 yield handle
+
+    def _dataarray_handler(self, data: List[DataArray], extras: Dict[str, Any]) -> None:
+        self.generic(data)
+
+    def _integerarray_handler(
+        self, data: List[IntegerArray], extras: Dict[str, Any]
+    ) -> None:
+        self.generic(data)
+
+    def _floatarray_handler(
+        self, data: List[FloatArray], extras: Dict[str, Any]
+    ) -> None:
+        self.generic(data)
+
+    def _booleanarray_handler(
+        self, data: List[BooleanArray], extras: Dict[str, Any]
+    ) -> None:
+        self.generic(data)
+
+    def _infoarray_handler(self, data: List[InfoArray], extras: Dict[str, Any]) -> None:
+        self.generic(data)
 
     def _energies_handler(self, data: List[Energies], extras: Dict[str, Any]) -> None:
         self.overview(
@@ -845,6 +873,27 @@ class WriterBase(ABC):
             except (NotImplementedError, AttributeError):
                 logger.warning(f"{type(self)} does not handle '{name}' type data.")
 
+    def generic(
+        self,
+        data: List[_GenericArray],
+        name_template: Union[str, Template] = "",
+    ):
+        """Interface for writing generic data: any that provides one value for each
+        conformer. Evoked when handling :class:`.DataArray`, :class:`.IntegerArray`,
+        :class:`.FloatArray`, :class:`.BooleanArray`, or :class:`.InfoArray`.
+
+        Parameters
+        ----------
+        data
+            List of objects that provide one value for each conformer.
+
+        Raises
+        ------
+        NotImplementedError
+            Whenever called, this is an interface that should not be used directly.
+        """
+        raise NotImplementedError(f"Class {type(self)} does not implement this method.")
+
     def overview(
         self,
         energies: Sequence[Energies],
@@ -919,7 +968,7 @@ class WriterBase(ABC):
         name_template
             Template that defines naming scheme for files generated by this method.
             May be omitted in custom implementation.
-        
+
         Raises
         ------
         NotImplementedError
@@ -949,7 +998,7 @@ class WriterBase(ABC):
         name_template
             Template that defines naming scheme for files generated by this method.
             May be omitted in custom implementation.
-        
+
         Raises
         ------
         NotImplementedError
@@ -979,7 +1028,7 @@ class WriterBase(ABC):
         name_template
             Template that defines naming scheme for files generated by this method.
             May be omitted in custom implementation.
-        
+
         Raises
         ------
         NotImplementedError
@@ -999,7 +1048,7 @@ class WriterBase(ABC):
         name_template
             Template that defines naming scheme for files generated by this method.
             May be omitted in custom implementation.
-        
+
         Raises
         ------
         NotImplementedError
