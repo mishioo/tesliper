@@ -822,15 +822,7 @@ class ArrayBase(ABC):
         self.filenames = filenames
         self.values = values
 
-    # TODO make it an ArrayProperty
-    @property
-    def filenames(self):
-        return self._filenames
-
-    @filenames.setter
-    def filenames(self, value):
-        self._filenames = np.array(value, dtype=str)
-
+    filenames = ArrayProperty(dtype=str)
     values = ArrayProperty(check_against="filenames")
 
     def get_repr_args(self) -> Dict[str, Any]:
