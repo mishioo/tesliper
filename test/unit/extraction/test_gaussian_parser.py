@@ -64,21 +64,6 @@ def test_number_sci_not_matches(value):
     assert not re.search(gp.number, value)
 
 
-def test_command():
-    assert re.search(
-        gp.command,
-        " ------------------------------------------\n"
-        " #P td=(singlets,nstates=80) B3LYP/Def2TZVP\n"
-        " ------------------------------------------\n",
-    )
-    assert re.search(
-        gp.command,
-        " -------------------------\n"
-        " # opt freq wB97xd/6-31G**\n"
-        " -------------------------\n",
-    )
-
-
 @pytest.mark.parametrize(
     "line",
     [
@@ -91,4 +76,4 @@ def test_command():
     ],
 )
 def test_stoichiometry(line):
-    assert gp.STOICHCRE.match(line)
+    assert gp.STOICH_CRE.match(line)
