@@ -16,8 +16,7 @@ number = number_group.replace("(", "").replace(")", "")
 command = re.compile(r"#(?:.*\n)+?(?=\s-)")
 termination = re.compile(r"Normal termination.*\n\Z")
 SCFCRE = re.compile(r"SCF Done.*?=" + number_group)  # use .search(line).group(1)
-stoich = re.compile(r"Stoichiometry\s*(\w*)\n")  # use .findall(text)
-stoich_ = re.compile(r"^ Stoichiometry\s*(\w*(?:\(\d+[+-]\))?)\n")  # use .findall(text)
+STOICHCRE = re.compile(r"^ Stoichiometry\s*(\w*(?:\(\d+[+-]?,?\d*\))?)\n")
 
 # GEOMETRY
 # not used currently
@@ -377,7 +376,7 @@ class GaussianParser(ParserBase):
         elif line.startswith(" SCF Done:"):
             self.data["scf"] = float(SCFCRE.search(line).group(1))
         elif line.startswith(" Stoichiometry"):
-            self.data["stoichiometry"] = stoich_.match(line).group(1)
+            self.data["stoichiometry"] = STOICHCRE.match(line).group(1)
         elif "Proceeding to internal job step number" in line:
             # last job determines if termination was normal
             self.data["normal_termination"] = False
@@ -424,7 +423,7 @@ class GaussianParser(ParserBase):
             self.geometry(line)
             self.workhorse = self.optimization
         elif line.startswith(" Stoichiometry"):
-            self.data["stoichiometry"] = stoich_.match(line).group(1)
+            self.data["stoichiometry"] = STOICHCRE.match(line).group(1)
         elif line.startswith(" SCF Done:"):
             self.data["scf"] = float(SCFCRE.search(line).group(1))
         elif line.startswith(" Optimization completed."):

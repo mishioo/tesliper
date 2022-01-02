@@ -1,5 +1,7 @@
 import re
+
 import pytest
+
 from tesliper.extraction import gaussian_parser as gp
 
 
@@ -70,3 +72,18 @@ def test_command():
         " # opt freq wB97xd/6-31G**\n"
         " -------------------------\n",
     )
+
+
+@pytest.mark.parametrize(
+    "line",
+    [
+        " Stoichiometry    CH4O\n",
+        " Stoichiometry    CH4O(1+)\n",
+        " Stoichiometry    CH4O(1-)\n",
+        " Stoichiometry    CH4O(1+,2)\n",
+        " Stoichiometry    CH4O(1-,2)\n",
+        " Stoichiometry    CH4O(3)\n",
+    ],
+)
+def test_stoichiometry(line):
+    assert gp.STOICHCRE.match(line)
