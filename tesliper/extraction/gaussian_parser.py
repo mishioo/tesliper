@@ -9,126 +9,59 @@ logger = lgg.getLogger(__name__)
 logger.setLevel(lgg.INFO)
 
 # REGEXS
-# TODO: Clean up regexes
 number_group = r"\s*(-?\d+\.?\d*)"
 number = number_group.replace("(", "").replace(")", "")
 
-command = re.compile(r"#(?:.*\n)+?(?=\s-)")
-termination = re.compile(r"Normal termination.*\n\Z")
-SCFCRE = re.compile(r"SCF Done.*?=" + number_group)  # use .search(line).group(1)
-stoich = re.compile(r"Stoichiometry\s*(\w*)\n")  # use .findall(text)
-stoich_ = re.compile(r"^ Stoichiometry\s*(\w*(?:\(\d+[+-]\))?)\n")  # use .findall(text)
+TERMINATION_CRE = re.compile(r"Normal termination.*\n\Z")
+SCF_CRE = re.compile(r"SCF Done.*?=" + number_group)  # use .search(line).group(1)
+STOICH_CRE = re.compile(r"^ Stoichiometry\s*(\w*(?:\(\d+[+-]?,?\d*\))?)\n")
 
-# GEOMETRY
-# not used currently
-# needs optimizations
-geom_part = re.compile("Berny optimization.*?\n\n\n", flags=re.DOTALL)
-geom_line_pat = r"\s*(\d+)\s+(\d+)\s+(\d+)" + 3 * number_group + r"\s*\n"
-geom_inp_pat = (
-    r"Input orientation:.*?-+\n(?:" + geom_line_pat.replace("(", "(?:") + r")+?\s-+\n"
-)
-geom_inp = re.compile(geom_inp_pat, flags=re.DOTALL)
-geom_std_pat = (
-    r"Standard orientation:.*?-+\n(?:"
-    + geom_line_pat.replace("(", "(?:")
-    + r")+?\s-+\n"
-)
-geom_std = re.compile(geom_std_pat, flags=re.DOTALL)
-geom_line = re.compile(geom_line_pat)
-geom_line_ = re.compile(r"^\s*(\d+)\s+(\d+)\s+(\d+)" + 3 * number_group)
+GEOM_LINE_CRE = re.compile(r"^\s*(\d+)\s+(\d+)\s+(\d+)" + 3 * number_group)
 
 # VIBRATIONAL
-energies = re.compile(
-    r" Zero-point correction=\s*(?P<zpecorr>-?\d+\.?\d*).*\n"
-    r" Thermal correction to Energy=\s*(?P<tencorr>-?\d+\.?\d*)\n"
-    r" Thermal correction to Enthalpy=\s*(?P<entcorr>-?\d+\.?\d*)\n"
-    r" Thermal correction to Gibbs Free Energy=\s*(?P<gibcorr>-?\d+\.?\d*)\n"
-    r" Sum of electronic and zero-point Energies=\s*(?P<zpe>-?\d+\.?\d*)\n"
-    r" Sum of electronic and thermal Energies=\s*(?P<ten>-?\d+\.?\d*)\n"
-    r" Sum of electronic and thermal Enthalpies=\s*(?P<ent>-?\d+\.?\d*)\n"
-    r" Sum of electronic and thermal Free Energies=\s*(?P<gib>-?\d+\.?\d*)"
-)  # use .search(text).groups()
-vibr_dict = dict(
-    freq=r"Frequencies",
-    mass=r"Red. masses",
-    frc=r"Frc consts",
-    iri=r"IR Inten",
-    dip=r"Dip. str.",
-    rot=r"Rot. str.",
-    emang=r"E-M angle",
-    depolarp=r"Depolar \(P\)",
-    depolaru=r"Depolar \(U\)",
-    ramact=r"RamAct",
-    ramanactiv=r"Raman Activ",
-    depp=r"Dep-P",
-    depu=r"Dep-U",
-    alpha2=r"Alpha2",
-    beta2=r"Beta2",
-    alphag=r"AlphaG",
-    gamma2=r"Gamma2",
-    delta2=r"Delta2",
-    raman1=r"Raman1",
-    roa1=r"ROA1",
-    cid1=r"CID1",
-    raman2=r"Raman2",
-    roa2=r"ROA2",
-    cid2=r"CID2",
-    raman3=r"Raman3",
-    roa3=r"ROA3",
-    cid3=r"CID3",
-    rc180=r"RC180",
-)
-vibr_dict_ = vibr_dict.copy()
-vibr_dict_["depolarp"] = r"Depolar (P)"
-vibr_dict_["depolaru"] = r"Depolar (U)"
-vibr_dict_ = {value: key for key, value in vibr_dict_.items()}
-vibrational_reg = re.compile(
+vibr_genre = {
+    "Frequencies": "freq",
+    "Red. masses": "mass",
+    "Frc consts": "frc",
+    "IR Inten": "iri",
+    "Dip. str.": "dip",
+    "Rot. str.": "rot",
+    "E-M angle": "emang",
+    "Depolar (P)": "depolarp",
+    "Depolar (U)": "depolaru",
+    "RamAct": "ramact",
+    "Raman Activ": "ramanactiv",
+    "Dep-P": "depp",
+    "Dep-U": "depu",
+    "Alpha2": "alpha2",
+    "Beta2": "beta2",
+    "AlphaG": "alphag",
+    "Gamma2": "gamma2",
+    "Delta2": "delta2",
+    "Raman1": "raman1",
+    "ROA1": "roa1",
+    "CID1": "cid1",
+    "Raman2": "raman2",
+    "ROA2": "roa2",
+    "CID2": "cid2",
+    "Raman3": "raman3",
+    "ROA3": "roa3",
+    "CID3": "cid3",
+    "RC180": "rc180",
+}
+
+VIBRATIONAL_CRE = re.compile(
     r"^\s\s?([a-zA-Z.\-]+[0-9]*(?:\s?[a-zA-Z.()]+)?)\s*(?:(?:Fr= \d+)?--)"
     + 3 * number_group
 )
-vibr_regs = {
-    k: re.compile(v + r"(?:\s+(?:Fr= \d+)?--\s+)" + 3 * number_group)
-    for k, v in vibr_dict.items()
-}
 
 # ELECTRONIC
-excited_grouped = re.compile(
-    r"Excited State\s+(\d+).*\s+"  # beginning of pattern and state's number
-    r"(-?\d+\.?\d*) eV\s+"  # state's energy, key = ex_en
-    r"(-?\d+\.?\d*) nm.*\n"  # state's frequency, key = wavelen
-    r"((?:\s*\d+\s*->\s*\d+\s+-?\d+\.\d+)+)"  # state's transitions
-    # with use of \s* in the beginning of repeating transitions pattern
-    # this regex will match until first blank line
-)
-excited_reg = re.compile(
+EXCITED_CRE = re.compile(
     r"^ Excited State\s+\d+:[a-zA-Z\-\s\'\"]*(-?\d+\.?\d*) eV\s+(-?\d+\.?\d*) nm"
 )
-transitions = r"\s*(\d+\s*->\s*\d+)\s+(-?\d+\.\d+)"
-transitions_reg = re.compile(transitions)
-transitions_ = r"(\d+)\s*->\s*(\d+)\s+(-?\d+\.\d+)"
-transitions_reg_ = re.compile(transitions_)
+TRANSITIONS_CRE = re.compile(r"(\d+)\s*->\s*(\d+)\s+(-?\d+\.\d+)")
 numbers = 4 * number + 2 * number_group + r"?\n"
-numbers_reg = re.compile(numbers)
-electronic_dict = dict(
-    vdip_vosc=r"velocity dipole.*\n.*\n",
-    ldip_losc=r"electric dipole.*?:\n.*\n",
-    vrot_eemang=r"Rotatory Strengths.*\n.*velocity.*\n",
-    lrot_=r"Rotatory Strengths.*\n.*length.*\n",
-)
-electronic_regs = {
-    k: re.compile(
-        v  # core pattern
-        + r"(?:"  # start of non-capturing group
-        + numbers.replace(r"(", r"(?:")  # make all groups non-capturing
-        + r")+"  # find all consecutive lines with numbers and terminate
-    )
-    for k, v in electronic_dict.items()
-}
-shielding_reg = re.compile(
-    r"(\w+)\s+Isotropic =" + number_group + r"\s+Anisotropy =" + number_group
-)
-fc_sci_not = r"(-?\d\.\d+D[+-]\d\d)"
-fc_reg = re.compile(r"(\d+)\s+" + fc_sci_not + (r"\s*" + fc_sci_not + "?") * 4)
+NUMBERS_CRE = re.compile(numbers)
 
 
 # CLASSES
@@ -375,9 +308,9 @@ class GaussianParser(ParserBase):
         elif "Normal termination" in line:
             self.data["normal_termination"] = True
         elif line.startswith(" SCF Done:"):
-            self.data["scf"] = float(SCFCRE.search(line).group(1))
+            self.data["scf"] = float(SCF_CRE.search(line).group(1))
         elif line.startswith(" Stoichiometry"):
-            self.data["stoichiometry"] = stoich_.match(line).group(1)
+            self.data["stoichiometry"] = STOICH_CRE.match(line).group(1)
         elif "Proceeding to internal job step number" in line:
             # last job determines if termination was normal
             self.data["normal_termination"] = False
@@ -393,15 +326,15 @@ class GaussianParser(ParserBase):
         line : str
             Line of text to parse."""
         data, iterator = self.data, self._iterator
-        match = geom_line_.match(line)
+        match = GEOM_LINE_CRE.match(line)
         while not match:
             line = next(iterator)
-            match = geom_line_.match(line)
+            match = GEOM_LINE_CRE.match(line)
         geom = []
         while match:
             geom.append(match.groups())
             line = next(iterator)
-            match = geom_line_.match(line)
+            match = GEOM_LINE_CRE.match(line)
         geom = ((int(a), [float(x), float(y), float(z)]) for _, a, _, x, y, z in geom)
         # produce list and list of lists instead of tuple and tuple of lists
         data["molecule_atoms"], data["geometry"] = map(list, zip(*geom))
@@ -424,9 +357,9 @@ class GaussianParser(ParserBase):
             self.geometry(line)
             self.workhorse = self.optimization
         elif line.startswith(" Stoichiometry"):
-            self.data["stoichiometry"] = stoich_.match(line).group(1)
+            self.data["stoichiometry"] = STOICH_CRE.match(line).group(1)
         elif line.startswith(" SCF Done:"):
-            self.data["scf"] = float(SCFCRE.search(line).group(1))
+            self.data["scf"] = float(SCF_CRE.search(line).group(1))
         elif line.startswith(" Optimization completed."):
             self.data["optimization_completed"] = True
         elif line.startswith(" Error termination"):
@@ -446,14 +379,14 @@ class GaussianParser(ParserBase):
         data, iterator = self.data, self._iterator
         while not line == "\n":
             # while frequencies section is not over
-            match = vibrational_reg.match(line)
+            match = VIBRATIONAL_CRE.match(line)
             while match:
                 # unpack values from current line to list of corresponding genre
                 name, *values = match.groups()
-                genre = vibr_dict_[name]  # convert gaussian line name to genre
+                genre = vibr_genre[name]  # convert gaussian line name to genre
                 data.setdefault(genre, list()).extend(float(x) for x in values)
                 line = next(iterator)
-                match = vibrational_reg.match(line)
+                match = VIBRATIONAL_CRE.match(line)
             line = next(iterator)
         while not line.startswith(" Zero-point correction="):
             line = next(iterator)
@@ -480,10 +413,10 @@ class GaussianParser(ParserBase):
         while not line.startswith(" Excited State"):
             line = next(iterator)
         # map obj unpacked in calling method
-        out = [map(float, excited_reg.match(line).groups())]
+        out = [map(float, EXCITED_CRE.match(line).groups())]
         while line.strip():
             line = next(iterator)
-            match = transitions_reg_.search(line)
+            match = TRANSITIONS_CRE.search(line)
             if match:
                 out.append(match.groups())
         return out
@@ -508,12 +441,12 @@ class GaussianParser(ParserBase):
             while header not in line:
                 line = next(iterator)
             next(iterator)  # skip column names
-            match = numbers_reg.search(next(iterator))
+            match = NUMBERS_CRE.search(next(iterator))
             values = []
             while match:
                 values.append(float(x) if x else None for x in match.groups())
                 line = next(iterator)
-                match = numbers_reg.search(line)
+                match = NUMBERS_CRE.search(line)
             for genre, values in zip(genres, zip(*values)):
                 if genre:
                     data[genre] = values
