@@ -794,7 +794,6 @@ class CalculateSpectra(CollapsiblePane):
             for name in self.s_name_radio
         }
         self.lastly_drawn_spectra = None
-        self._exp_spc = {k: None for k in self.s_name_radio.keys()}
 
     @property
     def tesliper(self):
@@ -805,7 +804,7 @@ class CalculateSpectra(CollapsiblePane):
         try:
             return self.tesliper.experimental[self.s_name.get()]
         except KeyError:
-            # no value selected in s_name radio
+            # no experimental spectrum or no value selected in s_name radio
             return None
 
     @exp_spc.setter

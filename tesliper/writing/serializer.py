@@ -31,7 +31,10 @@ class ArchiveWriter:
         |       ...
         │       └───filename_N: {genre=str: data}
         └───spectra
-            ├───experimental  # not implemented yet
+            ├───experimental
+            │   ├───spectra_genre_1: {attr_name: SingleSpectrum.attr}
+            |   ...
+            │   └───spectra_genre_N: {attr_name: SingleSpectrum.attr}
             ├───calculated
             │   ├───spectra_genre_1: {attr_name: Spectra.attr}
             |   ...
@@ -129,11 +132,12 @@ class ArchiveWriter:
             self._write_arguments(obj.input_dir, obj.output_dir, obj.wanted_files)
             self._write_parameters(obj.parameters)
             self._write_conformers(obj.conformers)
-            # self._write_experimental(tesliper.experimental)  # not supported yet
             for spc in obj.averaged.values():
                 self._write_averaged(spc)
             for spc in obj.spectra.values():
                 self._write_calculated(spc)
+            for spc in obj.experimental.values():
+                self._write_experimental(spc)
 
     def _write_arguments(
         self,
@@ -188,10 +192,24 @@ class ArchiveWriter:
         with self.root.open("conformers/kept.json", mode="w") as handle:
             handle.write(self.jsonencode(kept))
 
-    def _write_experimental(self, spectra: Dict[str, SingleSpectrum]):
-        # TODO: implement this
-        raise NotImplementedError
-        # "spectra/experimental.json"
+    def _write_experimental(self, spectrum: SingleSpectrum):
+        path = f"spectra/experimental/{spectrum.genre}.json"
+        with self.root.open(path, mode="w") as handle:
+            handle.write(
+                self.jsonencode(
+                    {
+                        "genre": spectrum.genre,
+                        "filenames": spectrum.filenames.tolist(),
+                        "values": spectrum.values.tolist(),
+                        "abscissa": spectrum.abscissa.tolist(),
+                        "width": spectrum.width,
+                        "fitting": spectrum.fitting,
+                        "scaling": spectrum.scaling,
+                        "offset": spectrum.offset,
+                        "averaged_by": spectrum.averaged_by,
+                    }
+                )
+            )
 
     def _write_calculated(self, spectra: Spectra):
         path = f"spectra/calculated/{spectra.genre}.json"
@@ -331,8 +349,8 @@ class ArchiveLoader:
             tslr.conformers.kept = self._load("conformers/kept.json")
             for file in self.root.namelist():
                 if "experimental" in file:
-                    # TODO: implement this
-                    ...  # not implemented yet
+                    params = self._load(file)
+                    tslr.experimental[params["genre"]] = SingleSpectrum(**params)
                 elif "calculated" in file:
                     params = self._load(file)
                     tslr.spectra[params["genre"]] = Spectra(**params)
