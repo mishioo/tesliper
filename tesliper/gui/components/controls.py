@@ -576,6 +576,7 @@ class CalculateSpectra(CollapsiblePane):
             )
             b.configure(state="disabled")
             b.grid(column=c, row=r, padx=5)
+            b.bind("<Button-1>", self._stash_current_settings)
             self.s_name_radio[v] = b
             root.changer.register(b, needs_all_genres=[dw.DEFAULT_ACTIVITIES[v]])
 
@@ -1072,6 +1073,12 @@ class CalculateSpectra(CollapsiblePane):
             return {}
         return settings
 
+    def _stash_current_settings(self, _event=None):
+        spectra_name = self.draw_params["spectra_name"]
+        if not spectra_name:
+            return  # spectra name radio not selected
+        self.last_used_settings[spectra_name] = self.current_settings.copy()
+
     def recalculate_command(self):
         draw_params = self.draw_params
         spectra_name = draw_params["spectra_name"]
@@ -1081,7 +1088,7 @@ class CalculateSpectra(CollapsiblePane):
         if not self.current_settings:
             logger.info("Calculation aborted: invalid settings provided.")
             return
-        self.last_used_settings[spectra_name] = self.current_settings.copy()
+        self._stash_current_settings()
         option = draw_params["option"]
         if not option or option.startswith("Choose "):
             logger.info("Calculation aborted: option not chosen.")
