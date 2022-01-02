@@ -102,6 +102,7 @@ of genre you'd like to be retrived or give them a default value, otherwise
 """
 import inspect
 import logging as lgg
+from abc import ABC, abstractmethod
 from typing import (
     Any,
     Callable,
@@ -763,7 +764,7 @@ _ARRAY_CONSTRUCTORS = {}
 It is a dictionary of {str: ArrayBase}."""
 
 
-class ArrayBase:  # TODO: make it ABC
+class ArrayBase(ABC):
     """Base class for data holding objects.
 
     It provides an automatic registration of its subclasses as a
@@ -777,8 +778,19 @@ class ArrayBase:  # TODO: make it ABC
     :class:`.DataArray`-like object should implement, listed in the Parameters section.
     """
 
-    # TODO: make it an abstract classmethod property
-    associated_genres: Tuple[str, ...] = NotImplemented
+    @property
+    @classmethod
+    @abstractmethod
+    def associated_genres(cls) -> Tuple[str, ...]:
+        return tuple()
+
+    associated_genres.__doc__ = """Genres associated with subclassing class.
+
+    Should be provided by subclass as class-level attribute. It will be used to
+    determine what class to use to represent data of particular genre when requested
+    *via* :method:`.Conforemrs.arrayed` method. May be an empty sequence, if subclass
+    is not intended to be used directly by `tesliper`'s machinery.
+    """
 
     def __init_subclass__(cls, **kwargs):
         global _ARRAY_CONSTRUCTORS

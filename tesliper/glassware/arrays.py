@@ -33,7 +33,7 @@ logger.setLevel(lgg.DEBUG)
 class DataArray(ArrayBase):
     """Base class for data holding objects."""
 
-    # TODO: should have empty associated_genres
+    associated_genres = tuple()
     full_name_ref = {}  # TODO: should be protected
     _units = {}
 
