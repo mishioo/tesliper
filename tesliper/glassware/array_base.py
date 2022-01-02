@@ -596,7 +596,7 @@ class ArrayProperty(property):
                 )
                 raise InconsistentDataError(error_msg) from error
             else:
-                values = to_masked(values, dtype=self.dtype)  # FIXME: add fill_value
+                values = to_masked(values, dtype=self.dtype, fill_value=self.fill_value)
                 logger.info(
                     f"{genre} values' lists were appended with zeros to "
                     f"match length of longest entry."
