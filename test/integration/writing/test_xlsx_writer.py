@@ -197,9 +197,3 @@ def test_transitions_all(writer, molstd, filenamestd):
         ws = wb[file]
         assert len(list(ws.columns)) == 5
         assert len(list(ws.rows)) == 1 + trans.values[num].count()
-
-
-def test_not_implemented_write(writer, arrays, monkeypatch):
-    monkeypatch.setattr(Logger, "warning", Mock())
-    writer.write(arrays)
-    assert Logger.warning.call_count == 0
