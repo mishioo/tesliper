@@ -72,7 +72,7 @@ def log_all_files():
 
 
 def test_guess_extension(sox, log_all_files, monkeypatch):
-    assert ".out" == sox.guess_extension()
+    assert "out" == sox.guess_extension()
 
 
 @pytest.fixture
@@ -170,59 +170,19 @@ def test_rsox_no_recursive_output_files(rsox, tmp_path):
     assert set(rsox.output_files) == {tmp_path / p for p in "a.out b.out".split()}
 
 
-def test_settings_file_found(sox, monkeypatch):
-    monkeypatch.setattr(sox.params_parser, "parse", mock.Mock(side_effect=lambda x: x))
-    assert sox.load_parameters() == Path("setup.txt")
+def test_parse_one_found_in_path(sox, monkeypatch):
+    monkeypatch.setattr(sox.parser, "parse", mock.Mock(side_effect=lambda x: x))
+    assert sox.parse_one("setup.txt") == sox.path / "setup.txt"
 
 
-def test_settings_recursive(rsox, monkeypatch, files):
-    monkeypatch.setattr(rsox.params_parser, "parse", mock.Mock(side_effect=lambda x: x))
-    assert rsox.load_parameters().name == "setup.txt"
-
-
-def test_settings_file_not_found(sox, monkeypatch, mixed_files):
-    monkeypatch.setattr(sx.Path, "iterdir", mock.Mock(return_value=mixed_files))
-    with pytest.raises(FileNotFoundError):
-        sox.load_parameters()
-
-
-def test_settings_multiple_files(sox, monkeypatch, mixed_files):
-    monkeypatch.setattr(
-        sx.Path,
-        "iterdir",
-        mock.Mock(
-            return_value=[Path(f) for f in ("some_setup.txt", "other_setup.cfg")]
-        ),
-    )
-    with pytest.raises(FileNotFoundError):
-        sox.load_parameters()
-
-
-def test_settings_valid_given(sox, monkeypatch):
-    monkeypatch.setattr(sox.params_parser, "parse", mock.Mock(side_effect=lambda x: x))
-    setupfile = "setupfile.txt"
-    assert sox.load_parameters(setupfile) == Path(setupfile)
-
-
-def test_settings_invalid_given(sox, monkeypatch):
-    monkeypatch.setattr(sx.Path, "is_file", mock.Mock(return_value=False))
-    with pytest.raises(FileNotFoundError):
-        sox.load_parameters("nosetupfile.txt")
-
-
-def test_load_spectra_no_file(sox, monkeypatch):
-    monkeypatch.setattr(sx.Path, "is_file", mock.Mock(return_value=False))
-    with pytest.raises(FileNotFoundError):
-        sox.load_spectrum("nofile.txt")
-
-
-def test_load_spectra_appended_file(sox, monkeypatch):
-    monkeypatch.setattr(sox.spectra_parser, "parse", mock.Mock(side_effect=lambda x: x))
-    assert sox.load_spectrum("file.txt") == sox.path / "file.txt"
-
-
-def test_load_spectra_other_place_file(sox, monkeypatch):
+def test_parse_one_absolute_path(sox, monkeypatch):
+    # first is_file called for source appended to sx.path
     monkeypatch.setattr(sx.Path, "is_file", mock.Mock(side_effect=[False, True]))
-    monkeypatch.setattr(sox.spectra_parser, "parse", mock.Mock(side_effect=lambda x: x))
-    path = "somewhere/else/file.txt"
-    assert sox.load_spectrum(path) == Path(path)
+    monkeypatch.setattr(sox.parser, "parse", mock.Mock(side_effect=lambda x: x))
+    assert sox.parse_one("/some/path/setup.txt") == Path("/some/path/setup.txt")
+
+
+def test_parse_one_file_not_found(sox, monkeypatch):
+    monkeypatch.setattr(sx.Path, "is_file", mock.Mock(return_value=False))
+    with pytest.raises(FileNotFoundError):
+        sox.parse_one("setup.txt")

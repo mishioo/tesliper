@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Callable, Union
 
 from .. import datawork as dw
+from .parser_base import _PARSERS
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +79,9 @@ class ParametersParser:
     that contain a section header, enclosed in braces. However, the section name will be
     ignored and there may be only one such section, otherwise an exception is raised.
     """
+
+    purpose = "parameters"
+    extensions = ("txt", "cfg", "ini")
 
     ALIASES = {
         "half width of band in half height": "width",
@@ -159,3 +163,6 @@ class ParametersParser:
                 "Multiple sections in parameters setup file are not supported."
             )
         return self.parameters
+
+
+_PARSERS[ParametersParser.purpose] = ParametersParser

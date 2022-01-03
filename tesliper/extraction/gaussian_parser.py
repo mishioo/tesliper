@@ -195,19 +195,22 @@ class GaussianParser(ParserBase):
         input geometry as X, Y, Z coordinates of atoms
     stoichiometry : str, always available
         molecule's stoichiometry
-    molecule_atoms : list of ints, always available
+    last_read_atoms : list of ints, always available
         molecule's atoms as atomic numbers
-    geometry : list of lists of floats, always available
+    last_read_geom : list of lists of floats, always available
         molecule's geometry (last one found in file) as X, Y, Z coordinates of atoms
+    optimized_atoms : list of ints, available from successful opt job
+        molecule's atoms read from optimized geometry as atomic numbers
+    optimized_geom : list of lists of floats, available from successful opt job
+        optimized geometry as X, Y, Z coordinates of atoms
 
     Attributes
     ----------
     data : dict
         Data extracted during last parsing."""
 
-    # TODO?: add optimized_geometry or similarly named genre
-
     purpose = "gaussian"
+    extensions = ("log", "out")
 
     def __init__(self):
         super().__init__()
@@ -280,7 +283,7 @@ class GaussianParser(ParserBase):
         line = next(iterator).strip()
         input_geom = []
         pattern = r"(\w+)" + 3 * number_group
-        while line:
+        while line:  # reads symbolic Z-matrix
             atom = re.match(pattern, line)
             label, *coordinates = atom.groups()
             input_geom.append([label, list(map(float, coordinates))])
@@ -319,7 +322,7 @@ class GaussianParser(ParserBase):
     def geometry(self, line: str) -> None:
         """Function for extracting information about molecule standard orientation
         geometry from Gaussian output files. It updates parser.data dictionary with
-        'molecule_atoms' and 'geometry' data genres.
+        'last_read_atoms' and 'last_read_geom' data genres.
 
         Parameters
         ----------
@@ -337,15 +340,15 @@ class GaussianParser(ParserBase):
             match = GEOM_LINE_CRE.match(line)
         geom = ((int(a), [float(x), float(y), float(z)]) for _, a, _, x, y, z in geom)
         # produce list and list of lists instead of tuple and tuple of lists
-        data["molecule_atoms"], data["geometry"] = map(list, zip(*geom))
+        data["last_read_atoms"], data["last_read_geom"] = map(list, zip(*geom))
         self.workhorse = self.wait
 
     @ParserBase.state(trigger=re.compile("^ Search for a local minimum."))
     def optimization(self, line: str) -> None:
         """This method scans optimization data in Gaussian output file, updating
         parser.data dictionary with 'stoichiometry', 'scf', 'optimization_completed',
-        'molecule_atoms', and 'geometry' data genres (last two via :meth:`.geometry`
-        method).
+        'optimized_atoms', and 'optimized_geom' data genres (last two via
+        :meth:`.geometry` method).
 
         Parameters
         ----------
@@ -362,6 +365,9 @@ class GaussianParser(ParserBase):
             self.data["scf"] = float(SCF_CRE.search(line).group(1))
         elif line.startswith(" Optimization completed."):
             self.data["optimization_completed"] = True
+            if "optimized_geom" not in self.data:
+                self.data["optimized_geom"] = self.data["last_read_geom"]
+                self.data["optimized_atoms"] = self.data["last_read_atoms"]
         elif line.startswith(" Error termination"):
             self.data["normal_termination"] = False
         if line.startswith((" Error termination", " Job cpu time")):

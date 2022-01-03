@@ -118,7 +118,7 @@ class GjfWriter(WriterBase):
             supported placeholders.
         """
         geom = geometry.values
-        atoms = cycle(geometry.molecule_atoms)
+        atoms = cycle(geometry.atoms)
         try:
             char = charge.values
         except AttributeError:

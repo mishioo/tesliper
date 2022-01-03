@@ -317,9 +317,3 @@ def test_write(writer, mols, filenames):
     data = [mols.arrayed(genre) for genre in ["freq", "iri", "gib", "zpe", "gibcorr"]]
     writer.write(data)
     assert len(list(writer.destination.iterdir())) == len(filenames) + 3
-
-
-def test_not_implemented_write(writer, arrays, monkeypatch):
-    monkeypatch.setattr(Logger, "warning", Mock())
-    writer.write(arrays)
-    assert Logger.warning.call_count == 0

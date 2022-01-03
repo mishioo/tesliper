@@ -19,6 +19,9 @@ class SpectraParser(ParserBase):
     If file contains any header, it is ignored.
     """
 
+    purpose = "spectra"
+    extensions = (".txt", ".xy", ".csv")
+
     def __init__(self):
         super().__init__()
         self.delimiter = None
