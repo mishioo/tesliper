@@ -838,10 +838,12 @@ class ArrayBase(ABC):
         return args
 
     @classmethod
-    def get_init_params(cls) -> Dict[str, inspect.Parameter]:
-        "Returns copy of this class' init signature."
+    def get_init_params(cls) -> Dict[str, Union[str, inspect.Parameter]]:
+        """Returns parameters used to instantiate this class. *genre* is a genre of data
+        array that is to be instantiated."""
         signature = inspect.signature(cls)
-        return signature.parameters.copy()
+        parameters = signature.parameters.copy()
+        return parameters
 
     def __repr__(self):
         args = [
@@ -861,3 +863,107 @@ class ArrayBase(ABC):
 
     def __bool__(self):
         return self.filenames.size != 0
+
+
+class DependentParameter(inspect.Parameter):
+    """A parameter that depends on the genre of data array. It provies a
+    :attr:`._genre_getter` callable attribute that is used to provide a name of data
+    genre that should be used for this parameter.
+
+    It is hashable as the original :class:`inspect.Parameter`, however it must be
+    remembered that Python hashes functions based on their identity."""
+
+    __slots__ = ("_name", "_kind", "_default", "_annotation", "_genre_getter")
+
+    def __init__(
+        self,
+        name: str,
+        kind: inspect._ParameterKind,
+        genre_getter: Callable[[str], str],
+        *,
+        default: Any = inspect._empty,
+        annotation: Any = inspect._empty,
+    ) -> None:
+        super().__init__(name, kind, default=default, annotation=annotation)
+        self._genre_getter = genre_getter
+
+    @property
+    def genre_getter(self):
+        """Should be a function that given a genre of data array being instantiated,
+        returns a genre that should be used for this parameter."""
+        return self._genre_getter
+
+    def __reduce__(self):
+        return (
+            type(self),
+            (self._name, self._kind, self._genre_getter),
+            {
+                "_default": self._default,
+                "_annotation": self._annotation,
+            },
+        )
+
+    @classmethod
+    def from_parameter(
+        cls, parameter: inspect.Parameter, genre_getter: Callable[[str], str]
+    ):
+        """Casts given :class:`inspect.Parameter` instance to this class."""
+        return cls(
+            name=parameter.name,
+            kind=parameter.kind,
+            genre_getter=genre_getter,
+            annotation=parameter.annotation,
+            default=parameter.default,
+        )
+
+    def replace(
+        self,
+        *,
+        name=inspect._void,
+        kind=inspect._void,
+        genre_getter=inspect._void,
+        annotation=inspect._void,
+        default=inspect._void,
+    ):
+        """Creates a customized copy of the :class:`.DependentParameter`."""
+
+        if name is inspect._void:
+            name = self._name
+
+        if kind is inspect._void:
+            kind = self._kind
+
+        if annotation is inspect._void:
+            annotation = self._annotation
+
+        if default is inspect._void:
+            default = self._default
+
+        if genre_getter is inspect._void:
+            genre_getter = self._genre_getter
+
+        return type(self)(
+            name,
+            kind,
+            genre_getter,
+            default=default,
+            annotation=annotation,
+        )
+
+    def __hash__(self):
+        return hash(
+            (self.name, self.kind, self.genre_getter, self.annotation, self.default)
+        )
+
+    def __eq__(self, other):
+        if self is other:
+            return True
+        if not isinstance(other, DependentParameter):
+            return NotImplemented
+        return (
+            self._name == other._name
+            and self._kind == other._kind
+            and self._default == other._default
+            and self._annotation == other._annotation
+            and self._genre_getter == other._genre_getter
+        )

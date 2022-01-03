@@ -2,6 +2,7 @@
 import logging as lgg
 from collections import Counter, ItemsView, KeysView, OrderedDict, ValuesView
 from contextlib import contextmanager
+from inspect import Parameter
 from itertools import chain
 from typing import Callable, Iterable, Optional, Sequence, Union
 
@@ -11,7 +12,7 @@ from tesliper.exceptions import InconsistentDataError, TesliperError
 
 from .. import datawork as dw
 from . import arrays as ar
-from .array_base import _ARRAY_CONSTRUCTORS
+from .array_base import _ARRAY_CONSTRUCTORS, DependentParameter
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -397,7 +398,6 @@ class Conformers(OrderedDict):
             )
             filenames, confs, values = [], [], []
         params = cls.get_init_params()
-        parameter_type = type(params["genre"])
         params["genre"] = genre
         params["filenames"] = filenames
         params["values"] = values
@@ -406,12 +406,15 @@ class Conformers(OrderedDict):
             if key in kwargs:
                 # explicitly given keyword parameters take precedence
                 continue
-            if not isinstance(params[key], parameter_type):
+            if not isinstance(params[key], Parameter):
                 # if value for parameter is already established, just take it
                 kwargs[key] = value
                 continue
+            param_genre = (  # maybe key is not a param's genre name
+                value.genre_getter(genre) if hasattr(value, "genre_getter") else key
+            )
             try:
-                kwargs[key] = [conf[key] for conf in confs]
+                kwargs[key] = [conf[param_genre] for conf in confs]
             except KeyError:
                 # set param to its default value
                 # or raise an error if it don't have one
@@ -419,10 +422,10 @@ class Conformers(OrderedDict):
                     kwargs[key] = value.default
                 else:
                     raise TesliperError(
-                        f"One or more conformers does not provide value for '{key}' "
-                        f"genre, needed to instantiate {cls.__name__} object. "
-                        "You may provide missing values as a keyword parameters to the "
-                        "`Conformers.arrayed()` method call."
+                        f"One or more conformers does not provide value for "
+                        f"'{param_genre}' genre, needed to instantiate {cls.__name__} "
+                        "object. You may provide missing values as a keyword parameters"
+                        " to the `Conformers.arrayed()` method call."
                     )
             if not kwargs[key] and value.default is not value.empty:
                 # genre produces an empty array, but parameter has default value
