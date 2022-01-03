@@ -6,10 +6,12 @@ genre-specific functionality. Instances of :class:`DataArray` subclasses are pro
 the :meth:`.Conformers.arrayed` method and :class:`Tesliper`'s subscription mechanism.
 """
 
-# IMPORTS
 import logging as lgg
 from abc import ABC, abstractmethod
-from typing import Any, Sequence, Tuple, Union
+
+# IMPORTS
+from inspect import Parameter
+from typing import Any, Dict, Sequence, Tuple, Union
 
 import numpy as np
 
@@ -20,6 +22,7 @@ from .array_base import (
     ArrayBase,
     ArrayProperty,
     CollapsibleArrayProperty,
+    DependentParameter,
     JaggedArrayProperty,
 )
 from .spectra import Spectra
@@ -1145,6 +1148,10 @@ class Transitions(DataArray):
         )
 
 
+def _geom_to_atoms_genre(genre):
+    return genre.replace("geom", "atoms")
+
+
 class Geometry(FloatArray):
     """For handling information about geometry of conformers.
 
@@ -1172,6 +1179,14 @@ class Geometry(FloatArray):
         fsan=np.vectorize(atomic_number, otypes=[int]),
         strict=True,
     )
+
+    @classmethod
+    def get_init_params(cls) -> Dict[str, Union[str, Parameter, DependentParameter]]:
+        params = super().get_init_params()
+        params["molecule_atoms"] = DependentParameter.from_parameter(
+            params["molecule_atoms"], genre_getter=_geom_to_atoms_genre
+        )
+        return params
 
     def __init__(
         self,
