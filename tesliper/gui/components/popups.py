@@ -117,10 +117,13 @@ class SpectralDataDetails(ttk.Frame):
                 # add transitions
                 associated_genres = associated_genres + tuple(transitions_names)
             for idx_, genre in enumerate(associated_genres):
-                try:
+                if genre in transitions_names:
                     full_name = transitions_names[genre]
-                except KeyError:
-                    full_name = class_.full_name_ref[genre]
+                else:
+                    try:
+                        full_name = class_._full_name_ref[genre]
+                    except KeyError:
+                        full_name = genre
 
                 idx = last_idx + idx_
                 val = genre in defaults and master.tesliper.conformers.has_genre(genre)

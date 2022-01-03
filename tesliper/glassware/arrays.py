@@ -37,15 +37,15 @@ class DataArray(ArrayBase):
     """Base class for data holding objects."""
 
     associated_genres = tuple()
-    full_name_ref = {}  # TODO: should be protected
+    _full_name_ref = {}
     _units = {}
 
     @property
     def full_name(self):
         try:
-            return self.full_name_ref[self.genre]
+            return self._full_name_ref[self.genre]
         except KeyError:
-            return ""
+            return f"{self.genre} data"
 
     @property
     def units(self):
@@ -66,7 +66,7 @@ class IntegerArray(DataArray):
     """
 
     associated_genres = ("charge", "multiplicity")
-    full_name_ref = {"charge": "Charge", "multiplicity": "Multiplicity"}
+    _full_name_ref = {"charge": "Charge", "multiplicity": "Multiplicity"}
     values = ArrayProperty(dtype=int, check_against="filenames")
 
 
@@ -89,7 +89,7 @@ class FloatArray(DataArray):
         "entcorr",
         "gibcorr",
     )
-    full_name_ref = dict(
+    _full_name_ref = dict(
         zpecorr="Zero-point Correction",
         tencorr="Correction to Energy",
         entcorr="Correction to Enthalpy",
@@ -115,7 +115,7 @@ class InfoArray(DataArray):
           - stoichiometry
     """
 
-    full_name_ref = {
+    _full_name_ref = {
         "command": "Command",
         "stoichiometry": "Stoichiometry",
     }
@@ -134,7 +134,7 @@ class FilenamesArray(DataArray):
     """
 
     associated_genres = ("filenames",)
-    full_name_ref = {"filenames": "Filenames"}
+    _full_name_ref = {"filenames": "Filenames"}
     _units = {}
 
     def __init__(
@@ -176,7 +176,7 @@ class BooleanArray(DataArray):
           - optimization_completed
     """
 
-    full_name_ref = {
+    _full_name_ref = {
         "normal_termination": "Normal Termination",
         "optimization_completed": "Optimization Completed",
     }
@@ -198,7 +198,7 @@ class Energies(FloatArray):
           - gib
     """
 
-    full_name_ref = dict(
+    _full_name_ref = dict(
         zpe="Zero-point Energy",
         ten="Thermal Energy",
         ent="Thermal Enthalpy",
@@ -361,7 +361,7 @@ class Bands(FloatArray):
     """
 
     associated_genres = ("freq", "wavelen", "ex_en")
-    full_name_ref = {
+    _full_name_ref = {
         "ex_en": "Excitation energy",
         "freq": "Frequency",
         "wavelen": "Wavelength",
@@ -545,7 +545,7 @@ class VibrationalData(_VibData):
     """
 
     associated_genres = ("mass", "frc", "emang")
-    full_name_ref = dict(
+    _full_name_ref = dict(
         mass="Reduced masses", frc="Force constants", emang="E-M Angle"
     )
     _units = dict(mass="AMU", frc="mDyne/A", emang="deg")
@@ -593,7 +593,7 @@ class ScatteringData(_VibData):
         "cid3",
         "rc180",
     )
-    full_name_ref = {
+    _full_name_ref = {
         "depolarp": "Depolar-P Raman",
         "depolaru": "Depolar-U Raman",
         "depp": "Depolar-P ROA",
@@ -646,7 +646,7 @@ class ElectronicData(SpectralData):
 
     wavelen = ArrayProperty(check_against="filenames")
     associated_genres = ("eemang",)
-    full_name_ref = dict(eemang="E-M Angle")
+    _full_name_ref = dict(eemang="E-M Angle")
     _units = dict(eemang="deg")
 
     @property
@@ -691,7 +691,7 @@ class SpectralActivities(SpectralData, Averagable, ABC):
         vdip="uv",
         ldip="uv",
     )
-    full_name_ref = dict()
+    _full_name_ref = dict()
     _units = dict()
     _intensities_converters = {}
 
@@ -805,7 +805,7 @@ class VibrationalActivities(VibrationalData, _VibAct):
         "rot": dw.rot_to_vcd,
         "iri": _as_is,
     }
-    full_name_ref = dict(
+    _full_name_ref = dict(
         rot="Rot. Strength",
         dip="Dip. Strength",
         iri="IR Intensity",
@@ -843,7 +843,7 @@ class ScatteringActivities(ScatteringData, _VibAct):
         "raman3",
         "roa3",
     )
-    full_name_ref = dict(
+    _full_name_ref = dict(
         ramanactiv="Raman scatt. activities",
         ramact="Raman scatt. activities",
         roa1="ROA inten. ICPu/SCPu(180)",
@@ -917,7 +917,7 @@ class ElectronicActivities(ElectronicData, SpectralActivities):
         "vosc",
         "losc",
     )
-    full_name_ref = dict(
+    _full_name_ref = dict(
         vrot="Rot. (velo)",
         lrot="Rot. (lenght)",
         vosc="Osc. (velo)",
@@ -1032,7 +1032,7 @@ class Transitions(DataArray):
     """
 
     associated_genres = ("transitions",)
-    full_name_ref = dict(transitions="Transitions")
+    _full_name_ref = dict(transitions="Transitions")
     _units = dict()
     ground = JaggedArrayProperty(dtype=int, check_against="filenames")
     excited = JaggedArrayProperty(dtype=int, check_against="filenames")
@@ -1164,7 +1164,7 @@ class Geometry(FloatArray):
     """
 
     associated_genres = ("last_read_geom", "input_geom", "optimized_geom")
-    full_name_ref = dict(
+    _full_name_ref = dict(
         last_read_geom="Geometry",
         input_geom="Input Geometry",
         optimized_geom="Optimized Geometry",
