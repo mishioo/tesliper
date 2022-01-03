@@ -47,7 +47,7 @@ def test_dtype():
         (ar.ScatteringActivities, {"freq": []}),
         (ar.ElectronicActivities, {"wavelen": []}),
         (ar.Transitions, {}),
-        (ar.Geometry, {"molecule_atoms": []}),
+        (ar.Geometry, {"atoms": []}),
     ],
 )
 def test_empty_arrays(cls, kwargs):
@@ -239,7 +239,7 @@ def geom():
             [[30, 40, 60], [40, 60, 70], [50, 80, 10]],
             [[35, 45, 65], [45, 65, 75], [55, 85, 15]],
         ],
-        molecule_atoms=[[1, 1, 1]],
+        atoms=[[1, 1, 1]],
     )
 
 
@@ -252,37 +252,35 @@ def geom_incons():
             [[30, 40, 60], [40, 60, 70], [50, 80, 10]],
             [[35, 45, 65], [45, 65, 75]],
         ],
-        molecule_atoms=[[2, 2, 2], [2, 2]],
+        atoms=[[2, 2, 2], [2, 2]],
         allow_data_inconsistency=True,
     )
 
 
-def test_molecule_atoms(geom):
-    assert geom.molecule_atoms.tolist() == [[1, 1, 1]]
+def test_atoms(geom):
+    assert geom.atoms.tolist() == [[1, 1, 1]]
 
 
-def test_molecule_atoms_as_symbols(geom, monkeypatch):
-    monkeypatch.setattr(
-        type(geom).molecule_atoms, "fsan", mock.Mock(return_value=[[6, 1, 8]])
-    )
-    geom.molecule_atoms = [["C", "H", "O"]]
-    assert geom.molecule_atoms.tolist() == [[6, 1, 8]]
+def test_atoms_as_symbols(geom, monkeypatch):
+    monkeypatch.setattr(type(geom).atoms, "fsan", mock.Mock(return_value=[[6, 1, 8]]))
+    geom.atoms = [["C", "H", "O"]]
+    assert geom.atoms.tolist() == [[6, 1, 8]]
 
 
-def test_molecule_atoms_two_dim(geom):
-    geom.molecule_atoms = [[2, 2, 2], [2, 2, 2]]
-    assert geom.molecule_atoms.tolist() == [[2, 2, 2]]
+def test_atoms_two_dim(geom):
+    geom.atoms = [[2, 2, 2], [2, 2, 2]]
+    assert geom.atoms.tolist() == [[2, 2, 2]]
 
 
-def test_molecule_atoms_two_dim_different(geom):
+def test_atoms_two_dim_different(geom):
     with pytest.raises(InconsistentDataError):
-        geom.molecule_atoms = [[2, 2, 2], [2, 1, 2]]
+        geom.atoms = [[2, 2, 2], [2, 1, 2]]
 
 
-def test_molecule_atoms_two_dim_different_inconsistency_allowed(geom):
+def test_atoms_two_dim_different_inconsistency_allowed(geom):
     geom.allow_data_inconsistency = True
-    geom.molecule_atoms = [[2, 2, 2], [2, 1, 2]]
-    assert geom.molecule_atoms.tolist() == [[2, 2, 2], [2, 1, 2]]
+    geom.atoms = [[2, 2, 2], [2, 1, 2]]
+    assert geom.atoms.tolist() == [[2, 2, 2], [2, 1, 2]]
 
 
 def test_molecule_values_varying_sizes_inconsistency_allowed(geom):
@@ -302,24 +300,23 @@ def test_molecule_values_varying_sizes_inconsistency_allowed(geom):
 
 @pytest.mark.xfail(
     reason=(
-        "Geometry.molecule_atoms.sanitizer currently "
-        "does not support jagged nested lists."
+        "Geometry.atoms.sanitizer currently " "does not support jagged nested lists."
     )
 )
-def test_molecule_atoms_varying_sizes_inconsistency_allowed(geom):
+def test_atoms_varying_sizes_inconsistency_allowed(geom):
     geom.allow_data_inconsistency = True
-    geom.molecule_atoms = [[2, 2, 2], [2, 2]]
-    assert geom.molecule_atoms.tolist() == [[2, 2, 2], [2, 2, 0]]
+    geom.atoms = [[2, 2, 2], [2, 2]]
+    assert geom.atoms.tolist() == [[2, 2, 2], [2, 2, 0]]
 
 
-def test_molecule_atoms_too_short(geom):
+def test_atoms_too_short(geom):
     with pytest.raises(ValueError):
-        geom.molecule_atoms = [[2, 2]]
+        geom.atoms = [[2, 2]]
 
 
-def test_molecule_atoms_not_matching_num_of_conformers(geom):
+def test_atoms_not_matching_num_of_conformers(geom):
     with pytest.raises(ValueError):
-        geom.molecule_atoms = [[2, 2, 2]] * 3
+        geom.atoms = [[2, 2, 2]] * 3
 
 
 @pytest.fixture(scope="module")

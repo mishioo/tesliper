@@ -1173,7 +1173,7 @@ class Geometry(FloatArray):
         last_read_geom="Angstrom", input_geom="Angstrom", optimized_geom="Angstrom"
     )
     values = ArrayProperty(dtype=float, check_against="filenames")
-    molecule_atoms = CollapsibleArrayProperty(
+    atoms = CollapsibleArrayProperty(
         dtype=int,
         check_against="values",
         check_depth=2,
@@ -1185,8 +1185,8 @@ class Geometry(FloatArray):
     @classmethod
     def get_init_params(cls) -> Dict[str, Union[str, Parameter, DependentParameter]]:
         params = super().get_init_params()
-        params["molecule_atoms"] = DependentParameter.from_parameter(
-            params["molecule_atoms"], genre_getter=_geom_to_atoms_genre
+        params["atoms"] = DependentParameter.from_parameter(
+            params["atoms"], genre_getter=_geom_to_atoms_genre
         )
         return params
 
@@ -1195,9 +1195,7 @@ class Geometry(FloatArray):
         genre: str,
         filenames: Sequence[str],
         values: Sequence[Sequence[Sequence[float]]],
-        molecule_atoms: Union[
-            Sequence[Union[int, str]], Sequence[Sequence[Union[int, str]]]
-        ],
+        atoms: Union[Sequence[Union[int, str]], Sequence[Sequence[Union[int, str]]]],
         allow_data_inconsistency: bool = False,
     ):
         """
@@ -1212,7 +1210,7 @@ class Geometry(FloatArray):
         allow_data_inconsistency
             Flag signalizing if instance should allow data inconsistency (see
             :class:`ArrayPropety` for details). False by default.
-        molecule_atoms
+        atoms
             List of atomic numbers representing atoms in conformer, one for each
             coordinate. Should be a list of integers or list of strings, that can be
             interpreted as integers or symbols of atoms. May also be a list of such
@@ -1221,4 +1219,4 @@ class Geometry(FloatArray):
             list of atoms is stored in either case.
         """
         super().__init__(genre, filenames, values, allow_data_inconsistency)
-        self.molecule_atoms = molecule_atoms
+        self.atoms = atoms

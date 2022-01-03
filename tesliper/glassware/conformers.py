@@ -793,7 +793,7 @@ class Conformers(OrderedDict):
             If requested genres does not provide the same set of conformers.
         ValueError
             When called with ``ignore_hydrogen=True`` but requested
-            :attr:`.Geometry.molecule_atoms` cannot be collapsed to 1-D array.
+            :attr:`.Geometry.atoms` cannot be collapsed to 1-D array.
         """
         energy = self.arrayed(energy_genre)
         geometry = self.arrayed(geometry_genre)
@@ -809,14 +809,14 @@ class Conformers(OrderedDict):
             )
         if not geometry:
             return  # next steps assume there are some conformers
-        if ignore_hydrogen and geometry.molecule_atoms.shape[0] > 1:
+        if ignore_hydrogen and geometry.atoms.shape[0] > 1:
             # TODO: remove when dw.geometry.select_atoms supplemented
             raise ValueError(
                 "Cannot ignore hydrogen atoms if requested conformers do not have "
                 "the same order of atoms. This functionality is not supported yet."
             )
         geom = (
-            dw.drop_atoms(geometry.values, geometry.molecule_atoms[0], dw.atoms.Atom.H)
+            dw.drop_atoms(geometry.values, geometry.atoms[0], dw.atoms.Atom.H)
             if ignore_hydrogen
             else geometry.values
         )
