@@ -6,7 +6,7 @@ import tkinter.ttk as ttk
 from threading import Thread
 from tkinter import messagebox
 
-from .. import tesliper
+from .. import __version__, tesliper
 from .components import (
     CheckTree,
     ConformersOverview,
@@ -103,7 +103,7 @@ class ControlsFrame(ScrollableFrame):
 class TesliperApp(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("Tesliper")
+        self.title(f"Tesliper v. {__version__}")
         self.thread = Thread()
         self.changer = WgtStateChanger(self)
 

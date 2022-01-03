@@ -114,7 +114,6 @@ class _DerivedDefaultDict(defaultdict):
 
 class WgtStateChanger:
     def __init__(self, root):
-        # TODO: change *bars* to `activities`
         self.root = root
         self.bars_genres = tuple("dip rot vosc vrot losc lrot raman1 roa1".split())
         self.energies_genres = tuple("zpe ent ten gib scf".split())

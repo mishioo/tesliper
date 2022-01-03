@@ -6,6 +6,7 @@ from unittest.mock import Mock
 
 import numpy as np
 import pytest
+from _pytest.recwarn import T
 
 from tesliper.extraction import Soxhlet
 from tesliper.glassware import Conformers, SingleSpectrum, Spectra
@@ -100,6 +101,16 @@ def str_or_float(value):
         return value
 
 
+def str_to_py(value):
+    if value in ("True", "False"):
+        return value == "True"
+    numeric = float if "." in value else int
+    try:
+        return numeric(value)
+    except ValueError:
+        return value
+
+
 def test_non_existent_dialect(tmp_path):
     with pytest.raises(csv.Error):
         CsvWriter(tmp_path, dialect="no-dialect")
@@ -112,6 +123,37 @@ def test_fmt_parameter(tmp_path):
 def test_invalid_fmt_parameter(tmp_path):
     with pytest.raises(TypeError):
         CsvWriter(tmp_path, invalidparam="wrong")
+
+
+@pytest.mark.parametrize("header", [True, False])
+@pytest.mark.parametrize(
+    "det,genres",
+    [
+        ("integer", ar.IntegerArray.associated_genres),
+        ("float", ar.FloatArray.associated_genres),
+        ("boolean", ("normal_termination",)),
+        ("info", ar.InfoArray.associated_genres),
+        (
+            "various",
+            ("normal_termination",)
+            + ar.InfoArray.associated_genres
+            + ar.FloatArray.associated_genres
+            + ar.IntegerArray.associated_genres,
+        ),
+    ],
+)
+def test_generic(writer, mols, header, det, genres):
+    writer.include_header = header
+    data = [mols.arrayed(grn) for grn in genres]
+    writer.generic(data)
+    values = [data[0].filenames] + [arr.values for arr in data]
+    assert Path(writer._handle.name).name == f"generic.{det}.csv"
+    with Path(writer._handle.name).open("r", newline="") as file:
+        reader = csv.reader(file)
+        if header:
+            assert next(reader)[0] == "Gaussian output file"
+        for given, got in zip(zip(*values), reader):
+            assert given == tuple(str_to_py(v) for v in got)
 
 
 def test_energies(writer, gib_with_corr):
@@ -277,10 +319,3 @@ def test_serial_transitions_all(writer, molstd, filenamestd):
             # TODO: should also check if correct wavelength assigned
             expected_len = values.count()  # count non-masked
             assert len(list(reader)) == expected_len
-
-
-def test_not_implemented_write(writer, arrays, monkeypatch):
-    monkeypatch.setattr(Logger, "warning", Mock())
-    writer.write(arrays)
-    #  Geometry and generic InfoArray not supported
-    assert Logger.warning.call_count == 2

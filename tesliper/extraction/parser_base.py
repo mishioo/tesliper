@@ -1,9 +1,11 @@
 """This module contains a definition of Abstract Base Class for file parsers."""
 import re
 from abc import ABC, abstractmethod
-from typing import Callable, Iterable, Union
+from typing import Callable, Dict, Iterable, Tuple, Type, Union
 
 from ..exceptions import InvalidStateError
+
+_PARSERS: Dict[str, Type["ParserBase"]] = {}
 
 
 class ParserBase(ABC):
@@ -33,7 +35,9 @@ class ParserBase(ABC):
     When subclassing ParserBase, one should implement :meth:`.initial` and
     :meth:`.parse` methods. Those abstract methods implement basic functionality,
     described above. See methods' documentation for more details. If you wish not to use
-    default ParserBase's protocol, simply override those methods to your liking.
+    default ParserBase's protocol, simply override those methods to your liking. Values
+    for class attributes :attr:`.extensions` and :attr:`.purpose` should also be
+    provided.
 
     To register class derived from ParserBase for use by :class:`.Soxhlet` object,
     simply set :attr:`.purpose` class attribute to name, under which class should be
@@ -51,18 +55,33 @@ class ParserBase(ABC):
         object instantiation from object methods marked as states with triggers;
         key for a particular state trigger should be the same as state's key in
         :attr:`.states` dictionary.
-    parsers: dict
-        Class attribute, which is a registry of classes subclassing ParserBase and
-        defining :attr:`.purpose` class attribute.
-    purpose: str
-        Class attribute, that helps :class:`.Soxhlet` to identify ParserBase's subclass
-        purpose.
     """
 
-    # TODO: make states' triggers can be string, regex or callable
+    @property
+    @classmethod
+    @abstractmethod
+    def extensions(cls) -> Tuple[str]:
+        return tuple()
 
-    parsers = {}
-    purpose = ""
+    extensions.__doc__ = """File extensions that should be cosidered compatible with a
+    parser subclassing :class:`.ParserBase`. It will be used by :class:`.Soxhlet` to
+    identify which files to parse when reading files in batch. Should be a class
+    attribute with a tuple of str, where each element is a file extension. May also be
+    an empty tuple, if files discovery feature is not needed for the parser.
+    """
+
+    @property
+    @classmethod
+    @abstractmethod
+    def purpose(cls) -> str:
+        return ""
+
+    purpose.__doc__ = """An identifier for a parser subclassing :class:`.ParserBase`. It
+    allows ``tesliper`` to pick a correct parser for each parsing task. A falsy value,
+    i.e. an empty string or ``None`` prevents the parser from beeing registered for use
+    by ``tesliper``. If custom subclass uses a *purpose* already known, e.g. "gaussian"
+    or "spectra", it will override the original parser for this purpose.
+    """
 
     def __init__(self):
         self.states = {}
@@ -79,8 +98,20 @@ class ParserBase(ABC):
         self.workhorse = self.initial
 
     def __init_subclass__(cls, **kwargs):
+        global _PARSERS
+        if cls.purpose is ParserBase.purpose:
+            raise TypeError(
+                f"`{cls.__name__}` must provide `purpose` class attribute. "
+                "It may be an empty string if this class should not be registered."
+            )
+        if cls.extensions is ParserBase.extensions:
+            raise TypeError(
+                f"`{cls.__name__}` must provide `extensions` class attribute. "
+                "It may be an empty tuple if no extensions should be associated with "
+                "this class."
+            )
         if cls.purpose:
-            ParserBase.parsers[cls.purpose] = cls
+            _PARSERS[cls.purpose] = cls
         if not hasattr(cls.initial, "is_state"):
             cls.initial.is_state = True
 

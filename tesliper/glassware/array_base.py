@@ -102,6 +102,7 @@ of genre you'd like to be retrived or give them a default value, otherwise
 """
 import inspect
 import logging as lgg
+from abc import ABC, abstractmethod
 from typing import (
     Any,
     Callable,
@@ -596,7 +597,7 @@ class ArrayProperty(property):
                 )
                 raise InconsistentDataError(error_msg) from error
             else:
-                values = to_masked(values, dtype=self.dtype)  # FIXME: add fill_value
+                values = to_masked(values, dtype=self.dtype, fill_value=self.fill_value)
                 logger.info(
                     f"{genre} values' lists were appended with zeros to "
                     f"match length of longest entry."
@@ -763,7 +764,7 @@ _ARRAY_CONSTRUCTORS = {}
 It is a dictionary of {str: ArrayBase}."""
 
 
-class ArrayBase:  # TODO: make it ABC
+class ArrayBase(ABC):
     """Base class for data holding objects.
 
     It provides an automatic registration of its subclasses as a
@@ -777,13 +778,34 @@ class ArrayBase:  # TODO: make it ABC
     :class:`.DataArray`-like object should implement, listed in the Parameters section.
     """
 
-    # TODO: make it an abstract classmethod property
-    associated_genres: Tuple[str, ...] = NotImplemented
+    @property
+    @classmethod
+    @abstractmethod
+    def associated_genres(cls) -> Tuple[str, ...]:
+        return tuple()
+
+    associated_genres.__doc__ = """Genres associated with subclassing class.
+
+    Should be provided by subclass as class-level attribute. It will be used to
+    determine what class to use to represent data of particular genre when requested
+    *via* :method:`.Conforemrs.arrayed` method. May be an empty sequence, if subclass
+    is not intended to be used directly by `tesliper`'s machinery.
+    """
 
     def __init_subclass__(cls, **kwargs):
+        if isinstance(cls.associated_genres, str):
+            raise TypeError(
+                f"`{cls.__name__}.associated_genres` should be a sequence of str, "
+                "not just str."
+            )
         global _ARRAY_CONSTRUCTORS
-        if cls.associated_genres is not NotImplemented:
-            _ARRAY_CONSTRUCTORS.update((genre, cls) for genre in cls.associated_genres)
+        if cls.associated_genres is ArrayBase.associated_genres:
+            raise TypeError(
+                f"`{cls.__name__}` must provide `associated_genres` class attribute. "
+                "It may be an empty tuple if no genres should be associated with "
+                "this class."
+            )
+        _ARRAY_CONSTRUCTORS.update((genre, cls) for genre in cls.associated_genres)
 
     def __init__(
         self,
@@ -810,15 +832,7 @@ class ArrayBase:  # TODO: make it ABC
         self.filenames = filenames
         self.values = values
 
-    # TODO make it an ArrayProperty
-    @property
-    def filenames(self):
-        return self._filenames
-
-    @filenames.setter
-    def filenames(self, value):
-        self._filenames = np.array(value, dtype=str)
-
+    filenames = ArrayProperty(dtype=str)
     values = ArrayProperty(check_against="filenames")
 
     def get_repr_args(self) -> Dict[str, Any]:
@@ -834,10 +848,12 @@ class ArrayBase:  # TODO: make it ABC
         return args
 
     @classmethod
-    def get_init_params(cls) -> Dict[str, inspect.Parameter]:
-        "Returns copy of this class' init signature."
+    def get_init_params(cls) -> Dict[str, Union[str, inspect.Parameter]]:
+        """Returns parameters used to instantiate this class. *genre* is a genre of data
+        array that is to be instantiated."""
         signature = inspect.signature(cls)
-        return signature.parameters.copy()
+        parameters = signature.parameters.copy()
+        return parameters
 
     def __repr__(self):
         args = [
@@ -857,3 +873,107 @@ class ArrayBase:  # TODO: make it ABC
 
     def __bool__(self):
         return self.filenames.size != 0
+
+
+class DependentParameter(inspect.Parameter):
+    """A parameter that depends on the genre of data array. It provies a
+    :attr:`._genre_getter` callable attribute that is used to provide a name of data
+    genre that should be used for this parameter.
+
+    It is hashable as the original :class:`inspect.Parameter`, however it must be
+    remembered that Python hashes functions based on their identity."""
+
+    __slots__ = ("_name", "_kind", "_default", "_annotation", "_genre_getter")
+
+    def __init__(
+        self,
+        name: str,
+        kind: inspect._ParameterKind,
+        genre_getter: Callable[[str], str],
+        *,
+        default: Any = inspect._empty,
+        annotation: Any = inspect._empty,
+    ) -> None:
+        super().__init__(name, kind, default=default, annotation=annotation)
+        self._genre_getter = genre_getter
+
+    @property
+    def genre_getter(self):
+        """Should be a function that given a genre of data array being instantiated,
+        returns a genre that should be used for this parameter."""
+        return self._genre_getter
+
+    def __reduce__(self):
+        return (
+            type(self),
+            (self._name, self._kind, self._genre_getter),
+            {
+                "_default": self._default,
+                "_annotation": self._annotation,
+            },
+        )
+
+    @classmethod
+    def from_parameter(
+        cls, parameter: inspect.Parameter, genre_getter: Callable[[str], str]
+    ):
+        """Casts given :class:`inspect.Parameter` instance to this class."""
+        return cls(
+            name=parameter.name,
+            kind=parameter.kind,
+            genre_getter=genre_getter,
+            annotation=parameter.annotation,
+            default=parameter.default,
+        )
+
+    def replace(
+        self,
+        *,
+        name=inspect._void,
+        kind=inspect._void,
+        genre_getter=inspect._void,
+        annotation=inspect._void,
+        default=inspect._void,
+    ):
+        """Creates a customized copy of the :class:`.DependentParameter`."""
+
+        if name is inspect._void:
+            name = self._name
+
+        if kind is inspect._void:
+            kind = self._kind
+
+        if annotation is inspect._void:
+            annotation = self._annotation
+
+        if default is inspect._void:
+            default = self._default
+
+        if genre_getter is inspect._void:
+            genre_getter = self._genre_getter
+
+        return type(self)(
+            name,
+            kind,
+            genre_getter,
+            default=default,
+            annotation=annotation,
+        )
+
+    def __hash__(self):
+        return hash(
+            (self.name, self.kind, self.genre_getter, self.annotation, self.default)
+        )
+
+    def __eq__(self, other):
+        if self is other:
+            return True
+        if not isinstance(other, DependentParameter):
+            return NotImplemented
+        return (
+            self._name == other._name
+            and self._kind == other._kind
+            and self._default == other._default
+            and self._annotation == other._annotation
+            and self._genre_getter == other._genre_getter
+        )

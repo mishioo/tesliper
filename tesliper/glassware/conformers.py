@@ -2,6 +2,7 @@
 import logging as lgg
 from collections import Counter, ItemsView, KeysView, OrderedDict, ValuesView
 from contextlib import contextmanager
+from inspect import Parameter
 from itertools import chain
 from typing import Callable, Iterable, Optional, Sequence, Union
 
@@ -11,7 +12,7 @@ from tesliper.exceptions import InconsistentDataError, TesliperError
 
 from .. import datawork as dw
 from . import arrays as ar
-from .array_base import _ARRAY_CONSTRUCTORS
+from .array_base import _ARRAY_CONSTRUCTORS, DependentParameter
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -397,7 +398,6 @@ class Conformers(OrderedDict):
             )
             filenames, confs, values = [], [], []
         params = cls.get_init_params()
-        parameter_type = type(params["genre"])
         params["genre"] = genre
         params["filenames"] = filenames
         params["values"] = values
@@ -406,12 +406,15 @@ class Conformers(OrderedDict):
             if key in kwargs:
                 # explicitly given keyword parameters take precedence
                 continue
-            if not isinstance(params[key], parameter_type):
+            if not isinstance(params[key], Parameter):
                 # if value for parameter is already established, just take it
                 kwargs[key] = value
                 continue
+            param_genre = (  # maybe key is not a param's genre name
+                value.genre_getter(genre) if hasattr(value, "genre_getter") else key
+            )
             try:
-                kwargs[key] = [conf[key] for conf in confs]
+                kwargs[key] = [conf[param_genre] for conf in confs]
             except KeyError:
                 # set param to its default value
                 # or raise an error if it don't have one
@@ -419,10 +422,10 @@ class Conformers(OrderedDict):
                     kwargs[key] = value.default
                 else:
                     raise TesliperError(
-                        f"One or more conformers does not provide value for '{key}' "
-                        f"genre, needed to instantiate {cls.__name__} object. "
-                        "You may provide missing values as a keyword parameters to the "
-                        "`Conformers.arrayed()` method call."
+                        f"One or more conformers does not provide value for "
+                        f"'{param_genre}' genre, needed to instantiate {cls.__name__} "
+                        "object. You may provide missing values as a keyword parameters"
+                        " to the `Conformers.arrayed()` method call."
                     )
             if not kwargs[key] and value.default is not value.empty:
                 # genre produces an empty array, but parameter has default value
@@ -734,7 +737,7 @@ class Conformers(OrderedDict):
         self,
         threshold: Union[int, float],
         window_size: Optional[Union[int, float]],
-        geometry_genre: str = "geometry",
+        geometry_genre: str = "last_read_geom",
         energy_genre: str = "scf",
         ignore_hydrogen: bool = True,
         windowing_strategy: Callable = dw.stretching_windows,
@@ -772,7 +775,8 @@ class Conformers(OrderedDict):
             calculated. Essentially, a difference in conformers' energy, after which
             conformers are always considered different.
         geometry_genre : str
-            Genre of geometry used to calculate RMSD matrix. "geometry" is default.
+            Genre of geometry used to calculate RMSD matrix. "last_read_geom" is
+            default.
         energy_genre : str
             Genre of energy used to sort and group conformers into windows of given
             energy size. "scf" is used by default.
@@ -789,7 +793,7 @@ class Conformers(OrderedDict):
             If requested genres does not provide the same set of conformers.
         ValueError
             When called with ``ignore_hydrogen=True`` but requested
-            :attr:`.Geometry.molecule_atoms` cannot be collapsed to 1-D array.
+            :attr:`.Geometry.atoms` cannot be collapsed to 1-D array.
         """
         energy = self.arrayed(energy_genre)
         geometry = self.arrayed(geometry_genre)
@@ -805,14 +809,14 @@ class Conformers(OrderedDict):
             )
         if not geometry:
             return  # next steps assume there are some conformers
-        if ignore_hydrogen and geometry.molecule_atoms.shape[0] > 1:
+        if ignore_hydrogen and geometry.atoms.shape[0] > 1:
             # TODO: remove when dw.geometry.select_atoms supplemented
             raise ValueError(
                 "Cannot ignore hydrogen atoms if requested conformers do not have "
                 "the same order of atoms. This functionality is not supported yet."
             )
         geom = (
-            dw.drop_atoms(geometry.values, geometry.molecule_atoms[0], dw.atoms.Atom.H)
+            dw.drop_atoms(geometry.values, geometry.atoms[0], dw.atoms.Atom.H)
             if ignore_hydrogen
             else geometry.values
         )

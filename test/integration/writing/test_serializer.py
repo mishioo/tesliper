@@ -95,6 +95,16 @@ def with_averaged(extracted):
     return extracted
 
 
+@pytest.fixture
+def with_experimental(extracted):
+    extracted.experimental["ir"] = SingleSpectrum(
+        "ir",
+        [0.3, 0.2, 10, 300, 2],
+        [10, 20, 30, 40, 50],
+    )
+    return extracted
+
+
 def resurect(tesliper, path):
     file = path / "archive.tslr"
     writer = ArchiveWriter(destination=file)
@@ -174,3 +184,9 @@ def test_serialization_averaged(with_averaged, tmp_path):
     resurrected = resurect(with_averaged, tmp_path)
     for genre, spc in resurrected.averaged.items():
         assert_spectra_equal(spc, with_averaged.averaged[genre])
+
+
+def test_serialization_experimental(with_experimental, tmp_path):
+    resurrected = resurect(with_experimental, tmp_path)
+    for genre, spc in resurrected.experimental.items():
+        assert_spectra_equal(spc, with_experimental.experimental[genre])

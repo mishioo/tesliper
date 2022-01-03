@@ -576,6 +576,7 @@ class CalculateSpectra(CollapsiblePane):
             )
             b.configure(state="disabled")
             b.grid(column=c, row=r, padx=5)
+            b.bind("<Button-1>", self._stash_current_settings)
             self.s_name_radio[v] = b
             root.changer.register(b, needs_all_genres=[dw.DEFAULT_ACTIVITIES[v]])
 
@@ -794,7 +795,6 @@ class CalculateSpectra(CollapsiblePane):
             for name in self.s_name_radio
         }
         self.lastly_drawn_spectra = None
-        self._exp_spc = {k: None for k in self.s_name_radio.keys()}
 
     @property
     def tesliper(self):
@@ -803,14 +803,14 @@ class CalculateSpectra(CollapsiblePane):
     @property
     def exp_spc(self):
         try:
-            return self._exp_spc[self.s_name.get()]
+            return self.tesliper.experimental[self.s_name.get()]
         except KeyError:
-            # no value selected in s_name radio
+            # no experimental spectrum or no value selected in s_name radio
             return None
 
     @exp_spc.setter
     def exp_spc(self, value):
-        self._exp_spc[self.s_name.get()] = value
+        self.tesliper.experimental[self.s_name.get()] = value
 
     @property
     def draw_params(self):
@@ -861,8 +861,9 @@ class CalculateSpectra(CollapsiblePane):
         if filename:
             logger.debug(f"File: {filename}")
             try:
-                soxhlet = Soxhlet()
-                spc = soxhlet.load_spectrum(filename)
+                self.tesliper.load_experimental(
+                    filename, self.draw_params["spectra_name"]
+                )
             except ValueError:
                 logger.warning(
                     "Experimental spectrum couldn't be loaded. "
@@ -870,11 +871,6 @@ class CalculateSpectra(CollapsiblePane):
                     " or if file is not corrupted."
                 )
             else:
-                self.exp_spc = gw.SingleSpectrum(
-                    genre=self.draw_params["spectra_name"],
-                    values=spc[1],
-                    abscissa=spc[0],
-                )
                 self.show_exp.var.set(True)
                 self.winfo_toplevel().changer.set_states()
 
@@ -939,7 +935,6 @@ class CalculateSpectra(CollapsiblePane):
     def live_preview_callback(self, _event=None, mode=False):
         if _event is not None:
             logger.debug(f"Event caught by {self}.live_preview_callback handler.")
-        # TODO: show/hide bars/experimental plots when checkbox clicked
         spectra_name = self.s_name.get()
         # update appropriate tesliper.parameters with current calculation settings
         if spectra_name:
@@ -1077,6 +1072,12 @@ class CalculateSpectra(CollapsiblePane):
             return {}
         return settings
 
+    def _stash_current_settings(self, _event=None):
+        spectra_name = self.draw_params["spectra_name"]
+        if not spectra_name:
+            return  # spectra name radio not selected
+        self.last_used_settings[spectra_name] = self.current_settings.copy()
+
     def recalculate_command(self):
         draw_params = self.draw_params
         spectra_name = draw_params["spectra_name"]
@@ -1086,7 +1087,7 @@ class CalculateSpectra(CollapsiblePane):
         if not self.current_settings:
             logger.info("Calculation aborted: invalid settings provided.")
             return
-        self.last_used_settings[spectra_name] = self.current_settings.copy()
+        self._stash_current_settings()
         option = draw_params["option"]
         if not option or option.startswith("Choose "):
             logger.info("Calculation aborted: option not chosen.")
@@ -1153,7 +1154,6 @@ class ExtractData(ttk.LabelFrame):
 
     @ThreadedMethod(progbar_msg="Extracting...")
     def extract(self, path, wanted_files=None):
-        # TODO: handle extraction errors
         root = self.winfo_toplevel()
         try:
             for file, data in self.tesliper.extract_iterate(path, wanted_files):
@@ -1192,7 +1192,7 @@ class ExportData(ttk.LabelFrame):
         )
         self.b_text_export.grid(column=1, row=0, sticky="nwe")
         self.b_excel_export = ttk.Button(
-            self, text="Export as .xls", command=lambda: self.save(fmt="xlsx")
+            self, text="Export as .xlsx", command=lambda: self.save(fmt="xlsx")
         )
         self.b_excel_export.grid(column=1, row=1, sticky="nwe")
         self.b_csv_export = ttk.Button(

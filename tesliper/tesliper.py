@@ -41,6 +41,8 @@ from typing import (
     Union,
 )
 
+from tesliper.glassware.spectra import SingleSpectrum
+
 from . import datawork as dw
 from . import extraction as ex
 from . import glassware as gw
@@ -186,6 +188,14 @@ class Tesliper:
         Spectra averaged using available energies genres, calculated with last call
         to :meth:`.average_spectra` method. Keys are tuples of two strings: averaged
         spectra genre and energies genre used for averaging.
+    experimental : dict of str: Spectra
+        Experimental spectra loaded from disk.
+        Possible keys are spectra genres: "ir", "vcd", "uv", "ecd", "raman", and "roa".
+        Values are :class:`.Spectra` instances with experimental spetra of this genre.
+    quantum_software : str
+        A name, lower case, of the quantum chemical computations software used to obtain
+        data. Used by ``tesliper`` to figure out, which parser to use to extract data,
+        if custom parsers are available. Only "gaussian" is supported out-of-the-box.
     parameters : dict of str: (dict of str: float or callable)
         Parameters for calculation of each type of spectra: "vibrational", "electronic",
         and "scattering". Avaliable parameters are:
@@ -205,7 +215,6 @@ class Tesliper:
     """
 
     # TODO?: add proxy for trimming ?
-    # TODO?: separate spectra types ?
     # TODO?: make it inherit mapping ?
     _standard_parameters = {
         "ir": {
@@ -235,6 +244,7 @@ class Tesliper:
         input_dir: str = ".",
         output_dir: str = ".",
         wanted_files: Optional[Iterable[Union[str, Path]]] = None,
+        quantum_software: str = "gaussian",
     ):
         """
         Parameters
@@ -247,6 +257,10 @@ class Tesliper:
         wanted_files : list of str or list of Path, optional
             List of files or filenames representing wanted files. If not given, all
             files are considered wanted. File extensions are ignored.
+        quantum_software : str
+            A name of the quantum chemical computations software used to obtain data.
+            Used by ``tesliper`` to figure out, which parser to use, if custom parsers
+            are available.
         """
         self.conformers = gw.Conformers()
         self.wanted_files = wanted_files
@@ -254,7 +268,14 @@ class Tesliper:
         self.output_dir = output_dir
         self.spectra = dict()
         self.averaged = dict()
+        self.experimental = dict()
         self.parameters = self.standard_parameters
+        self.quantum_software = quantum_software.lower()
+        if self.quantum_software not in ex.parser_base._PARSERS:
+            logger.warning(
+                f"Unsupported quantum chemistry software: {quantum_software}. "
+                "Automatic data extraction will not be available."
+            )
 
     def __getitem__(self, item: str) -> gw.conformers.AnyArray:
         try:
@@ -270,6 +291,7 @@ class Tesliper:
         self.output_dir = ""
         self.spectra = dict()
         self.averaged = dict()
+        self.experimental = dict()
         self.parameters = self.standard_parameters
 
     @property
@@ -340,7 +362,6 @@ class Tesliper:
 
         May also be set to ``None`` or other "falsy" value, in such case it is ignored.
         """
-        # TODO: reuse Soxhlet.wanted_files property
         return self._wanted_files
 
     @wanted_files.setter
@@ -447,8 +468,9 @@ class Tesliper:
             data as second item, for each Gaussian output file parsed.
         """
         soxhlet = ex.Soxhlet(
-            path or self.input_dir,
-            wanted_files or self.wanted_files,
+            path=path or self.input_dir,
+            purpose=self.quantum_software,
+            wanted_files=wanted_files or self.wanted_files,
             extension=extension,
             recursive=recursive,
         )
@@ -489,7 +511,7 @@ class Tesliper:
 
     def load_parameters(
         self,
-        path: Optional[Union[str, Path]] = None,
+        path: Union[str, Path],
         spectra_genre: Optional[str] = None,
     ) -> dict:
         """Load calculation parameters from a file.
@@ -497,8 +519,7 @@ class Tesliper:
         Parameters
         ----------
         path : str or pathlib.Path, optional
-            Path to the file with desired parameters specification. If omitted,
-            Tesliper will try to find appropriate file in the default input directory.
+            Path to the file with desired parameters specification.
         spectra_genre : str, optional
             Genre of spectra that loaded parameters concerns. If given, should be one of
             "ir", "vcd", "uv", "ecd", "raman", or "roa" -- parameters for that
@@ -515,11 +536,40 @@ class Tesliper:
         For information on supported format of parameters configuration file, please
         refer to :class:`.ParametersParser` documentation.
         """
-        soxhlet = ex.Soxhlet(path or self.input_dir)
-        settings = soxhlet.load_parameters()
+        soxhlet = ex.Soxhlet(self.input_dir, purpose="parameters")
+        settings = soxhlet.parse_one(path)
         if spectra_genre is not None:
             self.parameters[spectra_genre].update(settings)
         return settings
+
+    def load_experimental(
+        self,
+        path: Union[str, Path],
+        spectrum_genre: str,
+    ) -> SingleSpectrum:
+        """Load experimental spectrum from a file. Data read from file is stored as
+        :class:`.SingleSpectrum` instance in :attr:`.Tesliper.experimental` dictionary
+        under *spectrum_genre* key.
+
+        Parameters
+        ----------
+        path : str or pathlib.Path
+            Path to the file with experimental spectrum.
+        spectrum_genre : str
+            Genre of the experimental spectrum that will be loaded. Should be one of
+            "ir", "vcd", "uv", "ecd", "raman", or "roa".
+
+        Returns
+        -------
+        SingleSpectrum
+            Experimental spectrum loaded from the file.
+        """
+        soxhlet = ex.Soxhlet(self.input_dir, purpose="spectra")
+        spc = soxhlet.parse_one(path)
+        self.experimental[spectrum_genre] = gw.SingleSpectrum(
+            genre=spectrum_genre, values=spc[1], abscissa=spc[0]
+        )
+        return self.experimental[spectrum_genre]
 
     def calculate_single_spectrum(
         self,
@@ -686,14 +736,13 @@ class Tesliper:
                         self.averaged[(genre, energies.genre)] = av
         return self.averaged
 
-    # TODO: supplement docstrings
     def export_data(self, genres: Sequence[str], fmt: str = "txt", mode: str = "x"):
         """Saves specified data genres to disk in given file format.
 
         File formats available by default are: "txt", "csv", "xlsx", "gjf". Note that
-        not all formats may are compatible with every genre (e.g. only "geometry"
-        genre may be exported fo .gjf format). In such case genres unsupported
-        by given format are ignored.
+        not all formats may are compatible with every genre (e.g. only genres associated
+        with :class:`.Geometry` may be exported fo .gjf format). In such case genres
+        unsupported by given format are ignored.
 
         Files produced are written to :attr:`Tesliper.output_dir` directory with
         filenames automatically generated using adequate genre's name and conformers'
@@ -859,6 +908,7 @@ class Tesliper:
         link0: Optional[dict] = None,
         comment: str = "No information provided.",
         post_spec: str = "",
+        geometry_genre: str = "last_read_geom",
     ):
         """Saves conformers to disk as job files for quantum chemistry software
         in given file format.
@@ -888,6 +938,11 @@ class Tesliper:
         post_spec : str
             Anything that should be placed after conformers geometry specification.
             Will be written to file as given.
+        geometry_genre : str
+            Name of the data genre representing conformers' geometry that should be used
+            as input geometry. Please note that the default value "last_read_geom" is
+            not necessarily an optimized geometry. Use "optimized_geom" if this is what
+            you need.
         """
         wrt = wr.writer(
             fmt=fmt,
@@ -899,7 +954,7 @@ class Tesliper:
             post_spec=post_spec,
         )
         wrt.geometry(
-            geometry=self["geometry"],
+            geometry=self[geometry_genre],
             multiplicity=self["multiplicity"],
             charge=self["charge"],
         )

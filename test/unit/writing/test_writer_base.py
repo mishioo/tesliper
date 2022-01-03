@@ -159,6 +159,7 @@ def test_distribution_extras(writer_class, arraytype, array):
 
 
 writer_methods = {
+    "generic": dict(data=None),
     "overview": dict(
         energies=None,
         frequencies=None,

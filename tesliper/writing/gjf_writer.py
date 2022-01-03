@@ -24,8 +24,6 @@ def _format_coordinates(coords: Sequence[Sequence[float]], atoms: Sequence[int])
 class GjfWriter(WriterBase):
     """Generates Gaussian input files for each conformer given."""
 
-    # TODO: Add per-file parametrization of link0 commands
-
     extension = "gjf"
     _link0_commands = {
         "Mem",  # str specifying required memory
@@ -44,6 +42,15 @@ class GjfWriter(WriterBase):
         "Subst",  # str with link number and space-separated file path
     }
     _link0_commands = {k.lower(): k for k in _link0_commands}
+    _parametrized = {
+        "chk",
+        "oldchk",
+        "schk",
+        "rwf",
+        "oldmatrix",
+        "oldrawmatrix",
+        "subst",
+    }
     empty_lines_at_end = 2
 
     def __init__(
@@ -111,7 +118,7 @@ class GjfWriter(WriterBase):
             supported placeholders.
         """
         geom = geometry.values
-        atoms = cycle(geometry.molecule_atoms)
+        atoms = cycle(geometry.atoms)
         try:
             char = charge.values
         except AttributeError:
@@ -132,7 +139,7 @@ class GjfWriter(WriterBase):
             mult,
             self._iter_handles(geometry.filenames, name_template, template_params),
         ):
-            self._write_conformer(handle, *params)
+            self._write_conformer(handle, *params, template_params)
 
     def _write_conformer(
         self,
@@ -141,9 +148,15 @@ class GjfWriter(WriterBase):
         a: Sequence[int],
         c: int,
         m: int,
+        template_params: dict,
     ):
         for key, value in self.link0.items():
-            if "save" in key:
+            key = key.lower()
+            if key in self._parametrized:
+                # template_params are updated bt _iter_handles
+                # so we can simply reuse it
+                value = self.make_name(template=value, **template_params)
+            if "save" in key and value:
                 file.write(f"%{self._link0_commands[key]}\n")
             else:
                 file.write(f"%{self._link0_commands[key]}={value}\n")
@@ -181,6 +194,12 @@ class GjfWriter(WriterBase):
         :ErrorSave: boolean
         :NoSave: boolean, same as ErrorSave
         :Subst: str with link number and space-separated file path
+
+        Commands that provide a file path as a value may be parametrized for each
+        conformer. You can put a placeholder inside a given string path, that will be
+        parametrized when writing to file. See :meth:`.make_name` to see available
+        placeholders. You may use any of values listed there, however ``${conf}`` and
+        ``${num}`` will probably be the most useful.
         """
         return self._link0
 
