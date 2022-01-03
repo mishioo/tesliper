@@ -26,7 +26,7 @@ def base():
         "multiplicity": 1,
         "input_geom": [],
         "stoichiometry": "CH3F",
-        "molecule_atoms": (6, 1, 1, 1, 9),
+        "last_read_atoms": (6, 1, 1, 1, 9),
         "last_read_geom": [],
         "freq": [1, 2, 3, 4, 5],
         "mass": [2, 1, 3, 2, 1],

@@ -59,7 +59,7 @@ class ParserTestCase:
         assert self.data["stoichiometry"] == "CH2O"
 
     def test_atoms(self):
-        assert self.data["molecule_atoms"] == [6, 1, 1, 8]
+        assert self.data["last_read_atoms"] == [6, 1, 1, 8]
 
     def test_input_atoms(self):
         assert self.data["input_atoms"] == ["C", "H", "H", "O"]
@@ -105,7 +105,7 @@ class TestFreq(ParserTestCase):
             "depolaru",
             "ramanactiv",
             "last_read_geom",
-            "molecule_atoms",
+            "last_read_atoms",
         }
 
     def test_command(self):
@@ -207,7 +207,7 @@ class TestFreqRoa(ParserTestCase):
             "scf",
             "stoichiometry",
             "last_read_geom",
-            "molecule_atoms",
+            "last_read_atoms",
             "zpecorr",
             "tencorr",
             "entcorr",
@@ -357,7 +357,7 @@ class TestOpt(ParserTestCase):
             "scf",
             "stoichiometry",
             "last_read_geom",
-            "molecule_atoms",
+            "last_read_atoms",
             "optimization_completed",
         }
 
@@ -429,7 +429,7 @@ class TestOptFreq(ParserTestCase):
             "depolaru",
             "ramanactiv",
             "last_read_geom",
-            "molecule_atoms",
+            "last_read_atoms",
             "optimization_completed",
         }
 
@@ -476,7 +476,7 @@ class TestInputError(ParserTestCase):
         assert "stoichiometry" not in self.data
 
     def test_atoms(self):
-        assert "molecule_atoms" not in self.data
+        assert "last_read_atoms" not in self.data
 
 
 @pytest.mark.usefixtures("setup_class")
@@ -513,7 +513,7 @@ class TestTd(ParserTestCase):
             "ex_en",
             "transitions",
             "last_read_geom",
-            "molecule_atoms",
+            "last_read_atoms",
         }
 
     def test_command(self):
