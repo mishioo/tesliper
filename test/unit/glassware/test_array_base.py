@@ -330,7 +330,7 @@ def test_array_property_check_input_inconsistent_allowed(
     arr.x = [1, 2]
     arr.allow_data_inconsistency = True
     out = class_array_check_x.arr.check_input(arr, [[1, 2], [3]])
-    pad_mock.assert_called_with([[1, 2], [3]], dtype=int)
+    pad_mock.assert_called_with([[1, 2], [3]], dtype=int, fill_value=0)
     assert out == [[1, 2], [3, 0]]
 
 
@@ -521,16 +521,23 @@ def values_mock(monkeypatch):
 @pytest.fixture
 def array_subclass():
     class Sub(ab.ArrayBase):
-        associated_genres = "bla"
+        associated_genres = ("bla",)
 
     return Sub
 
 
 def test_array_base_subclass_no_associated_genres():
-    class Sub(ab.ArrayBase):
-        pass
+    with pytest.raises(TypeError):
 
-    assert Sub.associated_genres is NotImplemented
+        class Sub(ab.ArrayBase):
+            pass
+
+
+def test_array_base_subclass_str_associated_genres():
+    with pytest.raises(TypeError):
+
+        class Sub(ab.ArrayBase):
+            associated_genres = "bla"
 
 
 def test_array_base_get_args(filenames_mock, values_mock, array_subclass):
@@ -547,6 +554,8 @@ def test_array_base_get_args(filenames_mock, values_mock, array_subclass):
 
 def test_array_base_get_args_not_stored_arg(filenames_mock, values_mock):
     class Sub(ab.ArrayBase):
+        associated_genres = ()
+
         def __init__(
             self, genre, filenames, values, other, allow_data_inconsistency=False
         ):
@@ -566,6 +575,8 @@ def test_array_base_get_args_not_stored_arg(filenames_mock, values_mock):
 
 def test_array_base_get_args_not_stored_arg_with_default(filenames_mock, values_mock):
     class Sub(ab.ArrayBase):
+        associated_genres = ()
+
         def __init__(
             self,
             genre,

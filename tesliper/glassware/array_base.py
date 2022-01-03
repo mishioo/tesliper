@@ -793,9 +793,19 @@ class ArrayBase(ABC):
     """
 
     def __init_subclass__(cls, **kwargs):
+        if isinstance(cls.associated_genres, str):
+            raise TypeError(
+                f"`{cls.__name__}.associated_genres` should be a sequence of str, "
+                "not just str."
+            )
         global _ARRAY_CONSTRUCTORS
-        if cls.associated_genres is not NotImplemented:
-            _ARRAY_CONSTRUCTORS.update((genre, cls) for genre in cls.associated_genres)
+        if cls.associated_genres is ArrayBase.associated_genres:
+            raise TypeError(
+                f"`{cls.__name__}` must provide `associated_genres` class attribute. "
+                "It may be an empty tuple if no genres should be associated with "
+                "this class."
+            )
+        _ARRAY_CONSTRUCTORS.update((genre, cls) for genre in cls.associated_genres)
 
     def __init__(
         self,
