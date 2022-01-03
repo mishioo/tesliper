@@ -192,6 +192,10 @@ class Tesliper:
         Experimental spectra loaded from disk.
         Possible keys are spectra genres: "ir", "vcd", "uv", "ecd", "raman", and "roa".
         Values are :class:`.Spectra` instances with experimental spetra of this genre.
+    quantum_software : str
+        A name, lower case, of the quantum chemical computations software used to obtain
+        data. Used by ``tesliper`` to figure out, which parser to use to extract data,
+        if custom parsers are available. Only "gaussian" is supported out-of-the-box.
     parameters : dict of str: (dict of str: float or callable)
         Parameters for calculation of each type of spectra: "vibrational", "electronic",
         and "scattering". Avaliable parameters are:
@@ -240,6 +244,7 @@ class Tesliper:
         input_dir: str = ".",
         output_dir: str = ".",
         wanted_files: Optional[Iterable[Union[str, Path]]] = None,
+        quantum_software: str = "gaussian",
     ):
         """
         Parameters
@@ -252,6 +257,10 @@ class Tesliper:
         wanted_files : list of str or list of Path, optional
             List of files or filenames representing wanted files. If not given, all
             files are considered wanted. File extensions are ignored.
+        quantum_software : str
+            A name of the quantum chemical computations software used to obtain data.
+            Used by ``tesliper`` to figure out, which parser to use, if custom parsers
+            are available.
         """
         self.conformers = gw.Conformers()
         self.wanted_files = wanted_files
@@ -261,6 +270,12 @@ class Tesliper:
         self.averaged = dict()
         self.experimental = dict()
         self.parameters = self.standard_parameters
+        self.quantum_software = quantum_software.lower()
+        if self.quantum_software not in ex.ParserBase.parsers:
+            logger.warning(
+                f"Unsupported quantum chemistry software: {quantum_software}. "
+                "Automatic data extraction will not be available."
+            )
 
     def __getitem__(self, item: str) -> gw.conformers.AnyArray:
         try:
@@ -454,6 +469,7 @@ class Tesliper:
         """
         soxhlet = ex.Soxhlet(
             path=path or self.input_dir,
+            purpose=self.quantum_software,
             wanted_files=wanted_files or self.wanted_files,
             extension=extension,
             recursive=recursive,

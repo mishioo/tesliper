@@ -129,7 +129,9 @@ class ArchiveWriter:
 
     def write(self, obj: "tesliper.Tesliper"):
         with self:
-            self._write_arguments(obj.input_dir, obj.output_dir, obj.wanted_files)
+            self._write_arguments(
+                obj.input_dir, obj.output_dir, obj.wanted_files, obj.quantum_software
+            )
             self._write_parameters(obj.parameters)
             self._write_conformers(obj.conformers)
             for spc in obj.averaged.values():
@@ -144,6 +146,7 @@ class ArchiveWriter:
         input_dir: Union[Path, str] = None,
         output_dir: Union[Path, str] = None,
         wanted_files: Iterable[str] = None,
+        quantum_software: str = None,
     ):
         with self.root.open("arguments.json", mode="w") as handle:
             handle.write(
@@ -152,6 +155,7 @@ class ArchiveWriter:
                         "input_dir": str(input_dir) if input_dir else None,
                         "output_dir": str(output_dir) if output_dir else None,
                         "wanted_files": list(wanted_files) if wanted_files else None,
+                        "quantum_software": quantum_software or None,
                     }
                 )
             )
