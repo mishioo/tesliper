@@ -1,9 +1,11 @@
 """This module contains a definition of Abstract Base Class for file parsers."""
 import re
 from abc import ABC, abstractmethod
-from typing import Callable, Iterable, Tuple, Union
+from typing import Callable, Dict, Iterable, Tuple, Type, Union
 
 from ..exceptions import InvalidStateError
+
+_PARSERS: Dict[str, Type["ParserBase"]] = {}
 
 
 class ParserBase(ABC):
@@ -53,12 +55,7 @@ class ParserBase(ABC):
         object instantiation from object methods marked as states with triggers;
         key for a particular state trigger should be the same as state's key in
         :attr:`.states` dictionary.
-    parsers: dict
-        Class attribute, which is a registry of classes subclassing ParserBase and
-        defining :attr:`.purpose` class attribute.
     """
-
-    parsers = {}
 
     @property
     @classmethod
@@ -101,6 +98,7 @@ class ParserBase(ABC):
         self.workhorse = self.initial
 
     def __init_subclass__(cls, **kwargs):
+        global _PARSERS
         if cls.purpose is ParserBase.purpose:
             raise TypeError(
                 f"`{cls.__name__}` must provide `purpose` class attribute. "
@@ -113,7 +111,7 @@ class ParserBase(ABC):
                 "this class."
             )
         if cls.purpose:
-            ParserBase.parsers[cls.purpose] = cls
+            _PARSERS[cls.purpose] = cls
         if not hasattr(cls.initial, "is_state"):
             cls.initial.is_state = True
 

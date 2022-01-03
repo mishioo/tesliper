@@ -271,7 +271,7 @@ class Tesliper:
         self.experimental = dict()
         self.parameters = self.standard_parameters
         self.quantum_software = quantum_software.lower()
-        if self.quantum_software not in ex.ParserBase.parsers:
+        if self.quantum_software not in ex.parser_base._PARSERS:
             logger.warning(
                 f"Unsupported quantum chemistry software: {quantum_software}. "
                 "Automatic data extraction will not be available."

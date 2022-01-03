@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Callable, Union
 
 from .. import datawork as dw
-from .parser_base import ParserBase
+from .parser_base import _PARSERS
 
 logger = logging.getLogger(__name__)
 
@@ -165,4 +165,4 @@ class ParametersParser:
         return self.parameters
 
 
-ParserBase.parsers[ParametersParser.purpose] = ParametersParser
+_PARSERS[ParametersParser.purpose] = ParametersParser

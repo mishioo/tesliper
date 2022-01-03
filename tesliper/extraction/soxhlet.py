@@ -3,9 +3,7 @@ import logging as lgg
 from pathlib import Path
 from typing import Any, Generator, Iterable, List, Optional, Set, Tuple, Union
 
-import numpy as np
-
-from tesliper.extraction.parser_base import ParserBase
+from .parser_base import _PARSERS
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -65,7 +63,7 @@ class Soxhlet:
         self.extension = extension
         self.recursive = recursive
         try:
-            self.parser = ParserBase.parsers[purpose]()
+            self.parser = _PARSERS[purpose]()
         except KeyError:
             raise ValueError(f"Unknown purpose: {purpose}.")
 
