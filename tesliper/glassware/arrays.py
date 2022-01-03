@@ -1153,11 +1153,16 @@ class Geometry(FloatArray):
 
         * - geometry
           - input_geom
+          - optimized_geom
     """
 
-    associated_genres = ("geometry", "input_geom")
-    full_name_ref = dict(geometry="Geometry", input_geom="Input Geometry")
-    _units = dict(geometry="Angstrom")
+    associated_genres = ("geometry", "input_geom", "optimized_geom")
+    full_name_ref = dict(
+        geometry="Geometry",
+        input_geom="Input Geometry",
+        optimized_geom="Optimized Geometry",
+    )
+    _units = dict(geometry="Angstrom", input_geom="Angstrom", optimized_geom="Angstrom")
     values = ArrayProperty(dtype=float, check_against="filenames")
     molecule_atoms = CollapsibleArrayProperty(
         dtype=int,

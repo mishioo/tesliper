@@ -352,6 +352,8 @@ class TestOpt(ParserTestCase):
             "multiplicity",
             "input_geom",
             "input_atoms",
+            "optimized_geom",
+            "optimized_atoms",
             "scf",
             "stoichiometry",
             "geometry",
@@ -370,6 +372,15 @@ class TestOpt(ParserTestCase):
 
     def test_geometry(self):
         assert self.data["geometry"] == [
+            [-0.000016, 0.530659, 0.000000],
+            [0.913392, 1.112945, 0.000000],
+            [-0.913174, 1.113406, 0.000000],
+            [-0.000016, -0.676288, 0.000000],
+        ]
+
+    def test_optimized(self):
+        assert self.data["optimization_completed"]
+        assert self.data["optimized_geom"] == [
             [-0.000016, 0.530659, 0.000000],
             [0.913392, 1.112945, 0.000000],
             [-0.913174, 1.113406, 0.000000],
@@ -398,6 +409,8 @@ class TestOptFreq(ParserTestCase):
             "multiplicity",
             "input_geom",
             "input_atoms",
+            "optimized_geom",
+            "optimized_atoms",
             "scf",
             "stoichiometry",
             "zpecorr",
@@ -422,6 +435,23 @@ class TestOptFreq(ParserTestCase):
 
     def test_command(self):
         assert self.data["command"] == "opt freq hf/3-21g"
+
+    def test_geometry(self):
+        assert self.data["geometry"] == [
+            [-0.000016, 0.530659, 0.000000],
+            [0.913392, 1.112945, 0.000000],
+            [-0.913174, 1.113406, 0.000000],
+            [-0.000016, -0.676288, 0.000000],
+        ]
+
+    def test_optimized(self):
+        assert self.data["optimization_completed"]
+        assert self.data["optimized_geom"] == [
+            [-0.000016, 0.530659, 0.000000],
+            [0.913392, 1.112945, 0.000000],
+            [-0.913174, 1.113406, 0.000000],
+            [-0.000016, -0.676288, 0.000000],
+        ]
 
 
 @pytest.mark.usefixtures("setup_class")

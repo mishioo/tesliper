@@ -199,13 +199,15 @@ class GaussianParser(ParserBase):
         molecule's atoms as atomic numbers
     geometry : list of lists of floats, always available
         molecule's geometry (last one found in file) as X, Y, Z coordinates of atoms
+    optimized_atoms : list of ints, available from successful opt job
+        molecule's atoms read from optimized geometry as atomic numbers
+    optimized_geom : list of lists of floats, available from successful opt job
+        optimized geometry as X, Y, Z coordinates of atoms
 
     Attributes
     ----------
     data : dict
         Data extracted during last parsing."""
-
-    # TODO?: add optimized_geometry or similarly named genre
 
     purpose = "gaussian"
 
@@ -280,7 +282,7 @@ class GaussianParser(ParserBase):
         line = next(iterator).strip()
         input_geom = []
         pattern = r"(\w+)" + 3 * number_group
-        while line:
+        while line:  # reads symbolic Z-matrix
             atom = re.match(pattern, line)
             label, *coordinates = atom.groups()
             input_geom.append([label, list(map(float, coordinates))])
@@ -362,6 +364,9 @@ class GaussianParser(ParserBase):
             self.data["scf"] = float(SCF_CRE.search(line).group(1))
         elif line.startswith(" Optimization completed."):
             self.data["optimization_completed"] = True
+            if "optimized_geom" not in self.data:
+                self.data["optimized_geom"] = self.data["geometry"]
+                self.data["optimized_atoms"] = self.data["molecule_atoms"]
         elif line.startswith(" Error termination"):
             self.data["normal_termination"] = False
         if line.startswith((" Error termination", " Job cpu time")):
