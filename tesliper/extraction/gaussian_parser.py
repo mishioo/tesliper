@@ -210,6 +210,7 @@ class GaussianParser(ParserBase):
         Data extracted during last parsing."""
 
     purpose = "gaussian"
+    extensions = ("log", "out")
 
     def __init__(self):
         super().__init__()

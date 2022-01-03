@@ -453,8 +453,8 @@ class Tesliper:
             data as second item, for each Gaussian output file parsed.
         """
         soxhlet = ex.Soxhlet(
-            path or self.input_dir,
-            wanted_files or self.wanted_files,
+            path=path or self.input_dir,
+            wanted_files=wanted_files or self.wanted_files,
             extension=extension,
             recursive=recursive,
         )
@@ -495,7 +495,7 @@ class Tesliper:
 
     def load_parameters(
         self,
-        path: Optional[Union[str, Path]] = None,
+        path: Union[str, Path],
         spectra_genre: Optional[str] = None,
     ) -> dict:
         """Load calculation parameters from a file.
@@ -503,8 +503,7 @@ class Tesliper:
         Parameters
         ----------
         path : str or pathlib.Path, optional
-            Path to the file with desired parameters specification. If omitted,
-            Tesliper will try to find appropriate file in the default input directory.
+            Path to the file with desired parameters specification.
         spectra_genre : str, optional
             Genre of spectra that loaded parameters concerns. If given, should be one of
             "ir", "vcd", "uv", "ecd", "raman", or "roa" -- parameters for that
@@ -521,16 +520,16 @@ class Tesliper:
         For information on supported format of parameters configuration file, please
         refer to :class:`.ParametersParser` documentation.
         """
-        soxhlet = ex.Soxhlet(path or self.input_dir)
-        settings = soxhlet.load_parameters()
+        soxhlet = ex.Soxhlet(self.input_dir, purpose="parameters")
+        settings = soxhlet.parse_one(path)
         if spectra_genre is not None:
             self.parameters[spectra_genre].update(settings)
         return settings
 
     def load_experimental(
         self,
-        path: Optional[Union[str, Path]],
-        spectrum_genre: Optional[str],
+        path: Union[str, Path],
+        spectrum_genre: str,
     ) -> SingleSpectrum:
         """Load experimental spectrum from a file. Data read from file is stored as
         :class:`.SingleSpectrum` instance in :attr:`.Tesliper.experimental` dictionary
@@ -549,8 +548,8 @@ class Tesliper:
         SingleSpectrum
             Experimental spectrum loaded from the file.
         """
-        soxhlet = ex.Soxhlet()
-        spc = soxhlet.load_spectrum(path)
+        soxhlet = ex.Soxhlet(self.input_dir, purpose="spectra")
+        spc = soxhlet.parse_one(path)
         self.experimental[spectrum_genre] = gw.SingleSpectrum(
             genre=spectrum_genre, values=spc[1], abscissa=spc[0]
         )
