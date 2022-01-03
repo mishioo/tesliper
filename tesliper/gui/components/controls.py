@@ -1192,7 +1192,7 @@ class ExportData(ttk.LabelFrame):
         )
         self.b_text_export.grid(column=1, row=0, sticky="nwe")
         self.b_excel_export = ttk.Button(
-            self, text="Export as .xls", command=lambda: self.save(fmt="xlsx")
+            self, text="Export as .xlsx", command=lambda: self.save(fmt="xlsx")
         )
         self.b_excel_export.grid(column=1, row=1, sticky="nwe")
         self.b_csv_export = ttk.Button(
