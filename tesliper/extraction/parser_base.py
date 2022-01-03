@@ -59,8 +59,6 @@ class ParserBase(ABC):
         purpose.
     """
 
-    # TODO: make states' triggers can be string, regex or callable
-
     parsers = {}
     purpose = ""
 

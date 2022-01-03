@@ -935,7 +935,6 @@ class CalculateSpectra(CollapsiblePane):
     def live_preview_callback(self, _event=None, mode=False):
         if _event is not None:
             logger.debug(f"Event caught by {self}.live_preview_callback handler.")
-        # TODO: show/hide bars/experimental plots when checkbox clicked
         spectra_name = self.s_name.get()
         # update appropriate tesliper.parameters with current calculation settings
         if spectra_name:
@@ -1155,7 +1154,6 @@ class ExtractData(ttk.LabelFrame):
 
     @ThreadedMethod(progbar_msg="Extracting...")
     def extract(self, path, wanted_files=None):
-        # TODO: handle extraction errors
         root = self.winfo_toplevel()
         try:
             for file, data in self.tesliper.extract_iterate(path, wanted_files):

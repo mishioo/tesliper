@@ -211,7 +211,6 @@ class Tesliper:
     """
 
     # TODO?: add proxy for trimming ?
-    # TODO?: separate spectra types ?
     # TODO?: make it inherit mapping ?
     _standard_parameters = {
         "ir": {
@@ -348,7 +347,6 @@ class Tesliper:
 
         May also be set to ``None`` or other "falsy" value, in such case it is ignored.
         """
-        # TODO: reuse Soxhlet.wanted_files property
         return self._wanted_files
 
     @wanted_files.setter
@@ -723,7 +721,6 @@ class Tesliper:
                         self.averaged[(genre, energies.genre)] = av
         return self.averaged
 
-    # TODO: supplement docstrings
     def export_data(self, genres: Sequence[str], fmt: str = "txt", mode: str = "x"):
         """Saves specified data genres to disk in given file format.
 

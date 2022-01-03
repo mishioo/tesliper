@@ -32,10 +32,6 @@ def setup_class(request):
         raise
 
 
-# TODO: check if all data types returned by GaussianParser are as expected
-#       (list vs tuple)
-
-
 class ParserTestCase:
     """This is mix-in class for test cases for gaussian files parsing."""
 
