@@ -23,7 +23,7 @@ def empty():
         ("trim_inconsistent_sizes", ()),
         ("trim_to_range", ("gib",)),
         ("trim_rmsd", (1, 1)),
-        ("trim_rmsd", (1, 1, "geometry", "scf", False)),
+        ("trim_rmsd", (1, 1, "last_read_geom", "scf", False)),
     ],
 )
 def test_trimming_empty_does_nothing(empty, method, args):

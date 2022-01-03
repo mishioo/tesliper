@@ -44,7 +44,7 @@ def arrays():
         Bands("freq", [""], [[1]]),
         Bands("wavelen", [""], [[1]]),
         InfoArray("stoichiometry", [""], [""]),
-        Geometry("geometry", [""], [[[1, 2, 3]]], [[1]]),
+        Geometry("last_read_geom", [""], [[[1, 2, 3]]], [[1]]),
         Transitions("transitions", [""], [[[(1, 2, 0.3)]]]),
     ]
 
@@ -53,7 +53,7 @@ def arrays():
     scope="module",
     params=[
         {"class": Transitions, "args": ["transitions", [""], [[[(1, 2, 0.3)]]]]},
-        {"class": Geometry, "args": ["geometry", [""], [[[1, 2, 3]]], [[1]]]},
+        {"class": Geometry, "args": ["last_read_geom", [""], [[[1, 2, 3]]], [[1]]]},
     ],
 )
 def forbidden_double_arrays(request):

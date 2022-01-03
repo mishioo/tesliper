@@ -737,7 +737,7 @@ class Conformers(OrderedDict):
         self,
         threshold: Union[int, float],
         window_size: Optional[Union[int, float]],
-        geometry_genre: str = "geometry",
+        geometry_genre: str = "last_read_geom",
         energy_genre: str = "scf",
         ignore_hydrogen: bool = True,
         windowing_strategy: Callable = dw.stretching_windows,
@@ -775,7 +775,8 @@ class Conformers(OrderedDict):
             calculated. Essentially, a difference in conformers' energy, after which
             conformers are always considered different.
         geometry_genre : str
-            Genre of geometry used to calculate RMSD matrix. "geometry" is default.
+            Genre of geometry used to calculate RMSD matrix. "last_read_geom" is
+            default.
         energy_genre : str
             Genre of energy used to sort and group conformers into windows of given
             energy size. "scf" is used by default.

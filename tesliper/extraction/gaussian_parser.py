@@ -197,7 +197,7 @@ class GaussianParser(ParserBase):
         molecule's stoichiometry
     molecule_atoms : list of ints, always available
         molecule's atoms as atomic numbers
-    geometry : list of lists of floats, always available
+    last_read_geom : list of lists of floats, always available
         molecule's geometry (last one found in file) as X, Y, Z coordinates of atoms
     optimized_atoms : list of ints, available from successful opt job
         molecule's atoms read from optimized geometry as atomic numbers
@@ -321,7 +321,7 @@ class GaussianParser(ParserBase):
     def geometry(self, line: str) -> None:
         """Function for extracting information about molecule standard orientation
         geometry from Gaussian output files. It updates parser.data dictionary with
-        'molecule_atoms' and 'geometry' data genres.
+        'molecule_atoms' and 'last_read_geom' data genres.
 
         Parameters
         ----------
@@ -339,15 +339,15 @@ class GaussianParser(ParserBase):
             match = GEOM_LINE_CRE.match(line)
         geom = ((int(a), [float(x), float(y), float(z)]) for _, a, _, x, y, z in geom)
         # produce list and list of lists instead of tuple and tuple of lists
-        data["molecule_atoms"], data["geometry"] = map(list, zip(*geom))
+        data["molecule_atoms"], data["last_read_geom"] = map(list, zip(*geom))
         self.workhorse = self.wait
 
     @ParserBase.state(trigger=re.compile("^ Search for a local minimum."))
     def optimization(self, line: str) -> None:
         """This method scans optimization data in Gaussian output file, updating
         parser.data dictionary with 'stoichiometry', 'scf', 'optimization_completed',
-        'molecule_atoms', and 'geometry' data genres (last two via :meth:`.geometry`
-        method).
+        'optimized_atoms', and 'optimized_geom' data genres (last two via
+        :meth:`.geometry` method).
 
         Parameters
         ----------
@@ -365,7 +365,7 @@ class GaussianParser(ParserBase):
         elif line.startswith(" Optimization completed."):
             self.data["optimization_completed"] = True
             if "optimized_geom" not in self.data:
-                self.data["optimized_geom"] = self.data["geometry"]
+                self.data["optimized_geom"] = self.data["last_read_geom"]
                 self.data["optimized_atoms"] = self.data["molecule_atoms"]
         elif line.startswith(" Error termination"):
             self.data["normal_termination"] = False

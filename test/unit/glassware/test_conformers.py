@@ -27,7 +27,7 @@ def base():
         "input_geom": [],
         "stoichiometry": "CH3F",
         "molecule_atoms": (6, 1, 1, 1, 9),
-        "geometry": [],
+        "last_read_geom": [],
         "freq": [1, 2, 3, 4, 5],
         "mass": [2, 1, 3, 2, 1],
         "iri": [27, 8, 569, 1, 3],

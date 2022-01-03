@@ -728,9 +728,9 @@ class Tesliper:
         """Saves specified data genres to disk in given file format.
 
         File formats available by default are: "txt", "csv", "xlsx", "gjf". Note that
-        not all formats may are compatible with every genre (e.g. only "geometry"
-        genre may be exported fo .gjf format). In such case genres unsupported
-        by given format are ignored.
+        not all formats may are compatible with every genre (e.g. only genres associated
+        with :class:`.Geometry` may be exported fo .gjf format). In such case genres
+        unsupported by given format are ignored.
 
         Files produced are written to :attr:`Tesliper.output_dir` directory with
         filenames automatically generated using adequate genre's name and conformers'
@@ -896,6 +896,7 @@ class Tesliper:
         link0: Optional[dict] = None,
         comment: str = "No information provided.",
         post_spec: str = "",
+        geometry_genre: str = "last_read_geom",
     ):
         """Saves conformers to disk as job files for quantum chemistry software
         in given file format.
@@ -925,6 +926,11 @@ class Tesliper:
         post_spec : str
             Anything that should be placed after conformers geometry specification.
             Will be written to file as given.
+        geometry_genre : str
+            Name of the data genre representing conformers' geometry that should be used
+            as input geometry. Please note that the default value "last_read_geom" is
+            not necessarily an optimized geometry. Use "optimized_geom" if this is what
+            you need.
         """
         wrt = wr.writer(
             fmt=fmt,
@@ -936,7 +942,7 @@ class Tesliper:
             post_spec=post_spec,
         )
         wrt.geometry(
-            geometry=self["geometry"],
+            geometry=self[geometry_genre],
             multiplicity=self["multiplicity"],
             charge=self["charge"],
         )

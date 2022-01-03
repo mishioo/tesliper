@@ -233,7 +233,7 @@ def test_intensieties_unsupported_genre(bars, inten_no_conversion, fnms, vals, f
 @pytest.fixture
 def geom():
     return ar.Geometry(
-        genre="geometry",
+        genre="last_read_geom",
         filenames=["file1.out", "file2.out"],
         values=[
             [[30, 40, 60], [40, 60, 70], [50, 80, 10]],
@@ -246,7 +246,7 @@ def geom():
 @pytest.fixture
 def geom_incons():
     return ar.Geometry(
-        genre="geometry",
+        genre="last_read_geom",
         filenames=["file1.out", "file2.out"],
         values=[
             [[30, 40, 60], [40, 60, 70], [50, 80, 10]],

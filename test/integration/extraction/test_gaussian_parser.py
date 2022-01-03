@@ -104,7 +104,7 @@ class TestFreq(ParserTestCase):
             "depolarp",
             "depolaru",
             "ramanactiv",
-            "geometry",
+            "last_read_geom",
             "molecule_atoms",
         }
 
@@ -174,7 +174,7 @@ class TestFreq(ParserTestCase):
         ]
 
     def test_geometry(self):
-        assert self.data["geometry"] == [
+        assert self.data["last_read_geom"] == [
             [0.000199, 0.562211, 0.000000],
             [0.924720, 1.100877, 0.000000],
             [-0.927506, 1.095374, 0.000000],
@@ -206,7 +206,7 @@ class TestFreqRoa(ParserTestCase):
             "input_atoms",
             "scf",
             "stoichiometry",
-            "geometry",
+            "last_read_geom",
             "molecule_atoms",
             "zpecorr",
             "tencorr",
@@ -356,7 +356,7 @@ class TestOpt(ParserTestCase):
             "optimized_atoms",
             "scf",
             "stoichiometry",
-            "geometry",
+            "last_read_geom",
             "molecule_atoms",
             "optimization_completed",
         }
@@ -371,7 +371,7 @@ class TestOpt(ParserTestCase):
         assert self.data["scf"] == -113.221819992
 
     def test_geometry(self):
-        assert self.data["geometry"] == [
+        assert self.data["last_read_geom"] == [
             [-0.000016, 0.530659, 0.000000],
             [0.913392, 1.112945, 0.000000],
             [-0.913174, 1.113406, 0.000000],
@@ -428,7 +428,7 @@ class TestOptFreq(ParserTestCase):
             "depolarp",
             "depolaru",
             "ramanactiv",
-            "geometry",
+            "last_read_geom",
             "molecule_atoms",
             "optimization_completed",
         }
@@ -437,7 +437,7 @@ class TestOptFreq(ParserTestCase):
         assert self.data["command"] == "opt freq hf/3-21g"
 
     def test_geometry(self):
-        assert self.data["geometry"] == [
+        assert self.data["last_read_geom"] == [
             [-0.000016, 0.530659, 0.000000],
             [0.913392, 1.112945, 0.000000],
             [-0.913174, 1.113406, 0.000000],
@@ -512,7 +512,7 @@ class TestTd(ParserTestCase):
             "wavelen",
             "ex_en",
             "transitions",
-            "geometry",
+            "last_read_geom",
             "molecule_atoms",
         }
 

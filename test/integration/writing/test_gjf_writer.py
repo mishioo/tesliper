@@ -61,7 +61,7 @@ def geometry(filenames):
     ]
     molecule_atoms = ["C H H H O H".split()]
     return ar.Geometry(
-        genre="geometry",
+        genre="last_read_geom",
         filenames=filenames,
         values=values,
         molecule_atoms=molecule_atoms,

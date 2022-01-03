@@ -1158,18 +1158,20 @@ class Geometry(FloatArray):
     .. list-table:: Genres associated with this class:
         :width: 100%
 
-        * - geometry
+        * - last_read_geom
           - input_geom
           - optimized_geom
     """
 
-    associated_genres = ("geometry", "input_geom", "optimized_geom")
+    associated_genres = ("last_read_geom", "input_geom", "optimized_geom")
     full_name_ref = dict(
-        geometry="Geometry",
+        last_read_geom="Geometry",
         input_geom="Input Geometry",
         optimized_geom="Optimized Geometry",
     )
-    _units = dict(geometry="Angstrom", input_geom="Angstrom", optimized_geom="Angstrom")
+    _units = dict(
+        last_read_geom="Angstrom", input_geom="Angstrom", optimized_geom="Angstrom"
+    )
     values = ArrayProperty(dtype=float, check_against="filenames")
     molecule_atoms = CollapsibleArrayProperty(
         dtype=int,

@@ -95,7 +95,7 @@ class GeometriesChoice(GenresChoice):
     def __init__(self, parent, **kwargs):
         super().__init__(
             parent=parent,
-            genres=["geometry", "input_geom", "optimized_geom"],
+            genres=["last_read_geom", "input_geom", "optimized_geom"],
             names=["Last read", "Input", "Optimized"],
             **kwargs,
         )
