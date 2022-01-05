@@ -181,6 +181,7 @@ References
    :hidden:
    :caption: Reference
 
+   Available data genres <genres>
    API reference <_autosummary/tesliper>
 
 .. toctree::
