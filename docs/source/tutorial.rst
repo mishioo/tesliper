@@ -106,6 +106,8 @@ directory, an exception will be raised. You can prevent this by providing the
     tslr.extract()  # raises ValueError
     tslr.extract(extension="out")  # ok
 
+.. _filtering conformers:
+
 Filtering conformers
 --------------------
 

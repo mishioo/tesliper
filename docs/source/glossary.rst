@@ -61,7 +61,7 @@ Glossary
 
     trimming
         Internally marking certain conformers as *not kept*. ``tesliper`` provides an easy
-        way to trim conformers to user's needs, see :ref:`trimming conformers`.
+        way to trim conformers to user's needs, see :ref:`filtering conformers`.
 
     kept
         Conformers may be internally marked as *kept* or *not kept*. *Kept* conformers

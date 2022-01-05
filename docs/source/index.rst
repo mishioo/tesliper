@@ -1,6 +1,7 @@
 .. image:: /_static/banner.png
 
 |
+
 .. just a vertical space to separate banner and header
 
 Welcome to tesliper's documentation!
