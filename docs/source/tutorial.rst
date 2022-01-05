@@ -63,9 +63,11 @@ following directory structure::
     ├── optimization
     │   ├── conf_one.out
     │   └── conf_two.out
+    │   └── conf_three.out
     └── vibrational
         ├── conf_one.out
         └── conf_two.out
+        └── conf_three.out
 
 you could use any of the following to get the same effect.
 
@@ -137,7 +139,13 @@ Information about which conformers are *kept* and *not kept* is stored in
 :attr:`.Conformers.kept` attribute, which may also be manipulated more directly. More on
 this topic will be :ref:`explained later <manipulating kept>`.
 
-.. TODO: add ``trimmed_keys`` etc.
+As mentioned earlier, :class:`Tesliper.conformers <.Conformers>` is a dict-like
+structure, and as such offers a typical functionality of Python's `dict`\s. However,
+checking for presence with ``conf in tslr.conformers`` or requesting a view with
+standard :meth:`~dict.keys`, :meth:`~dict.values`, or :meth:`~dict.items` will operate
+on the whole data set, ignoring any trimming applied earlier. :class:`.Conformers` class
+offers additional :meth:`~.Conformers.kept_keys`, :meth:`~.Conformers.kept_values`, and
+:meth:`~.Conformers.kept_items` methods, that return views that acknowledge trimming.
 
 .. _trimming:
 
@@ -149,39 +157,163 @@ Below you will find them listed with a short summary and a link to a more compre
 explanation in the method's documentation.
 
 :meth:`~.Conformers.trim_incomplete`
-    desc
+    Filters out conformers that doesn't contain data for as many expected genres as
+    other conformers.
 
 :meth:`~.Conformers.trim_imaginary_frequencies`
-    desc
+    Filters out conformers that contain imaginary frequencies (any number of negative
+    frequency values).
 
 :meth:`~.Conformers.trim_non_matching_stoichiometry`
-    desc
+    Filters out conformers that have different stoichiometry than expected.
 
 :meth:`~.Conformers.trim_not_optimized`
-    desc
+    Filters out conformers that failed structure optimization.
 
 :meth:`~.Conformers.trim_non_normal_termination`
-    desc
+    Filters out conformers, which calculation job did not terminate normally (was
+    erroneous or interrupted).
 
 :meth:`~.Conformers.trim_inconsistent_sizes`
-    desc
+    Filters out conformers that have iterable data genres in different size than most
+    conformers. Helpful when :exc:`.InconsistentDataError` occurs.
 
 :meth:`~.Conformers.trim_to_range`
-    desc
+    Filters out conformers that have a value of some specific data or property outside
+    of the given range, e.g. their calculated population is less than 0.01.
 
 :meth:`~.Conformers.trim_rmsd`
-    desc
+    Filters out conformers that are identical to another conformer, judging by a given
+    threshold of the root-mean-square deviation of atomic positions (RMSD).
 
 :meth:`~.Conformers.select_all`
-    desc
+    Marks all conformers as :term:`kept`.
 
 :meth:`~.Conformers.reject_all`
-    desc
-
-.. TODO: add ``with trimmed_to`` etc.
+    Marks all conformers as :term:`not kept <kept>`.
 
 .. _manipulating kept:
 
 Manipulating ``Conformers.kept``
 ''''''''''''''''''''''''''''''''
 
+Information, which conformer is :term:`kept` and which is not, is stored in the
+:attr:`Conformers.kept` attribute. It is a list of booleans, one for each conformer
+stored, defining which conformers should be processed by ``tesliper``.
+
+.. code-block:: python
+
+    # assuming "conf_two" has imaginary frequencies
+    tslr.conformers.trim_imaginary_frequencies()
+    tslr.conformers.kept == [True, False, True]  # True
+    tslr.export_data(["genres", "to", "export"])
+    # only files for "conf_one" and "conf_three" are generated
+
+:attr:`.Conformers.kept` may be modified using trimming methods described :ref:`earlier
+<trimming>`, but also more directly: by setting it to a new value. Firstly, it is the
+most straightforward to just assign a new list of boolean values to it. This list should
+have the same number of elements as the number of conformers contained. A
+:exc:`ValueError` is raised if it doesn't.
+
+.. code-block:: python
+
+    >>> tslr.conformers.kept
+    [True, True, True]
+    >>> tslr.conformers.kept = [False, True, False]
+    >>> tslr.conformers.kept
+    [False, True, False]
+    >>> tslr.conformers.kept = [False, True, False, True]
+    Traceback (most recent call last):
+    ...
+    ValueError: Must provide boolean value for each known conformer.
+    4 values provided, 3 excepted.
+
+Secondly, list of filenames of conformers intended to be *kept* may be given. Only these
+conformers will be *kept*. If given filename is not in the underlying
+:class:`tslr.conformers <.Conformers>`' dictionary, :exc:`KeyError` is raised.
+
+.. code-block:: python
+
+    >>> tslr.conformers.kept = ['conf_one']
+    >>> tslr.conformers.kept
+    [True, False, False]
+    >>>  tslr.conformers.kept = ['conf_two', 'other']
+    Traceback (most recent call last):
+    ...
+    KeyError: Unknown conformers: other.
+
+Thirdly, list of integers representing conformers' indices may be given.
+Only conformers with specified indices will be *kept*. If one of given integers
+can't be translated to conformer's index, IndexError is raised. Indexing with
+negative values is not supported currently.
+
+.. code-block:: python
+
+    >>> tslr.conformers.kept = [1, 2]
+    >>> tslr.conformers.kept
+    [False, True, True]
+    >>> tslr.conformers.kept = [2, 3]
+    Traceback (most recent call last):
+    ...
+    IndexError: Indexes out of bounds: 3.
+
+Fourthly, assigning ``True`` or ``False`` to this attribute will mark all
+conformers as *kept* or *not kept* respectively.
+
+.. code-block:: python
+
+    >>> tslr.conformers.kept = False
+    >>> tslr.conformers.kept
+    [False, False, False]
+    >>> tslr.conformers.kept = True
+    >>> tslr.conformers.kept
+    [True, True, True]
+
+.. warning::
+
+    List of *kept* values may be also modified by setting its elements to ``True`` or
+    ``False``. It is advised against, however, as a mistake such as
+    ``tslr.conformers.kept[:2] = [True, False, False]`` will break some functionality by
+    forcibly changing size of :attr:`tslr.conformers.kept <.Conformers.kept>` list.
+
+Trimming temporarily
+''''''''''''''''''''
+
+:class:`.Conformers` provide two convenience context managers for temporarily trimming
+its data: :attr:`~.Conformers.untrimmed` and :meth:`~.Conformers.trimmed_to`. The first
+one will simply undo any trimming previously done, allowing you to operate on the full
+data set or apply new, complex trimming logic. When Python exits
+:attr:`~.Conformers.untrimmed` context, previous trimming is restored.
+
+.. code-block:: python
+
+    >>> tslr.conformers.kept = [False, True, False]
+    >>> with tslr.conformers.untrimmed:
+    >>>     tslr.conformers.kept
+    [True, True, True]
+    >>> tslr.conformers.kept
+    [False, True, False]
+
+The second one temporarily applies an arbitrary trimming, provided as a parameter to the
+:meth:`~.Conformers.trimmed_to` call. Any value normally accepted by :attr:`.Conformers.kept`
+may be used here.
+
+.. code-block:: python
+
+    >>> tslr.conformers.kept = [True, True, False]
+    >>> with tslr.conformers.trimmed_to([1, 2]):
+    >>>     tslr.conformers.kept
+    [False, True, True]
+    >>> tslr.conformers.kept
+    [True, True, False]
+
+
+.. tip::
+
+    To trim conformers temporarily without discarding a currently applied trimming, you
+    may use:
+
+    .. code-block:: python
+
+        with tslr.conformers.trimmed_to(tslr.conformers.kept):
+            ...  # temporary trimming upon the current one
