@@ -12,7 +12,7 @@ from tesliper.exceptions import InconsistentDataError, TesliperError
 
 from .. import datawork as dw
 from . import arrays as ar
-from .array_base import _ARRAY_CONSTRUCTORS, DependentParameter
+from .array_base import _ARRAY_CONSTRUCTORS
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -190,6 +190,37 @@ class Conformers(OrderedDict):
         del self._indices[key]
         for index, key in enumerate(self.keys()):
             self._indices[key] = index
+
+    def popitem(self, last=True):
+        """Remove and return a (key, value) pair from the dictionary.
+
+        Pairs are returned in LIFO order if last is true or FIFO order if false.
+        """
+        idx = -1 if last else 0
+        try:
+            return self.pop(self.filenames[idx])
+        except IndexError:
+            raise KeyError("Conforemres is empty.")
+
+    def move_to_end(self, key, last=True):
+        """Move an existing element to the end (or beginning if last==False).
+
+        Raises KeyError if the element does not exist.
+        """
+        idx = self.index_of(key)
+        new_idx = 0 if not last else len(self.filenames) - 1
+        super().move_to_end(key, last)
+        self.filenames.insert(new_idx, self.filenames.pop(idx))
+        self._kept.insert(new_idx, self._kept.pop(idx))
+        self._indices = {k: i for i, k in enumerate(self.filenames)}
+
+    def copy(self):
+        "conformers.copy() -> a shallow copy of conformers"
+        cp = self.__class__(
+            allow_data_inconsistency=self.allow_data_inconsistency, **self
+        )
+        cp.kept = self.kept
+        return cp
 
     @property
     def kept(self):
