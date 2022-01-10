@@ -506,8 +506,46 @@ returns a reference to this attribute.
 Comparing with experiment
 -------------------------
 
+The experimental spectrum may be loaded with ``tesliper`` from a text or CSV file. The
+software helps you adjust the shift and scale of your simulated spectra to match the
+experiment. Unfortunately, ``tesliper`` does not offer broad possibilities when it comes
+to mathematical comparison of the simulated spectra and the experimental one. You will
+need to use an external library or write your own logic to do that.
+
 Loading experimental spectra
 ''''''''''''''''''''''''''''
 
+To load an experimental spectrum use :meth:`.Tesliper.load_experimental` method. You
+will need to provide a path to the file (absolute or relative to the current
+:attr:`.Tesliper.input_dir`) and a genre name of the loaded experimental spectrum. When
+the file is read, its content is stored in :attr:`.Tesliper.experimental` dictionary.
+
+.. code-block:: python
+
+    >>> spectrum = tslr.load_experimental("path/to/spectrum.xy", "ir")
+    >>> tslr.experimental["ir"] is spectrum
+    True
+
 Adjusting calculated spectra
 ''''''''''''''''''''''''''''
+
+Spectra calculated and loaded from disk with ``tesliper`` are stored as instances of
+:class:`.Spectra` or :class:`.SingleSpectrum` classes. Both of them provide a
+:meth:`~.SingleSpectrum.scale_to` and :meth:`~.SingleSpectrum.shift_to` methods that
+adjust a scale and offset (respectively) to match another spectrum, provided as a
+parameter. Parameters found automatically may not be perfect, so you may provide them
+yourself, by manually setting :attr:`~.SingleSpectrum.scaling` and
+:attr:`~.SingleSpectrum.offset` to desired values.
+
+.. code-block:: python
+
+    >>> spectra = tslr.spectrum["ir"]
+    >>> spectra.scaling  # affects spectra.y
+    1.0
+    >>> spectra.scale_to(tslr.experimental["ir"])
+    >>> spectra.scaling
+    1.32
+    >>> spectra.offset = 50  # bathochromic shift, affects spectra.x
+
+Corrected values may be accessed *via* ``spectra.x`` and ``spectra.y``,
+original values may be accessed *via* ``spectra.abscissa`` and ``spectra.values``.
