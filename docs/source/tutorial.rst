@@ -343,29 +343,21 @@ specify a desired width of peak, as well as the beginning, end, and step of the 
 parameters and a default fitting function for a given spectra genre. These default
 values are available *via* :attr:`.Tesliper.standard_parameters` and are as follows.
 
-+----------------+------------------------------------------+
-| Spectra genres | Default parameters                       |
-+================+=========+================================+
-|                | width   | 6 [:math:`\mathrm{cm}^{-1}`]   |
-| IR, VCD,       +---------+--------------------------------+
-| Raman, ROA     | start   | 800 [:math:`\mathrm{cm}^{-1}`] |
-|                +---------+--------------------------------+
-|                | stop    | 2900 [:math:`\mathrm{cm}^{-1}`]|
-|                +---------+--------------------------------+
-|                | step    | 2 [:math:`\mathrm{cm}^{-1}`]   |
-|                +---------+--------------------------------+
-|                | fitting | :func:`.lorentzian`            |
-+----------------+---------+--------------------------------+
-|                | width   | 0.35 [:math:`\mathrm{eV}`]     |
-| UV, ECD        +---------+--------------------------------+
-|                | start   | 150 [:math:`\mathrm{nm}`]      |
-|                +---------+--------------------------------+
-|                | stop    | 800 [:math:`\mathrm{nm}`]      |
-|                +---------+--------------------------------+
-|                | step    | 1 [:math:`\mathrm{nm}`]        |
-|                +---------+--------------------------------+
-|                | fitting | :func:`.gaussian`              |
-+----------------+---------+--------------------------------+
+.. table:: Default calculation parameters
+
+    +-----------+--------------------------------+--------------------------------+
+    | Parameter |  IR, VCD, Raman, ROA           | UV, ECD                        |
+    +===========+================================+================================+
+    | width     | 6 [:math:`\mathrm{cm}^{-1}`]   | 0.35 [:math:`\mathrm{eV}`]     |
+    +-----------+--------------------------------+--------------------------------+
+    | start     | 800 [:math:`\mathrm{cm}^{-1}`] | 150 [:math:`\mathrm{nm}`]      |
+    +-----------+--------------------------------+--------------------------------+
+    | stop      | 2900 [:math:`\mathrm{cm}^{-1}`]| 800 [:math:`\mathrm{nm}`]      |
+    +-----------+--------------------------------+--------------------------------+
+    | step      | 2 [:math:`\mathrm{cm}^{-1}`]   | 1 [:math:`\mathrm{nm}`]        |
+    +-----------+--------------------------------+--------------------------------+
+    | fitting   | :func:`.lorentzian`            | :func:`.gaussian`              |
+    +-----------+--------------------------------+--------------------------------+
 
 You can change the parameters used for spectra simulation by altering values in the
 :attr:`.Tesliper.parameters` dictionary. It stores a ``dict`` of parameters' values for
@@ -391,6 +383,22 @@ callable that may be used to simulate peaks as curves, preferably one of:
     from tesliper import lorentzian
     tslr.parameters["uv"]["fitting"] = lorentzian
 
+
+.. table:: Descriptions of parameters
+
+    +-----------+----------------------+-------------------------------------------+
+    | Parameter |  ``type``            | Description                               |
+    +===========+======================+===========================================+
+    | width     | ``float`` or ``int`` | the beginning of the spectral range       |
+    +-----------+----------------------+-------------------------------------------+
+    | start     | ``float`` or ``int`` | the end of the spectral range             |
+    +-----------+----------------------+-------------------------------------------+
+    | stop      | ``float`` or ``int`` | step of the abscissa                      |
+    +-----------+----------------------+-------------------------------------------+
+    | step      | ``float`` or ``int`` | width of the peak                         |
+    +-----------+----------------------+-------------------------------------------+
+    | fitting   | ``Callable``         | function used to simulate peaks as curves |
+    +-----------+----------------------+-------------------------------------------+
 
 .. warning::
 
