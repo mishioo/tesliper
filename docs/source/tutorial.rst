@@ -477,8 +477,31 @@ which spectra genres may be calculated from which activities genres.
 Averaging spectra
 '''''''''''''''''
 
-Calculating single spectrum
-'''''''''''''''''''''''''''
+Each possible conformer contributes to the compound's spectrum proportionally to it's
+population in the mixture. ``tesliper`` can calculate conformers' population from their
+relative energies, using a technique called `Boltzmann distribution
+<https://en.wikipedia.org/wiki/Boltzmann_distribution>`_. Assuming that any energies
+genre is available (usually at least *scf* energies are), after calculating spectra you
+want to simulate, you should call :meth:`.Tesliper.average_spectra` to get the final
+simulated spectra.
+
+.. code-block:: python
+
+    >>> averaged = tslr.average_spectra()  # averages available spectra
+    >>> assert tslr.averaged is averaged  # just a reference
+
+:meth:`.Tesliper.average_spectra` averages each spectra stored in the
+:attr:`.Tesliper.spectra` dictionary, using each available energies genre. Generated
+average spectra are stored in :attr:`.Tesliper.averaged` dictionary, using a tuples
+of ``("spectra_genre", "energies_genre")`` as keys. :meth:`~.Tesliper.average_spectra`
+returns a reference to this attribute.
+
+.. note::
+
+    There is also a :meth:`.Tesliper.get_averaged_spectrum` method for calculating a
+    single averaged spectrum using a given spectra genre and energies genre. Value
+    returned by this method is not automatically stored.
+
 
 Comparing with experiment
 -------------------------
