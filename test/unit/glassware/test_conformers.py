@@ -202,6 +202,53 @@ def test_update_banned(single):
         single.update({"foo": 7})
 
 
+def test_pop_single(single):
+    _ = single.pop("bla")
+    assert not single
+    assert not single.filenames
+    assert not single._indices
+    assert not single.kept
+
+
+@pytest.mark.parametrize(
+    "key", ["base", "noopt", "imag", "stoich", "term", "size", "incom"]
+)
+def test_pop(full, key):
+    full.kept = [True, False, True, False, True, False, True]
+    expected_filenames, expected_kept = zip(
+        *[(n, k) for n, k in zip(full.filenames, full.kept) if n is not key]
+    )
+    _ = full.pop(key)
+    assert key not in full
+    assert full.filenames == list(expected_filenames)
+    assert full.kept == list(expected_kept)
+    assert full._indices == {n: i for i, n in enumerate(expected_filenames)}
+
+
+@pytest.mark.parametrize("last", [True, False])
+def test_popitem_single(single, last):
+    pair = single.popitem(last=last)
+    assert pair[0] == "bla"
+    assert not single
+    assert not single.filenames
+    assert not single._indices
+    assert not single.kept
+
+
+@pytest.mark.parametrize("last", [True, False])
+def test_popitem(full, last):
+    full.kept = [True, False, True, False, True, False, True]
+    expected_filenames = full.filenames[:-1] if last else full.filenames[1:]
+    expected_kept = full.kept[:-1] if last else full.kept[1:]
+    expected_key = full.filenames[-1] if last else full.filenames[0]
+    pair = full.popitem(last=last)
+    assert pair[0] == expected_key
+    assert expected_key not in full
+    assert full.filenames == list(expected_filenames)
+    assert full.kept == list(expected_kept)
+    assert full._indices == {n: i for i, n in enumerate(expected_filenames)}
+
+
 def test_arrayd_default_parameter(full):
     zpe = full.arrayed("zpe")
     assert 298.15 == zpe.t

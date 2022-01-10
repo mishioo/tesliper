@@ -4,6 +4,7 @@ from collections import Counter, ItemsView, KeysView, OrderedDict, ValuesView
 from contextlib import contextmanager
 from inspect import Parameter
 from itertools import chain
+from reprlib import recursive_repr
 from typing import Callable, Iterable, Optional, Sequence, Union
 
 import numpy as np
@@ -166,6 +167,18 @@ class Conformers(OrderedDict):
         self._indices = {}
         super().clear()
 
+    @recursive_repr()
+    def __repr__(self) -> str:
+        if not self:
+            return (
+                f"{self.__class__.__name__}("
+                f"allow_data_inconsistency={self.allow_data_inconsistency})"
+            )
+        return (
+            f"{self.__class__.__name__}({list(self.items())}, "
+            f"allow_data_inconsistency={self.allow_data_inconsistency})"
+        )
+
     def __setitem__(self, key, value):
         try:
             value = dict(value)
@@ -198,7 +211,8 @@ class Conformers(OrderedDict):
         """
         idx = -1 if last else 0
         try:
-            return self.pop(self.filenames[idx])
+            key = self.filenames[idx]
+            return key, self.pop(key)
         except IndexError:
             raise KeyError("Conforemres is empty.")
 
