@@ -429,6 +429,51 @@ callable that may be used to simulate peaks as curves, preferably one of:
 Activities genres
 '''''''''''''''''
 
+Instead of specifying a spectra genre you'd like to get, you may specify an activities
+genre you prefer to use to calculate a corresponding spectrum. The table below summarizes
+which spectra genres may be calculated from which activities genres.
+
+.. list-table:: Spectra and corresponding activities genres
+    :header-rows: 1
+
+    * - Spectra
+      - Default activity
+      - Other activities
+    * - IR
+      - dip
+      - iri
+    * - VCD
+      - rot
+      - 
+    * - UV
+      - vosc
+      - losc, vdip, ldip
+    * - ECD
+      - vrot
+      - lrot
+    * - Raman
+      - raman1
+      - ramact, ramanactiv, raman2, raman3
+    * - ROA
+      - roa1
+      - roa2, roa3
+
+.. warning::
+
+    If you provide two different genres that map to the same spectra genre, only one of
+    them will be accessible, the other will be thrown away. If you'd like to compare
+    results of simulations using different genres, you need to store the return value
+    of :meth:`.Tesliper.calculate_spectra` call.
+
+    .. code-block:: python
+
+        >>> out = tslr.calculate_spectra(["vrot", "lrot"])
+        >>> list(out.keys())  # only one representation returned
+        ["ecd"]
+        >>> velo = tslr.calculate_spectra(["vrot"])
+        >>> length = tslr.calculate_spectra(["lrot"])
+        >>> assert not velo["ecd"] == length["ecd"]  # different
+
 Averaging spectra
 '''''''''''''''''
 
