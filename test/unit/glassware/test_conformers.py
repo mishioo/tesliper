@@ -249,6 +249,17 @@ def test_popitem(full, last):
     assert full._indices == {n: i for i, n in enumerate(expected_filenames)}
 
 
+@pytest.mark.parametrize("last", [True, False])
+@pytest.mark.parametrize(
+    "key", ["base", "noopt", "imag", "stoich", "term", "size", "incom"]
+)
+def test_move_to_end(full, key, last):
+    full.move_to_end(key, last=last)
+    assert full.filenames[0 if not last else -1] == key
+    assert all(k == n for k, n in zip(full, full.filenames))
+    assert all(full._indices[k] == i for i, k in enumerate(full.filenames))
+
+
 def test_arrayd_default_parameter(full):
     zpe = full.arrayed("zpe")
     assert 298.15 == zpe.t
