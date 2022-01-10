@@ -330,7 +330,19 @@ on a genre of spectra you would like to simulate. ``tesliper`` can simulate IR, 
 ECD, Raman, and ROA spectra, given the calculated values of conformers' optical
 activity. When you call :meth:`.Tesliper.calculate_spectra` without any parameters, it
 will calculate spectra of all available genres, using default activities genres and
-default parameters, and store them in the :attr:`.Tesliper.spectra` dictionary.
+default parameters, and store them in the :attr:`.Tesliper.spectra` dictionary. Aside
+form this, the spectra calculated are returned by the method.
+
+You can calculate a specific spectra genres only, by providing a list of their names as
+a parameter to the :meth:`.Tesliper.calculate_spectra` call. Also in this case a default
+activities genres and default parameters will be used to calculate desired spectra, see
+`Activities genres`_ and `Calculation parameters`_ below to learn how this can be
+customized. 
+
+.. code-block:: python
+
+    ir_and_uv = tslr.calculate_spectra(["ir", "uv"])
+    assert ir_and_uv["ir"] is tslr.spectra["ir"]
 
 Calculation parameters
 ''''''''''''''''''''''
@@ -404,7 +416,9 @@ callable that may be used to simulate peaks as curves, preferably one of:
 
     When modifying :attr:`.Tesliper.parameters` be careful to not delete any of the
     key-value pairs. If you need to revert to standard parameters' values, you can just
-    reassign them to :attr:`.Tesliper.standard_parameters`. .. code-block:: python
+    reassign them to :attr:`.Tesliper.standard_parameters`.
+        
+    .. code-block:: python
         
         tslr.parameters["ir"] = {
         ...     "start": 500, "stop": 2500, "width": 2
