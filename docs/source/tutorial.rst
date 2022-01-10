@@ -319,3 +319,105 @@ may be used here.
 
         with tslr.conformers.trimmed_to(tslr.conformers.kept):
             ...  # temporary trimming upon the current one
+
+
+Simulating spectra
+------------------
+
+To calculate a simulated spectra you will need to have spectral activities extracted.
+These will most probably come from a *freq* or *td* Gaussian calculation job, depending
+on a genre of spectra you would like to simulate. ``tesliper`` can simulate IR, VCD, UV,
+ECD, Raman, and ROA spectra, given the calculated values of conformers' optical
+activity. When you call :meth:`.Tesliper.calculate_spectra` without any parameters, it
+will calculate spectra of all available genres, using default activities genres and
+default parameters, and store them in the :attr:`.Tesliper.spectra` dictionary.
+
+Calculation parameters
+''''''''''''''''''''''
+
+``tesliper`` uses `Lorentzian <https://en.wikipedia.org/wiki/Cauchy_distribution>`_ or
+`Gaussian <https://en.wikipedia.org/wiki/Normal_distribution>`_ fitting function to
+simulate spectra from corresponding optical activities values. Both of these require to
+specify a desired width of peak, as well as the beginning, end, and step of the abscissa
+(x-axis values). If not told otherwise, ``tesliper`` will use a default values for these
+parameters and a default fitting function for a given spectra genre. These default
+values are available *via* :attr:`.Tesliper.standard_parameters` and are as follows.
+
++----------------+------------------------------------------+
+| Spectra genres | Default parameters                       |
++================+=========+================================+
+|                | width   | 6 [:math:`\mathrm{cm}^{-1}`]   |
+| IR, VCD,       +---------+--------------------------------+
+| Raman, ROA     | start   | 800 [:math:`\mathrm{cm}^{-1}`] |
+|                +---------+--------------------------------+
+|                | stop    | 2900 [:math:`\mathrm{cm}^{-1}`]|
+|                +---------+--------------------------------+
+|                | step    | 2 [:math:`\mathrm{cm}^{-1}`]   |
+|                +---------+--------------------------------+
+|                | fitting | :func:`.lorentzian`            |
++----------------+---------+--------------------------------+
+|                | width   | 0.35 [:math:`\mathrm{eV}`]     |
+| UV, ECD        +---------+--------------------------------+
+|                | start   | 150 [:math:`\mathrm{nm}`]      |
+|                +---------+--------------------------------+
+|                | stop    | 800 [:math:`\mathrm{nm}`]      |
+|                +---------+--------------------------------+
+|                | step    | 1 [:math:`\mathrm{nm}`]        |
+|                +---------+--------------------------------+
+|                | fitting | :func:`.gaussian`              |
++----------------+---------+--------------------------------+
+
+You can change the parameters used for spectra simulation by altering values in the
+:attr:`.Tesliper.parameters` dictionary. It stores a ``dict`` of parameters' values for
+each of spectra genres ("ir", "vcd", "uv", "ecd", "raman", and "roa"). *start*, *stop*,
+and *step* expect its values to by in :math:`\mathrm{cm}^{-1}` units for vibrational and
+scattering spectra, and :math:`\mathrm{nm}` units for electronic spectra. *width*
+expects its value to be in :math:`\mathrm{cm}^{-1}` units for vibrational and scattering
+spectra, and :math:`\mathrm{eV}` units for electronic spectra. *fitting* should be a
+callable that may be used to simulate peaks as curves, preferably one of:
+:func:`.gaussian` or :func:`.lorentzian`.
+
+.. code-block:: python
+
+    # change parameters' values one by one 
+    tslr.parameters["uv"]["step"] = 0.5
+    tslr.parameters["uv"]["width"] = 0.5
+
+    tslr.parameters["vcd"].update(  # or with an update
+        {"start": 500, "stop": 2500, "width": 2}
+    )
+
+    # "fitting" should be a callable
+    from tesliper import lorentzian
+    tslr.parameters["uv"]["fitting"] = lorentzian
+
+
+.. warning::
+
+    When modifying :attr:`.Tesliper.parameters` be careful to not delete any of the
+    key-value pairs. If you need to revert to standard parameters' values, you can just
+    reassign them to :attr:`.Tesliper.standard_parameters`. .. code-block:: python
+        
+        tslr.parameters["ir"] = {
+        ...     "start": 500, "stop": 2500, "width": 2
+        ... }  # this will cause problems!
+        # revert to default values
+        tslr.parameters["ir"] = tslr.standard_parameters["ir"]
+
+Activities genres
+'''''''''''''''''
+
+Averaging spectra
+'''''''''''''''''
+
+Calculating single spectrum
+'''''''''''''''''''''''''''
+
+Comparing with experiment
+-------------------------
+
+Loading experimental spectra
+''''''''''''''''''''''''''''
+
+Adjusting calculated spectra
+''''''''''''''''''''''''''''
