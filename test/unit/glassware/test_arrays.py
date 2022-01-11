@@ -349,3 +349,13 @@ def test_transitions_highest(transitions):
 
 def test_all_define_full_name(any_genre):
     assert any_genre in _ARRAY_CONSTRUCTORS[any_genre]._full_name_ref
+
+
+def test_all_activities_calculates_spectra(any_activity):
+    def fitting_func(i, f, a, w):
+        return a * w  # appropriate shape, values doesn't matter
+
+    constructor = _ARRAY_CONSTRUCTORS[any_activity]
+    array = constructor(any_activity, ["one", "two"], [[1], [2]], [[90], [110]])
+    spc = array.calculate_spectra(0, 200, 1, 1, fitting_func)
+    assert spc.genre

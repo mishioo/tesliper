@@ -678,6 +678,7 @@ class SpectralActivities(SpectralData, Averagable, ABC):
         dip="ir",
         iri="ir",
         ramact="raman",
+        ramanactiv="raman",
         raman1="raman",
         roa1="roa",
         raman2="raman",
