@@ -609,3 +609,69 @@ mode, and names of produced files.
 
     .. TODO: link to advanced guide when its done
 
+Creating input files
+''''''''''''''''''''
+
+You can use :meth:`.Tesliper.export_job_file` to prepare input files for the quantum
+chemical calculations software. Apart from the typical *fmt* (only ``"gjf"`` is
+supported by default) and *mode* parameters, this method also accepts the
+*geometry_genre* and any number of additional keyword parameters, specifying
+calculations details. *geometry_genre* should be a name of the data genre, representing
+conformers' geometry, that should be used as input geometry. Additional keyword
+parameters are passed to the writer object, relevant to the *fmt* requested. Keywords
+supported by the :class:`default "gjf"-format writer <.GjfWriter>` are as follows:
+
+    route
+        A calculations route: keywords specifying calculations directives for quantum
+        chemical calculations software.
+    link0
+        Dictionary with "link zero" commands, where each key is command's name and each
+        value is this command's parameter.
+    comment
+        Contents of title section, i.e. a comment about the calculations.
+    post_spec
+        Anything that should be placed after conformer's geometry specification.
+        Will be written to the file as given.
+
+``link0`` parameter should be explained in more details. It supports standard link zero
+commands used with Gaussian software, like ``Mem``, ``Chk``, or ``NoSave``. Full list of
+these commands may be found in the documentation for :attr:`.GjfWriter.link0`. Any
+non-parametric ``link0`` command (i.e. ``Save``, ``NoSave``, and ``ErrorSave``),  should
+be given a ``True`` value if it should be included in the ``link0`` section.
+
+Path-like commands, e.g. ``Chk`` or ``RWF``, may be parametrized for each conformer. You
+can put a placeholder inside a given string path, which will be substituted when writing
+to file. The most useful placeholders are probably ``${conf}`` and ``${num}`` that
+evaluate to conformer's name and ordinal number respectively. More information about
+placeholders may be found in :meth:`.GjfWriter.make_name` documentation.
+
+.. code-block:: python
+
+    >>> list(tslr.conformers.kept_keys())
+    ["conf_one", "conf_three"]
+    >>> tslr.export_job_file(
+    ...     geometry_genre="optimized_geom",
+    ...     route="# td=(nstates=80)",
+    ...     comment="Example of parametrization in .gjf files",
+    ...     link0={
+    ...         "Mem": "10MW",
+    ...         "Chk": "path/to/${conf}.chk",
+    ...         "Save": True,
+    ...     },
+    ... )
+    >>> [file.name for file in tslr.output_dir.iterdir()]
+    ["conf_one.gjf", "conf_three.gjf"]
+
+Then contents of "conf_one.gjf" is:
+
+.. code-block:: none
+
+    %Mem=10MW
+    %Chk=path/to/conf_one.gjf
+    %Save
+
+    # td=(nstates=80)
+
+    Example of parametrization in .gjf files
+
+    [geometry specification...]
