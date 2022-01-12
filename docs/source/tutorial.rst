@@ -675,3 +675,23 @@ Then contents of "conf_one.gjf" is:
     Example of parametrization in .gjf files
 
     [geometry specification...]
+
+Saving session for later
+------------------------
+
+If you'd like to come back to the data currently contained within a ``tesliper``
+instance, you may serialize it using :meth:`.Tesliper.serialize` method. Provide the
+method call with a *filename* parameter, under which filename the session should be
+stored inside the current :attr:`~.Tesliper.output_dir`. You may also omit it to use the
+default ``".tslr"`` name. All data, extracted and calculated, including current
+:term:`kept` status of each conformer, is saved and may be loaded later using
+:meth:`.Tesliper.load` class method.
+
+.. code-block:: python
+
+    curr_dir = tslr.output_dir
+    tslr.serialize()
+    loaded = Tesliper.load(curr_dir / ".tslr")
+    assert loaded.conformers == tslr.conformers
+    assert loaded.conformers.kept == tslr.conformers.kept
+    assert loaded.spectra.keys() == tslr.spectra.keys()
