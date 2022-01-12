@@ -904,11 +904,8 @@ class Tesliper:
         self,
         fmt: str = "gjf",
         mode: str = "x",
-        route: str = "# hf 3-21g",
-        link0: Optional[dict] = None,
-        comment: str = "No information provided.",
-        post_spec: str = "",
         geometry_genre: str = "last_read_geom",
+        **kwargs,
     ):
         """Saves conformers to disk as job files for quantum chemistry software
         in given file format.
@@ -925,33 +922,34 @@ class Tesliper:
             Specifies how writing to file should be handled. May be one of:
             "a" (append to existing file), "x" (only write if file doesn't exist yet),
             "w" (overwrite file if it already exists). Defaults to "x".
-        route : str
-            List of space-separated keywords specifying calculations directives
-            for Gaussian software.
-        link0 : dict
-            Dictionary with link0 commands, where key is command's name and value is
-            str with parameters. For any non-parametric link0 command value is not
-            important (may be ``None``), key's presence is enough to record, that it was
-            requested.
-        comment : str
-            Contents of title section, i.e. a comment about the calculations.
-        post_spec : str
-            Anything that should be placed after conformers geometry specification.
-            Will be written to file as given.
         geometry_genre : str
             Name of the data genre representing conformers' geometry that should be used
             as input geometry. Please note that the default value "last_read_geom" is
             not necessarily an optimized geometry. Use "optimized_geom" if this is what
             you need.
+        kwargs
+            Any additional keyword parameters are passed to the writer object, relevant
+            to the *fmt* requested. Keyword supported by the default
+            :class:`"gjf"-format writer <.GjfWriter>` are as follows:
+
+                route
+                    A calculations route: keywords specifying calculations directives
+                    for quantum chemical calculations software.
+                link0
+                    Dictionary with "link zero" commands, where each key is command's
+                    name and each value is this command's parameter.
+                comment
+                    Contents of title section, i.e. a comment about the calculations.
+                post_spec
+                    Anything that should be placed after conformer's geometry
+                    specification. Will be written to the file as given.
+
         """
         wrt = wr.writer(
             fmt=fmt,
             destination=self.output_dir,
             mode=mode,
-            link0=link0,
-            route=route,
-            comment=comment,
-            post_spec=post_spec,
+            **kwargs,
         )
         wrt.geometry(
             geometry=self[geometry_genre],
