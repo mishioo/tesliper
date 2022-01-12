@@ -549,3 +549,63 @@ yourself, by manually setting :attr:`~.SingleSpectrum.scaling` and
 
 Corrected values may be accessed *via* ``spectra.x`` and ``spectra.y``,
 original values may be accessed *via* ``spectra.abscissa`` and ``spectra.values``.
+
+
+Writing to disk
+---------------
+
+Once you have data you care about, either extracted or calculated, you most probably
+would like to store it, process it with another software, or visualize it. ``tesliper``
+provides a way to save this data in one of the supported formats: CSV, human-readable
+text files, or .xlsx spreadsheet files. Moreover, ``tesliper`` may produce Gaussian
+input files, allowing you to easily setup a next step of calculations.
+
+Exporting data
+''''''''''''''
+
+``tesliper`` provides a convenient shorthands for exporting certain kinds of data:
+
+- :meth:`.Tesliper.export_energies` will export information about conformers' energies
+  and their calculated populations;
+- :meth:`.Tesliper.export_spectral_data` will export data that is related to spectral
+  activity, but cannot be used to simulate spectra;
+- :meth:`.Tesliper.export_activities` will export unprocessed spectral activities,
+  normally used to simulate spectra;
+- :meth:`.Tesliper.export_spectra` will export spectra calculated so far that are stored
+  in :attr:`.Tesliper.spectra` dictionary;
+- :meth:`.Tesliper.export_averaged` will export each averaged spectrum calculated so far
+  that is stored in :attr:`.Tesliper.averaged` dictionary.
+
+Each of these methods take two parameters: *fmt* and *mode*. *fmt* is a file format, to
+which data should be exported. It should be one of the following values: ``"txt"`` (the
+default), ``"csv"``, ``"xlsx"``. *mode* denotes how files should be opened and should be
+one of: ``"a"`` (append to existing file), ``"x"`` (the default, only write if file
+doesn't exist yet), ``"w"`` (overwrite file if it already exists).
+
+These export methods will usually produce a number of files in the
+:attr:`.Tesliper.output_dir`, which names will be picked automatically, according to the
+genre of the exported data and/or the conformer that data relates to.
+:meth:`~.Tesliper.export_energies` will produce a file for each available energies genre
+and an additional overview file, :meth:`~.Tesliper.export_spectra` will create a file
+for spectra genre and each conformer, and so on.
+
+.. note::
+    ``"xlsx"`` format is an exception from the above - it will produce only one file,
+    named "tesliper-output.xlsx", and create multiple spreadsheets inside this file. The
+    appending mode is useful when exporting data to ``"xlsx"`` format, as it allows to
+    write multiple kinds of data (with calls to multiple of these methods) to this
+    single destination .xlsx file.
+
+There is also a :meth:`.Tesliper.export_data` available, which will export only genres
+you specifically request (plus "freq" or "wavelen", if any genre given genre is a
+spectral data-related). The same applies here in the context of output format, write
+mode, and names of produced files.
+
+.. tip::
+
+    If you would like to customize names of the files produced, you will need to
+    directly use one of the writer objects provided by ``tesliper``. Refer to the
+    :mod:`.writing` module documentation for more information.
+
+    .. TODO: link to advanced guide when its done
+
