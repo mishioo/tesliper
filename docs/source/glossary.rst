@@ -1,3 +1,5 @@
+.. _conventions:
+
 Conventions and Terms
 =====================
 
@@ -50,30 +52,32 @@ complaining and try to do its best.
 Glossary
 --------
 
-genre
-    A specific kind of data, e.g. SCF energy, dipole strengths, atoms' positions in
-    space, or command used for calculations. Represented in code by a short string. Not
-    to be confused with Python's data ``type``. See :ref:`available genres`.
+.. glossary::
 
-trimming
-    Internally marking certain conformers as *not kept*. ``tesliper`` provides an easy
-    way to trim conformers to user's needs, see :ref:`trimming conformers`.
+    genre
+        A specific kind of data, e.g. SCF energy, dipole strengths, atoms' positions in
+        space, or command used for calculations. Represented in code by a short string. Not
+        to be confused with Python's data ``type``. See :ref:`available genres`.
 
-kept
-    Conformers may be internally marked as *kept* or *not kept*. *Kept* conformers
-    will be normally processed by ``tesliper``, *not kept* conformers will be ignored.
-    See :attr:`.Conformers.kept`.
+    trimming
+        Internally marking certain conformers as *not kept*. ``tesliper`` provides an easy
+        way to trim conformers to user's needs, see :ref:`filtering conformers`.
 
-arrayed
-    About data turned into an instance of :class:`.DataArray`-like object, usually by
-    :class:`.Conformers`' method of the same name. See :meth:`.Conformers.arrayed`.
+    kept
+        Conformers may be internally marked as *kept* or *not kept*. *Kept* conformers
+        will be normally processed by ``tesliper``, *not kept* conformers will be ignored.
+        See :attr:`.Conformers.kept`.
 
-data array
-    Type of objects used by ``tesliper`` to handle data read from multiple conformers.
-    The same data array class may be used to represent more than one genre. Sometimes
-    referred to as :class:`.DataArray`-like classes or objects. See :mod:`.arrays`.
+    arrayed
+        About data turned into an instance of :class:`.DataArray`-like object, usually by
+        :class:`.Conformers`' method of the same name. See :meth:`.Conformers.arrayed`.
 
-data inconsistency
-    An event of data having non-uniform properties, e.g. when number of values doesn't
-    match number of conformers, or when some conformers provide a different number of
-    values than other conformers for a particular data genre. See :mod:`.array_base`.
+    data array
+        Type of objects used by ``tesliper`` to handle data read from multiple conformers.
+        The same data array class may be used to represent more than one genre. Sometimes
+        referred to as :class:`.DataArray`-like classes or objects. See :mod:`.arrays`.
+
+    data inconsistency
+        An event of data having non-uniform properties, e.g. when number of values doesn't
+        match number of conformers, or when some conformers provide a different number of
+        values than other conformers for a particular data genre. See :mod:`.array_base`.

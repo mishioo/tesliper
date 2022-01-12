@@ -788,7 +788,7 @@ class ArrayBase(ABC):
 
     Should be provided by subclass as class-level attribute. It will be used to
     determine what class to use to represent data of particular genre when requested
-    *via* :method:`.Conforemrs.arrayed` method. May be an empty sequence, if subclass
+    *via* :meth:`.Conforemrs.arrayed` method. May be an empty sequence, if subclass
     is not intended to be used directly by `tesliper`'s machinery.
     """
 

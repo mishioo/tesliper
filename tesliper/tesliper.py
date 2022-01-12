@@ -120,7 +120,7 @@ class Tesliper:
     ...     route="# td=(singlets,nstates=80) B3LYP/Def2TZVP"
     ... )
 
-    When modifying :attr:`Tesliper.parameters` be cerfull to not delete any of the
+    When modifying :attr:`Tesliper.parameters` be careful to not delete any of the
     parameters. If you need to revert to standard parameters values, you can find them
     in :attr:`Tesliper.standard_parameters`.
 
@@ -197,13 +197,13 @@ class Tesliper:
         data. Used by ``tesliper`` to figure out, which parser to use to extract data,
         if custom parsers are available. Only "gaussian" is supported out-of-the-box.
     parameters : dict of str: (dict of str: float or callable)
-        Parameters for calculation of each type of spectra: "vibrational", "electronic",
-        and "scattering". Avaliable parameters are:
+        Parameters for calculation of each spectra genres: "ir", "vcd", "uv", "ecd",
+        "raman", and "roa". Avaliable parameters are:
 
-        - "start": float ot int, the beginning of the spectral range,
-        - "stop": float ot int, the end of the spectral range,
-        - "step": float ot int, step of the abscissa,
-        - "width": float ot int, width of the peak,
+        - "start": float or int, the beginning of the spectral range,
+        - "stop": float or int, the end of the spectral range,
+        - "step": float or int, step of the abscissa,
+        - "width": float or int, width of the peak,
         - "fitting": callable, function used to simulate peaks as curves, preferably
           one of :func:`datawork.gaussian <.gaussian>` or :func:`datawork.lorentzian
           <.lorentzian>`.

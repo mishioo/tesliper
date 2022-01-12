@@ -23,7 +23,7 @@ You can install it to your python distribution simply by running::
 
 in your terminal. This will download and install ``tesliper`` along with it's essential
 dependencies. A graphical interface have an additional dependency, but it may be
-easily included in your installation if you use `python -m pip install tesliper[gui]`
+easily included in your installation if you use ``python -m pip install tesliper[gui]``
 instead. Some users of unix-like systems may also need to instal ``tkinter`` manually,
 if it is not included in their distribution by default. Please refer to relevant online
 resources on how to do this in your system, if that is your case.

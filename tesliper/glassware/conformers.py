@@ -299,9 +299,9 @@ class Conformers(OrderedDict):
         ...
         KeyError: Unknown conformers: other.
 
-        Thirdly, list of integers representing conformers indices may br given.
+        Thirdly, list of integers representing conformers indices may be given.
         Only conformers with specified indices will be kept. If one of given integers
-        cant be translated to conformer's index, IndexError is raised. Indexing with
+        can't be translated to conformer's index, IndexError is raised. Indexing with
         negative values is not supported currently.
 
         >>> c.kept = [1, 2]
@@ -324,7 +324,7 @@ class Conformers(OrderedDict):
 
         Lastly, list of kept values may be modified by setting its elements
         to True or False. It is advised against, however, as mistake such as
-        ``m.kept[:2] = [True, False, False]`` will break some functionality by
+        ``c.kept[:2] = [True, False, False]`` will break some functionality by
         forcibly changing size of :attr:`.kept` list.
 
         Notes
