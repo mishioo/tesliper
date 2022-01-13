@@ -83,6 +83,43 @@ Raman/ROA intensities
 Population of conformers
 ------------------------
 
+Population of conformers is calculated according to the Boltzmann probability
+distribution that "gives the probability that a system will be in a certain state as a
+function of that state's energy and the temperature of the system." [#boltzmann]_ In
+this context each conformer is considered one of the possible states of the system (a
+studied molecule).
+
+Firstly, we calculate a Boltzmann factors for each conformer in respect to the most
+stable conformer (the one of the lowest energy). Boltzmann factor of two states is
+defined as:
+
+.. math::
+
+    B^a_b = \frac{F(state_a)}{F(state_b)} = e^{(E_b - E_a)/kt}
+
+where:
+
+:math:`E_a` and :math:`E_b`
+    energies of states :math:`a` and :math:`b`;
+:math:`k = 0.0019872041 \: \mathrm{kcal/(mol*K)}`
+    Boltzmann constant;
+:math:`t` 
+    temperature of the system.
+
+Boltzmann factor represents a ratio of probabilities of the two states being occupied.
+In other words, it shows how much more likely it is for the molecule to take the form of
+one conformer over another conformer. Having a ratio of these probabilities for each
+possible conformer in respect to the most stable conformer, we are able to find the
+distribution of conformers (probability of taking the form of each conformer):
+
+.. math::
+
+    p_i = \frac{B_0^i}{\sum\limits_j^{states}B_0^j}
+
+assuming that :math:`state_0` is the state of the lowest energy (the most stable
+conformer).
+
+.. [#boltzmann] https://en.wikipedia.org/wiki/Boltzmann_distribution
 
 RMSD of conformers
 ------------------
