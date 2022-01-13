@@ -413,13 +413,6 @@ def pyramid_windows(series: Sequence) -> Iterator[np.ndarray]:
         yield np.arange(start=idx, stop=length, step=1, dtype=int)
 
 
-WINDOWING_STRATEGIES = {
-    "fixed": fixed_windows,
-    "stretching": stretching_windows,
-    "pyramid": pyramid_windows,
-}
-
-
 def rmsd_sieve(
     geometry: Sequence[Sequence[Sequence[float]]],
     windows: Iterable[Sequence[int]],
@@ -449,11 +442,11 @@ def rmsd_sieve(
 
     The windows itself should be provided by user as `windows` parameter. This provides
     a flexibility in the process: you may choose to sacrifice accuracy to lower
-    neccessary computational time or vice versa. You may also choose a different
-    windowing strategy or reject it alltogether, and calculate one-to-each similarity in
+    neccessary computational time or vice versa. You may also choose a different moving
+    window strategy or reject it alltogether, and calculate one-to-each similarity in
     the whole set. Iterables of windows accepted by this function may be generated with
-    one of the dedicated windowing funcions: `stretching_windows`, `fixed_windows`, or
-    `pyramid_windows`. Refer to their documentation for more information.
+    one of the dedicated moving window funcions: `stretching_windows`, `fixed_windows`,
+    or `pyramid_windows`. Refer to their documentation for more information.
 
     Parameters
     ----------
