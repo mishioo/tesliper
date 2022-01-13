@@ -124,17 +124,107 @@ conformer).
 RMSD of conformers
 ------------------
 
+RMSD, or root-mean-square deviation of atomic positions, is used as a measure of
+similarity between two conformers. As its name hints, it is an average distance between
+atoms in the two studied conformers: the lower the RMSD value, the more similar are
+conformers in question.
+
 Finding minimized value of RMSD
 '''''''''''''''''''''''''''''''
+
+In a typical output of the quantum chemical calculations software, molecule is
+represented by a number of points (mapping to particular atoms) in a 3-dimensional
+space. Usually, orientation and position of the molecule in the coordinate system is
+arbitrary and simple overlay of the two conformers may not be the same as their optimal
+overlap. To neglect the effect of conformers' rotation and shift on the similarity
+measure, we will look for the common reference frame and optimal alignment of atoms.
 
 Zero-centring atomic coordinates
 """"""""""""""""""""""""""""""""
 
+To find the common reference frame for two conformers we move both to the origin of the
+coordinate system. This is done by calculating a centroid of a conformer and subtracting
+it from each point representing an atom. The centroid is given as an arithmetic mean
+of all the atoms in the conformer:
+
+.. math::
+
+    a^0_i = a_i - \frac{1}{n}\sum\limits_{j=a}^{n}a_j
+
+where:
+
+:math:`a_i`, :math:`a_j`
+    atom's original position in the coordinate system;
+:math:`a^0_i`
+    atom's centered position in the coordinate system;
+:math:`n`
+    number of atoms in the molecule.
+
 Rotating with Kabsch algorithm
 """"""""""""""""""""""""""""""
 
+Optimal rotation of one conformer onto another is achieved using a Kabsch algorithm
+[#kabsch]_ (also known as Wahba's problem [#wanba]_). Interpreting positions of each
+conformers' atoms as a matrix, we find the covariance matrix :math:`H` of these
+matrices (:math:`P` and :math:`Q`):
+
+.. math::
+
+    H = P^\intercal Q
+
+and then we use the singular value decomposition (SVD) [#svd]_ routine to get :math:`U`
+and :math:`V` unitary matrices.
+
+.. math::
+
+    H = U \Sigma V ^\intercal
+
+Having these, we can calculate the optimal rotation matrix as:
+
+.. math::
+
+    R = V \begin{pmatrix}1 & 0 & 0 \\ 0 & 1 & 0 \\ 0 & 0 & d\end{pmatrix} U ^\intercal
+
+where :math:`d = \mathrm{sign}(\mathrm{det}(VU^\intercal))` that allows to ensure a
+right-handed coordinate system.
+
+.. note::
+
+    To allow for calculation of th best rotation between sets of molecules and to
+    compromise between efficiency and simplicity of implementation, ``tesliper`` uses
+    Einstein summation convention [#einsum]_ *via* :func:`numpy.einsum` function. The
+    implementation is as follows:
+
+    .. literalinclude:: ..\..\tesliper\datawork\geometry.py
+        :language: python
+        :pyobject: kabsch_rotate
+        :lines: 1-11,23,25-
+        :emphasize-lines: 19,32
+
+.. [#kabsch] https://en.wikipedia.org/wiki/Kabsch_algorithm
+.. [#wanba] https://en.wikipedia.org/wiki/Wahba%27s_problem
+.. [#svd] https://en.wikipedia.org/wiki/Singular_value_decomposition
+.. [#einsum] https://en.wikipedia.org/wiki/Einstein_notation
+
 Calculating RMSD of atomic positions
 """"""""""""""""""""""""""""""""""""
+
+Once conformers are aligned, the value of RMSD [#rmsd]_ is calculated simply by finding
+a distance between each equivalent atoms and averaging their squares and finding the
+root of this average:
+
+.. math::
+
+    \mathrm{RMSD} = \sqrt{\frac{1}{n}\sum\limits_i^n(p_i - q_i)^2}
+
+where:
+
+:math:`p_i` and :math:`q_i`
+    positions of |ith| equivalent atoms in conformers :math:`P` and :math:`Q`;
+:math:`n`
+    number of atoms in each conformer.
+
+.. [#rmsd] https://en.wikipedia.org/wiki/Root-mean-square_deviation_of_atomic_positions
 
 Comparing conformers
 ''''''''''''''''''''
