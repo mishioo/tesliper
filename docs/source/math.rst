@@ -229,8 +229,37 @@ where:
 Comparing conformers
 ''''''''''''''''''''
 
+To compare conformers as efficiently as possible, the RMSD values are calculated not
+in the each-to-each scheme, but inside a rather small moving window. The size of this
+window determines how many calculations will be done for the whole collection.
+
 Moving window mechanism
 """""""""""""""""""""""
+
+``tesliper`` provides three types of moving windows: a :func:`fixed
+<.geometry.fixed_windows>`, :func:`stretching <.geometry.stretching_windows>`, and
+:func:`pyramid <.geometry.pyramid_windows>` windows. The strategy you choose will affect
+both the performance and the accuracy of the RMSD sieve, as described below.
+
+:func:`fixed <.geometry.fixed_windows>`
+    The most basic sliding window of a fixed size. Provides the most control over the
+    performance of the sieve, but is the least accurate.
+:func:`stretching <.geometry.stretching_windows>`
+    The default, allows to specify the size of the window in the context of some numeric
+    property, usually the energy of conformers. The size may differ in the sense of the
+    number of conformers in each window, but the difference between maximum and minimum
+    values of said property inside a window will not be bigger than the given *size*.
+    Provides a best compromise between the performance and the accuracy.
+:func:`pyramid <.geometry.pyramid_windows>`
+    The first window will contain the whole collection and each consecutive window will
+    be smaller by one conformer. Allows to perform a each-to-each comparison, but in
+    logarithmic time rather than quadratic time. Best accuracy but worst performance.
+
+.. note::
+
+    The actual windows produced by sliding window functions are iterables of
+    :class:`numpy.ndarray`\s of indices (that point to the value in the original
+    array of conformers).
 
 The sieve
 """""""""
