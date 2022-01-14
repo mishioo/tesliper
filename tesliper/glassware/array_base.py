@@ -825,7 +825,7 @@ class ArrayBase(ABC):
             Sequence of values for *genre* for each conformer in *filenames*.
         allow_data_inconsistency
             Flag signalizing if instance should allow data inconsistency (see
-            :class:`ArrayPropety` for details).
+            :class:`.ArrayProperty` for details).
         """
         self.genre = genre
         self.allow_data_inconsistency = allow_data_inconsistency
