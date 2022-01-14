@@ -264,6 +264,16 @@ both the performance and the accuracy of the RMSD sieve, as described below.
 The sieve
 """""""""
 
+The :func:`RMSD sieve function <.geometry.rmsd_sieve>` takes care of zero-centring and
+finding the best overlap of the conformers, as described previously. Aside form this, it
+works as follows: for each window, provided by one of the moving window functions
+described above, it takes the first conformer in the window (reference) and calculates
+it's minimum RMSD value with respect to each of the other conformers in this window. Any
+conformers that have lower RMSD value than a given threshold, will be considered
+identical to the reference conformer and internally marked as :term:`not kept <kept>`.
+The sieve returns an array of boolean value for each conformer: ``True`` if conformer's
+structure is "original" and should be kept, ``False`` if it is a duplicate of other,
+"original" structure (at least according to threshold given), and should be discarded.
 
 Spectra transformation
 ----------------------
