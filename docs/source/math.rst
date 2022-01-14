@@ -293,5 +293,6 @@ Finding optimal scaling
 '''''''''''''''''''''''
 
 Optimal scaling factor of spectra is determined by comparing a mean *y* values of target
-spectrum and a reference spectrum.
+spectrum and a reference spectrum. Values lower than 1% of maximum absolute *y* value of
+each spectrum are ignored.
 

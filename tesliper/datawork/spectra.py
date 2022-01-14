@@ -401,10 +401,15 @@ def find_scaling(a: Numbers, b: Numbers) -> float:
 
     Notes
     -----
-    If scaling factor cannot be reasonably given, i.e. when *b* is an empty list
-    or list of zeros or NaNs, `1.0` is returned.
+    If scaling factor cannot be reasonably given, i.e. when *b* is an empty list or list
+    of zeros or NaNs, `1.0` is returned. Values lower than 1% of maximum are ignored.
     """
-    scaling = np.mean(np.abs(a)) / np.mean(np.abs(b))
+    a, b = np.abs(a), np.abs(b)
+    try:
+        amax, bmax = max(a), max(b)
+    except ValueError:
+        return 1.0
+    scaling = np.mean(a[a >= 0.01 * amax]) / np.mean(b[b >= 0.01 * bmax])
     scaling = 1.0 if np.isnan(scaling) else scaling
     return scaling
 
