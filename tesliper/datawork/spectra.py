@@ -268,9 +268,9 @@ def idx_offset(a: Numbers, b: Numbers) -> int:
     Parameters
     ----------
     a
-        *x* values` of the first spectrum.
+        *y* values of the first spectrum.
     b
-        *x* values` of the second spectrum.
+        *y* values of the second spectrum.
 
     Returns
     -------
@@ -390,9 +390,9 @@ def find_scaling(a: Numbers, b: Numbers) -> float:
     Parameters
     ----------
     a
-        *x* values` of the first spectrum.
+        *y* values of the first spectrum.
     b
-        *x* values` of the second spectrum.
+        *y* values of the second spectrum.
 
     Returns
     -------
