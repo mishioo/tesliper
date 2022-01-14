@@ -195,7 +195,7 @@ right-handed coordinate system.
     Einstein summation convention [#einsum]_ *via* :func:`numpy.einsum` function. The
     implementation is as follows:
 
-    .. literalinclude:: ..\..\tesliper\datawork\geometry.py
+    .. literalinclude:: ../../tesliper/datawork/geometry.py
         :language: python
         :pyobject: kabsch_rotate
         :lines: 1-11,23,25-
