@@ -310,7 +310,7 @@ def stretching_windows(
     >>> list(stretching_windows([1, 2, 3, 4, 7, 8], 3))
     [[0, 1, 2], [1, 2, 3], [2, 3], [4, 5]]
 
-    This "soft" right bound may be "hardened" by passing `hard_bound=True` as a
+    This "soft" right bound may be "hardened" by passing ``hard_bound=True`` as a
     parameter to a function call. A window will than move immediately to the border's
     other side.
 
@@ -323,7 +323,7 @@ def stretching_windows(
     >>> list(stretching_windows(arr, 5))
     [[0, 1], [3, 4]]
 
-    If such behavior is not desired, it may be turned off with `keep_hermits = True`.
+    If such behavior is not desired, it may be turned off with ``keep_hermits = True``.
     One must remember that, when a bound is "soft", the last window is always a hermit.
 
     >>> list(stretching_windows(arr, 5, keep_hermits=True))
@@ -382,12 +382,12 @@ def stretching_windows(
 def pyramid_windows(series: Sequence) -> Iterator[np.ndarray]:
     """Produces windows of shrinking sizes, from full sequence to last element only.
 
-    This function yields `numpy.ndarray`s with indices that may be used to index an
-    original sequence (assuming original sequence is `numpy.ndarray` as well). The first
-    window yielded represents a whole `series` sequence and each consecutive window is
-    reduced by the first element, leaving only the last element in the final window.
-    This allows for easy setup of efficient calculations in symmetric each-to-each
-    relationship.
+    This function yields :class:`numpy.ndarray`\\s with indices that may be used to
+    index an original sequence (assuming original sequence is :class:`numpy.ndarray` as
+    well). The first window yielded represents a whole *series* sequence and each
+    consecutive window is reduced by the first element, leaving only the last element in
+    the final window. This allows for easy setup of efficient calculations in symmetric
+    each-to-each relationship.
 
     >>> series = [3, 6, 3, 5, 7]
     >>> for window in pyramid_windows(series):
@@ -413,13 +413,6 @@ def pyramid_windows(series: Sequence) -> Iterator[np.ndarray]:
         yield np.arange(start=idx, stop=length, step=1, dtype=int)
 
 
-WINDOWING_STRATEGIES = {
-    "fixed": fixed_windows,
-    "stretching": stretching_windows,
-    "pyramid": pyramid_windows,
-}
-
-
 def rmsd_sieve(
     geometry: Sequence[Sequence[Sequence[float]]],
     windows: Iterable[Sequence[int]],
@@ -431,14 +424,14 @@ def rmsd_sieve(
     This function calculates how similar conformers are one to another, using a RMSD
     measure, that is is a root-mean-square deviation of atomic positions, and signalizes
     which of the conformers are duplicates, according to a given similarity threshold.
-    Returned array of booleans may be trated as "originality" indicators for each
-    conformer: `True` means given conformer has distinct structure, `False` means given
-    conformer is similar to some other conformer marked as "original".
+    Returned array of booleans may be treated as "originality" indicators for each
+    conformer: ``True`` means given conformer has distinct structure, ``False`` means
+    given conformer is similar to some other conformer marked as "original".
 
-    The measure of conformers' similarity, the `threshold` parameter, is a minimum value
+    The measure of conformers' similarity, the *threshold* parameter, is a minimum value
     of RMSD needed to consider two conformers different. In other words, if two
-    conformers give a RMSD value that is lower then `threshold`, one of them will be
-    marked as similar, producing a `False` in the output array.
+    conformers give a RMSD value that is lower then *threshold*, one of them will be
+    marked as similar, producing a ``False`` in the output array.
 
     To lower a computational expense, similarity measurement is performed in "chunks",
     using a sliding window technique. Windows consist of a portion of conformers from
@@ -447,13 +440,14 @@ def rmsd_sieve(
     that are in the same window, and if any of them is similar to the reference item,
     it is marked as duplicate (not "original"). The process is repeated for each window.
 
-    The windows itself should be provided by user as `windows` parameter. This provides
+    The windows itself should be provided by user as *windows* parameter. This provides
     a flexibility in the process: you may choose to sacrifice accuracy to lower
-    neccessary computational time or vice versa. You may also choose a different
-    windowing strategy or reject it alltogether, and calculate one-to-each similarity in
+    necessary computational time or vice versa. You may also choose a different moving
+    window strategy or reject it alltogether, and calculate one-to-each similarity in
     the whole set. Iterables of windows accepted by this function may be generated with
-    one of the dedicated windowing funcions: `stretching_windows`, `fixed_windows`, or
-    `pyramid_windows`. Refer to their documentation for more information.
+    one of the dedicated moving window funcions: :func:`.stretching_windows`,
+    :func:`.fixed_windows`, or :func:`.pyramid_windows`. Refer to their documentation
+    for more information.
 
     Parameters
     ----------
@@ -470,9 +464,10 @@ def rmsd_sieve(
     Returns
     -------
     np.ndarray(dtype=bool)
-        Array of booleans for each conformer: `True` if conformer's structure is
-        "original" and should be kept, `False` if it is a duplicate of other, "original"
-        structure (at least according to `threshold` given), and should be discarded.
+        Array of booleans for each conformer: ``True`` if conformer's structure is
+        "original" and should be kept, ``False`` if it is a duplicate of other,
+        "original" structure (at least according to *threshold* given), and should be
+        discarded.
     """
     blade = np.ones(len(geometry), dtype=bool)
     # zero-center all conformers

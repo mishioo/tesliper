@@ -183,6 +183,7 @@ References
    :caption: Reference
 
    Available data genres <genres>
+   Math and Algorithms <math>
    API reference <_autosummary/tesliper>
 
 .. toctree::

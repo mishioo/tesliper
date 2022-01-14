@@ -54,7 +54,7 @@ def calculate_min_factors(energies, t=298.15):
 
     .. math::
 
-        F(state_1)/F(state_2) = exp((E_1 - E_2)/kt)
+        \frac{F(state_1)}{F(state_2)} = e^{(E_2 - E_1)/kt}
 
     where :math:`E_1` and :math:`E_2` are energies of states 1 and 2,
     :math:`k` is Boltzmann constant, :math:`k = 0.0019872041 kcal/(mol*K)`,
