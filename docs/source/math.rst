@@ -278,15 +278,22 @@ structure is "original" and should be kept, ``False`` if it is a duplicate of ot
 Spectra transformation
 ----------------------
 
-Finding common abscissa
-'''''''''''''''''''''''
-
 Finding best shift
 ''''''''''''''''''
+
+Optimal offset of two spectra is determined by calculating their cross-correlation\
+[#cross-corr]_ (understood as in the signal processing context) and finding its maximum
+value. Index of this max value of the discrete cross-correlation array indicates the
+position of one spectrum in respect to the other spectrum, in which the overlap of the
+two is the greatest.
+
+.. [#cross-corr] https://en.wikipedia.org/wiki/Cross-correlation
 
 Finding optimal scaling
 '''''''''''''''''''''''
 
+Optimal scaling factor of spectra is determined by comparing a mean *y* values of target
+spectrum and a reference spectrum.
 
 Other conversions
 -----------------
