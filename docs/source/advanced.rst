@@ -174,14 +174,16 @@ Available data arrays
 Data arrays provided by ``tesliper`` are listed below in categories, along with a short
 description and with a list of data genres that are associated with a particular data
 array class. More information about a ``DataArray``-like class of interest may be learn
-in the :mod:`API reference <tesliper.glassware.arrays>`
+in the :mod:`API reference <tesliper.glassware.arrays>`.
 
 
 Generic types
 """""""""""""
 
-Simple data arrays, that hold an information of particular data type. They do not
-provide any functionality beside initial data validation.
+Simple data arrays, that hold a data of particular type. They do not provide any
+functionality beside initial data validation. They are used by ``tesliper`` for
+segregation of simple data an as a base classes for other data arrays (concerns mostly
+:class:`.FloatArray`).
 
 :class:`.IntegerArray`
     For handling data of ``int`` type.
@@ -228,11 +230,35 @@ Each data array in this category provides a *freq* or *wavelen* attribute, also
 accessible by their convenience aliases *frequencies* and *wavelengths*. These
 attributes store an information about frequency or wavelength that the particular
 spectral value is associated with (x-axis value of the center of the band).
-Activities genres, that are the genres that may be used to simulate the spectrum,
-also provide a *calculate_spectra()* method for this purpose.
+
+Activities genres, that are the genres that may be used to simulate the spectrum, also
+provide a *calculate_spectra()* method for this purpose (see
+:meth:`.VibrationalActivities.calculate_spectra`,
+:meth:`.ScatteringActivities.calculate_spectra`, and
+:meth:`.ElectronicActivities.calculate_spectra`), as well as a
+:attr:`~.SpectralActivities.intensities` property that calculates a theoretical
+intensity for each activity value. A convince :attr:`~.SpectralActivities.spectra_name`
+property may be used to get the name of spectra pseudo-genre calculated with particular
+activities genre.
+
+.. code-block:: python
+
+    >>> act = c["dip"]
+    >>> act.spectra_name
+    "ir"
+    >>> from tesliper import lorentzan
+    >>> spc = act.calculate_spectra(
+    ...     start=200,  # cm^(-1)
+    ...     stop=1800,  # cm^(-1)
+    ...     step=1,     # cm^(-1)
+    ...     width=5,    # cm^(-1)
+    ...     fitting=lorentzan
+    )
+    >>> type(spc), spc.genre
+    (<class 'tesliper.glassware.spectra.Spectra'>, 'ir')
 
 :class:`.VibrationalData`
-    For handling vibrational data that is not a spectral activity.
+    For handling vibrational (IR and VCD related) data that is not a spectral activity.
 
     .. list-table:: Genres associated with this class:
         :width: 100%
@@ -242,7 +268,7 @@ also provide a *calculate_spectra()* method for this purpose.
           - emang
 
 :class:`.ScatteringData`
-    For handling scattering data that is not a spectral activity.
+    For handling scattering (Raman and ROA related) data that is not a spectral activity.
 
     .. list-table:: Genres associated with this class:
         :width: 100%
@@ -264,7 +290,7 @@ also provide a *calculate_spectra()* method for this purpose.
           -
 
 :class:`.ElectronicData`
-    For handling electronic data that is not a spectral activity.
+    For handling electronic (UV and ECD related) data that is not a spectral activity.
 
     .. list-table:: Genres associated with this class:
         :width: 100%
@@ -272,7 +298,7 @@ also provide a *calculate_spectra()* method for this purpose.
         * - eemang
 
 :class:`.VibrationalActivities`
-    For handling electronic spectral activity data.
+    For handling vibrational (IR and VCD related) spectral activity data.
 
     .. list-table:: Genres associated with this class:
         :width: 100%
@@ -282,7 +308,7 @@ also provide a *calculate_spectra()* method for this purpose.
           - rot
 
 :class:`.ScatteringActivities`
-    For handling scattering spectral activity data.
+    For handling scattering (Raman and ROA related) spectral activity data.
 
     .. list-table:: Genres associated with this class:
         :width: 100%
@@ -297,7 +323,7 @@ also provide a *calculate_spectra()* method for this purpose.
           - roa3
 
 :class:`.ElectronicActivities`
-    For handling electronic spectral activity data.
+    For handling electronic (UV and ECD related) spectral activity data.
 
     .. list-table:: Genres associated with this class:
         :width: 100%
@@ -320,7 +346,20 @@ Other data arrays
 :class:`.Bands`
     Special kind of data array for band values, to which spectral data or activities
     correspond. Provides an easy way to convert values between their different
-    representations: frequency, wavelength, and excitation energy.
+    representations: frequency, wavelength, and excitation energy. Also allows to easily
+    locate conformers with imaginary frequencies.
+
+    .. code-block:: python
+
+        >>> arr = Bands(
+        ...     genre="freq",
+        ...     filenames=["one", "two", "three"],
+        ...     values=[[-15, -10, 105], [30, 123, 202], [-100, 12, 165]]
+        ... )
+        >>> arr.imaginary
+        array([2, 0, 1])
+        >>> arr.find_imaginary()
+        {'one': 2, 'three': 1}
 
     .. list-table:: Genres associated with this class:
         :width: 100%
@@ -333,6 +372,18 @@ Other data arrays
     For handling data about the energy of conformers. Provides an easy way of
     calculating Boltzmann distribution-based population of conformers *via* a
     :attr:`~.Energies.populations` property.
+
+    .. code-block:: python
+
+        >>> arr = Energies(
+        ...     genre="gib", 
+        ...     filenames=["one", "two", "three"], 
+        ...     values=[-123.505977, -123.505424, -123.506271]
+        ... )
+        >>> arr.deltas  # difference from lowest energy in kcal/mol
+        array([0.18448779, 0.53150055, 0.        ])
+        >>> arr.populations
+        array([0.34222796, 0.19052561, 0.46724643])
 
     .. list-table:: Genres associated with this class:
         :width: 100%
@@ -354,6 +405,10 @@ Other data arrays
     ground to excited subshell. Each of these arrays is of shape (conformers, bands,
     max_transitions), where 'max_transitions' is a highest number of transitions
     contributing to single band across all bands of all conformers.
+
+    Allows to easily calculate contribution of each transition using
+    :attr:`~.Transitions.contribution` and to find which transition contributes the most
+    to the particular transition with :attr:`~.Transitions.highest_contribution`. 
 
     .. list-table:: Genres associated with this class:
         :width: 100%
