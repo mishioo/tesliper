@@ -433,10 +433,11 @@ class Bands(FloatArray):
 class SpectralData(FloatArray, ABC):
     """Base class for spectral data genres, that are not spectral activities.
 
-    When subclassed, one of the attributes: :attr:`.freq` or :attr:`.wavelen` should
-    be overridden with a concrete setter and getter - use of :class:`.ArrayProperty`
-    is recommended. The other one may use implementation from this base class by call
-    to ``super().freq`` or ``super().wavelen`` to get converted values.
+    When subclassed, one of the attributes: :attr:`~.SpectralData.freq` or
+    :attr:`~.SpectralData.wavelen` should be overridden with a concrete setter and
+    getter - use of :class:`.ArrayProperty` is recommended. The other one may use
+    implementation from this base class by call to ``super().freq`` or
+    ``super().wavelen`` to get converted values.
     """
 
     # TODO: Supplement tests regarding this class' subclasses
@@ -456,8 +457,8 @@ class SpectralData(FloatArray, ABC):
     @abstractmethod
     def freq(self):
         """Bands values converted to frequencies in :math:`\\mathrm{cm}^{-1}`. If
-        :attr:`.wavelen` is provided, this may be overridden with a simple call to
-        ``super()``:
+        :attr:`~.SpectralData.wavelen` is provided, this may be overridden with a simple
+        call to ``super()``:
 
         .. code-block:: python
 
@@ -470,7 +471,7 @@ class SpectralData(FloatArray, ABC):
     @property
     def frequencies(self):
         """Bands values converted to frequencies in :math:`\\mathrm{cm}^{-1}`.
-        A convenience alias for :attr:`.freq`.
+        A convenience alias for :attr:`~.SpectralData.freq`.
         """
         return self.freq
 
@@ -491,7 +492,7 @@ class SpectralData(FloatArray, ABC):
     @property
     def wavelengths(self):
         """Bands values converted to wavelengths in nm.
-        A convenience alias for :attr:`.wavelen`.
+        A convenience alias for :attr:`~.SpectralData.wavelen`.
         """
         return self.wavelen
 

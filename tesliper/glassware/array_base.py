@@ -381,11 +381,11 @@ class ArrayProperty(property):
     4. stored in owner's ``__dict__``.
 
     Setting, getting and deletition of the value may be customized using standard
-    :attr:`.setter`, :attr:`.getter` and :attr:`.deleter` decorators.
-    Additionally, :class:`ArrayProperty` provides an :attr:`.ArrayProperty.sanitizer`
-    decorator. If sanitizer function is provided, it is called as a first step of data
-    validation and should return sanitized array-like value (given original value as a
-    positional parameter).
+    :attr:`~.ArrayProperty.setter`, :attr:`~.ArrayProperty.getter` and
+    :attr:`~.ArrayProperty.deleter` decorators. Additionally, :class:`ArrayProperty`
+    provides an :attr:`.ArrayProperty.sanitizer` decorator. If sanitizer function is
+    provided, it is called as a first step of data validation and should return
+    sanitized array-like value (given original value as a positional parameter).
 
     Validation regarding shape of the value is triggered if *check_against*
     parameter is provided. It should be a name of owner's other array-like attribute

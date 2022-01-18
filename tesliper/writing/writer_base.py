@@ -139,7 +139,7 @@ writting method for this kind of data:
 
 In both cases ``UpdatedTxtWriter`` will be picked by the :func:`.writer` instead of the
 original :class:`.TxtWriter`, thanks to the automatic registration done by the base
-class :class:`.WriterBase `.
+class :class:`.WriterBase`.
 
 .. warning::
 

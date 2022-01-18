@@ -118,8 +118,8 @@ class SingleSpectrum:
     def units(self) -> Dict[str, str]:
         """Units in which spectral data is stored. It provides a unit for
         :attr:`.width`, :attr:`.start`, :attr:`.stop`, :attr:`.step`, :attr:`.x`, and
-        :attr:`.y`. :attr:`.abscissa` and :attr:`.values` are stored in the same units
-        as :attr:`.x` and :attr:`.y` respectively.
+        :attr:`.y`. :attr:`.abscissa` and :attr:`~.SingleSpectrum.values` are stored in
+        the same units as :attr:`.x` and :attr:`.y` respectively.
         """
         return self._units[self.genre]
 
@@ -157,8 +157,8 @@ class SingleSpectrum:
 
     @property
     def y(self) -> np.ndarray:
-        """Spectra's y-values corrected by multiplying its :attr:`.values` by
-        :attr:`.scaling`."""
+        """Spectra's y-values corrected by multiplying its
+        :attr:`~.SingleSpectrum.values` by :attr:`.scaling`."""
         return vars(self)["y"]
 
     def scale_to(self, spectrum: "SingleSpectrum") -> None:
