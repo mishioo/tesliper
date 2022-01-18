@@ -45,6 +45,52 @@ attribute.
     Attributes that hold a band information are actually *freq* and *wavelen*
     respectively, *frequencies* and *wavelengths* are convenience aliases.
 
+
+Creating data arrays
+''''''''''''''''''''
+
+The easiest way to instantiate the data array of desired data genre is to use
+:meth:`.Conformers.arrayed` factory method. It transforms it's stored data into the
+``DataArray``-like object associated with a particular data genre, ignoring any
+conformer that is :term:`not kept <kept>` or doesn't provide data for the requested
+genre. You may force it to ignore any trimming applied by adding ``full=True`` to call
+parameters (conformers without data for requested genre still will be ignored).
+Moreover, any other keyword parameters provided will be forwarded to the class
+constructor, allowing you to override any default values.
+
+.. code-block:: python
+
+    >>> from tesliper import Conformers
+    >>> c = Conformers(
+    ...     one={"gib":-123.5},
+    ...     two={},
+    ...     three={"gib": -123.6},
+    ...     four={"gib":-123.7}
+    ... )
+    >>> c.kept = ["one", "three"]
+    >>> c.arrayed("gib")
+    Energies(genre='gib', filenames=['one' 'three'], values=[-123.5 -123.6], t=298.15)
+    >>> c.arrayed("gib", full=True) 
+    Energies(genre='gib', filenames=['one' 'three' 'four'], values=[-123.5 -123.6 -123.7], t=298.15)
+    >>> c.arrayed("gib", t=1111)             
+    Energies(genre='gib', filenames=['one' 'three'], values=[-123.5 -123.6], t=1111)
+
+You can also instantiate any data array directly, providing data by yourself.
+
+.. code-block:: python
+
+    >>> from tesliper import Energies
+    >>> Energies(
+    ...     genre='gib', 
+    ...     filenames=['one' 'three'], 
+    ...     values=[-123.5 -123.6]
+    ... )
+    Energies(genre='gib', filenames=['one' 'three'], values=[-123.5 -123.6], t=298.15)
+
+
+Available data arrays
+'''''''''''''''''''''
+
 Data arrays provided by ``tesliper`` are listed below in categories, along with a short
 description and with a list of data genres that are associated with a particular data
 array class. More information about a ``DataArray``-like class of interest may be learn
@@ -52,7 +98,7 @@ in the :mod:`API reference <tesliper.glassware.arrays>`
 
 
 Generic types
-'''''''''''''
+"""""""""""""
 
 Simple data arrays, that hold an information of particular data type. They do not
 provide any functionality beside initial data validation.
@@ -96,7 +142,7 @@ provide any functionality beside initial data validation.
           - stoichiometry
 
 Spectral data
-'''''''''''''
+"""""""""""""
 
 Each data array in this category provides a *freq* or *wavelen* attribute, also
 accessible by their convenience aliases *frequencies* and *wavelengths*. These
@@ -184,7 +230,7 @@ also provide a *calculate_spectra()* method for this purpose.
           - losc
 
 Other data arrays
-'''''''''''''''''
+"""""""""""""""""
 
 :class:`.FilenamesArray`
     Special case of :class:`.DataArray`, holds only filenames. *values* property
