@@ -22,14 +22,14 @@ The most basic example may look like this:
 This definition would be almost a re-implementation of what :class:`ArrayBase` already
 provides, but is a good starting point for explanation, so lets elaborate on it a
 little. :class:`ArrayBase` expects 4 parameters on initialization of its subclass:
-`genre` is a genre of data stored, *filenames* is a list of conformer identifiers,
-`values` is - not surprisingly - a list of data values for each conformer, and
-`allow_data_inconsistency` is a boolean flag that controls process of validation of
+*genre* is a genre of data stored, *filenames* is a list of conformer identifiers,
+*values* is - not surprisingly - a list of data values for each conformer, and
+*allow_data_inconsistency* is a boolean flag that controls process of validation of
 array-like attributes.
 
-`filenames` and *values* are :class:`ArrayProperty` instances - values passed to the
+*filenames* and *values* are :class:`ArrayProperty` instances - values passed to the
 constructor as parameters of these names will be checked and validated, and stored as
-`numpy.ndarray`s. Moreover, filenames will be stored as strings, because we told the
+``numpy.ndarray``\\s. Moreover, filenames will be stored as strings, because we told the
 :class:`ArrayProperty` this is our desired data type for this array-like attribute,
 using ``dtype=str``. The default data type is ``float``, so *values* will be converted
 to floats.
@@ -40,7 +40,7 @@ array(["a", "b", "c"], dtype=str)
 array([1.0, 2.0, 3.0], dtype=float)
 
 ``check_against="filenames"`` tells :class:`ArrayProperty` to validate *values* using
-`filenames` as a reference for desired shape of *values* array. If shape is different
+*filenames* as a reference for desired shape of *values* array. If shape is different
 than shape of the reference, :class:`.InconsistentDataError` is raised. If you will deal
 with multidimensional data, you can utilize *check_depth* parameter to signalize that
 arrays should have identical shapes only to some certain depth, for example
@@ -92,7 +92,7 @@ masked_array(
         [False, False,  True]],
   fill_value=0)
 
-`genre`, *filenames*, *values*, and *allow_data_inconsistency* are stored on
+*genre*, *filenames*, *values*, and *allow_data_inconsistency* are stored on
 :class:`ArrayBase` subclass automatically, if ``super().__init__()`` is called. However,
 if you introduce any new init parameters, you must bind them to the object by yourself.
 Moreover, if you wish to use :class:`.Conformers` automatic initialization of
@@ -789,7 +789,7 @@ class ArrayBase(ABC):
     Should be provided by subclass as class-level attribute. It will be used to
     determine what class to use to represent data of particular genre when requested
     *via* :meth:`.Conforemrs.arrayed` method. May be an empty sequence, if subclass
-    is not intended to be used directly by `tesliper`'s machinery.
+    is not intended to be used directly by ``tesliper``'s machinery.
     """
 
     def __init_subclass__(cls, **kwargs):

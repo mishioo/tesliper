@@ -142,7 +142,7 @@ Information about which conformers are *kept* and *not kept* is stored in
 this topic will be :ref:`explained later <manipulating kept>`.
 
 As mentioned earlier, :class:`Tesliper.conformers <.Conformers>` is a dict-like
-structure, and as such offers a typical functionality of Python's `dict`\s. However,
+structure, and as such offers a typical functionality of Python's ``dict``\s. However,
 checking for presence with ``conf in tslr.conformers`` or requesting a view with
 standard :meth:`~dict.keys`, :meth:`~dict.values`, or :meth:`~dict.items` will operate
 on the whole data set, ignoring any trimming applied earlier. :class:`.Conformers` class

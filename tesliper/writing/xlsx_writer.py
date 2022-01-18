@@ -279,8 +279,8 @@ class XlsxWriter(WriterBase):
             excitation energies for electronic data
         data: iterable of glassware.SpectralData
             SpectralData objects that are to be serialized; all should contain
-            information for the same conformers. Assumes that all `data`'s elements have
-            the same `spectra_type`, which is passed to the `name_template` as "det".
+            information for the same conformers. Assumes that all *data*'s elements have
+            the same *spectra_type*, which is passed to the *name_template* as "det".
         name_template : str or string.Template
             Template that will be used to generate filenames, defaults to
             "${conf}.${cat}-${det}".  Refer to :meth:`.make_name` documentation for
@@ -289,7 +289,7 @@ class XlsxWriter(WriterBase):
         Raises
         ------
         ValueError
-            if `data` is an empty sequence
+            if *data* is an empty sequence
         """
         self._spectral(
             band=band, data=data, name_template=name_template, category="data"
@@ -312,8 +312,8 @@ class XlsxWriter(WriterBase):
             excitation energies for electronic data
         data: iterable of glassware.SpectralActivities
             SpectralActivities objects that are to be serialized; all should contain
-            information for the same conformers. Assumes that all `data`'s elements have
-            the same `spectra_type`, which is passed to the `name_template` as "det".
+            information for the same conformers. Assumes that all *data*'s elements have
+            the same *spectra_type*, which is passed to the *name_template* as "det".
         name_template : str or string.Template
             Template that will be used to generate filenames, defaults to
             "${conf}.${cat}-${det}". Refer to :meth:`.make_name` documentation for
@@ -322,7 +322,7 @@ class XlsxWriter(WriterBase):
         Raises
         ------
         ValueError
-            if `data` is an empty sequence
+            if *data* is an empty sequence
         """
         self._spectral(
             band=band, data=data, name_template=name_template, category="activities"
@@ -346,8 +346,8 @@ class XlsxWriter(WriterBase):
         data: iterable of glassware.SpectralActivities or iterable of SpectralData
             SpectralActivities or SpectralData objects that are to be serialized; all
             should contain information for the same conformers. Assumes that all
-            `data`'s elements have the same `spectra_type`, which is passed to the
-            `name_template` as "det".
+            *data*'s elements have the same *spectra_type*, which is passed to the
+            *name_template* as "det".
         name_template : str or string.Template
             Template that will be used to generate filenames. Refer to
             :meth:`.make_name` documentation for details on supported placeholders.
@@ -357,7 +357,7 @@ class XlsxWriter(WriterBase):
         Raises
         ------
         ValueError
-            if `data` is an empty sequence
+            if *data* is an empty sequence
         """
         wb = self.workbook
         data = [band] + list(data)

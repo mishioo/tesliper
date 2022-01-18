@@ -758,9 +758,9 @@ class _VibAct(_VibData, SpectralActivities):
         Raises
         ------
         ValueError
-            If given `start`, `stop`, and `step` values would produce an empty
-            or one-element sequence; i.e. if `start` is grater than `stop` or if
-            `start - stop < step`, assuming `step` is a positive value.
+            If given *start*, *stop*, and *step* values would produce an empty
+            or one-element sequence; i.e. if *start* is grater than *stop* or if
+            ``start - stop < step``, assuming *step* is a positive value.
         """
         abscissa = np.arange(start, stop, step)
         if abscissa.size <= 1:
@@ -968,9 +968,9 @@ class ElectronicActivities(ElectronicData, SpectralActivities):
         Raises
         ------
         ValueError
-            If given `start`, `stop`, and `step` values would produce an empty
-            or one-element sequence; i.e. if `start` is grater than `stop` or if
-            `start - stop < step`, assuming `step` is a positive value.
+            If given *start*, *stop*, and *step* values would produce an empty
+            or one-element sequence; i.e. if *start* is grater than *stop* or if
+            ``start - stop < step``, assuming *step* is a positive value.
         """
         abscissa = np.arange(start, stop, step)
         if abscissa.size <= 1:
