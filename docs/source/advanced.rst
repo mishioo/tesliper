@@ -26,7 +26,7 @@ Each ``DataArray``-like object has the following four attributes:
 genre
     name of the data genre that *values* represent;
 filenames
-    sequence of conformers' identifiers as a ``numpy.ndarray(tdype=str)``;
+    sequence of conformers' identifiers as a ``numpy.ndarray(dtype=str)``;
 values
     sequence of values of *genre* data genre for each conformer in *filenames*. It is
     also a :class:`numpy.ndarray`, but its ``dtype`` depends on the particular data
