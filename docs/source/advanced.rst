@@ -88,6 +88,86 @@ You can also instantiate any data array directly, providing data by yourself.
     Energies(genre='gib', filenames=['one' 'three'], values=[-123.5 -123.6], t=298.15)
 
 
+Data validation
+'''''''''''''''
+
+On instantiation of a data array class, *values* provided to its constructor are
+transformed to the ``numpy.ndarray`` of the appropriate type. If this cannot be done
+due to the incompatibility of type of *values* elements and data array's ``dtype``,
+an exception is raised. However, ``tesliper`` will try to convert given values to the
+target type, if possible.
+
+.. code-block:: python
+
+    >>> from tesliper import IntegerArray
+    >>> arr = IntegerArray(genre="example", filenames=["one"], values=["1"])
+    >>> arr
+    IntegerArray(genre="example", filenames=["one"], values=[1])
+    >>> type(arr.values)
+    <class 'numpy.ndarray'>
+
+    >>> IntegerArray(genre="example", filenames=["one"], values=["1.0"])
+    Traceback (most recent call last):
+    ...
+    ValueError: invalid literal for int() with base 10: '1.0'
+
+    >>> IntegerArray(genre="example", filenames=["one"], values=[None])
+    Traceback (most recent call last):
+    ...
+    TypeError: int() argument must be a string, a bytes-like object or a number, not 'NoneType
+
+Also *values* size is checked: its first dimension must be of the same size, as the
+number of entries in the *filenames*, otherwise :exc:`ValueError` is raised.
+
+.. code-block:: python
+
+    >>> IntegerArray(genre="example", filenames=["one"], values=[1, 2])
+    Traceback (most recent call last):
+    ...
+    ValueError: values and filenames must have the same shape up to 1 dimensions. Arrays of shape (2,) and (1,) were given.
+
+:exc:`.InconsistentDataError` exception is raised when *values* are multidimensional,
+but provide uneven number of entries for each conformer (*values* are a jagged array).
+
+.. code-block:: python
+
+    >>> IntegerArray(genre="example", filenames=["one", "two"], values=[[1, 2], [3]])
+    Traceback (most recent call last):
+    ...
+    InconsistentDataError: IntegerArray of example genre with unequal number of values for conformer requested.
+
+This behavior may be suppressed, if the instance is initiated with
+``allow_data_inconsistency=True`` keyword parameter. In such case no exception is raised
+if numbers of entries doesn't match, and jagged arrays will be turned into
+``numpy.ma.masked_array`` instead of ``numpy.ndarray``, if it is possible.
+
+.. code-block:: python
+
+    >>> IntegerArray(
+    ...     genre="example", 
+    ...     filenames=["one"], 
+    ...     values=[1, 2],
+    ...     allow_data_inconsistency=True
+    ... )
+    IntegerArray(genre="genre", filenames=["one"], values=[1,2], allow_data_incosistency=True)
+
+    >>> IntegerArray(
+    ...     genre="example", 
+    ...     filenames=["one", "two"], 
+    ...     values=[[1, 2], [3]],
+    ...     allow_data_inconsistency=True
+    ... )
+    IntegerArray(genre='genre', filenames=['one' 'two'], values=[[1 2]
+     [3 --]], allow_data_inconsistency=True)
+
+Some data array classes validate also other data provided to its constructor, e.g.
+:class:`.Geometry` checks if *atoms* provides an atom specification for each atom in the
+conformer.
+
+.. note::
+    Each validated field is actually a :class:`.ArrayProperty` or its subclass under the
+    hood, which provides the validation mechanism.
+
 Available data arrays
 '''''''''''''''''''''
 
