@@ -45,19 +45,202 @@ attribute.
     Attributes that hold a band information are actually *freq* and *wavelen*
     respectively, *frequencies* and *wavelengths* are convenience aliases.
 
+Data arrays provided by ``tesliper`` are listed below in categories, along with a short
+description and with a list of data genres that are associated with a particular data
+array class. More information about a ``DataArray``-like class of interest may be learn
+in the :mod:`API reference <tesliper.glassware.arrays>`
+
 
 Generic types
 '''''''''''''
 
-.. autoclass:: tesliper.glassware.arrays.IntegerArray
-    :class-doc-from: class
+Simple data arrays, that hold an information of particular data type. They do not
+provide any functionality beside initial data validation.
 
-.. autoclass:: tesliper.glassware.arrays.FloatArray
-    :class-doc-from: class
+:class:`.IntegerArray`
+    For handling data of ``int`` type.
 
-.. autoclass:: tesliper.glassware.arrays.BooleanArray
-    :class-doc-from: class
+    .. list-table:: Genres associated with this class:
+        :width: 100%
 
-.. autoclass:: tesliper.glassware.arrays.InfoArray
-    :class-doc-from: class
+        * - charge
+          - multiplicity
+
+:class:`.FloatArray`
+    For handling data of ``float`` type.
+
+    .. list-table:: Genres associated with this class:
+        :width: 100%
+
+        * - zpecorr
+          - tencorr
+          - entcorr
+          - gibcorr
+
+:class:`.BooleanArray`
+    For handling data of ``bool`` type.
+
+    .. list-table:: Genres associated with this class:
+        :width: 100%
+
+        * - normal_termination
+          - optimization_completed
+
+:class:`.InfoArray`
+    For handling data of ``str`` type.
+
+    .. list-table:: Genres associated with this class:
+        :width: 100%
+
+        * - command
+          - stoichiometry
+
+Spectral data
+'''''''''''''
+
+Each data array in this category provides a *freq* or *wavelen* attribute, also
+accessible by their convenience aliases *frequencies* and *wavelengths*. These
+attributes store an information about frequency or wavelength that the particular
+spectral value is associated with (x-axis value of the center of the band).
+Activities genres, that are the genres that may be used to simulate the spectrum,
+also provide a *calculate_spectra()* method for this purpose.
+
+:class:`.VibrationalData`
+    For handling vibrational data that is not a spectral activity.
+
+    .. list-table:: Genres associated with this class:
+        :width: 100%
+
+        * - mass
+          - frc
+          - emang
+
+:class:`.ScatteringData`
+    For handling scattering data that is not a spectral activity.
+
+    .. list-table:: Genres associated with this class:
+        :width: 100%
+
+        * - depolarp
+          - depolaru
+          - depp
+          - depu
+          - alpha2
+        * - beta2
+          - alphag
+          - gamma2
+          - delta2
+          - cid1
+        * - cid2
+          - cid3
+          - rc180
+          -
+          -
+
+:class:`.ElectronicData`
+    For handling electronic data that is not a spectral activity.
+
+    .. list-table:: Genres associated with this class:
+        :width: 100%
+
+        * - eemang
+
+:class:`.VibrationalActivities`
+    For handling electronic spectral activity data.
+
+    .. list-table:: Genres associated with this class:
+        :width: 100%
+
+        * - iri
+          - dip
+          - rot
+
+:class:`.ScatteringActivities`
+    For handling scattering spectral activity data.
+
+    .. list-table:: Genres associated with this class:
+        :width: 100%
+
+        * - ramanactiv
+          - ramact
+          - raman1
+          - roa1
+        * - raman2
+          - roa2
+          - raman3
+          - roa3
+
+:class:`.ElectronicActivities`
+    For handling electronic spectral activity data.
+
+    .. list-table:: Genres associated with this class:
+        :width: 100%
+
+        * - vdip
+          - ldip
+          - vrot
+          - lrot
+          - vosc
+          - losc
+
+Other data arrays
+'''''''''''''''''
+
+:class:`.FilenamesArray`
+    Special case of :class:`.DataArray`, holds only filenames. *values* property
+    returns same as *filenames* and ignores any value given to its setter.
+    The only genre associated with this class is *filenames* pseudo-genre.
+
+:class:`.Bands`
+    Special kind of data array for band values, to which spectral data or activities
+    correspond. Provides an easy way to convert values between their different
+    representations: frequency, wavelength, and excitation energy.
+
+    .. list-table:: Genres associated with this class:
+        :width: 100%
+
+        * - freq
+          - wavelen
+          - ex_en
+
+:class:`.Energies`
+    For handling data about the energy of conformers. Provides an easy way of
+    calculating Boltzmann distribution-based population of conformers *via* a
+    :attr:`~.Energies.populations` property.
+
+    .. list-table:: Genres associated with this class:
+        :width: 100%
+
+        * - scf
+          - zpe
+          - ten
+          - ent
+          - gib
+
+:class:`.Transitions`
+    For handling information about electronic transitions from ground
+    to excited state contributing to each band.
+
+    Data is stored in three attributes: :attr:`~.Transitions.ground`,
+    :attr:`~.Transitions.excited`, and :attr:`~.Transitions.values`, which are
+    respectively: list of ground state electronic subshells, list of excited state
+    electronic subshells, and list of coefficients of transitions from corresponding
+    ground to excited subshell. Each of these arrays is of shape (conformers, bands,
+    max_transitions), where 'max_transitions' is a highest number of transitions
+    contributing to single band across all bands of all conformers.
+
+    .. list-table:: Genres associated with this class:
+        :width: 100%
+
+        * - transitions
+
+:class:`.Geometry`
+    For handling information about geometry of conformers.
+
+    .. list-table:: Genres associated with this class:
+        :width: 100%
+
+        * - last_read_geom
+          - input_geom
+          - optimized_geom
 
