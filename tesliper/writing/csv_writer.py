@@ -304,8 +304,8 @@ class CsvWriter(_CsvMixin, WriterBase):
         data: list of glassware.SpectralActivities
             SpectralActivities objects that are to be serialized; all should contain
             information for the same set of conformers and correspond to given band.
-            Assumes that all `data`'s elements have the same `spectra_type`, which is
-            passed to the `name_template` as "det".
+            Assumes that all *data*'s elements have the same *spectra_type*, which is
+            passed to the *name_template* as "det".
         name_template : str or string.Template
             Template that will be used to generate filenames. Refer to
             :meth:`.make_name` documentation for details on supported placeholders.
@@ -313,7 +313,7 @@ class CsvWriter(_CsvMixin, WriterBase):
         Raises
         ------
         ValueError
-            if `data` is an empty sequence
+            if *data* is an empty sequence
         """
         self._spectral(
             band=band,
@@ -339,8 +339,8 @@ class CsvWriter(_CsvMixin, WriterBase):
         data: list of glassware.SpectralData
             SpectralData objects that are to be serialized; all should contain
             information for the same set of conformers and correspond to given band.
-            Assumes that all `data`'s elements have the same `spectra_type`, which is
-            passed to the `name_template` as "det".
+            Assumes that all *data*'s elements have the same *spectra_type*, which is
+            passed to the *name_template* as "det".
         name_template : str or string.Template
             Template that will be used to generate filenames. Refer to
             :meth:`.make_name` documentation for details on supported placeholders.
@@ -348,7 +348,7 @@ class CsvWriter(_CsvMixin, WriterBase):
         Raises
         ------
         ValueError
-            if `data` is an empty sequence
+            if *data* is an empty sequence
         """
         self._spectral(
             band=band, data=data, name_template=name_template, category="data"
@@ -372,8 +372,8 @@ class CsvWriter(_CsvMixin, WriterBase):
         data: list of glassware.SpectralData
             SpectralData objects that are to be serialized; all should contain
             information for the same set of conformers and correspond to given band.
-            Assumes that all `data`'s elements have the same `spectra_type`, which is
-            passed to the `name_template` as "det".
+            Assumes that all *data*'s elements have the same *spectra_type*, which is
+            passed to the *name_template* as "det".
         name_template : str or string.Template
             Template that will be used to generate filenames. Refer to
             :meth:`.make_name` documentation for details on supported placeholders.
@@ -383,7 +383,7 @@ class CsvWriter(_CsvMixin, WriterBase):
         Raises
         ------
         ValueError
-            if `data` is an empty sequence
+            if *data* is an empty sequence
         """
         try:
             spectra_type = data[0].spectra_type

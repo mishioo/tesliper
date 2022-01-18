@@ -301,7 +301,7 @@ def unify_abscissa(
 
     Which spectra should be interpolated is determined based on the density of points
     of both spectra, by default more loosely spaced spectrum is interpolated to match
-    spacing of the other spectrum. This may be changed by passing `upscale=False`
+    spacing of the other spectrum. This may be changed by passing ``upscale=False``
     to the function call.
 
     Parameters
@@ -322,8 +322,8 @@ def unify_abscissa(
     -------
     tuple of np.arrays of numbers
         Spectra, one unchanged and one interpolated, as a tuple of numpy arrays
-        of x and y values. I.e. `tuple(ax, ay, new_bx, new_by)` or
-        `tuple(new_ax, new_ay, bx, by)`, depending on values of *upscale* parameter.
+        of x and y values. I.e. ``tuple(ax, ay, new_bx, new_by)`` or
+        ``tuple(new_ax, new_ay, bx, by)``, depending on values of *upscale* parameter.
     """
     ax, ay, bx, by = (
         np.asanyarray(ax),
@@ -353,7 +353,7 @@ def find_offset(
     overlap with the first spectrum. If resolution of spectra is not identical,
     one of them will be interpolated to match resolution of the other one. By default
     interpolation is done on the lower-resolution spectra. This can be changed
-    by passing `upscale = False` to function call.
+    by passing ``upscale = False`` to function call.
 
     Parameters
     ----------
@@ -402,7 +402,7 @@ def find_scaling(a: Numbers, b: Numbers) -> float:
     Notes
     -----
     If scaling factor cannot be reasonably given, i.e. when *b* is an empty list or list
-    of zeros or NaNs, `1.0` is returned. Values lower than 1% of maximum are ignored.
+    of zeros or NaNs, ``1.0`` is returned. Values lower than 1% of maximum are ignored.
     """
     a, b = np.abs(a), np.abs(b)
     try:

@@ -176,6 +176,7 @@ References
 
    Graphical interface <gui>
    Scripting basics <tutorial>
+   Advanced guide <advanced>
    Extending ``tesliper`` <extend>
 
 .. toctree::
