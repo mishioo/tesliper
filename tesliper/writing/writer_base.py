@@ -64,7 +64,7 @@ writer's :meth:`~.WriterBase.write` method.
     you don't need or wouldn't make sense for the particular format and still provide an
     abstract interface. ``tesliper`` takes advantage of this in it's implementation of
     :class:`.GjfWriter`, which only implements :meth:`~.GjfWriter.geometry` method,
-    because export of, e.g. a calculated spectrum as a Gaussian output would be
+    because export of, e.g. a calculated spectrum as a Gaussian input would be
     pointless.
 
 Writer object decides which of these methods to call based on the type of each
@@ -267,8 +267,9 @@ class WriterBase(ABC):
 
     :class:`.WriterBase` provides a :meth:`.write` method for writing arbitrary
     :class:`.DataArray`-like objects to disk. It dispatches those objects to appropriate
-    writing methods based on their type. Those writing methods are:
+    writing methods, based on their type. Those writing methods are:
 
+        | :meth:`.generic`,
         | :meth:`.overview`,
         | :meth:`.energies`,
         | :meth:`.single_spectrum`,
