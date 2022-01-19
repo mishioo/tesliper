@@ -425,3 +425,144 @@ Other data arrays
           - input_geom
           - optimized_geom
 
+Writing to disk
+---------------
+
+:class:`.Tesliper` object provides an easy, but not necessarily a flexible way of
+writing calculated and extracted data to disk. If your process requires more flexibility
+in this matter, you may use ``teslier``\s writer objects directly. This will allow you
+to adjust how generated files are named and will give you more control over what is
+exported.
+
+A writer object may be created using a :func:`.writer` factory function. It expects a
+string parameter, that specifies a desired format for data export. ``tesliper`` provides
+writers for ``"txt"``, ``"csv"``, ``"xlsx"``, and ``"gjf"`` file formats. The second
+mandatory parameter is a *destination*: the (existing) directory to which files should
+be written. Just like writing methods of :class:`.Tesliper` object, the function also
+takes a *mode* parameter that defines what should happen if any file already exists. Any
+additional keyword parameters are forwarded to the writer object constructor.
+
+.. code-block:: python
+
+    >>> from tesliper import writer
+    >>> wrt = writer("txt", "/path/to/dir")
+    >>> type(wrt)
+    <class 'tesliper.writing.txt_writer.TxtWriter'>
+
+    >>> wrt = writer("txt", "/doesnt/exists")
+    Traceback (most recent call last):
+    ...
+    FileNotFoundError: Given destination doesn't exist or is not a directory.
+
+.. note::
+
+    You can also create any of the writer objects directly, by importing and
+    instantiating its class.
+    
+    .. code-block:: python
+
+        from tesiper import TxtWriter
+        wrt = TxtWriter(destination="/path/to/dir")
+
+    :func:`.writer` factory function is used by ``tesliper`` mostly to provide a dynamic
+    access to the writer class most recently registered (implemented) to handle a
+    particular format. This is useful when you modify an existing writer class or
+    provide a new one.
+
+Writer objects expect data they receive to be a :class:`.DataArray`-like instances. Each
+writer object provides a :meth:`~.WriterBase.write` method for writing arbitrary data
+arrays to disk. This method dispatches received data arrays to appropriate writing
+methods, based on their type. The table below lists these methods, along with a brief
+description and :class:`.DataArray`-like object, for which the method will be called by
+writer's :meth:`~.WriterBase.write` method.
+
+.. list-table:: Methods used by default to write certain data
+    :header-rows: 1
+
+    * - Writer's Method
+      - Description
+      - Associated array
+    * - :meth:`~.WriterBase.generic`
+      - Generic data: any genre that provides one value for each conformer.
+      - :class:`.DataArray`, :class:`.IntegerArray`,
+        :class:`.FloatArray`, :class:`.BooleanArray`, :class:`.InfoArray`.
+    * - :meth:`~.WriterBase.overview`
+      - General information about conformers: energies, imaginary frequencies,
+        stoichiometry.
+      - :class:`.Energies`
+    * - :meth:`~.WriterBase.energies`
+      - Detailed information about conformers' relative energy,
+        including calculated populations
+      - :class:`.Energies`
+    * - :meth:`~.WriterBase.single_spectrum`
+      - A spectrum - calculated for single conformer or averaged.
+      - :class:`.SingleSpectrum`
+    * - :meth:`~.WriterBase.spectral_data`
+      - Data related to spectral activity, but not convertible to spectra.
+      - :class:`.SpectralData`
+    * - :meth:`~.WriterBase.spectral_activities`
+      - Data that may be used to simulate conformers' spectra.
+      - :class:`.SpectralActivities`
+    * - :meth:`~.WriterBase.spectra`
+      - Spectra for multiple conformers.
+      - :class:`.Spectra`
+    * - :meth:`~.WriterBase.transitions`
+      - Electronic transitions from ground to excited state, contributing to each band.
+      - :class:`.Transitions`
+    * - :meth:`~.WriterBase.geometry`
+      - Geometry (positions of atoms in space) of conformers.
+      - :class:`.Geometry`
+
+Not all writer objects implement each of these writing methods, e.g.
+:class:`.GjfWriter`, that allows to create Gaussian input files, only implements
+:meth:`~.GjfWriter.geometry` method (because export of, e.g. a calculated spectrum as a
+Gaussian input would be pointless). Trying to ``write()`` a data array that should be
+written by a method that is not implemented, or calling such method directly, will raise
+a :exc:`NotImplementedError`.
+
+.. warning::
+
+    You need to make sure that data contained in ``DataArray``-like objects cover the
+    same set of conformers, when passing multiple data array objects to the
+    :meth:`~.WriterBase.write` method or any other writing method. Passing two data
+    arrays with data for different sets of conformers may produce files with corrupted
+    data or fail silently. :meth:`.Conformers.trim_incomplete` trimming method may be
+    helpful in preventing such fails.
+
+Naming files
+''''''''''''
+
+Usually, calling any of writing methods will produce multiple files in the *destination*
+directory: one for each given genre, each conformer, etc. ``tesliper`` provides a
+reasonable naming scheme for these files, but you can modify it, by providing your own
+*name_template*\s in place of the default ones. To do this you will need to call
+desired writing methods directly, instead of using :meth:`~.WriterBase.write`.
+
+Each writing method uses a value of *name_template* parameter given to the method call
+to create a filename for each file it generates. *name_template* should be a string that
+contains (zero, one, or more) label identifiers in form of ``${identifier}``. These
+identifiers will be substituted to produce a final filename. Available identifiers and
+their meaning are as follows:
+
+| ``${ext}`` - appropriate file extension;
+| ``${conf}`` - name of the conformer;
+| ``${num}`` - number of the file according to internal counter;
+| ``${genre}`` - genre of exported data;
+| ``${cat}`` - category of produced output;
+| ``${det}`` - category-specific detail.
+
+The ``${ext}`` identifier is filled with the value of Writers ``.extension`` attribute,
+which value is also used to identify a writer class: ``"txt"``, ``"csv"``, etc. Other
+values are provided by the particular writing method.
+
+.. code-block:: python
+
+    from tesiper import Tesliper, writer
+    tslr = Tesliper(input_dir="/path/to/input")
+    ...  # data extracted and trimmed
+    freq = tslr["freq"]
+    dip = tslr["dip"]
+    rot = tslr["rot"]
+    wrt = writer("txt", "/path/to/output")
+    wrt.spectral_activities(band=freq, data=[dip, rot])
+    wrt.spectral_activities(band=freq, data=[dip, rot], name_template="")
