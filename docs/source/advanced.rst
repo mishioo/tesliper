@@ -558,11 +558,28 @@ values are provided by the particular writing method.
 .. code-block:: python
 
     from tesiper import Tesliper, writer
-    tslr = Tesliper(input_dir="/path/to/input")
+    tslr = Tesliper(input_dir="/project/input")
     ...  # data extracted and trimmed
-    freq = tslr["freq"]
-    dip = tslr["dip"]
-    rot = tslr["rot"]
-    wrt = writer("txt", "/path/to/output")
+    # tslr.conformers.kept_keys() == {"conf_one", "conf_four"}
+    freq, dip, rot = tslr["freq"], tslr["dip"], tslr["rot"]
+    wrt = writer("txt", "/project/default")
     wrt.spectral_activities(band=freq, data=[dip, rot])
-    wrt.spectral_activities(band=freq, data=[dip, rot], name_template="")
+    wrt = writer("txt", "/project/custom")
+    wrt.spectral_activities(
+        band=freq, data=[dip, rot],
+        name_template="name_${num}_${genre}.xy"
+    )
+
+.. code-block:: none
+    :caption: contents of ``/project``
+
+    .
+    ├───input
+    │   └─── ...
+    ├───default
+    │   ├───conf_one.activities-vibrational.txt
+    │   └───conf_four.activities-vibrational.txt
+    └───custom
+        ├───name_1_freq.xy
+        └───name_2_freq.xy
+
