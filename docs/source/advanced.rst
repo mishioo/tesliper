@@ -469,56 +469,73 @@ additional keyword parameters are forwarded to the writer object constructor.
     particular format. This is useful when you modify an existing writer class or
     provide a new one.
 
+``write()`` and other methods
+'''''''''''''''''''''''''''''
+
 Writer objects expect data they receive to be a :class:`.DataArray`-like instances. Each
 writer object provides a :meth:`~.WriterBase.write` method for writing arbitrary data
 arrays to disk. This method dispatches received data arrays to appropriate writing
-methods, based on their type. The table below lists these methods, along with a brief
-description and :class:`.DataArray`-like object, for which the method will be called by
-writer's :meth:`~.WriterBase.write` method.
+methods, based on their type. You are free to use either :meth:`~.WriterBase.write` for
+easily writing a number of data genres in batch, or other methods for more control. The
+table below lists these methods, along with a brief description and
+:class:`.DataArray`-like object, for which the method will be called by writer's
+:meth:`~.WriterBase.write` method.
 
-.. list-table:: Methods used by default to write certain data
+.. list-table:: Methods used to write certain data
     :header-rows: 1
 
     * - Writer's Method
       - Description
-      - Associated array
+      - Supported arrays
+      - Created files
     * - :meth:`~.WriterBase.generic`
       - Generic data: any genre that provides one value for each conformer.
       - :class:`.DataArray`, :class:`.IntegerArray`,
         :class:`.FloatArray`, :class:`.BooleanArray`, :class:`.InfoArray`.
+      - one
     * - :meth:`~.WriterBase.overview`
       - General information about conformers: energies, imaginary frequencies,
         stoichiometry.
       - :class:`.Energies`
+      - one
     * - :meth:`~.WriterBase.energies`
       - Detailed information about conformers' relative energy,
         including calculated populations
       - :class:`.Energies`
+      - for each genre
     * - :meth:`~.WriterBase.single_spectrum`
       - A spectrum - calculated for single conformer or averaged.
       - :class:`.SingleSpectrum`
+      - one
     * - :meth:`~.WriterBase.spectral_data`
       - Data related to spectral activity, but not convertible to spectra.
-      - :class:`.SpectralData`
+      - :class:`.VibrationalData`, :class:`.ScatteringData`, :class:`.ElectronicData`
+      - for each conformer
     * - :meth:`~.WriterBase.spectral_activities`
       - Data that may be used to simulate conformers' spectra.
-      - :class:`.SpectralActivities`
+      - :class:`.VibrationalActivities`, :class:`.ScatteringActivities`,
+        :class:`.ElectronicActivities`
+      - for each conformer
     * - :meth:`~.WriterBase.spectra`
       - Spectra for multiple conformers.
       - :class:`.Spectra`
+      - for each conformer
     * - :meth:`~.WriterBase.transitions`
       - Electronic transitions from ground to excited state, contributing to each band.
       - :class:`.Transitions`
+      - for each conformer
     * - :meth:`~.WriterBase.geometry`
       - Geometry (positions of atoms in space) of conformers.
       - :class:`.Geometry`
+      - for each conformer
 
-Not all writer objects implement each of these writing methods, e.g.
-:class:`.GjfWriter`, that allows to create Gaussian input files, only implements
-:meth:`~.GjfWriter.geometry` method (because export of, e.g. a calculated spectrum as a
-Gaussian input would be pointless). Trying to ``write()`` a data array that should be
-written by a method that is not implemented, or calling such method directly, will raise
-a :exc:`NotImplementedError`.
+:meth:`~.WriterBase.spectral_data` and :meth:`~.WriterBase.spectral_activities` methods
+need some clarification. They will create one file for each conformer in given data
+arrays, with data from each provided data array joined in the conformer's file. It's
+important to remember, that only *values* from each data array are displayed, contrary
+to band values, which are displayed only once, as provided with the *band* parameter.
+Consequently, mixing vibrational and scattering data with a custom *name_template* is
+fine, but mixing either of those with electronic data in a single call is not possible.
 
 .. warning::
 
@@ -528,6 +545,13 @@ a :exc:`NotImplementedError`.
     arrays with data for different sets of conformers may produce files with corrupted
     data or fail silently. :meth:`.Conformers.trim_incomplete` trimming method may be
     helpful in preventing such fails.
+
+Not all writer objects implement each of these writing methods, e.g.
+:class:`.GjfWriter`, that allows to create Gaussian input files, only implements
+:meth:`~.GjfWriter.geometry` method (because export of, e.g. a calculated spectrum as a
+Gaussian input would be pointless). Trying to ``write()`` a data array that should be
+written by a method that is not implemented, or calling such method directly, will raise
+a :exc:`NotImplementedError`.
 
 Naming files
 ''''''''''''
