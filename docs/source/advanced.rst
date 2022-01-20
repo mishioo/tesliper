@@ -434,6 +434,9 @@ in this matter, you may use ``teslier``\s writer objects directly. This will all
 to adjust how generated files are named and will give you more control over what is
 exported.
 
+Writer classes
+''''''''''''''
+
 A writer object may be created using a :func:`.writer` factory function. It expects a
 string parameter, that specifies a desired format for data export. ``tesliper`` provides
 writers for ``"txt"``, ``"csv"``, ``"xlsx"``, and ``"gjf"`` file formats. The second
@@ -456,18 +459,36 @@ additional keyword parameters are forwarded to the writer object constructor.
 
 .. note::
 
-    You can also create any of the writer objects directly, by importing and
-    instantiating its class.
-    
-    .. code-block:: python
-
-        from tesiper import TxtWriter
-        wrt = TxtWriter(destination="/path/to/dir")
-
     :func:`.writer` factory function is used by ``tesliper`` mostly to provide a dynamic
-    access to the writer class most recently registered (implemented) to handle a
-    particular format. This is useful when you modify an existing writer class or
+    access to the writer class most recently registered (on class definition) to handle
+    a particular format. This is useful when you modify an existing writer class or
     provide a new one.
+
+You can also create any of the writer objects directly, by importing and instantiating
+its class. The four available writer classes are listed below with a short comment.
+For more information on which methods they implement and how to use them, refer to the
+relevant API documentation.
+
+.. code-block:: python
+
+    from tesiper import TxtWriter
+    wrt = TxtWriter(destination="/path/to/dir")
+
+:class:`.TxtWriter`
+    Generates human-readable text files.
+
+:class:`.CsvWriter`
+    Generates files in CSV format with optional headers. Allows for the same level of
+    output format customization as Python's :class:`csv.writer` (supports specification
+    of *dialect* and other formatting parameters).
+
+:class:`.XlsxWriter`
+    Instead of generating multiple files, creates a single .xlsx file and a variable
+    number of spreadsheets inside it.
+
+:class:`.GjfWriter`
+    Allows to create input files for new calculation job in Gaussian software.
+
 
 ``write()`` and other methods
 '''''''''''''''''''''''''''''
