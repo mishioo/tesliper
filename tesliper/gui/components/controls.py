@@ -321,7 +321,7 @@ class SelectConformers(CollapsiblePane):
         ram=lambda *args: "raman1" in args[0],
         roa=lambda *args: "roa1" in args[0],
         incompl=lambda *args: not all(g in args[0] for g in args[1]),
-        term=lambda *args: args[0]["normal_termination"],
+        term=lambda *args: not args[0]["normal_termination"],
         opt=lambda *args: "optimization_completed" in args[0]
         and not args[0]["optimization_completed"],
         imag=lambda *args: "freq" in args[0] and any([f < 0 for f in args[0]["freq"]]),
