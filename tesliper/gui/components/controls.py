@@ -72,7 +72,7 @@ class FilterRange(ttk.Frame):
         )
         self.upper_entry.grid(column=1, row=1, sticky="new")
 
-        b_filter = ttk.Button(self, text="Limit to...", command=self.filter_energy)
+        b_filter = ttk.Button(self, text="Trim to...", command=self.filter_energy)
         b_filter.grid(column=0, row=2, columnspan=3, sticky="new")
 
         # trigger action on Enter key press
@@ -193,7 +193,7 @@ class FilterRMSD(ttk.Frame):
         )
         ignore_hydrogens.grid(column=0, row=3, columnspan=3, sticky="new")
 
-        button = ttk.Button(self, text="Filter similar", command=self._filter)
+        button = ttk.Button(self, text="Trim similar", command=self._filter)
         button.grid(column=0, row=4, columnspan=3, sticky="nwe")
 
         # trigger action on Enter key press
@@ -227,7 +227,7 @@ class FilterRMSD(ttk.Frame):
 
 class FilterEnergies(CollapsiblePane):
     def __init__(self, parent, view, **kwargs):
-        super().__init__(parent, text="Filter kept conformers", **kwargs)
+        super().__init__(parent, text="Energies and structure", **kwargs)
         self.view = view
 
         ttk.Label(self.content, text="Show:").grid(column=0, row=0, sticky="new")
@@ -262,7 +262,7 @@ class FilterEnergies(CollapsiblePane):
             "units": lambda: self.show_units[self.show_var.get()],
         }
         # filter by energy value
-        LabelSeparator(self.content, text="Filter range").grid(
+        LabelSeparator(self.content, text="Range sieve").grid(
             column=0, row=2, columnspan=2, sticky="nwe"
         )
         self.range = FilterRange(self.content, view=self.view, proxy=proxy)
@@ -331,11 +331,11 @@ class SelectConformers(CollapsiblePane):
     )
 
     def __init__(self, parent, view, **kwargs):
-        super().__init__(parent, text="Select kept conformers", **kwargs)
+        super().__init__(parent, text="Kept conformers", **kwargs)
         self.view = view
 
         self.widgets = dict()
-        self.columnconfigure(0, weight=1)
+        self.content.columnconfigure(0, weight=1)
         root = self.winfo_toplevel()
         root.bind("<<KeptChanged>>", self.on_kept_changed, "+")
         root.bind("<<DataExtracted>>", self.on_data_extracted, "+")
@@ -343,6 +343,7 @@ class SelectConformers(CollapsiblePane):
 
         count_frame = ttk.Frame(self.content)
         count_frame.grid(column=0, row=0, sticky="news")
+        count_frame.columnconfigure((1, 3), weight=1)
         widgets_tuple = namedtuple(
             "widgets", ["label", "count", "slash", "all", "check", "uncheck"]
         )
@@ -362,14 +363,14 @@ class SelectConformers(CollapsiblePane):
             all_ = tk.Label(count_frame, textvariable=var_all, bd=0, width=3)
             check_butt = ttk.Button(
                 count_frame,
-                text="select",
-                width=6,
+                text="keep",
+                width=5,
                 command=lambda key=key: self.select(key, keep=True),
             )
             uncheck_butt = ttk.Button(
                 count_frame,
-                text="discard",
-                width=8,
+                text="trim",
+                width=5,
                 command=lambda key=key: self.select(key, keep=False),
             )
 
@@ -377,18 +378,18 @@ class SelectConformers(CollapsiblePane):
             all_.var = var_all
 
             label.grid(column=0, row=i)
-            count.grid(column=1, row=i)
+            count.grid(column=1, row=i, sticky="we")
             slash.grid(column=2, row=i)
-            all_.grid(column=3, row=i)
-            check_butt.grid(column=4, row=i, sticky="ne")
-            uncheck_butt.grid(column=5, row=i, sticky="ne")
+            all_.grid(column=3, row=i, sticky="we")
+            check_butt.grid(column=4, row=i)
+            uncheck_butt.grid(column=5, row=i)
 
             root.changer.register([check_butt, uncheck_butt], "tesliper")
 
             self.widgets[key] = widgets_tuple(
                 label, count, slash, all_, check_butt, uncheck_butt
             )
-        separator = LabelSeparator(self.content, text="Always discard?")
+        separator = LabelSeparator(self.content, text="Auto-trim")
         separator.grid(column=0, row=1, sticky="we")
 
         keep_unchecked_frame = ttk.Frame(self.content)
