@@ -34,7 +34,6 @@ other tools. Below is a quick overview of features it provides:
 - Export of .gjf files for further calculations in Gaussian software
 - Free & open source (OSI approved BSD 2-Clause license)
 - Graphical and programmatic interfaces
-- Easily extendible with a little of Python knowledge
 
 Motivation and context
 ----------------------
@@ -49,7 +48,7 @@ a large number of potentially stable conformers of the studied molecule.
 It should be noted that ``tesliper`` is not the only software that is capable of
 providing a simulated spectrum, given output of quantum-chemical computations. The table
 below summarizes other available GUI tools and compares features they offer.
-Among listed ``tesliper`` is the only one that is open source, readily extendible,
+Among listed ``tesliper`` is the only one that is open source
 and allows to easily filter parsed data.
 
 .. list-table:: How does ``tesliper`` fit into the market?
@@ -177,7 +176,6 @@ References
    Graphical interface <gui>
    Scripting basics <tutorial>
    Advanced guide <advanced>
-   Extending ``tesliper`` <extend>
 
 .. toctree::
    :hidden:

@@ -50,7 +50,8 @@ means that no file should be ignored.
     ``tesliper`` on how it should parse output files it reads. However, only Gaussian
     software is supported out-of-the-box, and ``quantum_software="gaussian"`` is a
     default value. If you wish to use ``tesliper`` to work with another qc package,
-    learn how to extend its functionality in the :ref:`extend` section.
+    you will need to define a custom parser that subclasses the :class:`.ParserBase`
+    class. Refer to its documentation for more information.
 
 You can extract data from the files in *output_dir* using :meth:`.Tesliper.extract`
 method. :meth:`.Tesliper.extract` respects *input_dir* and *wanted_files* given to
