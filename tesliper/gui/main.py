@@ -39,7 +39,7 @@ ERROR_LOG_DIR = os.path.join(home_path, "tesliper")
 os.makedirs(ERROR_LOG_DIR, exist_ok=True)
 error_msg = (
     "Please provide a problem description to Tesliper's "
-    'developer along with "tslr_err_log.txt" file, witch can be '
+    'developer along with "tslr_err_log.txt" file, which can be '
     f"found here:\n{ERROR_LOG_DIR}"
 )
 error_handler = logging.FileHandler(
