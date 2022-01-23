@@ -1,6 +1,8 @@
 Installation
 ============
 
+.. _install-gui:
+
 GUI for Windows
 ---------------
 
