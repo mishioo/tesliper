@@ -487,7 +487,7 @@ class SpectralData(FloatArray, ABC):
             def wavelen(self):
                 return super().wavelen()  # values converted to nm
         """
-        return convert_band(self.wavelen, from_genre="freq", to_genre="wavelen")
+        return convert_band(self.freq, from_genre="freq", to_genre="wavelen")
 
     @property
     def wavelengths(self):
