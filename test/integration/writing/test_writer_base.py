@@ -4,13 +4,13 @@ from unittest.mock import Mock
 
 import pytest
 
-from tesliper.glassware import DataArray
-from tesliper.writing import Writer
+from tesliper.writing import WriterBase
+from tesliper.writing.writer_base import _WRITERS
 
 
 @pytest.fixture
 def writer_class():
-    class _Writer(Writer):
+    class _Writer(WriterBase):
         extension = "ext"
 
     return _Writer
@@ -18,8 +18,19 @@ def writer_class():
 
 @pytest.fixture
 def writer_implemented():
-    class _Writer(Writer):
+    class _Writer(WriterBase):
         extension = "ext"
+
+        def generic(self, data):
+            file = self.destination / self.make_name(
+                "${conf}.${genre}.${ext}",
+                conf="generic",
+                genre=data[0].genre,
+                ext=self.extension,
+                num="",
+            )
+            with file.open(self.mode) as handle:
+                handle.write(f"data: {repr(data)}\n")
 
         def overview(self, energies, frequencies, stoichiometry):
             file = self.destination / self.make_name(
@@ -59,9 +70,9 @@ def writer_implemented():
 
         def spectral_data(self, band, data):
             file = self.destination / self.make_name(
-                "${conf}.${genre}.${ext}",
+                "${conf}.${det}.${ext}",
                 conf="bars",
-                genre="",
+                det=data[0].spectra_type,
                 ext=self.extension,
                 num="",
             )
@@ -71,9 +82,9 @@ def writer_implemented():
 
         def spectral_activities(self, band, data):
             file = self.destination / self.make_name(
-                "${conf}.${genre}.${ext}",
-                conf="bars",
-                genre="-".join(d.genre for d in data),
+                "${conf}.${det}.${ext}",
+                conf="act",
+                det=data[0].spectra_type,
                 ext=self.extension,
                 num="",
             )
@@ -118,6 +129,18 @@ def writer_implemented():
                 handle.write(f"multiplicity: {repr(multiplicity)}\n")
 
     return _Writer
+
+
+def test_register(writer_class):
+    assert writer_class.extension in _WRITERS
+
+
+@pytest.mark.parametrize("ext", ["", None, False, tuple(), 0])
+def test_not_register(ext):
+    class _Writer(WriterBase):
+        extension = ext
+
+    assert ext not in _WRITERS
 
 
 def test_iter_handles(writer_class, tmp_path):
@@ -176,8 +199,8 @@ def test_implemented_write(writer_implemented, arrays, tmp_path, monkeypatch):
     monkeypatch.setattr(Logger, "warning", Mock())
     wrt = writer_implemented(tmp_path)
     wrt.write(arrays)
-    assert len(list(tmp_path.iterdir())) == 8
-    assert Logger.warning.call_count == 1  # generic InfoArray not supported
+    assert len(list(tmp_path.iterdir())) == 17
+    assert Logger.warning.call_count == 0
 
 
 def test_forbidden_double(writer_implemented, tmp_path, forbidden_double_arrays):
@@ -187,12 +210,12 @@ def test_forbidden_double(writer_implemented, tmp_path, forbidden_double_arrays)
 
 
 def test_all_define_header(any_genre):
-    assert any_genre in Writer._header
+    assert any_genre in WriterBase._header
 
 
 def test_all_define_formatters(any_genre):
-    assert any_genre in Writer._header
+    assert any_genre in WriterBase._header
 
 
 def test_all_define_excel_formats(any_genre):
-    assert any_genre in Writer._excel_formats
+    assert any_genre in WriterBase._excel_formats

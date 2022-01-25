@@ -1,9 +1,9 @@
-# IMPORTS
+"""Data export to excel files."""
 import logging as lgg
 from itertools import chain, repeat, zip_longest
 from pathlib import Path
 from string import Template
-from typing import Iterable, Optional, Sequence, Union
+from typing import Iterable, List, Optional, Sequence, Union
 
 import numpy as np
 import openpyxl as oxl
@@ -19,7 +19,7 @@ from ..glassware.arrays import (
     Transitions,
 )
 from ..glassware.spectra import SingleSpectrum, Spectra
-from ._writer import Writer
+from .writer_base import WriterBase, _GenericArray
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -27,21 +27,8 @@ logger.setLevel(lgg.DEBUG)
 
 
 # CLASSES
-class XlsxWriter(Writer):
-    """Writes extracted data to .xlsx file.
-
-    Parameters
-    ----------
-    destination : str or pathlib.Path
-        Directory, to which generated files should be written.
-    mode : str
-        Specifies how writing to file should be handled. Should be one of characters:
-         'a' (append to existing file), 'x' (only write if file doesn't exist yet),
-         or 'w' (overwrite file if it already exists).
-    filename : str or string.Template
-        Filename of created .xlsx file or a template for generation of the name using
-        `Writer.make_name` method.
-    """
+class XlsxWriter(WriterBase):
+    """Writes extracted data to .xlsx file."""
 
     extension = "xlsx"
 
@@ -51,14 +38,75 @@ class XlsxWriter(Writer):
         mode: str = "x",
         filename: str = "tesliper-output.${ext}",
     ):
+        """
+        Parameters
+        ----------
+        destination : str or pathlib.Path
+            Directory, to which generated files should be written.
+        mode : str
+            Specifies how writing to file should be handled. Should be one of
+            characters: 'a' (append to existing file), 'x' (only write if file doesn't
+            exist yet), or 'w' (overwrite file if it already exists).
+        filename : str or string.Template
+            Filename of created .xlsx file or a template for generation of the name
+            using :meth:`.make_name` method.
+        """
         super().__init__(destination=destination, mode=mode)
         file = self.destination / Template(filename).substitute(ext=self.extension)
         self.file = self.check_file(file)
+        self.manual_save = False
         if self.mode == "a":
             self.workbook = oxl.load_workbook(self.file)
         else:
             self.workbook = oxl.Workbook()
             self.workbook.remove(self.workbook.active)
+
+    def write(self, data: List) -> None:
+        self.manual_save, orig_manual = True, self.manual_save
+        try:
+            super().write(data)
+            if not orig_manual:
+                self.workbook.save(self.file)
+        finally:
+            self.manual_save = orig_manual
+
+    def generic(
+        self,
+        data: List[_GenericArray],
+        name_template: Union[str, Template] = "${cat}.${det}",
+    ):
+        """Writes generic data from multiple :class:`.DataArray`-like objects to a
+        single sheet. Said objects should provide a single value for each conformer.
+
+        Parameters
+        ----------
+        data
+            :class:`.DataArray` objects that are to be exported.
+        name_template
+            Template that will be used to generate filenames. Refer to
+            :meth:`.make_name` documentation for details on supported placeholders.
+        """
+        wb = self.workbook
+        genres = [arr.genre for arr in data]
+        headers = ["Gaussian output file"] + [self._header[genre] for genre in genres]
+        values = [arr.values for arr in data]
+        lines = list(zip(data[0].filenames, *values))
+        types = [type(arr).__name__.lower().replace("array", "") for arr in data]
+        detail = "various" if len(set(types)) > 1 else types[0]
+        genre = "misc" if len(genres) > 1 else genres[0]
+        template_params = {
+            "cat": "generic",
+            "conf": "multiple",
+            "det": detail,
+            "genre": genre,
+        }
+        ws = wb.create_sheet(title=self.make_name(name_template, **template_params))
+        ws.append(headers)
+        for line in lines:
+            ws.append(line)
+        if not self.manual_save:
+            wb.save(self.file)
+        logger.info("Generic export to xlsx files done.")
 
     def overview(
         self,
@@ -67,11 +115,11 @@ class XlsxWriter(Writer):
         stoichiometry: Optional[InfoArray] = None,
         name_template: Union[str, Template] = "${cat}",
     ):
-        """Writes summarized information from multiple Energies objects to xlsx file.
-        Creates a worksheet with energy values and calculated
-        populations for each energy object given, as well as number of imaginary
-        frequencies and stoichiometry of conformers if `frequencies` and `stoichiometry`
-        are provided, respectively.
+        """Writes summarized information from multiple :class:`.Energies` objects to
+        xlsx file. Creates a worksheet with energy values and calculated populations for
+        each energy object given, as well as number of imaginary frequencies and
+        stoichiometry of conformers if *frequencies* and *stoichiometry* are provided,
+        respectively.
 
         Parameters
         ----------
@@ -82,8 +130,9 @@ class XlsxWriter(Writer):
         stoichiometry: glassware.InfoArray, optional
             InfoArray object containing stoichiometry information
         name_template : str or string.Template
-            Template that will be used to generate filenames,
-            defaults to "${cat}".
+            Template that will be used to generate filenames, defaults to "${cat}".
+            Refer to :meth:`.make_name` documentation for details on supported
+            placeholders.
         """
         wb = self.workbook
         template_params = {"cat": "overview", "conf": "multiple"}
@@ -138,7 +187,8 @@ class XlsxWriter(Writer):
                 width = max(len(str(cell.value)) for cell in column) + 2
             column_letter = oxl.utils.get_column_letter(column[0].column)
             ws.column_dimensions[column_letter].width = width
-        wb.save(self.file)
+        if not self.manual_save:
+            wb.save(self.file)
         logger.info("Overview export to xlsx files done.")
 
     def energies(
@@ -147,11 +197,11 @@ class XlsxWriter(Writer):
         corrections: Optional[FloatArray] = None,
         name_template: Union[str, Template] = "distribution-${genre}",
     ):
-        """Writes detailed information from multiple Energies objects to xlsx file.
-        Creates one worksheet for each Energies  object provided.
-        The sheet contains energy values, energy difference to lowest-energy conformer,
-        Boltzmann factor, population of each conformer and corrections,
-        if those are provided.
+        """Writes detailed information from multiple :class:`.Energies` objects to xlsx
+        file. Creates one worksheet for each :class:`.Energies` object provided. The
+        sheet contains energy values, energy difference to lowest-energy conformer,
+        Boltzmann factor, population of each conformer and corrections, if those are
+        provided.
 
         Parameters
         ----------
@@ -160,8 +210,9 @@ class XlsxWriter(Writer):
         corrections: list of glassware.DataArray
             DataArray objects containing energies corrections
         name_template : str or string.Template
-            Template that will be used to generate filenames,
-            defaults to "distribution-${genre}".
+            Template that will be used to generate filenames, defaults to
+            "distribution-${genre}". Refer to :meth:`.make_name` documentation for
+            details on supported placeholders.
         """
         wb = self.workbook
         fmts = (
@@ -207,7 +258,8 @@ class XlsxWriter(Writer):
                 width = max(len(str(cell.value)) for cell in column) + 2
             column_letter = oxl.utils.get_column_letter(column[0].column)
             ws.column_dimensions[column_letter].width = width
-        wb.save(self.file)
+        if not self.manual_save:
+            wb.save(self.file)
         logger.info("Energies export to xlsx files done.")
 
     def spectral_data(
@@ -216,7 +268,8 @@ class XlsxWriter(Writer):
         data: Iterable[SpectralData],
         name_template: Union[str, Template] = "${conf}.${cat}-${det}",
     ):
-        """Writes SpectralData objects to xlsx file (one sheet for each conformer).
+        """Writes :class:`.SpectralData` objects to xlsx file (one sheet for each
+        conformer).
 
         Parameters
         ----------
@@ -226,16 +279,17 @@ class XlsxWriter(Writer):
             excitation energies for electronic data
         data: iterable of glassware.SpectralData
             SpectralData objects that are to be serialized; all should contain
-            information for the same conformers. Assumes that all `data`'s elements have
-            the same `spectra_type`, which is passed to the `name_template` as "det".
+            information for the same conformers. Assumes that all *data*'s elements have
+            the same *spectra_type*, which is passed to the *name_template* as "det".
         name_template : str or string.Template
-            Template that will be used to generate filenames,
-            defaults to "${conf}.${cat}-${det}".
+            Template that will be used to generate filenames, defaults to
+            "${conf}.${cat}-${det}".  Refer to :meth:`.make_name` documentation for
+            details on supported placeholders.
 
         Raises
         ------
         ValueError
-            if `data` is an empty sequence
+            if *data* is an empty sequence
         """
         self._spectral(
             band=band, data=data, name_template=name_template, category="data"
@@ -247,7 +301,8 @@ class XlsxWriter(Writer):
         data: Iterable[SpectralActivities],
         name_template: Union[str, Template] = "${conf}.${cat}-${det}",
     ):
-        """Writes SpectralActivities objects to xlsx file (one sheet for each conformer).
+        """Writes :class:`.SpectralActivities` objects to xlsx file (one sheet for each
+        conformer).
 
         Parameters
         ----------
@@ -257,16 +312,17 @@ class XlsxWriter(Writer):
             excitation energies for electronic data
         data: iterable of glassware.SpectralActivities
             SpectralActivities objects that are to be serialized; all should contain
-            information for the same conformers. Assumes that all `data`'s elements have
-            the same `spectra_type`, which is passed to the `name_template` as "det".
+            information for the same conformers. Assumes that all *data*'s elements have
+            the same *spectra_type*, which is passed to the *name_template* as "det".
         name_template : str or string.Template
-            Template that will be used to generate filenames,
-            defaults to "${conf}.${cat}-${det}".
+            Template that will be used to generate filenames, defaults to
+            "${conf}.${cat}-${det}". Refer to :meth:`.make_name` documentation for
+            details on supported placeholders.
 
         Raises
         ------
         ValueError
-            if `data` is an empty sequence
+            if *data* is an empty sequence
         """
         self._spectral(
             band=band, data=data, name_template=name_template, category="activities"
@@ -279,7 +335,7 @@ class XlsxWriter(Writer):
         name_template: Union[str, Template],
         category: str,
     ):
-        """Writes SpectralActivities objects to xlsx file (one sheet for each conformer).
+        """Writes spectral data to .xlsx file (one sheet for each conformer).
 
         Parameters
         ----------
@@ -290,17 +346,18 @@ class XlsxWriter(Writer):
         data: iterable of glassware.SpectralActivities or iterable of SpectralData
             SpectralActivities or SpectralData objects that are to be serialized; all
             should contain information for the same conformers. Assumes that all
-            `data`'s elements have the same `spectra_type`, which is passed to the
-            `name_template` as "det".
+            *data*'s elements have the same *spectra_type*, which is passed to the
+            *name_template* as "det".
         name_template : str or string.Template
-            Template that will be used to generate filenames.
+            Template that will be used to generate filenames. Refer to
+            :meth:`.make_name` documentation for details on supported placeholders.
         category : str
             Category of exported data genres.
 
         Raises
         ------
         ValueError
-            if `data` is an empty sequence
+            if *data* is an empty sequence
         """
         wb = self.workbook
         data = [band] + list(data)
@@ -327,7 +384,8 @@ class XlsxWriter(Writer):
                     cell = ws.cell(row=row_num + 2, column=col_num + 1)
                     cell.value = v
                     cell.number_format = fmt
-        wb.save(self.file)
+        if not self.manual_save:
+            wb.save(self.file)
         logger.info("SpectralActivities export to xlsx files done.")
 
     def spectra(
@@ -335,15 +393,16 @@ class XlsxWriter(Writer):
         spectra: Spectra,
         name_template: Union[str, Template] = "${genre}",
     ):
-        """Writes given spectral data collectively to one sheet of xlsx workbook.
+        """Writes given spectra collectively to one sheet of xlsx workbook.
 
         Parameters
         ----------
         spectra: glassware.Spectra
             Spectra object, that is to be serialized
         name_template : str or string.Template
-            Template that will be used to generate filenames,
-            defaults to "${genre}".
+            Template that will be used to generate filenames, defaults to "${genre}".
+            Refer to :meth:`.make_name` documentation for details on supported
+            placeholders.
         """
         wb = self.workbook
         template_params = {"genre": spectra.genre, "cat": "spectra"}
@@ -360,7 +419,8 @@ class XlsxWriter(Writer):
         ws["A1"].comment = oxl.comments.Comment(title, "Tesliper")
         for line in zip(spectra.x, *spectra.y):
             ws.append(line)
-        wb.save(self.file)
+        if not self.manual_save:
+            wb.save(self.file)
         logger.info("Spectra export to xlsx file done.")
 
     def single_spectrum(
@@ -375,8 +435,9 @@ class XlsxWriter(Writer):
         spectrum: glassware.SingleSpectrum
             spectrum, that is to be serialized
         name_template : str or string.Template
-            Template that will be used to generate sheet names,
-            defaults to "${cat}.${genre}-${det}".
+            Template that will be used to generate sheet names, defaults to
+            "${cat}.${genre}-${det}". Refer to :meth:`.make_name` documentation for
+            details on supported placeholders.
         """
         # TODO: add comment as in txt export
         wb = self.workbook
@@ -389,7 +450,8 @@ class XlsxWriter(Writer):
         ws.append([spectrum.units["x"], spectrum.units["y"]])
         for row in zip(spectrum.x, spectrum.y):
             ws.append(row)
-        wb.save(self.file)
+        if not self.manual_save:
+            wb.save(self.file)
         logger.info("Spectrum export to xlsx files done.")
 
     def transitions(
@@ -410,11 +472,12 @@ class XlsxWriter(Writer):
             Object containing information about wavelength at which transitions occur.
         only_highest : bool
             Specifies if only transition of highest contribution to given band should
-            be reported. If `False` all transition are saved to file.
-            Defaults to `True`.
+            be reported. If ``False`` all transition are saved to file.
+            Defaults to ``True``.
         name_template : str or string.Template
-            Template that will be used to generate filenames,
-            defaults to "${conf}.${cat}-${det}".
+            Template that will be used to generate filenames, defaults to
+            "${conf}.${cat}-${det}". Refer to :meth:`.make_name` documentation for
+            details on supported placeholders.
         """
         transtions_data = (
             transitions.highest_contribution
@@ -475,5 +538,6 @@ class XlsxWriter(Writer):
                         cell = ws.cell(row=row_num, column=col_num)
                         cell.value = v_
                         cell.number_format = fmt
-        wb.save(self.file)
+        if not self.manual_save:
+            wb.save(self.file)
         logger.info("Transitions export to xlsx files done.")

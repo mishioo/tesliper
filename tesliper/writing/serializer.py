@@ -1,3 +1,4 @@
+"""Serialization and deserialization of :class:`.Tesliper` objects."""
 import json
 import logging
 import zipfile
@@ -16,33 +17,49 @@ logger = logging.getLogger(__name__)
 class ArchiveWriter:
     """Class for serialization of Tesliper objects.
 
-    Structure of the produced archive:
-    .
-    ├───arguments: {input_dir=str, output_dir=str, wanted_files=[str]}
-    ├───parameters: {"ir": {params}, ..., "roa": {params}}
-    ├───conformers
-    │   ├───arguments: {"allow_data_inconsistency": bool}
-    │   ├───filenames: [str]
-    │   ├───kept: [bool]
-    │   └───data
-    │       ├───filename_1: {genre=str: data}
-    |       ...
-    │       └───filename_N: {genre=str: data}
-    └───spectra
-        ├───experimental  # not implemented yet
-        ├───calculated
-        │   ├───spectra_genre_1: {attr_name: Spectra.attr}
-        |   ...
-        │   └───spectra_genre_N: {attr_name: Spectra.attr}
-        └───averaged
-            ├───spectra_genre_1-energies-genre-1: {attr_name: SingleSpectrum.attr}
-            ...
-            └───spectra_genre_N-energies-genre-N: {attr_name: SingleSpectrum.attr}
+    Structure of the produced archive::
+
+        .
+        ├───arguments: {input_dir=str, output_dir=str, wanted_files=[str]}
+        ├───parameters: {"ir": {params}, ..., "roa": {params}}
+        ├───conformers
+        │   ├───arguments: {"allow_data_inconsistency": bool}
+        │   ├───filenames: [str]
+        │   ├───kept: [bool]
+        │   └───data
+        │       ├───filename_1: {genre=str: data}
+        |       ...
+        │       └───filename_N: {genre=str: data}
+        └───spectra
+            ├───experimental
+            │   ├───spectra_genre_1: {attr_name: SingleSpectrum.attr}
+            |   ...
+            │   └───spectra_genre_N: {attr_name: SingleSpectrum.attr}
+            ├───calculated
+            │   ├───spectra_genre_1: {attr_name: Spectra.attr}
+            |   ...
+            │   └───spectra_genre_N: {attr_name: Spectra.attr}
+            └───averaged
+                ├───spectra_genre_1-energies-genre-1: {attr_name: SingleSpectrum.attr}
+                ...
+                └───spectra_genre_N-energies-genre-N: {attr_name: SingleSpectrum.attr}
     """
 
     def __init__(
         self, destination: Union[str, Path], mode: str = "x", encoding: str = "utf-8"
     ):
+        """
+        Parameters
+        ----------
+        destination : Union[str, Path]
+            Path to target file.
+        mode : str, optional
+            Specifies how writing to file should be handled. Should be one of
+            characters: 'a' (append to existing file), 'x' (only write if file doesn't
+            exist yet), or 'w' (overwrite file if it already exists). Defaults to "x".
+        encoding : str, optional
+            Encoding of the output, by default "utf-8"
+        """
         self.mode = mode
         self.destination = destination
         self.encoding = encoding
@@ -112,20 +129,24 @@ class ArchiveWriter:
 
     def write(self, obj: "tesliper.Tesliper"):
         with self:
-            self._write_arguments(obj.input_dir, obj.output_dir, obj.wanted_files)
+            self._write_arguments(
+                obj.input_dir, obj.output_dir, obj.wanted_files, obj.quantum_software
+            )
             self._write_parameters(obj.parameters)
             self._write_conformers(obj.conformers)
-            # self._write_experimental(tesliper.experimental)  # not supported yet
             for spc in obj.averaged.values():
                 self._write_averaged(spc)
             for spc in obj.spectra.values():
                 self._write_calculated(spc)
+            for spc in obj.experimental.values():
+                self._write_experimental(spc)
 
     def _write_arguments(
         self,
         input_dir: Union[Path, str] = None,
         output_dir: Union[Path, str] = None,
         wanted_files: Iterable[str] = None,
+        quantum_software: str = None,
     ):
         with self.root.open("arguments.json", mode="w") as handle:
             handle.write(
@@ -134,6 +155,7 @@ class ArchiveWriter:
                         "input_dir": str(input_dir) if input_dir else None,
                         "output_dir": str(output_dir) if output_dir else None,
                         "wanted_files": list(wanted_files) if wanted_files else None,
+                        "quantum_software": quantum_software or None,
                     }
                 )
             )
@@ -174,10 +196,24 @@ class ArchiveWriter:
         with self.root.open("conformers/kept.json", mode="w") as handle:
             handle.write(self.jsonencode(kept))
 
-    def _write_experimental(self, spectra: Dict[str, SingleSpectrum]):
-        # TODO: implement this
-        raise NotImplementedError
-        # "spectra/experimental.json"
+    def _write_experimental(self, spectrum: SingleSpectrum):
+        path = f"spectra/experimental/{spectrum.genre}.json"
+        with self.root.open(path, mode="w") as handle:
+            handle.write(
+                self.jsonencode(
+                    {
+                        "genre": spectrum.genre,
+                        "filenames": spectrum.filenames.tolist(),
+                        "values": spectrum.values.tolist(),
+                        "abscissa": spectrum.abscissa.tolist(),
+                        "width": spectrum.width,
+                        "fitting": spectrum.fitting,
+                        "scaling": spectrum.scaling,
+                        "offset": spectrum.offset,
+                        "averaged_by": spectrum.averaged_by,
+                    }
+                )
+            )
 
     def _write_calculated(self, spectra: Spectra):
         path = f"spectra/calculated/{spectra.genre}.json"
@@ -248,32 +284,18 @@ class ArchiveWriter:
         ).encode(self.encoding)
 
 
-class ConformerDecoder(json.JSONDecoder):
-    """JSONDecoder subclass, that transforms all inner lists into tuples."""
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        in_array = False
-
-        def parse_array(*_args, **_kwargs):
-            nonlocal in_array
-            if not in_array:
-                in_array = True
-                values, end = JSONArray(*_args, **_kwargs)
-                in_array = False
-            else:
-                values, end = JSONArray(*_args, **_kwargs)
-                values = tuple(values)
-            return values, end
-
-        self.parse_array = parse_array
-        self.scan_once = py_make_scanner(self)
-
-
 class ArchiveLoader:
     """Class for deserialization of Tesliper objects."""
 
     def __init__(self, source: Union[str, Path], encoding: str = "utf-8"):
+        """
+        Parameters
+        ----------
+        source : Union[str, Path]
+            Path to the source file.
+        encoding : str, optional
+            Source file encoding, by default "utf-8".
+        """
         self.source = source
         self.encoding = encoding
         self.root = None
@@ -321,10 +343,7 @@ class ArchiveLoader:
             mols = (
                 (
                     name,
-                    self.jsondecode(
-                        self.root.read(f"conformers/data/{name}.json"),
-                        cls=ConformerDecoder,
-                    ),
+                    self.jsondecode(self.root.read(f"conformers/data/{name}.json")),
                 )
                 for name in filenames
             )  # iterator producing key-value pairs
@@ -334,8 +353,8 @@ class ArchiveLoader:
             tslr.conformers.kept = self._load("conformers/kept.json")
             for file in self.root.namelist():
                 if "experimental" in file:
-                    # TODO: implement this
-                    ...  # not implemented yet
+                    params = self._load(file)
+                    tslr.experimental[params["genre"]] = SingleSpectrum(**params)
                 elif "calculated" in file:
                     params = self._load(file)
                     tslr.spectra[params["genre"]] = Spectra(**params)

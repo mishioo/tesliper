@@ -1,11 +1,9 @@
-# IMPORTS
+"""A tool for batch parsing files from specified directory."""
 import logging as lgg
 from pathlib import Path
-from typing import Generator, Iterable, List, Optional, Set, Tuple, Union
+from typing import Any, Generator, Iterable, List, Optional, Set, Tuple, Union
 
-import numpy as np
-
-from . import gaussian_parser, parameters_parser, spectra_parser
+from .parser_base import _PARSERS
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -14,6 +12,7 @@ logger.setLevel(lgg.DEBUG)
 
 # CLASSES
 # TODO: Consider integration with gauopen interface: http://gaussian.com/interfacing/
+# TODO: supplement class docstring
 class Soxhlet:
     """A tool for data extraction from files in specific directory. Typical use:
 
@@ -24,42 +23,49 @@ class Soxhlet:
     def __init__(
         self,
         path: Optional[Union[str, Path]] = None,
+        purpose: str = "gaussian",
         wanted_files: Optional[Iterable[Union[str, Path]]] = None,
         extension: Optional[str] = None,
         recursive: bool = False,
     ):
-        """Initialization of Soxhlet object.
-
+        """
         Parameters
         ----------
-        path: str or pathlib.Path
+        path : str or pathlib.Path
             String representing absolute path to directory containing files,
             which will be the subject of data extraction.
-        wanted_files: list of str or pathlib.Path objects, optional
+        purpose : str
+            Determines which from registered parsers should be used for extraction.
+            *purpose*\\s supported out-of-the-box are "gaussian", "spectra", and
+            "parameters".
+        wanted_files : list of str or pathlib.Path objects, optional
             List of files, that should be loaded for further extraction. If
             omitted, all output files present in directory will be processed.
-        extension: str, optional
+        extension : str, optional
             A string representing file extension of output files, that should be
             parsed. If omitted, Soxhlet will try to resolve it based on
-            contents of directory given in `path` parameter.
+            contents of directory given in *path* parameter.
         recursive : bool
-            If True, given `path` will be searched recursively, extracting data from
+            If True, given *path* will be searched recursively, extracting data from
             subdirectories, otherwise subdirectories are ignored and only files
-            placed directly in `path` will be parsed.
+            placed directly in *path* will be parsed.
 
         Raises
         ------
         FileNotFoundError
             If path passed as argument to constructor doesn't exist
             or is not a directory.
+        ValueError
+            If no parser is registered for given *purpose*.
         """
         self.path = path
         self.wanted_files = wanted_files
         self.extension = extension
         self.recursive = recursive
-        self.parser = gaussian_parser.GaussianParser()
-        self.spectra_parser = spectra_parser.SpectraParser()
-        self.params_parser = parameters_parser.ParametersParser()
+        try:
+            self.parser = _PARSERS[purpose]()
+        except KeyError:
+            raise ValueError(f"Unknown purpose: {purpose}.")
 
     @property
     def path(self) -> Path:
@@ -75,7 +81,7 @@ class Soxhlet:
     @property
     def all_files(self):
         """List of all files present in directory bounded to Soxhlet instance.
-        If its `recursive` attribute is `True`, also files from subdirectories
+        If its *recursive* attribute is ``True``, also files from subdirectories
         are included."""
         iterable = self.path.iterdir() if not self.recursive else self.path.rglob("*")
         return [v for v in iterable if v.is_file()]
@@ -84,7 +90,7 @@ class Soxhlet:
     def files(self):
         """List of all wanted files available in given directory. If wanted_files
         is not specified, evaluates to all files in said directory. If Soxhlet
-         object's `recursive` attribute is `True`, also files from subdirectories
+        object's *recursive* attribute is ``True``, also files from subdirectories
         are included."""
         wanted_empty = not self.wanted_files
         return [
@@ -102,7 +108,7 @@ class Soxhlet:
         >>> s.wanted_files
         {"file_one", "file_two"}
 
-        May also be set to `None` or other "falsy" value, in such case it is ignored.
+        May also be set to ``None`` or other "falsy" value, in such case it is ignored.
         """
         return self._wanted_files
 
@@ -129,7 +135,7 @@ class Soxhlet:
     def filter_files(self, ext: Optional[str] = None) -> List[Path]:
         """Filters files from filenames list.
 
-        Function filters file names in list associated with Soxhlet object
+        Filters file names in list associated with :class:`.Soxhlet` object
         instance. It returns list of file names ending with provided ext
         string, representing file extension and starting with any of filenames
         associated with instance as wanted_files if those were provided.
@@ -147,56 +153,69 @@ class Soxhlet:
         Raises
         ------
         ValueError
-            If parameter `ext` is not given and attribute `extension` in None.
+            If parameter *ext* is not given and attribute :attr:`.extension` in
+            ``None``.
         """
         ext = ext if ext is not None else self.extension
         if ext is None:
             raise ValueError(
-                "Parameter `ext` must be given if attribute `extension` is None."
+                "Parameter *ext* must be given if attribute *extension* is *None*."
             )
         filtered = [f for f in self.files if f.name.endswith(ext)]
         return filtered
 
     def guess_extension(self) -> str:
-        """Checks list of file extensions in list of file names.
+        """Tries to figure out which extension should be assumed.
 
-        Function checks for .log and .out files in passed list of file names.
-        If both are present, it raises TypeError exception.
-        If either is present, it raises ValueError exception.
-        It returns string representing file extension present in files list.
+        Looks for files, which names end with one of the extensions defined by currently
+        used parser. Returns extension that matches as the only one. Raises an exception
+        if extension cannot be easily guessed.
 
         Returns
         -------
         str
-            '.log' if *.log files are present in filenames list or '.out' if
-            *.out files are present in filenames list.
+            The extension of files that are present in filenames list, which current
+            parser can parse.
 
         Raises
         ------
         ValueError
-            If both *.log and *.out files are present in list of filenames.
+            If more than one type of files declared by a current parser as possibly
+            compatible is present in list of filenames.
         FileNotFoundError
-            If neither *.log nor *.out files are present in list of filenames.
-
-        TO DO
-        -----
-        add support for other extensions when new parsers implemented
+            If none of files declared by a current parser as possibly compatible are
+            present in list of filenames.
+        TypeError
+            If current parser does not declare any compatible file extensions.
         """
-        logs, outs = (
-            any(f.name.endswith(ext) for f in self.all_files)
-            for ext in (".log", ".out")
+        if not self.parser.extensions:
+            raise TypeError(
+                f"Cannot guess extension: parser {type(self.parser).__name__} "
+                "does not define any compatible extensions."
+            )
+        available = tuple(
+            ext
+            for ext in self.parser.extensions
+            if any(f.name.endswith(ext) for f in self.all_files)
         )
-        if outs and logs:
-            raise ValueError(".log and .out files mixed in directory.")
-        elif not outs and not logs:
-            raise FileNotFoundError("Didn't found any .log or .out files.")
+        if len(available) > 1:
+            raise ValueError(
+                f"{', '.join(f'.{a}' for a in available)} files mixed in directory."
+            )
+        elif not available:
+            raise FileNotFoundError(
+                "Didn't found any of "
+                f"{', '.join(f'.{e}' for e in self.parser.extensions)} files."
+            )
         else:
-            return ".log" if logs else ".out"
+            return available[0]
 
     def extract_iter(self) -> Generator[Tuple[str, dict], None, None]:
-        """Extracts data from Gaussian files associated with Soxhlet instance.
-        Implemented as generator. If Soxhlet instance's `recursive` attribute is
-        `True`, also files from subdirectories are parsed.
+        """Extracts data from files associated with :class:`.Soxhlet` instance (*via*
+        :attr:`.path` and :attr:`.wanted_files` attributes), using a current parser
+        (determined by a *purpose* provided on :class:`.Soxhlet`'s instantiation).
+        Implemented as generator. If Soxhlet instance's :attr:`.recursive` attribute is
+        ``True``, also files from subdirectories are parsed.
 
         Yields
         ------
@@ -212,8 +231,10 @@ class Soxhlet:
             yield file.stem, data
 
     def extract(self) -> dict:
-        """Extracts data from Gaussian files associated with Soxhlet instance.
-        If its `recursive` attribute is `True`, also files from subdirectories
+        """Extracts data from files associated with :class:`.Soxhlet` instance (*via*
+        :attr:`.path` and :attr:`.wanted_files` attributes), using a current parser
+        (determined by a *purpose* provided on :class:`.Soxhlet`'s instantiation). If
+        :attr:`.Soxhlet.recursive` attribute is ``True``, also files from subdirectories
         are parsed.
 
         Returns
@@ -224,72 +245,25 @@ class Soxhlet:
         """
         return {f: d for f, d in self.extract_iter()}
 
-    def load_parameters(self, source: Optional[Union[str, Path]] = None) -> dict:
-        """Parses setup file specifying spectra calculation parameters and returns
-        dict with extracted values. If `source` file is not given, file named
-        "setup.txt" or "setup.cfg" (with any prefix, case-insensitive) will be searched
-        for in the Soxhlet's directory (recursively if it was requested on object's
-        creation). If no or multiple such files is found, exception will be raised.
-        Settings values should be placed one for line in this order: hwhm, start, stop,
-        step, fitting. Anything beside a number and "lorentzian" or "gaussian" word
-        is ignored.
-
-        Parameters
-        ----------
-        source : str or Path, optional
-            Path or Path-like object to settings file. If not given, Soxhlet object
-            will try to identify one in its `.path`.
-
-        Returns
-        -------
-        dict
-            Dictionary with extracted settings data.
-
-        Raises
-        ------
-        FileNotFoundError
-            If no or multiple possible setup files found.
-
-        """
-        if source:
-            source = Path(source)
-            if not source.is_file():
-                raise FileNotFoundError(
-                    f"Specified file does not exist: {source.resolve()}."
-                )
-        else:
-            fls = [
-                file
-                for file in self.all_files
-                if file.name.lower().endswith(("setup.txt", "setup.cfg"))
-            ]
-            if len(fls) != 1:
-                raise FileNotFoundError(
-                    "No or multiple setup files in directory. "
-                    "Specify source file explicitly."
-                )
-            source = fls[0]
-        return self.params_parser.parse(source)
-
-    def load_spectrum(self, source: Union[str, Path]) -> np.ndarray:
-        """Parse file containing spectral data. .txt and .csv files are accepted.
-        Returns loaded spectrum as np.ndarray of [[x_values], [y_values]].
+    def parse_one(self, source: Union[str, Path]) -> Any:
+        """Parse one file using current parser (determined by a *purpose* provided on
+        :class:`.Soxhlet`'s instantiation) and return extracted data.
 
         Parameters
         ----------
         source : str or Path
-            Path or Path-like object to file with spectral data. Should be .txt or .csv
+            Path or Path-like object to a file. May be given as an absolute path or
+            relative to the :attr:`.Soxhlet.path`.
 
         Returns
         -------
-        spectrum : np.ndarray
-            np.ndarray of shape (2, N) where N is number of data points. `spectrum[0]`
-            are x-values and `spectrum[1]` are corresponding y-values.
+        any
+            Data in a format that current parser provides.
 
         Raises
         ------
         FileNotFoundError
-            If specified source was not found.
+            If no *source* file is found.
         """
         appended = self.path / source
         if appended.is_file():
@@ -298,5 +272,4 @@ class Soxhlet:
             path = Path(source)
         else:
             raise FileNotFoundError(f"Cannot find such file: '{source}'.")
-        spectrum = self.spectra_parser.parse(path)
-        return spectrum
+        return self.parser.parse(path)

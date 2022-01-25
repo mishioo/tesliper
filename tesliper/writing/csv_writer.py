@@ -1,4 +1,4 @@
-# IMPORTS
+"""Data export to CSV format."""
 import csv
 import logging as lgg
 from contextlib import contextmanager
@@ -18,7 +18,7 @@ from ..glassware.arrays import (
     Transitions,
 )
 from ..glassware.spectra import SingleSpectrum, Spectra
-from ._writer import Writer
+from .writer_base import WriterBase, _GenericArray
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -32,16 +32,6 @@ class _CsvMixin:
     It should be used as a first base class to ensure proper cooperation with other
     base classes. It will pass all given *args and **kwargs to the next base class
     in MRO.
-
-    Parameters
-    ----------
-    dialect: str or csv.Dialect
-        Name of a dialect or csv.Dialect object, which will be used by csv.writer.
-    fmtparams: dict, optional
-        Additional formatting parameters for csv.writer to use.
-        For list of valid parameters consult csv.Dialect documentation.
-    include_header: bool, optional
-        Determines if file should contain a header with column names, True by default.
     """
 
     _known_fmt_params = {
@@ -63,6 +53,19 @@ class _CsvMixin:
         include_header: bool = True,
         **kwargs,
     ):
+        """
+        Parameters
+        ----------
+        dialect: str or csv.Dialect
+            Name of a dialect or :class:`csv.Dialect` object, which will be used by
+            :class:`.csv.writer`.
+        fmtparams: dict, optional
+            Additional formatting parameters for :class:`.csv.writer` to use.
+            For list of valid parameters consult :class:`csv.Dialect` documentation.
+        include_header: bool, optional
+            Determines if file should contain a header with column names, ``True`` by
+            default.
+        """
         self.dialect = dialect
         self.fmtparams = fmtparams or {}
         self.include_header = include_header
@@ -102,26 +105,8 @@ class _CsvMixin:
 
 
 # CLASSES
-class CsvWriter(_CsvMixin, Writer):
-    """Writes extracted data in .csv format form many conformers to one file.
-
-    Parameters
-    ----------
-    destination: str or pathlib.Path
-        Directory, to which generated files should be written.
-    mode: str
-        Specifies how writing to file should be handled. Should be one of characters:
-         'a' (append to existing file), 'x' (only write if file doesn't exist yet),
-         or 'w' (overwrite file if it already exists).
-    include_header: bool, optional
-        Determines if file should contain a header with column names, True by default.
-    dialect: str or csv.Dialect
-        Name of a dialect or csv.Dialect object, which will be used by underlying
-        csv.writer.
-    fmtparams: dict, optional
-        Additional formatting parameters for underlying csv.writer to use.
-        For list of valid parameters consult csv.Dialect documentation.
-    """
+class CsvWriter(_CsvMixin, WriterBase):
+    """Writes extracted or calculated data to .csv format files."""
 
     extension = "csv"
 
@@ -133,6 +118,25 @@ class CsvWriter(_CsvMixin, Writer):
         dialect: Union[str, csv.Dialect] = "excel",
         **fmtparams,
     ):
+        """
+        Parameters
+        ----------
+        destination: str or pathlib.Path
+            Directory, to which generated files should be written.
+        mode: str
+            Specifies how writing to file should be handled. Should be one of
+            characters: 'a' (append to existing file), 'x' (only write if file doesn't
+            exist yet), or 'w' (overwrite file if it already exists).
+        include_header: bool, optional
+            Determines if file should contain a header with column names, ``True`` by
+            default.
+        dialect: str or csv.Dialect
+            Name of a dialect or :class:`csv.Dialect` object, which will be used by
+            underlying :class:`csv.writer`.
+        fmtparams: dict, optional
+            Additional formatting parameters for underlying csv.writer to use.
+            For list of valid parameters consult :class:`csv.Dialect` documentation.
+        """
         super().__init__(
             destination=destination,
             mode=mode,
@@ -164,6 +168,42 @@ class CsvWriter(_CsvMixin, Writer):
             filenames, template, template_params, open_params
         )
 
+    def generic(
+        self,
+        data: List[_GenericArray],
+        name_template: Union[str, Template] = "${cat}.${det}.${ext}",
+    ):
+        """Writes generic data from multiple :class:`.DataArray`-like objects to a
+        single file. Said objects should provide a single value for each conformer.
+
+        Parameters
+        ----------
+        data
+            :class:`.DataArray` objects that are to be exported.
+        name_template
+            Template that will be used to generate filenames. Refer to
+            :meth:`.make_name` documentation for details on supported placeholders.
+        """
+        genres = [arr.genre for arr in data]
+        header = ["Gaussian output file"] + [self._header[genre] for genre in genres]
+        values = [arr.values for arr in data]
+        rows = zip(data[0].filenames, *values)
+        types = [type(arr).__name__.lower().replace("array", "") for arr in data]
+        detail = "various" if len(set(types)) > 1 else types[0]
+        genre = "misc" if len(genres) > 1 else genres[0]
+        template_params = {
+            "cat": "generic",
+            "conf": "multiple",
+            "det": detail,
+            "genre": genre,
+        }
+        with self._get_handle(name_template, template_params) as handle:
+            csvwriter = csv.writer(handle, dialect=self.dialect, **self.fmtparams)
+            if self.include_header:
+                csvwriter.writerow(header)
+            for row in rows:
+                csvwriter.writerow(row)
+
     def energies(
         self,
         energies: Energies,
@@ -181,7 +221,8 @@ class CsvWriter(_CsvMixin, Writer):
         corrections: glassware.DataArray, optional
             DataArray objects containing energies corrections
         name_template : str or string.Template
-            Template that will be used to generate filenames.
+            Template that will be used to generate filenames. Refer to
+            :meth:`.make_name` documentation for details on supported placeholders.
         """
         header = ["Gaussian output file"]
         header += "population min_factor delta energy".split(" ")
@@ -212,7 +253,7 @@ class CsvWriter(_CsvMixin, Writer):
         logger.info("Energies export to csv files done.")
 
     def _energies_handler(self, data: List[Energies], extras: Dict[str, Any]) -> None:
-        # TODO: return to Writer's implementation when `.overview()` added to this class
+        # TODO: return to WriterBase's implementation when `.overview()` added
         for en in data:
             self.energies(
                 en, corrections=extras.get("corrections", dict()).get(en.genre)
@@ -230,7 +271,8 @@ class CsvWriter(_CsvMixin, Writer):
         spectrum: glassware.SingleSpectrum
             spectrum, that is to be serialized
         name_template : str or string.Template
-            Template that will be used to generate filenames.
+            Template that will be used to generate filenames. Refer to
+            :meth:`.make_name` documentation for details on supported placeholders.
         """
         template_params = {
             "genre": spectrum.genre,
@@ -262,15 +304,16 @@ class CsvWriter(_CsvMixin, Writer):
         data: list of glassware.SpectralActivities
             SpectralActivities objects that are to be serialized; all should contain
             information for the same set of conformers and correspond to given band.
-            Assumes that all `data`'s elements have the same `spectra_type`, which is
-            passed to the `name_template` as "det".
+            Assumes that all *data*'s elements have the same *spectra_type*, which is
+            passed to the *name_template* as "det".
         name_template : str or string.Template
-            Template that will be used to generate filenames.
+            Template that will be used to generate filenames. Refer to
+            :meth:`.make_name` documentation for details on supported placeholders.
 
         Raises
         ------
         ValueError
-            if `data` is an empty sequence
+            if *data* is an empty sequence
         """
         self._spectral(
             band=band,
@@ -287,24 +330,25 @@ class CsvWriter(_CsvMixin, Writer):
     ):
         """Writes SpectralData objects to csv files (one file for each conformer).
 
-         Parameters
-         ----------
-         band: glassware.SpectralData
-             Object containing information about band at which transitions occur;
-             it should be frequencies for vibrational data and wavelengths or
-             excitation energies for electronic data.
-         data: list of glassware.SpectralData
-             SpectralData objects that are to be serialized; all should contain
-             information for the same set of conformers and correspond to given band.
-             Assumes that all `data`'s elements have the same `spectra_type`, which is
-             passed to the `name_template` as "det".
+        Parameters
+        ----------
+        band: glassware.SpectralData
+            Object containing information about band at which transitions occur;
+            it should be frequencies for vibrational data and wavelengths or
+            excitation energies for electronic data.
+        data: list of glassware.SpectralData
+            SpectralData objects that are to be serialized; all should contain
+            information for the same set of conformers and correspond to given band.
+            Assumes that all *data*'s elements have the same *spectra_type*, which is
+            passed to the *name_template* as "det".
         name_template : str or string.Template
-             Template that will be used to generate filenames.
+            Template that will be used to generate filenames. Refer to
+            :meth:`.make_name` documentation for details on supported placeholders.
 
-         Raises
-         ------
-         ValueError
-             if `data` is an empty sequence
+        Raises
+        ------
+        ValueError
+            if *data* is an empty sequence
         """
         self._spectral(
             band=band, data=data, name_template=name_template, category="data"
@@ -328,17 +372,18 @@ class CsvWriter(_CsvMixin, Writer):
         data: list of glassware.SpectralData
             SpectralData objects that are to be serialized; all should contain
             information for the same set of conformers and correspond to given band.
-            Assumes that all `data`'s elements have the same `spectra_type`, which is
-            passed to the `name_template` as "det".
+            Assumes that all *data*'s elements have the same *spectra_type*, which is
+            passed to the *name_template* as "det".
         name_template : str or string.Template
-            Template that will be used to generate filenames.
+            Template that will be used to generate filenames. Refer to
+            :meth:`.make_name` documentation for details on supported placeholders.
         category : str
             category of exported data genres
 
         Raises
         ------
         ValueError
-            if `data` is an empty sequence
+            if *data* is an empty sequence
         """
         try:
             spectra_type = data[0].spectra_type
@@ -348,9 +393,9 @@ class CsvWriter(_CsvMixin, Writer):
         headers = [self._header[bar.genre] for bar in data]
         values = zip(*[bar.values for bar in data])
         template_params = {"genre": band.genre, "cat": category, "det": spectra_type}
-        for handle, values_ in zip(
-            self._iter_handles(band.filenames, name_template, template_params),
+        for values_, handle in zip(
             values,
+            self._iter_handles(band.filenames, name_template, template_params),
         ):
             csvwriter = csv.writer(handle, dialect=self.dialect, **self.fmtparams)
             if self.include_header:
@@ -371,14 +416,15 @@ class CsvWriter(_CsvMixin, Writer):
         spectra: glassware.Spectra
             Spectra object, that is to be serialized.
         name_template : str or string.Template
-            Template that will be used to generate filenames.
+            Template that will be used to generate filenames. Refer to
+            :meth:`.make_name` documentation for details on supported placeholders.
         """
         abscissa = spectra.x
         header = [spectra.units["y"], spectra.units["x"]]
         template_params = {"genre": spectra.genre, "cat": "spectra"}
-        for handle, values in zip(
-            self._iter_handles(spectra.filenames, name_template, template_params),
+        for values, handle in zip(
             spectra.y,
+            self._iter_handles(spectra.filenames, name_template, template_params),
         ):
             csvwriter = csv.writer(handle, dialect=self.dialect, **self.fmtparams)
             if self.include_header:
@@ -404,10 +450,11 @@ class CsvWriter(_CsvMixin, Writer):
             Object containing information about wavelength at which transitions occur.
         only_highest : bool
             Specifies if only transition of highest contribution to given band should
-            be reported. If `False` all transition are saved to file.
-            Defaults to `True`.
+            be reported. If ``False`` all transition are saved to file.
+            Defaults to ``True``.
         name_template : str or string.Template
-            Template that will be used to generate filenames.
+            Template that will be used to generate filenames. Refer to
+            :meth:`.make_name` documentation for details on supported placeholders.
         """
         transtions_data = (
             transitions.highest_contribution
@@ -425,10 +472,10 @@ class CsvWriter(_CsvMixin, Writer):
             "cat": "transitions",
             "det": "highest" if only_highest else "all",
         }
-        for handle, grounds, exciteds, values, contribs, bands in zip(
-            self._iter_handles(transitions.filenames, name_template, template_params),
+        for grounds, exciteds, values, contribs, bands, handle in zip(
             *transtions_data,
             wavelengths.wavelen,
+            self._iter_handles(transitions.filenames, name_template, template_params),
         ):
             csvwriter = csv.writer(handle, dialect=self.dialect, **self.fmtparams)
             if self.include_header:

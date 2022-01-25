@@ -114,7 +114,6 @@ class _DerivedDefaultDict(defaultdict):
 
 class WgtStateChanger:
     def __init__(self, root):
-        # TODO: change `bars` to `activities`
         self.root = root
         self.bars_genres = tuple("dip rot vosc vrot losc lrot raman1 roa1".split())
         self.energies_genres = tuple("zpe ent ten gib scf".split())
@@ -226,7 +225,7 @@ class ThreadedMethod:
 
     def __call__(self, function):
         def wrapper(widget, *args, **kwargs):
-            # widget is `self` from decorated method
+            # widget is *self* from decorated method
             root = widget.winfo_toplevel()
             if root.thread.is_alive():
                 msg = "Can't start {}, while {} is still running.".format(

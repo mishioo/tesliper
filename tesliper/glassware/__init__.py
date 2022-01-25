@@ -1,3 +1,5 @@
+"""Data containers."""
+
 from .array_base import ArrayBase, ArrayProperty
 from .arrays import (
     Bands,

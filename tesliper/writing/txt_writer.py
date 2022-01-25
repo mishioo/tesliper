@@ -1,4 +1,4 @@
-# IMPORTS
+"""Data export to text files."""
 import logging as lgg
 from itertools import zip_longest
 from string import Template
@@ -8,7 +8,6 @@ import numpy as np
 
 from ..glassware.arrays import (
     Bands,
-    ElectronicActivities,
     Energies,
     FloatArray,
     InfoArray,
@@ -17,7 +16,7 @@ from ..glassware.arrays import (
     Transitions,
 )
 from ..glassware.spectra import SingleSpectrum, Spectra
-from ._writer import Writer
+from .writer_base import WriterBase, _GenericArray
 
 # LOGGER
 logger = lgg.getLogger(__name__)
@@ -25,20 +24,55 @@ logger.setLevel(lgg.DEBUG)
 
 
 # CLASSES
-class TxtWriter(Writer):
-    """Writes extracted data in .txt format form many conformers to one file.
-
-    Parameters
-    ----------
-    destination: str or pathlib.Path
-        Directory, to which generated files should be written.
-    mode: str
-        Specifies how writing to file should be handled. Should be one of characters:
-         'a' (append to existing file), 'x' (only write if file doesn't exist yet),
-         or 'w' (overwrite file if it already exists).
-    """
+class TxtWriter(WriterBase):
+    """Writes extracted or calculated data to .txt format files."""
 
     extension = "txt"
+
+    def generic(
+        self,
+        data: List[_GenericArray],
+        name_template: Union[str, Template] = "${cat}.${det}.${ext}",
+    ):
+        """Writes generic data from multiple :class:`.DataArray`-like objects to a
+        single file. Said objects should provide a single value for each conformer.
+
+        Parameters
+        ----------
+        data
+            :class:`.DataArray` objects that are to be exported.
+        name_template
+            Template that will be used to generate filenames. Refer to
+            :meth:`.make_name` documentation for details on supported placeholders.
+        """
+        genres = [arr.genre for arr in data]
+        headers = ["Gaussian output file"] + [self._header[genre] for genre in genres]
+        formatters = [
+            self._formatters[g] if g in self._formatters else "{}" for g in genres
+        ]
+        values = [arr.values for arr in data]
+        formatted = [[f.format(v) for v in vs] for f, vs in zip(formatters, values)]
+        lines = list(zip(data[0].filenames, *formatted))
+        widths = [max([len(v) for v in vs]) for vs in zip(headers, *lines)]
+        types = [type(arr).__name__.lower().replace("array", "") for arr in data]
+        detail = "various" if len(set(types)) > 1 else types[0]
+        genre = "misc" if len(genres) > 1 else genres[0]
+        template_params = {
+            "cat": "generic",
+            "conf": "multiple",
+            "det": detail,
+            "genre": genre,
+        }
+        headers_line = "   ".join([f"{e:<{w}}" for e, w in zip(headers, widths)])
+        side = ["<"] + [">"] * len(genres)
+        with self._get_handle(name_template, template_params) as handle:
+            handle.write(headers_line + "\n")
+            handle.write("-" * len(headers_line) + "\n")
+            for line in lines:
+                handle.write(
+                    "   ".join([f"{e:{s}{w}}" for e, s, w in zip(line, side, widths)])
+                )
+                handle.write("\n")
 
     def overview(
         self,
@@ -48,11 +82,11 @@ class TxtWriter(Writer):
         name_template: Union[str, Template] = "${cat}.${ext}",
     ):
         """Writes essential information from multiple Energies objects to
-         single txt file.
+        single txt file.
 
-         Notes
-         -----
-         All Energy objects given should contain information for the same set of files.
+        Notes
+        -----
+        All Energy objects given should contain information for the same set of files.
 
         Parameters
         ----------
@@ -64,8 +98,8 @@ class TxtWriter(Writer):
         stoichiometry: glassware.InfoArray, optional
             InfoArray object containing stoichiometry information
         name_template : str or string.Template
-            Template that will be used to generate filenames.
-
+            Template that will be used to generate filenames. Refer to
+            :meth:`.make_name` documentation for details on supported placeholders.
         """
         filenames = energies[0].filenames
         imaginary = [] if frequencies is None else frequencies.imaginary
@@ -144,7 +178,8 @@ class TxtWriter(Writer):
         corrections: glassware.DataArray, optional
             DataArray object, containing energies corrections
         name_template : str or string.Template
-            Template that will be used to generate filenames.
+            Template that will be used to generate filenames. Refer to
+            :meth:`.make_name` documentation for details on supported placeholders.
         """
         max_fnm = max(np.vectorize(len)(energies.filenames).max(), 20)
         header = [f"{'Gaussian output file':<{max_fnm}}"]
@@ -200,7 +235,8 @@ class TxtWriter(Writer):
         spectrum: glassware.SingleSpectrum
             spectrum, that is to be serialized
         name_template : str or string.Template
-            Template that will be used to generate filenames.
+            Template that will be used to generate filenames. Refer to
+            :meth:`.make_name` documentation for details on supported placeholders.
         """
         title = (
             f"{spectrum.genre} calculated with peak width = "
@@ -244,15 +280,16 @@ class TxtWriter(Writer):
             excitation energies for electronic data
         data: list of glassware.SpectralActivities
             SpectralActivities objects that are to be serialized; all should contain
-            information for the same conformers. Assumes that all `data`'s elements have
-            the same `spectra_type`, which is passed to the `name_template` as "det".
+            information for the same conformers. Assumes that all *data*'s elements have
+            the same *spectra_type*, which is passed to the *name_template* as "det".
         name_template : str or string.Template
-            Template that will be used to generate filenames.
+            Template that will be used to generate filenames. Refer to
+            :meth:`.make_name` documentation for details on supported placeholders.
 
         Raises
         ------
         ValueError
-            if `data` is an empty sequence
+            if *data* is an empty sequence
         """
         self._spectral(
             band=band,
@@ -277,15 +314,16 @@ class TxtWriter(Writer):
             excitation energies for electronic data
         data: list of glassware.SpectralData
             SpectralData objects that are to be serialized; all should contain
-            information for the same conformers. Assumes that all `data`'s elements have
-            the same `spectra_type`, which is passed to the `name_template` as "det".
+            information for the same conformers. Assumes that all *data*'s elements have
+            the same *spectra_type*, which is passed to the *name_template* as "det".
         name_template : str or string.Template
-            Template that will be used to generate filenames.
+            Template that will be used to generate filenames. Refer to
+            :meth:`.make_name` documentation for details on supported placeholders.
 
         Raises
         ------
         ValueError
-            if `data` is an empty sequence
+            if *data* is an empty sequence
         """
         self._spectral(
             band=band, data=data, name_template=name_template, category="data"
@@ -308,17 +346,18 @@ class TxtWriter(Writer):
             excitation energies for electronic data
         data: list of glassware.SpectralData
             SpectralData objects that are to be serialized; all should contain
-            information for the same conformers. Assumes that all `data`'s elements have
-            the same `spectra_type`, which is passed to the `name_template` as "det".
+            information for the same conformers. Assumes that all *data*'s elements have
+            the same *spectra_type*, which is passed to the *name_template* as "det".
         name_template : str or string.Template
-            Template that will be used to generate filenames.
+            Template that will be used to generate filenames. Refer to
+            :meth:`.make_name` documentation for details on supported placeholders.
         category : str
             category of exported data genres
 
         Raises
         ------
         ValueError
-            if `data` is an empty sequence
+            if *data* is an empty sequence
         """
         try:
             spectra_type = data[0].spectra_type
@@ -331,9 +370,9 @@ class TxtWriter(Writer):
         formatted = [f"{h: <{w}}" for h, w in zip(headers, widths)]
         values = zip(*[bar.values for bar in data])
         template_params = {"genre": band.genre, "cat": category, "det": spectra_type}
-        for handle, values_ in zip(
-            self._iter_handles(band.filenames, name_template, template_params),
+        for values_, handle in zip(
             values,
+            self._iter_handles(band.filenames, name_template, template_params),
         ):
             handle.write("\t".join(formatted))
             handle.write("\n")
@@ -356,8 +395,8 @@ class TxtWriter(Writer):
         spectra: glassware.Spectra
             Spectra object, that is to be serialized
         name_template : str or string.Template
-            Template that will be used to generate filenames.
-
+            Template that will be used to generate filenames. Refer to
+            :meth:`.make_name` documentation for details on supported placeholders.
         """
         abscissa = spectra.x
         title = (
@@ -375,9 +414,9 @@ class TxtWriter(Writer):
         values_template = "\t".join(
             (self._formatters[abscissa_genre], self._formatters[spectra.genre])
         )
-        for handle, values in zip(
-            self._iter_handles(spectra.filenames, name_template, template_params),
+        for values, handle in zip(
             spectra.y,
+            self._iter_handles(spectra.filenames, name_template, template_params),
         ):
             handle.write(title + "\n")
             handle.write(
@@ -404,10 +443,11 @@ class TxtWriter(Writer):
             Object containing information about wavelength at which transitions occur.
         only_highest : bool
             Specifies if only transition of highest contribution to given band should
-            be reported. If `False` all transition are saved to file.
-            Defaults to `True`.
+            be reported. If ``False`` all transition are saved to file.
+            Defaults to ``True``.
         name_template : str or string.Template
-            Template that will be used to generate filenames.
+            Template that will be used to generate filenames. Refer to
+            :meth:`.make_name` documentation for details on supported placeholders.
 
         """
         transtions_data = (
@@ -429,10 +469,10 @@ class TxtWriter(Writer):
             "cat": "transitions",
             "det": "highest" if only_highest else "all",
         }
-        for handle, grounds, exciteds, values, contribs, bands in zip(
-            self._iter_handles(transitions.filenames, name_template, template_params),
+        for grounds, exciteds, values, contribs, bands, handle in zip(
             *transtions_data,
             wavelengths.wavelen,
+            self._iter_handles(transitions.filenames, name_template, template_params),
         ):
             handle.write(title + "\n")
             handle.write(legend + "\n\n")

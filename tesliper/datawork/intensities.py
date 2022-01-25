@@ -1,4 +1,5 @@
-# IMPORTS
+"""Optical activity to signal intensity converters."""
+
 import logging as lgg
 
 import numpy as np
@@ -20,13 +21,13 @@ DEFAULT_ACTIVITIES = {
 
 
 # MODULE FUNCTIONS
-def dip_to_ir(values, frequencies):
+def dip_to_ir(values: np.ndarray, frequencies: np.ndarray) -> np.ndarray:
     """Calculates signal intensity of IR spectrum.
 
     Parameters
     ----------
     values: numpy.ndarray
-        Dipol strength values extracted from gaussian output files.
+        Dipole strength values extracted from gaussian output files.
     frequencies: numpy.ndarray
         Frequencies extracted from gaussian output files.
 
@@ -34,10 +35,10 @@ def dip_to_ir(values, frequencies):
     -------
     numpy.ndarray
         List of calculated intensity values."""
-    return values * frequencies / 91.86108673
+    return values * frequencies * 0.010886
 
 
-def rot_to_vcd(values, frequencies):
+def rot_to_vcd(values: np.ndarray, frequencies: np.ndarray) -> np.ndarray:
     """Calculates signal intensity of VCD spectrum.
 
     Parameters
@@ -51,10 +52,10 @@ def rot_to_vcd(values, frequencies):
     -------
     numpy.ndarray
         List of calculated intensity values."""
-    return values * frequencies / 2.296e5
+    return values * frequencies * 0.0435441
 
 
-def osc_to_uv(values):
+def osc_to_uv(values: np.ndarray) -> np.ndarray:
     """Calculates signal intensity of UV spectrum.
 
     Parameters
@@ -69,18 +70,35 @@ def osc_to_uv(values):
     return values * 2.315351857e08
 
 
-def rot_to_ecd(values, frequencies):
+def rot_to_ecd(values: np.ndarray, wavelengths: np.ndarray) -> np.ndarray:
     """Calculates signal intensity of ECD spectrum.
 
     Parameters
     ----------
     values: numpy.ndarray
         Rotator strength values extracted from gaussian output files.
-    frequencies: numpy.ndarray
-        Frequencies extracted from gaussian output files.
+    wavelengths: numpy.ndarray
+        Wavelengths extracted from gaussian output files.
 
     Returns
     -------
     numpy.ndarray
         List of calculated intensity values."""
-    return values * frequencies / 22.96
+    return values * wavelengths * 0.0435441
+
+
+def dip_to_uv(values: np.ndarray, wavelengths: np.ndarray) -> np.ndarray:
+    """Calculates signal intensity of UV spectrum.
+
+    Parameters
+    ----------
+    values: numpy.ndarray
+        Dipole strength values extracted from gaussian output files.
+    wavelengths: numpy.ndarray
+        Wavelengths extracted from gaussian output files.
+
+    Returns
+    -------
+    numpy.ndarray
+        List of calculated intensity values."""
+    return values * wavelengths * 0.010886

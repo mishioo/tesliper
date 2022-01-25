@@ -1,7 +1,17 @@
-# IMPORTS
+"""Implements :class:`DataArray`-like objects for handling arrayed data.
+
+:class:`DataArray`-like objects are concrete implementations of :class:`.ArrayBase` base
+class that collect specific data for multiple conformers and provide an easy access to
+genre-specific functionality. Instances of :class:`DataArray` subclasses are produced by
+the :meth:`.Conformers.arrayed` method and :class:`Tesliper`'s subscription mechanism.
+"""
+
 import logging as lgg
 from abc import ABC, abstractmethod
-from typing import Any, Sequence, Tuple, Union
+
+# IMPORTS
+from inspect import Parameter
+from typing import Any, Dict, Sequence, Tuple, Union
 
 import numpy as np
 
@@ -12,6 +22,7 @@ from .array_base import (
     ArrayBase,
     ArrayProperty,
     CollapsibleArrayProperty,
+    DependentParameter,
     JaggedArrayProperty,
 )
 from .spectra import Spectra
@@ -23,28 +34,18 @@ logger.setLevel(lgg.DEBUG)
 
 # CLASSES
 class DataArray(ArrayBase):
-    """Base class for data holding objects. It provides trimming functionality
-    for filtering data based on other objects content or arbitrary choice.
-    ^ this is no longer true, TODO: correct this
+    """Base class for data holding objects."""
 
-    Parameters
-    ----------
-    filenames : numpy.ndarray(dtype=str)
-        List of filenames of gaussian output files, from whitch data were
-        extracted.
-    values : numpy.ndarray(dtype=float)
-        List of appropriate data values.
-    """
-
-    full_name_ref = {}
+    associated_genres = tuple()
+    _full_name_ref = {}
     _units = {}
 
     @property
     def full_name(self):
         try:
-            return self.full_name_ref[self.genre]
+            return self._full_name_ref[self.genre]
         except KeyError:
-            return ""
+            return f"{self.genre} data"
 
     @property
     def units(self):
@@ -55,20 +56,40 @@ class DataArray(ArrayBase):
 
 
 class IntegerArray(DataArray):
+    """For handling data of ``int`` type.
+
+    .. list-table:: Genres associated with this class:
+        :width: 100%
+
+        * - charge
+          - multiplicity
+    """
 
     associated_genres = ("charge", "multiplicity")
-    full_name_ref = {"charge": "Charge", "multiplicity": "Multiplicity"}
+    _full_name_ref = {"charge": "Charge", "multiplicity": "Multiplicity"}
     values = ArrayProperty(dtype=int, check_against="filenames")
 
 
 class FloatArray(DataArray):
+    """For handling data of ``float`` type.
+
+    .. list-table:: Genres associated with this class:
+        :width: 100%
+
+        * - zpecorr
+          - tencorr
+          - entcorr
+          - gibcorr
+
+    """
+
     associated_genres = (
         "zpecorr",
         "tencorr",
         "entcorr",
         "gibcorr",
     )
-    full_name_ref = dict(
+    _full_name_ref = dict(
         zpecorr="Zero-point Correction",
         tencorr="Correction to Energy",
         entcorr="Correction to Enthalpy",
@@ -85,36 +106,35 @@ class FloatArray(DataArray):
 
 
 class InfoArray(DataArray):
-    full_name_ref = {
+    """For handling data of ``str`` type.
+
+    .. list-table:: Genres associated with this class:
+        :width: 100%
+
+        * - command
+          - stoichiometry
+    """
+
+    _full_name_ref = {
         "command": "Command",
-        "cpu_time": "CPU Time",
         "stoichiometry": "Stoichiometry",
     }
     _units = {}
     associated_genres = (
         "command",
-        "cpu_time",
         "stoichiometry",
     )
     values = ArrayProperty(dtype=str, check_against="filenames")
 
 
 class FilenamesArray(DataArray):
-    """Special case of DataArray, holds only filenames. `values` property returns
-    same as `filenames` and ignores any value given to its setter.
-
-    Parameters
-    ----------
-    genre : str
-        Name of genre, should be 'filenames'.
-    filenames : numpy.ndarray(dtype=str)
-        List of filenames of gaussian output files, from which data were extracted.
-    values : numpy.ndarray(dtype=str)
-        Always returns same as `filenames`.
+    """Special case of :class:`DataArray`, holds only filenames. *values* property
+    returns same as *filenames* and ignores any value given to its setter.
+    Only genre associated with this class is *filenames* pseudo-genre.
     """
 
     associated_genres = ("filenames",)
-    full_name_ref = {"filenames": "Filenames"}
+    _full_name_ref = {"filenames": "Filenames"}
     _units = {}
 
     def __init__(
@@ -124,6 +144,16 @@ class FilenamesArray(DataArray):
         values: Any = None,
         allow_data_inconsistency: bool = False,
     ):
+        """
+        Parameters
+        ----------
+        genre : str
+            Name of genre, should be 'filenames'.
+        filenames : numpy.ndarray(dtype=str)
+            List of filenames of gaussian output files, from which data were extracted.
+        values : numpy.ndarray(dtype=str)
+            Always returns same as *filenames*.
+        """
         super().__init__(genre, filenames, values, allow_data_inconsistency)
 
     @property
@@ -137,7 +167,16 @@ class FilenamesArray(DataArray):
 
 
 class BooleanArray(DataArray):
-    full_name_ref = {
+    """For handling data of ``bool`` type.
+
+    .. list-table:: Genres associated with this class:
+        :width: 100%
+
+        * - normal_termination
+          - optimization_completed
+    """
+
+    _full_name_ref = {
         "normal_termination": "Normal Termination",
         "optimization_completed": "Optimization Completed",
     }
@@ -147,20 +186,19 @@ class BooleanArray(DataArray):
 
 
 class Energies(FloatArray):
-    """
-    Parameters
-    ----------
-    genre : str
-        genre of energy.
-    filenames : numpy.ndarray(dtype=str)
-        List of filenames of gaussian output files, from which data were
-        extracted.
-    values : numpy.ndarray(dtype=float)
-        Energy value for each conformer.
-    t : int or float
-        Temperature of calculated state in K."""
+    """For handling data about the energy of conformers.
 
-    full_name_ref = dict(
+    .. list-table:: Genres associated with this class:
+        :width: 100%
+
+        * - scf
+          - zpe
+          - ten
+          - ent
+          - gib
+    """
+
+    _full_name_ref = dict(
         zpe="Zero-point Energy",
         ten="Thermal Energy",
         ent="Thermal Enthalpy",
@@ -185,6 +223,19 @@ class Energies(FloatArray):
     def __init__(
         self, genre, filenames, values, t=298.15, allow_data_inconsistency=False
     ):
+        """
+        Parameters
+        ----------
+        genre : str
+            genre of energy.
+        filenames : numpy.ndarray(dtype=str)
+            List of filenames of gaussian output files, from which data were
+            extracted.
+        values : numpy.ndarray(dtype=float)
+            Energy value for each conformer.
+        t : int or float
+            Temperature of calculated state in K.
+        """
         super().__init__(genre, filenames, values, allow_data_inconsistency)
         self.t = t  # temperature in K
 
@@ -256,8 +307,8 @@ class Averagable:
 
         Parameters
         ----------
-        energies : Energies object instance or iterable
-            Object with `populations` and `genre` attributes, containing
+        energies : Energies or iterable
+            Object with ``populations`` and ``genre`` attributes, containing
             respectively: list of populations values as numpy.ndarray and
             string specifying energy type. Alternatively, list of weights
             for each conformer.
@@ -265,13 +316,13 @@ class Averagable:
         Returns
         -------
         DataArray
-            New instance of DataArray's subclass, on which `average` method was
+            New instance of DataArray's subclass, on which *average* method was
             called, containing averaged values.
 
         Raises
         ------
-            If creation of an instance based on its' __init__ signature is
-            impossible.
+        TypeError
+            If creation of an instance based on its __init__ signature is impossible.
         """
         # TODO: make sure returning DataArray is necessary and beneficial
         #       maybe it should return just averaged value
@@ -297,62 +348,59 @@ class Averagable:
 
 
 class Bands(FloatArray):
+    """Special kind of data array for band values, to which spectral data or activities
+    corespond. Provides an easy way to convert values between their different
+    representations: frequency, wavelength, and excitation energy.
+
+    .. list-table:: Genres associated with this class:
+        :width: 100%
+
+        * - freq
+          - wavelen
+          - ex_en
+    """
+
     associated_genres = ("freq", "wavelen", "ex_en")
-    full_name_ref = {
+    _full_name_ref = {
         "ex_en": "Excitation energy",
         "freq": "Frequency",
         "wavelen": "Wavelength",
     }
     _units = {"freq": "cm^(-1)", "wavelen": "nm", "ex_en": "eV"}
 
-    def __init__(
-        self,
-        genre,
-        filenames,
-        values,
-        allow_data_inconsistency=False,
-    ):
-        super().__init__(genre, filenames, values, allow_data_inconsistency)
-
     @property
     def freq(self):
-        """Values converted to frequencies in cm^(-1).
-        Same as `Bands.frequencies`
-        """
+        """Values converted to frequencies in :math:`\\mathrm{cm}^{-1}`."""
         return convert_band(self.values, from_genre=self.genre, to_genre="freq")
 
     @property
     def frequencies(self):
-        """Values converted to frequencies in cm^(-1).
-        Same as `Bands.freq`
+        """Values converted to frequencies in :math:`\\mathrm{cm}^{-1}`.
+        A convenience alias for :attr:`Bands.frequencies`.
         """
         return self.freq
 
     @property
     def wavelen(self):
-        """Values converted to wavelengths in nm.
-        Same as `Bands.wavelengths`
-        """
+        """Values converted to wavelengths in nm."""
         return convert_band(self.values, from_genre=self.genre, to_genre="wavelen")
 
     @property
     def wavelengths(self):
         """Values converted to wavelengths in nm.
-        Same as `Bands.wavelen`
+        A convenience alias for :attr:`Bands.wavelen`.
         """
         return self.wavelen
 
     @property
     def ex_en(self):
-        """Values converted to excitation_energy in eV.
-        Same as `Bands.excitation_energy`
-        """
+        """Values converted to excitation energy in eV."""
         return convert_band(self.values, from_genre=self.genre, to_genre="ex_en")
 
     @property
     def excitation_energy(self):
-        """Values converted to excitation_energy in eV.
-        Same as `Bands.ex_en`
+        """Values converted to excitation energy in eV.
+        A convenience alias for :attr:`Bands.ex_en`.
         """
         return self.ex_en
 
@@ -370,8 +418,7 @@ class Bands(FloatArray):
             return np.array([])
 
     def find_imaginary(self):
-        """Finds all freqs with imaginary values and creates 'imag' entry with
-        list of indicants of imaginery values presence.
+        """Reports number of imaginary frequencies of each conformer that has any.
 
         Returns
         -------
@@ -384,7 +431,14 @@ class Bands(FloatArray):
 
 
 class SpectralData(FloatArray, ABC):
-    """Base class for spectral data genres, that are not spectral activities."""
+    """Base class for spectral data genres, that are not spectral activities.
+
+    When subclassed, one of the attributes: :attr:`~.SpectralData.freq` or
+    :attr:`~.SpectralData.wavelen` should be overridden with a concrete setter and
+    getter - use of :class:`.ArrayProperty` is recommended. The other one may use
+    implementation from this base class by call to ``super().freq`` or
+    ``super().wavelen`` to get converted values.
+    """
 
     # TODO: Supplement tests regarding this class' subclasses
 
@@ -393,24 +447,53 @@ class SpectralData(FloatArray, ABC):
     @property
     @abstractmethod
     def spectra_type(self):
+        """Type of spectra, that genres associated with :class:`.SpectralData`'s
+        subclass relate to. Should be a class-level attribute with value of either
+        "vibrational", "electronic", or "scattering".
+        """
         return NotImplemented
 
     @property
     @abstractmethod
     def freq(self):
+        """Bands values converted to frequencies in :math:`\\mathrm{cm}^{-1}`. If
+        :attr:`~.SpectralData.wavelen` is provided, this may be overridden with a simple
+        call to ``super()``:
+
+        .. code-block:: python
+
+            @property
+            def freq(self):
+                return super().freq()  # values converted to cm^(-1)
+        """
         return convert_band(self.wavelen, from_genre="wavelen", to_genre="freq")
 
     @property
     def frequencies(self):
+        """Bands values converted to frequencies in :math:`\\mathrm{cm}^{-1}`.
+        A convenience alias for :attr:`~.SpectralData.freq`.
+        """
         return self.freq
 
     @property
     @abstractmethod
     def wavelen(self):
-        return convert_band(self.wavelen, from_genre="freq", to_genre="wavelen")
+        """Bands values converted to wavelengths in nm. If :attr:`.freq` is
+        provided, this may be overridden with a simple call to ``super()``:
+
+        .. code-block:: python
+
+            @property
+            def wavelen(self):
+                return super().wavelen()  # values converted to nm
+        """
+        return convert_band(self.freq, from_genre="freq", to_genre="wavelen")
 
     @property
     def wavelengths(self):
+        """Bands values converted to wavelengths in nm.
+        A convenience alias for :attr:`~.SpectralData.wavelen`.
+        """
         return self.wavelen
 
 
@@ -426,17 +509,44 @@ class _VibData(SpectralData):
         freq,
         allow_data_inconsistency=False,
     ):
+        """
+        Parameters
+        ----------
+        genre
+            Name of the data genre that *values* represent.
+        filenames
+            Sequence of conformers' identifiers.
+        values
+            Sequence of values for *genre* for each conformer in *filenames*.
+        freq
+            Frequency for each value in each conformer in :math:`\\mathrm{cm}^{-1}`
+            units.
+        allow_data_inconsistency
+            Flag signalizing if instance should allow data inconsistency (see
+            :class:`ArrayPropety` for details).
+        """
         super().__init__(genre, filenames, values, allow_data_inconsistency)
         self.freq = freq
 
     @property
     def wavelen(self):
+        """Bands values converted to wavelengths in nm."""
         return super().wavelen
 
 
 class VibrationalData(_VibData):
+    """For handling vibrational data that is not a spectral activity.
+
+    .. list-table:: Genres associated with this class:
+        :width: 100%
+
+        * - mass
+          - frc
+          - emang
+    """
+
     associated_genres = ("mass", "frc", "emang")
-    full_name_ref = dict(
+    _full_name_ref = dict(
         mass="Reduced masses", frc="Force constants", emang="E-M Angle"
     )
     _units = dict(mass="AMU", frc="mDyne/A", emang="deg")
@@ -447,6 +557,28 @@ class VibrationalData(_VibData):
 
 
 class ScatteringData(_VibData):
+    """For handling scattering data that is not a spectral activity.
+
+    .. list-table:: Genres associated with this class:
+        :width: 100%
+
+        * - depolarp
+          - depolaru
+          - depp
+          - depu
+          - alpha2
+        * - beta2
+          - alphag
+          - gamma2
+          - delta2
+          - cid1
+        * - cid2
+          - cid3
+          - rc180
+          -
+          -
+    """
+
     associated_genres = (
         "depolarp",
         "depolaru",
@@ -462,7 +594,7 @@ class ScatteringData(_VibData):
         "cid3",
         "rc180",
     )
-    full_name_ref = {
+    _full_name_ref = {
         "depolarp": "Depolar-P Raman",
         "depolaru": "Depolar-U Raman",
         "depp": "Depolar-P ROA",
@@ -505,9 +637,17 @@ class ScatteringData(_VibData):
 
 
 class ElectronicData(SpectralData):
+    """For handling electronic data that is not a spectral activity.
+
+    .. list-table:: Genres associated with this class:
+        :width: 100%
+
+        * - eemang
+    """
+
     wavelen = ArrayProperty(check_against="filenames")
     associated_genres = ("eemang",)
-    full_name_ref = dict(eemang="E-M Angle")
+    _full_name_ref = dict(eemang="E-M Angle")
     _units = dict(eemang="deg")
 
     @property
@@ -539,6 +679,7 @@ class SpectralActivities(SpectralData, Averagable, ABC):
         dip="ir",
         iri="ir",
         ramact="raman",
+        ramanactiv="raman",
         raman1="raman",
         roa1="roa",
         raman2="raman",
@@ -552,7 +693,7 @@ class SpectralActivities(SpectralData, Averagable, ABC):
         vdip="uv",
         ldip="uv",
     )
-    full_name_ref = dict()
+    _full_name_ref = dict()
     _units = dict()
     _intensities_converters = {}
 
@@ -618,9 +759,9 @@ class _VibAct(_VibData, SpectralActivities):
         Raises
         ------
         ValueError
-            If given `start`, `stop`, and `step` values would produce an empty
-            or one-element sequence; i.e. if `start` is grater than `stop` or if
-            `start - stop < step`, assuming `step` is a positive value.
+            If given *start*, *stop*, and *step* values would produce an empty
+            or one-element sequence; i.e. if *start* is grater than *stop* or if
+            ``start - stop < step``, assuming *step* is a positive value.
         """
         abscissa = np.arange(start, stop, step)
         if abscissa.size <= 1:
@@ -646,6 +787,16 @@ class _VibAct(_VibData, SpectralActivities):
 
 
 class VibrationalActivities(VibrationalData, _VibAct):
+    """For handling electronic spectral activity data.
+
+    .. list-table:: Genres associated with this class:
+        :width: 100%
+
+        * - iri
+          - dip
+          - rot
+    """
+
     associated_genres = (
         "iri",
         "dip",
@@ -656,7 +807,7 @@ class VibrationalActivities(VibrationalData, _VibAct):
         "rot": dw.rot_to_vcd,
         "iri": _as_is,
     }
-    full_name_ref = dict(
+    _full_name_ref = dict(
         rot="Rot. Strength",
         dip="Dip. Strength",
         iri="IR Intensity",
@@ -669,6 +820,21 @@ class VibrationalActivities(VibrationalData, _VibAct):
 
 
 class ScatteringActivities(ScatteringData, _VibAct):
+    """For handling scattering spectral activity data.
+
+    .. list-table:: Genres associated with this class:
+        :width: 100%
+
+        * - ramanactiv
+          - ramact
+          - raman1
+          - roa1
+        * - raman2
+          - roa2
+          - raman3
+          - roa3
+    """
+
     associated_genres = (
         "ramanactiv",
         "ramact",
@@ -679,7 +845,7 @@ class ScatteringActivities(ScatteringData, _VibAct):
         "raman3",
         "roa3",
     )
-    full_name_ref = dict(
+    _full_name_ref = dict(
         ramanactiv="Raman scatt. activities",
         ramact="Raman scatt. activities",
         roa1="ROA inten. ICPu/SCPu(180)",
@@ -732,6 +898,19 @@ class ScatteringActivities(ScatteringData, _VibAct):
 
 
 class ElectronicActivities(ElectronicData, SpectralActivities):
+    """For handling electronic spectral activity data.
+
+    .. list-table:: Genres associated with this class:
+        :width: 100%
+
+        * - vdip
+          - ldip
+          - vrot
+          - lrot
+          - vosc
+          - losc
+    """
+
     associated_genres = (
         "vdip",
         "ldip",
@@ -740,7 +919,7 @@ class ElectronicActivities(ElectronicData, SpectralActivities):
         "vosc",
         "losc",
     )
-    full_name_ref = dict(
+    _full_name_ref = dict(
         vrot="Rot. (velo)",
         lrot="Rot. (lenght)",
         vosc="Osc. (velo)",
@@ -755,15 +934,36 @@ class ElectronicActivities(ElectronicData, SpectralActivities):
         ldip="10^(-44) esu^2 cm^2",
     )
     _intensities_converters = {
-        # for "osc" ignore frequencies given by default by super().intensities
+        # for "osc" ignore frequencies given by default by self.intensities
         "vosc": lambda v, _: dw.osc_to_uv(v),
         "losc": lambda v, _: dw.osc_to_uv(v),
         "vrot": dw.rot_to_ecd,
         "lrot": dw.rot_to_ecd,
-        # TODO: add "ldip" and "vdip"
-        "ldip": lambda *_: NotImplemented,
-        "vdip": lambda *_: NotImplemented,
+        "ldip": dw.dip_to_uv,
+        "vdip": dw.dip_to_uv,
     }
+
+    @property
+    def intensities(self):
+        """Converts spectral activity calculated by quantum chemistry software
+        to signal intensity.
+
+        Returns
+        -------
+        numpy.ndarray
+            Signal intensities for each conformer.
+
+        Raises
+        ------
+        NotImplementedError
+            if genre does not provide values conversion to intensities."""
+        try:
+            converter = self._intensities_converters[self.genre]
+        except KeyError:
+            raise NotImplementedError(
+                f"Genre {self.genre} does not provide conversion to intensities."
+            )
+        return converter(self.values, self.wavelengths)
 
     def calculate_spectra(self, start, stop, step, width, fitting):
         """Calculates spectrum for each individual conformer.
@@ -790,9 +990,9 @@ class ElectronicActivities(ElectronicData, SpectralActivities):
         Raises
         ------
         ValueError
-            If given `start`, `stop`, and `step` values would produce an empty
-            or one-element sequence; i.e. if `start` is grater than `stop` or if
-            `start - stop < step`, assuming `step` is a positive value.
+            If given *start*, *stop*, and *step* values would produce an empty
+            or one-element sequence; i.e. if *start* is grater than *stop* or if
+            ``start - stop < step``, assuming *step* is a positive value.
         """
         abscissa = np.arange(start, stop, step)
         if abscissa.size <= 1:
@@ -824,42 +1024,38 @@ class ElectronicActivities(ElectronicData, SpectralActivities):
 
 
 class Transitions(DataArray):
-    """DataArray that stores information about electronic transitions from ground
+    """For handling information about electronic transitions from ground
     to excited state contributing to each band.
 
-    Data is stored in three attributes: `ground`, `excited`, and `values`, which are
-    respectively: list of ground state electronic subshells, list of excited state
-    electronic subshells, and list of coefficients of transitions from corresponding
-    ground to excited subshell. Each of these arrays is of shape (conformers, bands,
-    max_transitions), where 'max_transitions' is a highest number of transitions
-    contributing to single band across all bands of all conformers.
+    Data is stored in three attributes: :attr:`.ground`, :attr:`.excited`, and
+    :attr:`.values`, which are respectively: list of ground state electronic subshells,
+    list of excited state electronic subshells, and list of coefficients of transitions
+    from corresponding ground to excited subshell. Each of these arrays is of shape
+    (conformers, bands, max_transitions), where 'max_transitions' is a highest number of
+    transitions contributing to single band across all bands of all conformers.
+
+    .. list-table:: Genres associated with this class:
+        :width: 100%
+
+        * - transitions
 
     Attributes
     ----------
-    filenames : numpy.ndarray(dtype=str)
-        List of filenames of gaussian output files, from which data were extracted.
     values : numpy.ndarray(dtype=float)
         List of coefficients of each transition. It is a 3-dimensional of shape
         (conformers, bands, max_transitions).
     ground : numpy.ndarray(dtype=int)
         List of ground state electronic subshells, stored as integers assigned to them
-        by used quantum computations program. It is a 3-dimensional of shape
+        by used quantum computations program. It is a 3-dimensional array of shape
         (conformers, bands, max_transitions).
-    ground : numpy.ndarray(dtype=int)
+    excited : numpy.ndarray(dtype=int)
         List of excited state electronic subshells, stored as integers assigned to them
-        by used quantum computations program. It is a 3-dimensional of shape
+        by used quantum computations program. It is a 3-dimensional array of shape
         (conformers, bands, max_transitions).
-    genre : str
-        Genre of given data.
-    allow_data_inconsistency : bool, optional
-        Specifies if inconsistency of data should be allowed when creating instance
-        of this class and setting it's attributes. Defaults to `True`, as different
-        number of transitions may be contributing to each band.
-
     """
 
     associated_genres = ("transitions",)
-    full_name_ref = dict(transitions="Transitions")
+    _full_name_ref = dict(transitions="Transitions")
     _units = dict()
     ground = JaggedArrayProperty(dtype=int, check_against="filenames")
     excited = JaggedArrayProperty(dtype=int, check_against="filenames")
@@ -905,6 +1101,21 @@ class Transitions(DataArray):
         values: Sequence[Sequence[Sequence[Tuple[int, int, float]]]],
         allow_data_inconsistency: bool = False,
     ):
+        """
+        Parameters
+        ----------
+        genre
+            Name of the data genre that *values* represent.
+        filenames
+            Sequence of conformers' identifiers.
+        values : list of lists of lists of tuples of (int, int, float)
+            Transitions data (ground and excited state electronic subshell and
+            coefficient of transition from former to latter) for each transition
+            of each band of each conformer.
+        allow_data_inconsistency
+            Flag signalizing if instance should allow data inconsistency (see
+            :class:`ArrayPropety` for details).
+        """
         super().__init__(genre, filenames, values, allow_data_inconsistency)
         ground, excited, values = self.unpack_values(values)
         self.ground = ground
@@ -913,7 +1124,7 @@ class Transitions(DataArray):
 
     @property
     def coefficients(self) -> np.ndarray:
-        """Coefficients of each transition, alias for `values`."""
+        """Coefficients of each transition, alias for *values*."""
         return self.values
 
     @coefficients.setter
@@ -951,7 +1162,7 @@ class Transitions(DataArray):
         indices = self.indices_highest
         # could be also achieved by the following:
         # np.take_along_axis(values, indices[..., np.newaxis], axis=2).squeeze(axis=2)
-        # but indexing is much quicker, once `indices` is established
+        # but indexing is much quicker, once *indices* is established
         return (
             self.ground[indices],
             self.excited[indices],
@@ -960,35 +1171,32 @@ class Transitions(DataArray):
         )
 
 
+def _geom_to_atoms_genre(genre):
+    return genre.replace("geom", "atoms")
+
+
 class Geometry(FloatArray):
-    """DataArray that stores information about geometry of conformers.
+    """For handling information about geometry of conformers.
 
-    Attributes
-    ----------
-    molecule_atoms : numpy.ndarray(dtype=int)
-        List of atomic numbers representing atoms in conformer, one for each coordinate.
+    .. list-table:: Genres associated with this class:
+        :width: 100%
 
-        Value given to setter should be a list of integers or list of strings, that
-        can be interpreted as integers or symbols of atoms. Setter can be given a list
-        of lists - one list of atoms for each conformer. All those lists should be
-        identical in such case, otherwise InconsistentDataError is raised.
-        Only one list of atoms is stored in either case.
-    filenames : numpy.ndarray(dtype=str)
-        List of filenames of gaussian output files, from which data were extracted.
-    values : numpy.ndarray(dtype=float)
-        List of x, y, z coordinated for each conformer, for each atom.
-    genre : str
-        Genre of given data.
-    allow_data_inconsistency : bool, optional
-        Specifies if inconsistency of data should be allowed when creating instance
-        of this class and setting it's attributes. Defaults to `False`.
+        * - last_read_geom
+          - input_geom
+          - optimized_geom
     """
 
-    associated_genres = ("geometry", "input_geom")
-    full_name_ref = dict(geometry="Geometry", input_geom="Input Geometry")
-    _units = dict(geometry="Angstrom")
+    associated_genres = ("last_read_geom", "input_geom", "optimized_geom")
+    _full_name_ref = dict(
+        last_read_geom="Geometry",
+        input_geom="Input Geometry",
+        optimized_geom="Optimized Geometry",
+    )
+    _units = dict(
+        last_read_geom="Angstrom", input_geom="Angstrom", optimized_geom="Angstrom"
+    )
     values = ArrayProperty(dtype=float, check_against="filenames")
-    molecule_atoms = CollapsibleArrayProperty(
+    atoms = CollapsibleArrayProperty(
         dtype=int,
         check_against="values",
         check_depth=2,
@@ -997,15 +1205,41 @@ class Geometry(FloatArray):
         strict=True,
     )
 
+    @classmethod
+    def get_init_params(cls) -> Dict[str, Union[str, Parameter, DependentParameter]]:
+        params = super().get_init_params()
+        params["atoms"] = DependentParameter.from_parameter(
+            params["atoms"], genre_getter=_geom_to_atoms_genre
+        )
+        return params
+
     def __init__(
         self,
         genre: str,
         filenames: Sequence[str],
         values: Sequence[Sequence[Sequence[float]]],
-        molecule_atoms: Union[
-            Sequence[Union[int, str]], Sequence[Sequence[Union[int, str]]]
-        ],
+        atoms: Union[Sequence[Union[int, str]], Sequence[Sequence[Union[int, str]]]],
         allow_data_inconsistency: bool = False,
     ):
+        """
+        Parameters
+        ----------
+        genre
+            Name of the data genre that *values* represent.
+        filenames
+            Sequence of conformers' identifiers.
+        values
+            List of x, y, z coordinated for each conformer, for each atom.
+        allow_data_inconsistency
+            Flag signalizing if instance should allow data inconsistency (see
+            :class:`ArrayPropety` for details). False by default.
+        atoms
+            List of atomic numbers representing atoms in conformer, one for each
+            coordinate. Should be a list of integers or list of strings, that can be
+            interpreted as integers or symbols of atoms. May also be a list of such
+            lists - one list of atoms for each conformer. All those lists should be
+            identical in such case, otherwise InconsistentDataError is raised. Only one
+            list of atoms is stored in either case.
+        """
         super().__init__(genre, filenames, values, allow_data_inconsistency)
-        self.molecule_atoms = molecule_atoms
+        self.atoms = atoms

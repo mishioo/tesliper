@@ -59,12 +59,12 @@ def geometry(filenames):
             [-0.94726301, 1.51890557, 1.65011469],
         ],
     ]
-    molecule_atoms = ["C H H H O H".split()]
+    atoms = ["C H H H O H".split()]
     return ar.Geometry(
-        genre="geometry",
+        genre="last_read_geom",
         filenames=filenames,
         values=values,
-        molecule_atoms=molecule_atoms,
+        atoms=atoms,
     )
 
 
@@ -104,8 +104,9 @@ def gjfwriter(tmp_path):
 def assert_output_ok(path, names):
     assert len(list(path.iterdir())) == 2
     assert {f.name for f in path.iterdir()} == {f"{f}.gjf" for f in names}
-    assert path.joinpath(names[0] + ".gjf").open("r").read() == meoh0
-    assert path.joinpath(names[1] + ".gjf").open("r").read() == meoh1
+    for name in names:
+        with path.joinpath(name + ".gjf").open("r") as file:
+            assert file.read() == globals()[name]
 
 
 def test_basic(tmp_path, gjfwriter, geometry, charge, multiplicity, filenames):
@@ -128,10 +129,19 @@ def test_alt_multiplicity(tmp_path, gjfwriter, geometry, alt_multiplicity, filen
     assert_output_ok(tmp_path, filenames)
 
 
+def test_parametrized(tmp_path, gjfwriter, geometry, charge, multiplicity, filenames):
+    gjfwriter.link0 = {"Chk": "link/to/${conf}.ext"}
+    gjfwriter.geometry(geometry, charge, multiplicity)
+    for name in filenames:
+        with tmp_path.joinpath(name + ".gjf").open("r") as file:
+            assert file.read().startswith(f"%Chk=link/to/{name}.ext")
+
+
 @pytest.mark.parametrize(
     "link0,expline",
     (
         ({"mem": "10GB"}, "%Mem=10GB\n"),
+        ({"Mem": "10GB"}, "%Mem=10GB\n"),
         ({"nosave": True}, "%NoSave\n"),
         ({"mem": "10GB", "nosave": False}, "%Mem=10GB\n"),
     ),
@@ -139,7 +149,7 @@ def test_alt_multiplicity(tmp_path, gjfwriter, geometry, alt_multiplicity, filen
 def test_link0(tmp_path, gjfwriter, link0, expline):
     gjfwriter.link0 = link0
     with tmp_path.joinpath("test.gjf").open("w") as file:
-        gjfwriter._write_conformer(file, [[1, 1, 1]], [1], 0, 1)
+        gjfwriter._write_conformer(file, [[1, 1, 1]], [1], 0, 1, {})
     expected = [
         expline,
         "# hf/sto-3g\n",
@@ -155,6 +165,16 @@ def test_link0(tmp_path, gjfwriter, link0, expline):
             assert line == exp
 
 
+@pytest.mark.parametrize("param", GjfWriter._parametrized)
+def test_link0_parametrized(tmp_path, gjfwriter, param):
+    gjfwriter.link0 = {param: "link/to/${conf}.ext"}
+    with tmp_path.joinpath("test.gjf").open("w") as file:
+        gjfwriter._write_conformer(file, [[1, 1, 1]], [1], 0, 1, {"conf": "test"})
+    with tmp_path.joinpath("test.gjf").open("r") as file:
+        cont = file.read()
+    assert cont.startswith(f"%{gjfwriter._link0_commands[param]}=link/to/test.ext")
+
+
 def test_wrong_route_type(gjfwriter):
     with pytest.raises(TypeError):
         gjfwriter.route = 123
@@ -163,7 +183,7 @@ def test_wrong_route_type(gjfwriter):
 def test_post_spec(tmp_path, gjfwriter):
     gjfwriter.post_spec = "some post specs 123"
     with tmp_path.joinpath("test.gjf").open("w") as file:
-        gjfwriter._write_conformer(file, [[1, 1, 1]], [1], 0, 1)
+        gjfwriter._write_conformer(file, [[1, 1, 1]], [1], 0, 1, {})
     with tmp_path.joinpath("test.gjf").open("r") as file:
         output = file.read()
     assert output.endswith(f"\n\n{gjfwriter.post_spec}\n\n")

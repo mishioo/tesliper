@@ -17,12 +17,12 @@ from tesliper.glassware import (
     VibrationalActivities,
     VibrationalData,
 )
-from tesliper.writing import Writer
+from tesliper.writing import WriterBase
 
 
 @pytest.fixture(scope="session")
 def writer_class():
-    class _Writer(Writer):
+    class _Writer(WriterBase):
         extension = "txt"
 
     return _Writer
@@ -159,6 +159,7 @@ def test_distribution_extras(writer_class, arraytype, array):
 
 
 writer_methods = {
+    "generic": dict(data=None),
     "overview": dict(
         energies=None,
         frequencies=None,

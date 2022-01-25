@@ -117,10 +117,13 @@ class SpectralDataDetails(ttk.Frame):
                 # add transitions
                 associated_genres = associated_genres + tuple(transitions_names)
             for idx_, genre in enumerate(associated_genres):
-                try:
+                if genre in transitions_names:
                     full_name = transitions_names[genre]
-                except KeyError:
-                    full_name = class_.full_name_ref[genre]
+                else:
+                    try:
+                        full_name = class_._full_name_ref[genre]
+                    except KeyError:
+                        full_name = genre
 
                 idx = last_idx + idx_
                 val = genre in defaults and master.tesliper.conformers.has_genre(genre)
@@ -428,6 +431,14 @@ class ExportPopup(Popup):
 class LinkZero(ttk.Frame):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
+        tip_text = (
+            "Tip: you may use ${conf} placeholder in path specification to get "
+            "a conformer's name or ${num} to get a sequential number."
+        )
+        self.tip = ttk.Label(
+            self, text=tip_text, wraplength=400, justify="left", foreground="gray"
+        )
+
         self.descriptions = {
             "Mem": "amount of dynamic memory used",
             "Chk": "path to the checkpoint file",
@@ -463,10 +474,11 @@ class LinkZero(ttk.Frame):
         self.items = {}
 
         self.columnconfigure(1, weight=1)
-        self.command_checkbox.grid(column=0, row=0, sticky="ew")
-        self.value.grid(column=1, row=0, sticky="ew")
-        self.add_button.grid(column=2, row=0, sticky="ew")
-        self.items_frame.grid(column=0, row=1, columnspan=3, sticky="news")
+        self.tip.grid(column=0, row=0, columnspan=3, sticky="ew")
+        self.command_checkbox.grid(column=0, row=1, sticky="ew")
+        self.value.grid(column=1, row=1, sticky="ew")
+        self.add_button.grid(column=2, row=1, sticky="ew")
+        self.items_frame.grid(column=0, row=2, columnspan=3, sticky="news")
         self.items_frame.columnconfigure(1, weight=1)
 
     def edit(self, item, value):

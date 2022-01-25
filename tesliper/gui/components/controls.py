@@ -72,7 +72,7 @@ class FilterRange(ttk.Frame):
         )
         self.upper_entry.grid(column=1, row=1, sticky="new")
 
-        b_filter = ttk.Button(self, text="Limit to...", command=self.filter_energy)
+        b_filter = ttk.Button(self, text="Trim to...", command=self.filter_energy)
         b_filter.grid(column=0, row=2, columnspan=3, sticky="new")
 
         # trigger action on Enter key press
@@ -193,7 +193,7 @@ class FilterRMSD(ttk.Frame):
         )
         ignore_hydrogens.grid(column=0, row=3, columnspan=3, sticky="new")
 
-        button = ttk.Button(self, text="Filter similar", command=self._filter)
+        button = ttk.Button(self, text="Trim similar", command=self._filter)
         button.grid(column=0, row=4, columnspan=3, sticky="nwe")
 
         # trigger action on Enter key press
@@ -227,7 +227,7 @@ class FilterRMSD(ttk.Frame):
 
 class FilterEnergies(CollapsiblePane):
     def __init__(self, parent, view, **kwargs):
-        super().__init__(parent, text="Filter kept conformers", **kwargs)
+        super().__init__(parent, text="Energies and structure", **kwargs)
         self.view = view
 
         ttk.Label(self.content, text="Show:").grid(column=0, row=0, sticky="new")
@@ -262,7 +262,7 @@ class FilterEnergies(CollapsiblePane):
             "units": lambda: self.show_units[self.show_var.get()],
         }
         # filter by energy value
-        LabelSeparator(self.content, text="Filter range").grid(
+        LabelSeparator(self.content, text="Range sieve").grid(
             column=0, row=2, columnspan=2, sticky="nwe"
         )
         self.range = FilterRange(self.content, view=self.view, proxy=proxy)
@@ -321,7 +321,7 @@ class SelectConformers(CollapsiblePane):
         ram=lambda *args: "raman1" in args[0],
         roa=lambda *args: "roa1" in args[0],
         incompl=lambda *args: not all(g in args[0] for g in args[1]),
-        term=lambda *args: args[0]["normal_termination"],
+        term=lambda *args: not args[0]["normal_termination"],
         opt=lambda *args: "optimization_completed" in args[0]
         and not args[0]["optimization_completed"],
         imag=lambda *args: "freq" in args[0] and any([f < 0 for f in args[0]["freq"]]),
@@ -331,11 +331,11 @@ class SelectConformers(CollapsiblePane):
     )
 
     def __init__(self, parent, view, **kwargs):
-        super().__init__(parent, text="Select kept conformers", **kwargs)
+        super().__init__(parent, text="Kept conformers", **kwargs)
         self.view = view
 
         self.widgets = dict()
-        self.columnconfigure(0, weight=1)
+        self.content.columnconfigure(0, weight=1)
         root = self.winfo_toplevel()
         root.bind("<<KeptChanged>>", self.on_kept_changed, "+")
         root.bind("<<DataExtracted>>", self.on_data_extracted, "+")
@@ -343,6 +343,7 @@ class SelectConformers(CollapsiblePane):
 
         count_frame = ttk.Frame(self.content)
         count_frame.grid(column=0, row=0, sticky="news")
+        count_frame.columnconfigure((1, 3), weight=1)
         widgets_tuple = namedtuple(
             "widgets", ["label", "count", "slash", "all", "check", "uncheck"]
         )
@@ -362,14 +363,14 @@ class SelectConformers(CollapsiblePane):
             all_ = tk.Label(count_frame, textvariable=var_all, bd=0, width=3)
             check_butt = ttk.Button(
                 count_frame,
-                text="select",
-                width=6,
+                text="keep",
+                width=5,
                 command=lambda key=key: self.select(key, keep=True),
             )
             uncheck_butt = ttk.Button(
                 count_frame,
-                text="discard",
-                width=8,
+                text="trim",
+                width=5,
                 command=lambda key=key: self.select(key, keep=False),
             )
 
@@ -377,18 +378,18 @@ class SelectConformers(CollapsiblePane):
             all_.var = var_all
 
             label.grid(column=0, row=i)
-            count.grid(column=1, row=i)
+            count.grid(column=1, row=i, sticky="we")
             slash.grid(column=2, row=i)
-            all_.grid(column=3, row=i)
-            check_butt.grid(column=4, row=i, sticky="ne")
-            uncheck_butt.grid(column=5, row=i, sticky="ne")
+            all_.grid(column=3, row=i, sticky="we")
+            check_butt.grid(column=4, row=i)
+            uncheck_butt.grid(column=5, row=i)
 
             root.changer.register([check_butt, uncheck_butt], "tesliper")
 
             self.widgets[key] = widgets_tuple(
                 label, count, slash, all_, check_butt, uncheck_butt
             )
-        separator = LabelSeparator(self.content, text="Always discard?")
+        separator = LabelSeparator(self.content, text="Auto-trim")
         separator.grid(column=0, row=1, sticky="we")
 
         keep_unchecked_frame = ttk.Frame(self.content)
@@ -576,6 +577,7 @@ class CalculateSpectra(CollapsiblePane):
             )
             b.configure(state="disabled")
             b.grid(column=c, row=r, padx=5)
+            b.bind("<Button-1>", self._stash_current_settings)
             self.s_name_radio[v] = b
             root.changer.register(b, needs_all_genres=[dw.DEFAULT_ACTIVITIES[v]])
 
@@ -794,7 +796,6 @@ class CalculateSpectra(CollapsiblePane):
             for name in self.s_name_radio
         }
         self.lastly_drawn_spectra = None
-        self._exp_spc = {k: None for k in self.s_name_radio.keys()}
 
     @property
     def tesliper(self):
@@ -803,14 +804,14 @@ class CalculateSpectra(CollapsiblePane):
     @property
     def exp_spc(self):
         try:
-            return self._exp_spc[self.s_name.get()]
+            return self.tesliper.experimental[self.s_name.get()]
         except KeyError:
-            # no value selected in s_name radio
+            # no experimental spectrum or no value selected in s_name radio
             return None
 
     @exp_spc.setter
     def exp_spc(self, value):
-        self._exp_spc[self.s_name.get()] = value
+        self.tesliper.experimental[self.s_name.get()] = value
 
     @property
     def draw_params(self):
@@ -861,8 +862,9 @@ class CalculateSpectra(CollapsiblePane):
         if filename:
             logger.debug(f"File: {filename}")
             try:
-                soxhlet = Soxhlet()
-                spc = soxhlet.load_spectrum(filename)
+                self.tesliper.load_experimental(
+                    filename, self.draw_params["spectra_name"]
+                )
             except ValueError:
                 logger.warning(
                     "Experimental spectrum couldn't be loaded. "
@@ -870,11 +872,6 @@ class CalculateSpectra(CollapsiblePane):
                     " or if file is not corrupted."
                 )
             else:
-                self.exp_spc = gw.SingleSpectrum(
-                    genre=self.draw_params["spectra_name"],
-                    values=spc[1],
-                    abscissa=spc[0],
-                )
                 self.show_exp.var.set(True)
                 self.winfo_toplevel().changer.set_states()
 
@@ -939,7 +936,6 @@ class CalculateSpectra(CollapsiblePane):
     def live_preview_callback(self, _event=None, mode=False):
         if _event is not None:
             logger.debug(f"Event caught by {self}.live_preview_callback handler.")
-        # TODO: show/hide bars/experimental plots when checkbox clicked
         spectra_name = self.s_name.get()
         # update appropriate tesliper.parameters with current calculation settings
         if spectra_name:
@@ -1077,6 +1073,12 @@ class CalculateSpectra(CollapsiblePane):
             return {}
         return settings
 
+    def _stash_current_settings(self, _event=None):
+        spectra_name = self.draw_params["spectra_name"]
+        if not spectra_name:
+            return  # spectra name radio not selected
+        self.last_used_settings[spectra_name] = self.current_settings.copy()
+
     def recalculate_command(self):
         draw_params = self.draw_params
         spectra_name = draw_params["spectra_name"]
@@ -1086,7 +1088,7 @@ class CalculateSpectra(CollapsiblePane):
         if not self.current_settings:
             logger.info("Calculation aborted: invalid settings provided.")
             return
-        self.last_used_settings[spectra_name] = self.current_settings.copy()
+        self._stash_current_settings()
         option = draw_params["option"]
         if not option or option.startswith("Choose "):
             logger.info("Calculation aborted: option not chosen.")
@@ -1121,7 +1123,7 @@ class ExtractData(ttk.LabelFrame):
         self.check_ignore_unknown.grid(column=0, row=2, sticky="nwe")
         self.winfo_toplevel().changer.register(self.check_ignore_unknown, "tesliper")
 
-    # TODO: add recursive smart extraction
+    # TODO: add recursive extraction
 
     @property
     def tesliper(self):
@@ -1153,7 +1155,6 @@ class ExtractData(ttk.LabelFrame):
 
     @ThreadedMethod(progbar_msg="Extracting...")
     def extract(self, path, wanted_files=None):
-        # TODO: handle extraction errors
         root = self.winfo_toplevel()
         try:
             for file, data in self.tesliper.extract_iterate(path, wanted_files):
@@ -1192,7 +1193,7 @@ class ExportData(ttk.LabelFrame):
         )
         self.b_text_export.grid(column=1, row=0, sticky="nwe")
         self.b_excel_export = ttk.Button(
-            self, text="Export as .xls", command=lambda: self.save(fmt="xlsx")
+            self, text="Export as .xlsx", command=lambda: self.save(fmt="xlsx")
         )
         self.b_excel_export.grid(column=1, row=1, sticky="nwe")
         self.b_csv_export = ttk.Button(
@@ -1253,18 +1254,6 @@ class ExportData(ttk.LabelFrame):
         query = popup.get_query()
         return query
 
-    def _should_override(self, existing: list):
-        if not existing:
-            return False
-        many = len(existing) > 1
-        joined = join_with_and(existing)
-        title = "Files already exist!"
-        message = (
-            f"{joined} file{'s' if many else ''} already exist in this directory. "
-            f"Would you like to overwrite {'them' if many else 'it'}?"
-        )
-        return messagebox.askokcancel(parent=self, title=title, message=message)
-
     @ThreadedMethod(progbar_msg="Saving...")
     def execute_save_command(self, categories, fmt):
         root = self.winfo_toplevel()
@@ -1281,83 +1270,57 @@ class ExportData(ttk.LabelFrame):
                 averaged = self.tesliper.get_averaged_spectrum(spectrum=spc, energy=en)
                 self.tesliper.averaged[(spc, en)] = averaged
             root.progtext.set("Saving...")
-        existing = self._exec_save(categories, fmt, mode="x")
-        if self._should_override(existing):
-            # for "xlsx" retry whole process, for other retry only unsuccessful
-            cats = (
-                {cat: categories[cat] for cat in existing}
-                if fmt != "xlsx"
-                else categories
-            )
-            self._exec_save(cats, fmt, mode="w")
-
-    def _save_all_transitions(self, fmt, mode, transitions, wavelengths):
-        wrt = wr.writer(fmt=fmt, destination=self.tesliper.output_dir, mode=mode)
-        wrt.transitions(
-            transitions=transitions, wavelengths=wavelengths, only_highest=False
-        )
+        self._exec_save(categories, fmt, mode="x")
 
     def _exec_save(self, categories, fmt, mode):
-        """Executes save command, calling appropriate "export" methods of Tesliper
-        instance. Returns list of genres' categories, for which the associated method
-        raised `FileExistsError`.
-
-        Execution is a little different, if `fmt` is "xlsx", as only one file is
-        produced for the whole batch: if `FileExistsError` is raised on first category,
-        this method returns `["xlsx"]` and ignores the rest of `categories`.
+        """Executes save command, by selecting writer object appropriate for given fmt
+        and invoking its :meth:`.write` method with selected data. If
+        :class:`FileExistsError` or :class:`PermissionError` occurres, it gives a popup,
+        asking if retry should be attempted. Changed mode to "write" for retry, if
+        necessary.
         """
-        savers = []
-        for thing, genres in categories.items():
-            try:
-                idx = genres.index("transitions-all")
-            except ValueError:
-                logger.debug("transitions-all not requested")
-            else:
-                _ = genres.pop(idx)
-                savers.append(
-                    (
-                        functools.partial(
-                            self._save_all_transitions,
-                            transitions=self.tesliper["transitions"],
-                            wavelengths=self.tesliper["wavelen"],
-                        ),
-                        thing,
-                    )
+        genres = ["freq", "stoichiometry", "wavelen"]
+        genres += categories.get("energies", [])
+        genres += categories.get("spectral data", [])
+        try:
+            idx = genres.index("transitions-all")
+        except ValueError:
+            transitions_all = False
+            logger.debug("transitions-all not requested")
+        else:
+            _ = genres.pop(idx)
+            transitions_all = False
+        data = [self.tesliper[g] for g in genres]
+        if "spectra" in categories:
+            data += [s for s in self.tesliper.spectra.values() if s]
+        if "averaged" in categories:
+            data += [s for s in self.tesliper.averaged.values() if s]
+        retry_mode = None
+        try:
+            wrt = wr.writer(fmt=fmt, destination=self.tesliper.output_dir, mode=mode)
+            wrt.write(data=data)
+            if transitions_all:
+                wrt.transitions(
+                    transitions=self.tesliper["transitions"],
+                    wavelengths=self.tesliper["wavelen"],
+                    only_highest=False,
                 )
-            if thing == "energies":
-                saver = functools.partial(
-                    self.tesliper.export_data,
-                    genres=["freq", "stoichiometry", *genres],
-                )
-            elif thing == "spectral data":
-                saver = functools.partial(self.tesliper.export_data, genres=genres)
-            elif thing == "spectra":
-                saver = self.tesliper.export_spectra
-            elif thing == "averaged":
-                saver = self.tesliper.export_averaged
-            else:
-                logger.warning(f"Unrecognised export category: '{thing}'.")
-                continue
-            savers.append((saver, thing))
-        existing = set()
-        for saver, thing in savers:
-            try:
-                saver(fmt=fmt, mode=mode)
-            except FileExistsError:
-                # one .xlsx file for whole batch
-                if fmt == "xlsx":
-                    return ["xlsx"]
-                # must append other data chunks
-                existing.add(thing)
-            except PermissionError as error:
-                answer = messagebox.askokcancel(
-                    "Permission Error", f"Cannot write to file: {error}. Continue?"
-                )
-                if not answer:
-                    return []  # empty to abort retry
-            # next chunks must be appended to .xlsx file
-            mode = "a" if fmt == "xlsx" else mode
-        return list(existing)
+        except FileExistsError:
+            message = (
+                "Some files already exist in this directory. "
+                "Would you like to overwrite them?"
+            )
+            should_override = messagebox.askokcancel(
+                parent=self, title="Files already exist!", message=message
+            )
+            retry_mode = "w" if should_override else None
+        except PermissionError as error:
+            answer = messagebox.askokcancel(
+                "Permission Error", f"Cannot write to file: {error}. Retry?"
+            )
+            retry_mode = mode if answer else None
+        if retry_mode:
+            self._exec_save(categories, fmt, mode=retry_mode)
 
     def save(self, fmt):
         query = self.get_save_query()

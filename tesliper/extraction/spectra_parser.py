@@ -1,3 +1,4 @@
+"""Parser for spectra files."""
 import csv
 import logging as lgg
 from pathlib import Path
@@ -5,18 +6,21 @@ from typing import Optional, Union
 
 import numpy as np
 
-from .base_parser import Parser
+from .parser_base import ParserBase
 
 logger = lgg.getLogger(__name__)
 
 
-class SpectraParser(Parser):
+class SpectraParser(ParserBase):
     """Parser for files containing spectral data. It can parse .txt (in "x y" format)
     and .csv files, returning an numpy.ndarray with loaded spectrum. Parsing process
     may be customized by specifying what delimiter of values should be expected
     and in which column x- and y-values are, if there are more than 2 columns of data.
     If file contains any header, it is ignored.
     """
+
+    purpose = "spectra"
+    extensions = (".txt", ".xy", ".csv")
 
     def __init__(self):
         super().__init__()
@@ -51,7 +55,7 @@ class SpectraParser(Parser):
         -------
         numpy.array
             two-dimensional numpy array ([[x-values], [y-values]])
-            of data type 'float'"""
+            of data type ``float``"""
         # TODO: add type checking of passed file, consider those:
         #     https://github.com/audreyr/binaryornot
         #     https://eli.thegreenplace.net/2011/10/19/\
@@ -70,7 +74,7 @@ class SpectraParser(Parser):
         if self.workhorse is self.initial:
             raise ValueError(f"Don't know how to parse file {filename}")
 
-    @Parser.state(trigger=r".+\.(?:txt|xy)$")
+    @ParserBase.state(trigger=r".+\.(?:txt|xy)$")
     def parse_txt(self, file: Path):
         """Loads spectral data from .txt or .xy file to numpy.array.
 
@@ -126,7 +130,7 @@ class SpectraParser(Parser):
                 arr.append(tuple(map(float, (values[xcolumn], values[ycolumn]))))
         return np.array(list(zip(*arr)))
 
-    @Parser.state(trigger=r".+\.csv$")
+    @ParserBase.state(trigger=r".+\.csv$")
     def parse_csv(self, file: Path):
         """Loads spectral data from csv file to numpy.array.
 
@@ -178,8 +182,8 @@ class SpectraParser(Parser):
             two-dimensional numpy array ([[x-values], [y-values]])
             of data type 'float'
 
-        Rises
-        -----
+        Raises
+        ------
         NotImplementedError
             Whenever called, as this functionality is not implemented yet."""
         # TODO: add support for .spc files

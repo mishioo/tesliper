@@ -1,7 +1,8 @@
+import pytest
+
 from tesliper import glassware as gw
 from tesliper.exceptions import TesliperError
 from tesliper.glassware import conformers as cf
-import pytest
 
 
 @pytest.fixture
@@ -25,8 +26,8 @@ def base():
         "multiplicity": 1,
         "input_geom": [],
         "stoichiometry": "CH3F",
-        "molecule_atoms": (6, 1, 1, 1, 9),
-        "geometry": [],
+        "last_read_atoms": (6, 1, 1, 1, 9),
+        "last_read_geom": [],
         "freq": [1, 2, 3, 4, 5],
         "mass": [2, 1, 3, 2, 1],
         "iri": [27, 8, 569, 1, 3],
@@ -201,6 +202,64 @@ def test_update_banned(single):
         single.update({"foo": 7})
 
 
+def test_pop_single(single):
+    _ = single.pop("bla")
+    assert not single
+    assert not single.filenames
+    assert not single._indices
+    assert not single.kept
+
+
+@pytest.mark.parametrize(
+    "key", ["base", "noopt", "imag", "stoich", "term", "size", "incom"]
+)
+def test_pop(full, key):
+    full.kept = [True, False, True, False, True, False, True]
+    expected_filenames, expected_kept = zip(
+        *[(n, k) for n, k in zip(full.filenames, full.kept) if n is not key]
+    )
+    _ = full.pop(key)
+    assert key not in full
+    assert full.filenames == list(expected_filenames)
+    assert full.kept == list(expected_kept)
+    assert full._indices == {n: i for i, n in enumerate(expected_filenames)}
+
+
+@pytest.mark.parametrize("last", [True, False])
+def test_popitem_single(single, last):
+    pair = single.popitem(last=last)
+    assert pair[0] == "bla"
+    assert not single
+    assert not single.filenames
+    assert not single._indices
+    assert not single.kept
+
+
+@pytest.mark.parametrize("last", [True, False])
+def test_popitem(full, last):
+    full.kept = [True, False, True, False, True, False, True]
+    expected_filenames = full.filenames[:-1] if last else full.filenames[1:]
+    expected_kept = full.kept[:-1] if last else full.kept[1:]
+    expected_key = full.filenames[-1] if last else full.filenames[0]
+    pair = full.popitem(last=last)
+    assert pair[0] == expected_key
+    assert expected_key not in full
+    assert full.filenames == list(expected_filenames)
+    assert full.kept == list(expected_kept)
+    assert full._indices == {n: i for i, n in enumerate(expected_filenames)}
+
+
+@pytest.mark.parametrize("last", [True, False])
+@pytest.mark.parametrize(
+    "key", ["base", "noopt", "imag", "stoich", "term", "size", "incom"]
+)
+def test_move_to_end(full, key, last):
+    full.move_to_end(key, last=last)
+    assert full.filenames[0 if not last else -1] == key
+    assert all(k == n for k, n in zip(full, full.filenames))
+    assert all(full._indices[k] == i for i, k in enumerate(full.filenames))
+
+
 def test_arrayd_default_parameter(full):
     zpe = full.arrayed("zpe")
     assert 298.15 == zpe.t
@@ -349,7 +408,9 @@ def test_trim_incomplete_wanted(full):
 
 def test_trim_incomplete_strict(full):
     m = gw.Conformers(
-        one={"a": 1, "b": 2}, two={"a": 1, "c": 3}, three={"a": 1, "d": 3},
+        one={"a": 1, "b": 2},
+        two={"a": 1, "c": 3},
+        three={"a": 1, "d": 3},
     )
     assert [True, True, True] == m.kept
     m.trim_incomplete(wanted=["a", "b", "c"])
@@ -386,6 +447,29 @@ def test_trim_to_range_errors(full):
         full.trim_to_range("zpe", attribute="bla")
     with pytest.raises(ValueError):
         full.trim_to_range("freq")
+
+
+@pytest.mark.parametrize("trimmed", [True, False])  # if really empty or fully trimmed
+@pytest.mark.parametrize(
+    "method,args",
+    [
+        ("trim_not_optimized", []),
+        ("trim_imaginary_frequencies", []),
+        ("trim_non_matching_stoichiometry", []),
+        ("trim_non_normal_termination", []),
+        ("trim_inconsistent_sizes", []),
+        ("trim_incomplete", []),
+        ("trim_to_range", ["gib"]),
+        ("trim_rmsd", [1, 1]),
+    ],
+)
+def test_trim_empty(empty, single, method, args, trimmed):
+    confs = empty if not trimmed else single
+    if trimmed:
+        confs.kept[0] = False
+    callable = getattr(confs, method)
+    callable(*args)
+    assert confs.kept == ([False] if trimmed else [])
 
 
 def test_select_all(full):

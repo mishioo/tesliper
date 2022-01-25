@@ -1,11 +1,12 @@
+"""Parser for reading spectra calculation parameters from file."""
+import logging
+import re
 from configparser import ConfigParser, MissingSectionHeaderError, ParsingError
 from pathlib import Path
 from typing import Callable, Union
-import re
-import logging
 
 from .. import datawork as dw
-
+from .parser_base import _PARSERS
 
 logger = logging.getLogger(__name__)
 
@@ -15,8 +16,8 @@ FITTINGCRE = re.compile(r"lorentzian|gaussian")
 
 
 def quantity(s: str) -> float:
-    """Convert to float first occurrence of float-looking part of string `s`,
-    ignoring anything else. Raise `configparser.ParsingError` if float cannot be found.
+    """Convert to float first occurrence of float-looking part of string *s*, ignoring
+    anything else. Raise :class:`configparser.ParsingError` if float cannot be found.
 
     Parameters
     ----------
@@ -36,8 +37,8 @@ def quantity(s: str) -> float:
 
 
 def fitting(s: str) -> Callable:
-    """Get fitting function mentioned in a given string `s`, ignoring anything else.
-    Raise `configparser.ParsingError` if known function name cannot be found.
+    """Get fitting function mentioned in a given string *s*, ignoring anything else.
+    Raise :class:`configparser.ParsingError` if known function name cannot be found.
 
     Parameters
     ----------
@@ -68,16 +69,19 @@ class ParametersParser:
 
     The parser is case-insensitive and knows some alias names of expected parameters:
     for instance, "hwhm", "half width of band in half height", "half width at half
-    maximum" will be all recognised as "width" parameter. If you wish to add custom
-    aliases, update `ParametersParser.ALIASES` dictionary with appropriate
+    maximum" will be all recognized as "width" parameter. If you wish to add custom
+    aliases, update :attr:`ParametersParser.ALIASES` dictionary with appropriate
     "alias": "target" pair.
 
     Notes
     -----
-    ParametersParser is using Python's configparser, so it will parse files that
-    contain a section header, enclosed in braces. However, the section name will be
+    :class:`ParametersParser` is using Python's configparser, so it will parse files
+    that contain a section header, enclosed in braces. However, the section name will be
     ignored and there may be only one such section, otherwise an exception is raised.
     """
+
+    purpose = "parameters"
+    extensions = ("txt", "cfg", "ini")
 
     ALIASES = {
         "half width of band in half height": "width",
@@ -159,3 +163,6 @@ class ParametersParser:
                 "Multiple sections in parameters setup file are not supported."
             )
         return self.parameters
+
+
+_PARSERS[ParametersParser.purpose] = ParametersParser

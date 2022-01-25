@@ -32,10 +32,6 @@ def setup_class(request):
         raise
 
 
-# TODO: check if all data types returned by GaussianParser are as expected
-#       (list vs tuple)
-
-
 class ParserTestCase:
     """This is mix-in class for test cases for gaussian files parsing."""
 
@@ -59,7 +55,7 @@ class ParserTestCase:
         assert self.data["stoichiometry"] == "CH2O"
 
     def test_atoms(self):
-        assert self.data["molecule_atoms"] == [6, 1, 1, 8]
+        assert self.data["last_read_atoms"] == [6, 1, 1, 8]
 
     def test_input_atoms(self):
         assert self.data["input_atoms"] == ["C", "H", "H", "O"]
@@ -104,8 +100,8 @@ class TestFreq(ParserTestCase):
             "depolarp",
             "depolaru",
             "ramanactiv",
-            "geometry",
-            "molecule_atoms",
+            "last_read_geom",
+            "last_read_atoms",
         }
 
     def test_command(self):
@@ -174,11 +170,11 @@ class TestFreq(ParserTestCase):
         ]
 
     def test_geometry(self):
-        assert self.data["geometry"] == [
-            (0.000199, 0.562211, 0.000000),
-            (0.924720, 1.100877, 0.000000),
-            (-0.927506, 1.095374, 0.000000),
-            (0.000199, -0.696189, 0.000000),
+        assert self.data["last_read_geom"] == [
+            [0.000199, 0.562211, 0.000000],
+            [0.924720, 1.100877, 0.000000],
+            [-0.927506, 1.095374, 0.000000],
+            [0.000199, -0.696189, 0.000000],
         ]
 
 
@@ -206,8 +202,8 @@ class TestFreqRoa(ParserTestCase):
             "input_atoms",
             "scf",
             "stoichiometry",
-            "geometry",
-            "molecule_atoms",
+            "last_read_geom",
+            "last_read_atoms",
             "zpecorr",
             "tencorr",
             "entcorr",
@@ -352,10 +348,12 @@ class TestOpt(ParserTestCase):
             "multiplicity",
             "input_geom",
             "input_atoms",
+            "optimized_geom",
+            "optimized_atoms",
             "scf",
             "stoichiometry",
-            "geometry",
-            "molecule_atoms",
+            "last_read_geom",
+            "last_read_atoms",
             "optimization_completed",
         }
 
@@ -369,11 +367,20 @@ class TestOpt(ParserTestCase):
         assert self.data["scf"] == -113.221819992
 
     def test_geometry(self):
-        assert self.data["geometry"] == [
-            (-0.000016, 0.530659, 0.000000),
-            (0.913392, 1.112945, 0.000000),
-            (-0.913174, 1.113406, 0.000000),
-            (-0.000016, -0.676288, 0.000000),
+        assert self.data["last_read_geom"] == [
+            [-0.000016, 0.530659, 0.000000],
+            [0.913392, 1.112945, 0.000000],
+            [-0.913174, 1.113406, 0.000000],
+            [-0.000016, -0.676288, 0.000000],
+        ]
+
+    def test_optimized(self):
+        assert self.data["optimization_completed"]
+        assert self.data["optimized_geom"] == [
+            [-0.000016, 0.530659, 0.000000],
+            [0.913392, 1.112945, 0.000000],
+            [-0.913174, 1.113406, 0.000000],
+            [-0.000016, -0.676288, 0.000000],
         ]
 
 
@@ -398,6 +405,8 @@ class TestOptFreq(ParserTestCase):
             "multiplicity",
             "input_geom",
             "input_atoms",
+            "optimized_geom",
+            "optimized_atoms",
             "scf",
             "stoichiometry",
             "zpecorr",
@@ -415,13 +424,30 @@ class TestOptFreq(ParserTestCase):
             "depolarp",
             "depolaru",
             "ramanactiv",
-            "geometry",
-            "molecule_atoms",
+            "last_read_geom",
+            "last_read_atoms",
             "optimization_completed",
         }
 
     def test_command(self):
         assert self.data["command"] == "opt freq hf/3-21g"
+
+    def test_geometry(self):
+        assert self.data["last_read_geom"] == [
+            [-0.000016, 0.530659, 0.000000],
+            [0.913392, 1.112945, 0.000000],
+            [-0.913174, 1.113406, 0.000000],
+            [-0.000016, -0.676288, 0.000000],
+        ]
+
+    def test_optimized(self):
+        assert self.data["optimization_completed"]
+        assert self.data["optimized_geom"] == [
+            [-0.000016, 0.530659, 0.000000],
+            [0.913392, 1.112945, 0.000000],
+            [-0.913174, 1.113406, 0.000000],
+            [-0.000016, -0.676288, 0.000000],
+        ]
 
 
 @pytest.mark.usefixtures("setup_class")
@@ -446,7 +472,7 @@ class TestInputError(ParserTestCase):
         assert "stoichiometry" not in self.data
 
     def test_atoms(self):
-        assert "molecule_atoms" not in self.data
+        assert "last_read_atoms" not in self.data
 
 
 @pytest.mark.usefixtures("setup_class")
@@ -482,8 +508,8 @@ class TestTd(ParserTestCase):
             "wavelen",
             "ex_en",
             "transitions",
-            "geometry",
-            "molecule_atoms",
+            "last_read_geom",
+            "last_read_atoms",
         }
 
     def test_command(self):
@@ -518,9 +544,11 @@ class TestTd(ParserTestCase):
 
     def test_transitions(self):
         assert self.data["transitions"] == [
-            ((5, 9, 0.10410), (8, 9, 0.69982)),
-            ((6, 9, 0.70461),),
-            ((6, 12, 0.12121), (7, 9, 0.68192), (8, 11, -0.11535)),
+            [[5, 9, 0.10410], [8, 9, 0.69982]],
+            [
+                [6, 9, 0.70461],
+            ],
+            [[6, 12, 0.12121], [7, 9, 0.68192], [8, 11, -0.11535]],
         ]
 
 

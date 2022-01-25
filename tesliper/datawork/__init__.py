@@ -1,3 +1,10 @@
+"""All core algorithms for data handling live here, along with some helpers.
+
+This package implements functions used by ``tesliper`` to provide its core
+functionality: comparing conformers, calculating spectra, averaging them, etc. It is
+divided into few modules based on a field that given function is related to.
+"""
+
 from .atoms import Atom, atomic_number, symbol_of_element, validate_atoms
 from .energies import (
     BOLTZMANN,
@@ -14,6 +21,7 @@ from .geometry import (
     get_triangular_base,
     is_triangular,
     kabsch_rotate,
+    pyramid_windows,
     rmsd_sieve,
     stretching_windows,
     take_atoms,
@@ -21,6 +29,7 @@ from .geometry import (
 from .intensities import (
     DEFAULT_ACTIVITIES,
     dip_to_ir,
+    dip_to_uv,
     osc_to_uv,
     rot_to_ecd,
     rot_to_vcd,
