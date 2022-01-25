@@ -675,12 +675,12 @@ class WriterBase(ABC):
         "somefile.foo"
         >>> wrt.make_name(template="${conf}.${ext}")
         ".foo"  # conf is empty string by default
-        >>> wrt.make_name(template="${conf}.${ext}", conf="")
+        >>> wrt.make_name(template="${conf}.${ext}", conf="conformer")
         "conformer.foo"
         >>> wrt.make_name(template="Unknown_identifier_${bla}.${ext}")
         Traceback (most recent call last):
         ValueError: Unexpected identifiers given: bla.
-        """  # TODO: update examples
+        """
         if isinstance(template, str):
             template = Template(template)
         try:
