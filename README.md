@@ -40,8 +40,6 @@ stand-alone application with dedicated GUI.
   - [Bugs and suggestions](#bugs-and-suggestions)
   - [Participating in code](#participating-in-code)
   - [Roadmap](#roadmap)
-    - [New Functionality:](#new-functionality)
-    - [UX Improvements:](#ux-improvements)
   - [Acknowledgements](#acknowledgements)
 
 # Getting Started
@@ -89,7 +87,7 @@ Conventions that are important to note:
 prevent confusion with Python's data ``type`` and with data itself, `tesliper` refers to
 specific kinds of data as "genres". Genres in code are represented by specific strings,
 used as identifiers. To learn about data genres known to `tesliper`, see [Available data
-genres](https://tesliper.readthedocs.io/genres.html).
+genres](https://tesliper.readthedocs.io/en/stable/genres.html).
 - `tesliper` identifies conformers using a stem of an extracted file (i.e. its filename
 without extension). When files with identical names are extracted in course of
 subsequent `Tesliper.extract` calls or in recursive extraction using
@@ -186,7 +184,7 @@ Once done with extracting files and tweaking parameters, export selected data to
 format or save the session for later using buttons in "Session control" section.
 
 A detailed tutorial with screenshots is available in the documentation:
-https://tesliper.readthedocs.io/gui.html.
+https://tesliper.readthedocs.io/en/stable/gui.html.
 
 # License
 This project is licensed with BSD 2-Clause license.
@@ -215,7 +213,7 @@ If at a loss, do not hesitate to reach to me directly! :)
 Ideas for possible future improvements to the software are listed below. Based on the
 feedback from the Community, I will decide, which ones are desired and worth working on.
 
-### New Functionality:
+### New Functionality: <!-- omit in toc -->
 - command line interface
 - support for Jaguar & other packages
 - option for using `cclib` for parsing
@@ -224,7 +222,7 @@ feedback from the Community, I will decide, which ones are desired and worth wor
 - parsing conformational search files
 - GUI: manually choose spectra colour
 
-### UX Improvements:
+### UX Improvements: <!-- omit in toc -->
 - supplement logging
 - auto finding optimal spectra range
 - GUI: export spectra as image
