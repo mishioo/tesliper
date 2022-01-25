@@ -39,6 +39,9 @@ stand-alone application with dedicated GUI.
 - [Contributing to `tesliper`](#contributing-to-tesliper)
   - [Bugs and suggestions](#bugs-and-suggestions)
   - [Participating in code](#participating-in-code)
+  - [Roadmap](#roadmap)
+    - [New Functionality:](#new-functionality)
+    - [UX Improvements:](#ux-improvements)
   - [Acknowledgements](#acknowledgements)
 
 # Getting Started
@@ -207,6 +210,28 @@ To get your change introduced to the codebase, please make a Pull Request to the
 `fixes` branch for bug fixes or to the `dev` branch for new features.
 
 If at a loss, do not hesitate to reach to me directly! :)
+
+## Roadmap
+Ideas for possible future improvements to the software are listed below. Based on the
+feedback from the Community, I will decide, which ones are desired and worth working on.
+
+### New Functionality:
+- command line interface
+- support for Jaguar & other packages
+- option for using `cclib` for parsing
+- spectra comparison feature
+- velocity and length electronic spectra comparison
+- parsing conformational search files
+- GUI: manually choose spectra colour
+
+### UX Improvements:
+- supplement logging
+- auto finding optimal spectra range
+- GUI: export spectra as image
+- GUI: spectra colour by population
+- GUI: drag&drop support
+- GUI: display tooltips on hover
+
 
 ## Acknowledgements
 

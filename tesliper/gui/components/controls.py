@@ -1123,7 +1123,7 @@ class ExtractData(ttk.LabelFrame):
         self.check_ignore_unknown.grid(column=0, row=2, sticky="nwe")
         self.winfo_toplevel().changer.register(self.check_ignore_unknown, "tesliper")
 
-    # TODO: add recursive smart extraction
+    # TODO: add recursive extraction
 
     @property
     def tesliper(self):
