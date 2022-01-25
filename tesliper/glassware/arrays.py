@@ -934,15 +934,36 @@ class ElectronicActivities(ElectronicData, SpectralActivities):
         ldip="10^(-44) esu^2 cm^2",
     )
     _intensities_converters = {
-        # for "osc" ignore frequencies given by default by super().intensities
+        # for "osc" ignore frequencies given by default by self.intensities
         "vosc": lambda v, _: dw.osc_to_uv(v),
         "losc": lambda v, _: dw.osc_to_uv(v),
         "vrot": dw.rot_to_ecd,
         "lrot": dw.rot_to_ecd,
-        # TODO: add "ldip" and "vdip"
-        "ldip": lambda *_: NotImplemented,
-        "vdip": lambda *_: NotImplemented,
+        "ldip": dw.dip_to_uv,
+        "vdip": dw.dip_to_uv,
     }
+
+    @property
+    def intensities(self):
+        """Converts spectral activity calculated by quantum chemistry software
+        to signal intensity.
+
+        Returns
+        -------
+        numpy.ndarray
+            Signal intensities for each conformer.
+
+        Raises
+        ------
+        NotImplementedError
+            if genre does not provide values conversion to intensities."""
+        try:
+            converter = self._intensities_converters[self.genre]
+        except KeyError:
+            raise NotImplementedError(
+                f"Genre {self.genre} does not provide conversion to intensities."
+            )
+        return converter(self.values, self.wavelengths)
 
     def calculate_spectra(self, start, stop, step, width, fitting):
         """Calculates spectrum for each individual conformer.

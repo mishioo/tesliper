@@ -61,24 +61,111 @@ Lorentzian fitting function
 Calculation of intensities
 --------------------------
 
+Dipole strength and rotator strength is converted to the theoretical intensity as
+described by Polavarapu\ [#polavarapu]_. Constants used in below equations are as follows.
+
+:math:`c = 2.99792458 \times 10^{10}\ \mathrm{cm}\cdot\mathrm{s}^{-1}`
+    Speed of light.
+:math:`h = 6.62606896 \times 10^{-30}\ \mathrm{kg}\cdot\mathrm{cm}^2\cdot\mathrm{s}^{-1}`
+    Planck's constant.
+:math:`N_A = 6.02214199 \times 10^{23}\ \mathrm{mol}^{-1}`
+    Avogadro's constant.
+:math:`m_e = 9.10938 \times 10^{-28}\ \mathrm{g}`
+    Mass of the electron.
+:math:`e = 4.803204 \times 10^{-10}\ \mathrm{esu}`
+    The charge on the electron.
+
+.. [#polavarapu] Prasad L. Polavarapu (2017), *Chiroptical Spectroscopy Fundamentals and
+    Applications*, CRC Press
+
+
 Dipole strength to IR intensities
 '''''''''''''''''''''''''''''''''
+
+.. math::
+
+    I_k = \frac{100 \cdot 8 \pi^3 N_A}{3 \cdot \ln(10) \cdot hc} D_k \nu_k
+    = 0.010886 \cdot D_k \nu_k
+
+:math:`D_k \ [\times 10^{-40}\ \mathrm{esu}^2\mathrm{cm}^2]`
+    Dipole strength of :math:`k^{\mathrm{th}}` transition.
+:math:`\nu_k \ [\mathrm{cm}^{-1}]`
+    Frequency of the :math:`k^{\mathrm{th}}` transition.
+:math:`I_k \ [\mathrm{L}\,\mathrm{mol}^{-1}\mathrm{cm}^{-1}]`
+    Theoretical ("zero-width") peak intensity in terms of the decadic molar absorption
+    coefficient :math:`\epsilon`.
 
 Rotator strength to VCD intensities
 '''''''''''''''''''''''''''''''''''
 
-Oscillator strength to UV intensities
-'''''''''''''''''''''''''''''''''''''
+.. math::
+
+    I_k = 4 \cdot \frac{8 \pi^3 N_A}{3 \cdot \ln(10) \cdot hc} R_k \nu_k
+    = 0.0435441 \cdot R_k \nu_k
+
+:math:`R_k \ [\times 10^{-44}\ \mathrm{esu}^2\mathrm{cm}^2]`
+    Rotator strength of :math:`k^{\mathrm{th}}` transition.
+:math:`\nu_k \ [\mathrm{cm}^{-1}]`
+    Frequency of the :math:`k^{\mathrm{th}}` transition.
+:math:`I_k \ [\mathrm{L}\,\mathrm{mol}^{-1}\mathrm{cm}^{-1}]`
+    Theoretical ("zero-width") peak intensity in terms of the decadic molar absorption
+    coefficient :math:`\epsilon`.
 
 Dipole strength to UV intensities
 '''''''''''''''''''''''''''''''''
 
+.. math::
+
+    I_k = \frac{8 \pi^3 N_A}{3 \cdot \ln(10) \cdot hc} D_k \lambda_k
+    = 0.010886 \cdot D_k \lambda_k
+
+:math:`D_k \ [\times 10^{-40}\ \mathrm{esu}^2\mathrm{cm}^2]`
+    Dipole strength of :math:`k^{\mathrm{th}}` transition.
+:math:`\lambda_k \ [\mathrm{cm}^{-1}]`
+    Wavelength of the :math:`k^{\mathrm{th}}` transition.
+:math:`I_k \ [\mathrm{L}\,\mathrm{mol}^{-1}\mathrm{cm}^{-1}]`
+    Theoretical ("zero-width") peak intensity in terms of the decadic molar absorption
+    coefficient :math:`\epsilon`.
+
 Rotator strength to ECD intensities
 '''''''''''''''''''''''''''''''''''
+
+.. math::
+
+    I_k = 4 \cdot \frac{8 \pi^3 N_A}{3 \cdot \ln(10) \cdot hc} R_k \lambda_k
+    = 0.0435441 \cdot R_k \lambda_k
+
+:math:`R_k \ [\times 10^{-44}\ \mathrm{esu}^2\mathrm{cm}^2]`
+    Rotator strength of :math:`k^{\mathrm{th}}` transition.
+:math:`\lambda_k \ [\mathrm{cm}^{-1}]`
+    Wavelength of the :math:`k^{\mathrm{th}}` transition.
+:math:`I_k \ [\mathrm{L}\,\mathrm{mol}^{-1}\mathrm{cm}^{-1}]`
+    Theoretical ("zero-width") peak intensity in terms of the decadic molar absorption
+    coefficient :math:`\epsilon`.
+
+Oscillator strength to UV intensities
+'''''''''''''''''''''''''''''''''''''
+
+Conversion from oscillator strength to signal intensity of UV spectrum is calculated
+as described by Gaussian\ [#gaussian_uv]_. 
+
+.. math::
+
+    I_k = \frac{e^2 N_A}{10^3 \ln(10) m_e c^2} f_k
+    = 2.315351857 \times 10^8 f_k
+
+:math:`f_k`
+    Oscillator strength of :math:`k^{\mathrm{th}}` transition.
+:math:`I_k \ [\mathrm{L}\,\mathrm{mol}^{-1}\mathrm{cm}^{-1}]`
+    Theoretical ("zero-width") peak intensity in terms of the decadic molar absorption
+    coefficient :math:`\epsilon`.
+
+.. [#gaussian_uv] https://gaussian.com/uvvisplot/
 
 Raman/ROA intensities
 '''''''''''''''''''''
 
+Gaussian-provided Raman and ROA activities are used without any conversion.
 
 Population of conformers
 ------------------------

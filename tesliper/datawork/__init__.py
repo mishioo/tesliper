@@ -29,6 +29,7 @@ from .geometry import (
 from .intensities import (
     DEFAULT_ACTIVITIES,
     dip_to_ir,
+    dip_to_uv,
     osc_to_uv,
     rot_to_ecd,
     rot_to_vcd,
