@@ -1,6 +1,42 @@
 Change Log
 ==========
 
+v. 0.9.0
+--------
+
+Created online documentation! Available at https://tesliper.readthedocs.io/
+
+Bug Fixes:
+    - Fixed error on parsing radical molecules.
+    - Corrected ``ArrayProperty`` ignoring it's ``.fill_value``.
+    - Fixed infinite recursion error on ``SpectralData.wavelen`` access.
+    - Prevented creation of empty files on export of empty data arrays.
+    - Prevented intermediate ``.xlsx`` file saving when exporting multiple data genres.
+    - Corrected trimming abnormally terminated conformers in GUI.
+
+New Features:
+    - ``rmsd_sieve`` and ``Conformers.trim_rmsd`` now allow for arbitrary windows.
+    - Added ``datawork.geometry.pyramid_windows`` window strategy function.
+    - Extended ``Soxhlet`` to allow use of arbitrary registered parsers.
+    - Allowed for automatic instantiation of data arrays for genres that depend on a different genre.
+    - Introduced *optimized_geom* genre
+    - Added export of generic data arrays.
+    - Added parametrization of ``GjfWriter.link0`` commands.
+
+Other Changes:
+    - Reviewed and corrected calculation of intensities.
+    - Improved automatic scaling of spectra.
+    - Renamed ``Parser`` to ``ParserBase`` for consistency with other base classes.
+    - Unified base classes' registering mechanism of their subclasses.
+    - Cleaned up ``extraction.gaussian_parser``. Changed all data sequences to lists. 
+    - Supplemented type hints.
+    - Renamed *geometry* genre to *last_read_geom*.
+    - Supplemented ``Conformers`` to fully implement ``OrderedDict`` interface.
+    - Added storage and serialization of experimental spectra.
+
+GUI:
+    - Unified terminology used with the one in code and documentation.
+
 v. 0.8.2
 --------
 
