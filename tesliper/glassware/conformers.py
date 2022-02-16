@@ -428,7 +428,7 @@ class Conformers(OrderedDict):
             # return early if filenames requested
             return cls(
                 genre=genre,
-                filenames=list(self.kept_values() if not full else self.values()),
+                filenames=list(self.kept_keys() if not full else self.keys()),
                 allow_data_inconsistency=self.allow_data_inconsistency,
             )
         view = self.kept_items() if not full else self.items()
