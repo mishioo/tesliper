@@ -1,4 +1,8 @@
+import string
+
+import hypothesis.strategies as st
 import pytest
+from hypothesis import given
 
 from tesliper import Conformers
 
@@ -30,3 +34,27 @@ def test_trimming_empty_does_nothing(empty, method, args):
     method_ = getattr(empty, method)
     _ = method_(*args)
     assert empty.kept == []
+
+
+@st.composite
+def name_and_kept(draw):
+    n = draw(st.integers(min_value=0, max_value=50))
+    names = st.lists(
+        st.text(max_size=20, alphabet=string.printable),
+        min_size=n,
+        max_size=n,
+        unique=True,
+    )
+    kept = st.lists(st.booleans(), min_size=n, max_size=n)
+    return (draw(names), draw(kept))
+
+
+@given(name_and_kept())
+def test_arrayed_filenames(lists):
+    names, kept = lists
+    c = Conformers()
+    c.update({n: {} for n in names})
+    c.kept = kept
+    assert c.arrayed("filenames").values.tolist() == [
+        n for n, k in zip(names, kept) if k
+    ]
