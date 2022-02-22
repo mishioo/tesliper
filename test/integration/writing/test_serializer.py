@@ -140,6 +140,12 @@ def test_serialization_init_params(tmp_path, tesliper):
     assert resurected.wanted_files == tesliper.wanted_files
 
 
+def test_serialization_temperature(tmp_path, tesliper):
+    tesliper.temperature = 300
+    resurected = resurect(tesliper, tmp_path)
+    assert resurected.temperature == tesliper.temperature
+
+
 def test_serialization_inconsistent(tmp_path, inconsistent):
     resurected = resurect(inconsistent, tmp_path)
     assert (
