@@ -746,11 +746,27 @@ class Tesliper:
         SingleSpectrum
             Calculated averaged spectrum.
 
+        Raises
+        ------
+        ValueError
+            If no data for calculation of requested spectrum is available.
+
         .. versionadded:: 0.9.1
             The optional *temperature* parameter.
+        .. versionchanged:: 0.9.1
+            If spectra needed for averaging was not calulated so far,
+            it will try to calulate it instead of raising a KeyError.
         """
-        # TODO: add fallback if spectra was nat calculated yet
-        spectra = self.spectra[spectrum]
+        try:
+            spectra = self.spectra[spectrum]
+        except KeyError:
+            array = self[dw.DEFAULT_ACTIVITIES[spectrum]]
+            spectra = array.calculate_spectra(**self.parameters[spectrum])
+            if not spectra:
+                raise ValueError(
+                    f"No data for {spectrum} calculation; "
+                    f"appropriate data is not available or was trimmed off."
+                )
         with self.conformers.trimmed_to(spectra.filenames):
             en = (
                 self[energy]
