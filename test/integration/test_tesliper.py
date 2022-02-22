@@ -3,6 +3,8 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from hypothesis import given
+from hypothesis import strategies as st
 
 from tesliper import Tesliper
 
@@ -213,3 +215,11 @@ def test_export_job_file(extracted, wanted_files):
     assert {f.name for f in files} == {
         Path(f).with_suffix(".gjf").name for f in wanted_files
     }
+
+
+@given(value=st.floats(min_value=0, allow_nan=False))
+def test_subscription_temperature(value):
+    tslr = Tesliper()
+    tslr.temperature = value
+    array = tslr["zpe"]
+    assert array.t == value

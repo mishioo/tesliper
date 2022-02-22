@@ -269,6 +269,7 @@ class Tesliper:
         self.spectra = dict()
         self.averaged = dict()
         self.experimental = dict()
+        self.temperature = 293.15
         self.parameters = self.standard_parameters
         self.quantum_software = quantum_software.lower()
         if self.quantum_software not in ex.parser_base._PARSERS:
@@ -279,8 +280,8 @@ class Tesliper:
 
     def __getitem__(self, item: str) -> gw.conformers.AnyArray:
         try:
-            return self.conformers.arrayed(item)
-        except ValueError:
+            return self.conformers.arrayed(item, strict=False, t=self.temperature)
+        except ValueError:  # will it fire before TypeError?
             raise KeyError(f"Unknown genre '{item}'.")
 
     def clear(self):
@@ -292,7 +293,33 @@ class Tesliper:
         self.spectra = dict()
         self.averaged = dict()
         self.experimental = dict()
+        self.temperature = 293.15
         self.parameters = self.standard_parameters
+
+    @property
+    def temperature(self) -> float:
+        """Temperature of the system expressed in Kelvin units.
+
+        Value of this parameter is passed down to :term:`data array`\\s created with the
+        subscription mechanism (as in ``array = tslr[genre]``) provided that the target
+        data array class supports a parameter named *t* in it's constructor.
+
+        Raises
+        ------
+        ValueError
+            if set to a value lower than zero.
+
+        .. versionadded:: 0.9.1
+        """
+        return vars(self)["temperature"]
+
+    @temperature.setter
+    def temperature(self, value):
+        if value < 0:
+            raise ValueError(
+                "Temperature of the system cannot be lower than absolute zero."
+            )
+        vars(self)["temperature"] = value
 
     @property
     def energies(self) -> Dict[str, gw.Energies]:
