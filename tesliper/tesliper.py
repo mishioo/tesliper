@@ -244,6 +244,7 @@ class Tesliper:
         input_dir: str = ".",
         output_dir: str = ".",
         wanted_files: Optional[Iterable[Union[str, Path]]] = None,
+        temperature: float = 293.15,
         quantum_software: str = "gaussian",
     ):
         """
@@ -257,6 +258,9 @@ class Tesliper:
         wanted_files : list of str or list of Path, optional
             List of files or filenames representing wanted files. If not given, all
             files are considered wanted. File extensions are ignored.
+        temperature : float
+            Temperature of the system in Kelvin units, must be zero or higher.
+            Defaults to room temperature = 293.15 K.
         quantum_software : str
             A name of the quantum chemical computations software used to obtain data.
             Used by ``tesliper`` to figure out, which parser to use, if custom parsers
@@ -266,10 +270,12 @@ class Tesliper:
         self.wanted_files = wanted_files
         self.input_dir = input_dir
         self.output_dir = output_dir
+        # TODO?: maybe remove from parameters and keep only as an attribute
+        #        in next major release
+        self.temperature = temperature
         self.spectra = dict()
         self.averaged = dict()
         self.experimental = dict()
-        self.temperature = 293.15
         self.parameters = self.standard_parameters
         self.quantum_software = quantum_software.lower()
         if self.quantum_software not in ex.parser_base._PARSERS:
