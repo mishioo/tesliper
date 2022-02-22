@@ -425,6 +425,13 @@ class Conformers(OrderedDict):
         -------
         DataArray
             Arrayed data of desired genre as appropriate :class:`.DataArray` object.
+
+        Notes
+        -----
+        For now, the special "filenames" genre always ignores *kwargs*.
+
+        .. versionadded:: 0.9.1
+            The *strict* parameter.
         """
         try:
             cls = _ARRAY_CONSTRUCTORS[genre]  # ArrayBase subclasses
