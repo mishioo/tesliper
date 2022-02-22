@@ -723,7 +723,9 @@ class Tesliper:
         self.spectra.update(output)
         return output
 
-    def get_averaged_spectrum(self, spectrum: str, energy: str) -> gw.SingleSpectrum:
+    def get_averaged_spectrum(
+        self, spectrum: str, energy: str, temperature: Optional[float] = None
+    ) -> gw.SingleSpectrum:
         """Average previously calculated spectra using populations derived from
         specified energies.
 
@@ -735,16 +737,26 @@ class Tesliper:
         energy : str
             Genre of energies, that should be used to calculate populations
             of conformers. These populations will be used as weights for averaging.
+        temperature : float, optional
+            Temperature used for calculation of the Boltzmann distribution for spectra
+            averaging. If not given, :meth:`Tesliper.temperature` value is used.
 
         Returns
         -------
         SingleSpectrum
             Calculated averaged spectrum.
+
+        .. versionadded:: 0.9.1
+            The optional *temperature* parameter.
         """
         # TODO: add fallback if spectra was nat calculated yet
         spectra = self.spectra[spectrum]
         with self.conformers.trimmed_to(spectra.filenames):
-            en = self[energy]
+            en = (
+                self[energy]
+                if temperature is None
+                else self.conformers.arrayed(genre=energy, t=temperature)
+            )
         output = spectra.average(en)
         return output
 
