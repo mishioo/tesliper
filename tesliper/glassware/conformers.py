@@ -400,7 +400,9 @@ class Conformers(OrderedDict):
             else:
                 self[key] = value
 
-    def arrayed(self, genre: str, full: bool = False, **kwargs) -> AnyArray:
+    def arrayed(
+        self, genre: str, full: bool = False, strict: bool = True, **kwargs
+    ) -> AnyArray:
         """Lists requested data and returns as appropriate :class:`.DataArray` instance.
 
         Parameters
@@ -410,6 +412,10 @@ class Conformers(OrderedDict):
         full
             Boolean indicating if full set of data should be taken, ignoring
             any trimming conducted earlier. Defaults to ``False``.
+        strict
+            Boolean indicating if additional kwargs that doesn't match signature of data
+            array's constructor should cause an exception as normally (``strict =
+            True``) or be silently ignored (``strict = False``). Defaults to ``True``.
         kwargs
             Additional keyword parameters passed to data array constructor.
             Any explicitly given parameters will take precedence over automatically
@@ -442,29 +448,31 @@ class Conformers(OrderedDict):
                 f"Returning an empty array."
             )
             filenames, confs, values = [], [], []
-        params = cls.get_init_params()
-        params["genre"] = genre
-        params["filenames"] = filenames
-        params["values"] = values
-        params["allow_data_inconsistency"] = self.allow_data_inconsistency
-        for key, value in params.items():
+        default_params = cls.get_init_params()
+        default_params["genre"] = genre
+        default_params["filenames"] = filenames
+        default_params["values"] = values
+        default_params["allow_data_inconsistency"] = self.allow_data_inconsistency
+        init_params = {}
+        for key, value in default_params.items():
             if key in kwargs:
                 # explicitly given keyword parameters take precedence
+                init_params[key] = kwargs.pop(key)
                 continue
-            if not isinstance(params[key], Parameter):
+            if not isinstance(default_params[key], Parameter):
                 # if value for parameter is already established, just take it
-                kwargs[key] = value
+                init_params[key] = value
                 continue
-            param_genre = (  # maybe key is not a param's genre name
+            param_genre = (  # maybe ``key`` is not a param's genre name
                 value.genre_getter(genre) if hasattr(value, "genre_getter") else key
             )
             try:
-                kwargs[key] = [conf[param_genre] for conf in confs]
+                init_params[key] = [conf[param_genre] for conf in confs]
             except KeyError:
-                # set param to its default value
-                # or raise an error if it don't have one
+                # can't retrieve ``param_genre`` data from each included conformer
+                # set param to its default value or raise an error if it don't have one
                 if value.default is not value.empty:
-                    kwargs[key] = value.default
+                    init_params[key] = value.default
                 else:
                     raise TesliperError(
                         f"One or more conformers does not provide value for "
@@ -472,10 +480,14 @@ class Conformers(OrderedDict):
                         "object. You may provide missing values as a keyword parameters"
                         " to the `Conformers.arrayed()` method call."
                     )
-            if not kwargs[key] and value.default is not value.empty:
+            if not init_params[key] and value.default is not value.empty:
                 # genre produces an empty array, but parameter has default value
-                kwargs[key] = value.default
-        return cls(**kwargs)
+                init_params[key] = value.default
+        if kwargs and strict:
+            # any kwargs not popped till now are not expected by the ``cls.__init__()``
+            # if ``strict`` handling requested, add them anyway to cause an exception
+            init_params.update(**kwargs)
+        return cls(**init_params)
 
     def by_index(self, index: int) -> dict:
         """Returns data for conformer on desired index."""
