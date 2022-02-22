@@ -352,7 +352,7 @@ class Tesliper:
             and :class:`.Energies` data arrays as values.
         """
         keys = gw.Energies.associated_genres
-        return {k: self.conformers.arrayed(k) for k in keys}
+        return {k: self[k] for k in keys}
 
     @property
     def activities(self) -> Dict[str, _activities_types]:
@@ -380,7 +380,7 @@ class Tesliper:
             :class:`.SpectralActivities` data arrays as values.
         """
         keys = dw.DEFAULT_ACTIVITIES.values()
-        return {k: self.conformers.arrayed(k) for k in keys}
+        return {k: self[k] for k in keys}
 
     @property
     def wanted_files(self) -> Optional[Set[str]]:
@@ -655,8 +655,8 @@ class Tesliper:
             bar_name = dw.DEFAULT_ACTIVITIES[genre]
         except KeyError:
             bar_name = genre
-        with self.conformers.trimmed_to([conformer]) as confs:
-            bar = confs.arrayed(bar_name)
+        with self.conformers.trimmed_to([conformer]):
+            bar = self[bar_name]
         sett_from_args = {
             k: v
             for k, v in zip(
@@ -744,7 +744,7 @@ class Tesliper:
         # TODO: add fallback if spectra was nat calculated yet
         spectra = self.spectra[spectrum]
         with self.conformers.trimmed_to(spectra.filenames):
-            en = self.conformers.arrayed(energy)
+            en = self[energy]
         output = spectra.average(en)
         return output
 
