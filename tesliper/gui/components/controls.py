@@ -751,6 +751,7 @@ class CalculateSpectra(CollapsiblePane):
         )
         self.live_prev.grid(column=0, row=2, sticky="w")
         self.live_prev.var = var
+        root.bind("<<KeptChanged>>", self.live_preview_callback, "+")
         # previously labeled 'Recalculate'
         self.recalc_b = ttk.Button(
             frame, text="Redraw", state="disabled", command=self.recalculate_command
