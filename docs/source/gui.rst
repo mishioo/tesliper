@@ -153,6 +153,22 @@ automatically considered different.
 
 .. image:: _static/screenshots/16426977988.png
 
+Temperature of the system
+-------------------------
+
+The ``Energies and structure`` section also allows you to specify the temperature
+of the studied system. This parameter is important for calculation of the Boltzmann
+distribution of conformers, which is used to estimate conformers' population
+and average conformers' spectra. The default value is the room temperature,
+expressed as :math:`293.15 \mathrm{Kelvin}`. Changing this value will trigger automatic
+recalculation of ``Min. Boltzmann factor`` and ``Population`` values, and average
+spectra will be redrawn.
+
+.. image:: _static/screenshots/16426977988.png
+
+.. versionadded:: 0.9.1
+    The ``Temperature`` entry allowing to change the temperature value.
+
 Spectra simulation
 ------------------
 
