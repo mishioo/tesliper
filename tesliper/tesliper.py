@@ -321,9 +321,9 @@ class Tesliper:
 
     @temperature.setter
     def temperature(self, value):
-        if value < 0:
+        if value <= 0:
             raise ValueError(
-                "Temperature of the system cannot be lower than absolute zero."
+                "Temperature of the system must be higher than absolute zero."
             )
         vars(self)["temperature"] = value
 

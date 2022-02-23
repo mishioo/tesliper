@@ -263,7 +263,11 @@ class FilterEnergies(CollapsiblePane):
         t_frame.columnconfigure((0, 1, 2), weight=1)
         ttk.Label(t_frame, text="Temperature").grid(column=0, row=0, sticky="new")
         self.temperature = NumericEntry(
-            t_frame, scroll_rate=1, decimal_digits=2, min_value=0
+            t_frame,
+            scroll_rate=1,
+            decimal_digits=2,
+            min_value=0,
+            include_min_value=False,
         )
         self.temperature.grid(column=1, row=0)
         ttk.Label(t_frame, text="K").grid(column=2, row=0, sticky="new")
