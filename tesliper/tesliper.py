@@ -310,12 +310,12 @@ class Tesliper:
         subscription mechanism (as in ``array = tslr[genre]``) provided that the target
         data array class supports a parameter named *t* in it's constructor.
 
+        .. versionadded:: 0.9.1
+
         Raises
         ------
         ValueError
             if set to a value lower than zero.
-
-        .. versionadded:: 0.9.1
         """
         return vars(self)["temperature"]
 
@@ -729,6 +729,12 @@ class Tesliper:
         """Average previously calculated spectra using populations derived from
         specified energies.
 
+        .. versionadded:: 0.9.1
+            The optional *temperature* parameter.
+        .. versionchanged:: 0.9.1
+            If spectra needed for averaging was not calulated so far,
+            it will try to calulate it instead of raising a KeyError.
+
         Parameters
         ----------
         spectrum : str
@@ -750,12 +756,6 @@ class Tesliper:
         ------
         ValueError
             If no data for calculation of requested spectrum is available.
-
-        .. versionadded:: 0.9.1
-            The optional *temperature* parameter.
-        .. versionchanged:: 0.9.1
-            If spectra needed for averaging was not calulated so far,
-            it will try to calulate it instead of raising a KeyError.
         """
         try:
             spectra = self.spectra[spectrum]

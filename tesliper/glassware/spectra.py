@@ -195,13 +195,13 @@ class SingleSpectrum:
 class Spectra(SingleSpectrum):
     """Represents a collection of spectra calculated for a number of conformers.
 
+    .. versionchanged:: 0.9.1
+        Corrected ``len()`` behavior.
+
     Notes
     -----
     Calling ``len()`` on this class' instance will show how many conformers'
     spectra it contains.
-
-    .. versionchanged:: 0.9.1
-        Corrected ``len()`` behavior.
     """
 
     filenames = ArrayProperty(check_against=None, dtype=str)

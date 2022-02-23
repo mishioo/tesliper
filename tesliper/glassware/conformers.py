@@ -405,6 +405,9 @@ class Conformers(OrderedDict):
     ) -> AnyArray:
         """Lists requested data and returns as appropriate :class:`.DataArray` instance.
 
+        .. versionadded:: 0.9.1
+            The *strict* parameter.
+
         Parameters
         ----------
         genre
@@ -429,9 +432,6 @@ class Conformers(OrderedDict):
         Notes
         -----
         For now, the special "filenames" genre always ignores *kwargs*.
-
-        .. versionadded:: 0.9.1
-            The *strict* parameter.
         """
         try:
             cls = _ARRAY_CONSTRUCTORS[genre]  # ArrayBase subclasses
