@@ -38,6 +38,18 @@ class BuildBinaryCommand(distutils.cmd.Command):
 with open("README.md", "r") as readme:
     long_desc = readme.read()
 
+extras_require = {
+    "gui": ["matplotlib"],
+    "test": ["pytest", "hypothesis", "coverage", "pytest-cov"],
+    "docs": ["sphinx", "sphinx-rtd-theme"],
+    "build": ["pyinstaller", "twine"],
+    "dev": ["black", "pre-commit", "flake8", "isort"],
+}
+extras_require["dev-all"] = sum(extras_require.values(), [])
+extras_require["build"] += extras_require["gui"]
+extras_require["dev"] += extras_require["gui"] + extras_require["test"]
+
+
 setup(
     cmdclass={"binary": BuildBinaryCommand},
     name="tesliper",
@@ -52,7 +64,7 @@ setup(
     url="https://github.com/mishioo/tesliper",
     packages=find_packages(),
     install_requires=["numpy", "openpyxl"],
-    extras_require={"gui": ["matplotlib"]},
+    extras_require=extras_require,
     scripts=["bin/tesliper_gui.py"],
     package_data={"tesliper": ["tesliper.ico"]},
     classifiers=[
