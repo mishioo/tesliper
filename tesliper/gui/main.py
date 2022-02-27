@@ -6,7 +6,8 @@ import tkinter.ttk as ttk
 from threading import Thread
 from tkinter import messagebox
 
-from .. import __version__, tesliper
+from .. import tesliper
+from .._metadata import __version__
 from .components import (
     CheckTree,
     ConformersOverview,

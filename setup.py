@@ -1,9 +1,15 @@
 import distutils.cmd
 import subprocess
+from distutils.util import convert_path
 
 from setuptools import find_packages, setup
 
-import tesliper
+# bypass importing `tesliper`'s content to avoid ImportError
+# approach suggested by https://stackoverflow.com/a/24517154/11416569
+metadata = {}
+md_path = convert_path("tesliper/_metadata.py")
+with open(md_path) as md_file:
+    exec(md_file.read(), metadata)  # load variables into dict
 
 
 class BuildBinaryCommand(distutils.cmd.Command):
@@ -53,13 +59,13 @@ extras_require["dev"] += extras_require["gui"] + extras_require["test"]
 setup(
     cmdclass={"binary": BuildBinaryCommand},
     name="tesliper",
-    version=tesliper.__version__,
+    version=metadata["__version__"],
     description=(
         "a package for batch processing of spectra-related Gaussian output files"
     ),
     long_description=long_desc,
     long_description_content_type="text/markdown",
-    author=tesliper.__author__,
+    author=metadata["__author__"],
     author_email="wieclawmm@gmail.com",
     url="https://github.com/mishioo/tesliper",
     packages=find_packages(),
