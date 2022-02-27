@@ -1,6 +1,7 @@
 """A ``tesliper``'s main data storage."""
 import logging as lgg
-from collections import Counter, ItemsView, KeysView, OrderedDict, ValuesView
+from collections import Counter, OrderedDict
+from collections.abc import ItemsView, KeysView, ValuesView
 from contextlib import contextmanager
 from inspect import Parameter
 from itertools import chain
