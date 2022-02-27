@@ -12,7 +12,7 @@ def test_temperature_below_zero(value):
         tslr.temperature = value
 
 
-@given(value=st.floats(min_value=0, allow_nan=False))
+@given(value=st.floats(min_value=0, allow_nan=False, exclude_min=True))
 def test_temeprature_clear(value):
     tslr = ts.Tesliper()
     init_value = tslr.temperature

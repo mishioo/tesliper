@@ -129,6 +129,12 @@ class Conformers(OrderedDict):
     in this class or by direct changes to :attr:`.kept` attribute. See its
     documentation for more information.
 
+    Attributes
+    ----------
+    primary_genres
+        Class attribute. Data genres considered most important, used as default when
+        checking for conformers completeness (see :meth:`.trim_incomplete` method).
+
     Notes
     -----
     Inherits from collections.OrderedDict.
@@ -138,7 +144,13 @@ class Conformers(OrderedDict):
         "dip rot vosc vrot losc lrot raman1 roa1 scf zpe ent ten gib".split()
     )
 
-    def __init__(self, *args, allow_data_inconsistency=False, **kwargs):
+    def __init__(
+        self,
+        *args,
+        allow_data_inconsistency: bool = False,
+        temperature_of_the_system: float = 298.15,
+        **kwargs,
+    ):
         """
         Parameters
         ----------
@@ -147,24 +159,51 @@ class Conformers(OrderedDict):
         allow_data_inconsistency : bool, optional
             specifies if data inconsistency should be allowed in created DataArray
             object instances, defaults to False
+        temperature_of_the_system : float, optional
+            Temperature of the system in Kelvin units, must be zero or higher.
+            Defaults to room temperature = 298.15 K.
         **kwargs
             list of arbitrary keyword arguments for creation of underlying
             dictionary
-        primary_genres
-            Class attribute. Data genres considered most important, used as default when
-            checking for conformers completeness (see :meth:`.trim_incomplete` method).
         """
         self.allow_data_inconsistency = allow_data_inconsistency
+        self.temperature = temperature_of_the_system
         self.kept = []
         self.filenames = []
         self._indices = {}
         super().__init__(*args, **kwargs)
+
+    @property
+    def temperature(self) -> float:
+        """Temperature of the system expressed in Kelvin units.
+
+        Value of this parameter is passed to :term:`data array`\\s created with the
+        :meth:`.arrayed` method, provided that the target data array class supports a
+        parameter named *t* in it's constructor.
+
+        .. versionadded:: 0.9.1
+
+        Raises
+        ------
+        ValueError
+            if set to a value lower than zero.
+        """
+        return vars(self)["temperature"]
+
+    @temperature.setter
+    def temperature(self, value):
+        if value <= 0:
+            raise ValueError(
+                "Temperature of the system must be higher than absolute zero."
+            )
+        vars(self)["temperature"] = value
 
     def clear(self):
         """Remove all items from the Conformers instance."""
         self._kept = []
         self.filenames = []
         self._indices = {}
+        self.temperature = 298.15
         super().clear()
 
     @recursive_repr()
@@ -231,7 +270,9 @@ class Conformers(OrderedDict):
     def copy(self):
         "conformers.copy() -> a shallow copy of conformers"
         cp = self.__class__(
-            allow_data_inconsistency=self.allow_data_inconsistency, **self
+            allow_data_inconsistency=self.allow_data_inconsistency,
+            temperature_of_the_system=self.temperature,
+            **self,
         )
         cp.kept = self.kept
         return cp
@@ -465,6 +506,10 @@ class Conformers(OrderedDict):
             if key in kwargs:
                 # explicitly given keyword parameters take precedence
                 init_params[key] = kwargs.pop(key)
+                continue
+            if key == "t":
+                # if not given explicitly, temperature is taken form self
+                init_params[key] = self.temperature
                 continue
             if not isinstance(default_params[key], Parameter):
                 # if value for parameter is already established, just take it

@@ -244,7 +244,6 @@ class Tesliper:
         input_dir: str = ".",
         output_dir: str = ".",
         wanted_files: Optional[Iterable[Union[str, Path]]] = None,
-        temperature: float = 293.15,
         quantum_software: str = "gaussian",
     ):
         """
@@ -258,9 +257,6 @@ class Tesliper:
         wanted_files : list of str or list of Path, optional
             List of files or filenames representing wanted files. If not given, all
             files are considered wanted. File extensions are ignored.
-        temperature : float
-            Temperature of the system in Kelvin units, must be zero or higher.
-            Defaults to room temperature = 293.15 K.
         quantum_software : str
             A name of the quantum chemical computations software used to obtain data.
             Used by ``tesliper`` to figure out, which parser to use, if custom parsers
@@ -270,9 +266,6 @@ class Tesliper:
         self.wanted_files = wanted_files
         self.input_dir = input_dir
         self.output_dir = output_dir
-        # TODO?: maybe remove from parameters and keep only as an attribute
-        #        in next major release
-        self.temperature = temperature
         self.spectra = dict()
         self.averaged = dict()
         self.experimental = dict()
@@ -286,8 +279,8 @@ class Tesliper:
 
     def __getitem__(self, item: str) -> gw.conformers.AnyArray:
         try:
-            return self.conformers.arrayed(item, strict=False, t=self.temperature)
-        except ValueError:  # will it fire before TypeError?
+            return self.conformers.arrayed(item)
+        except ValueError:
             raise KeyError(f"Unknown genre '{item}'.")
 
     def clear(self):
@@ -299,16 +292,15 @@ class Tesliper:
         self.spectra = dict()
         self.averaged = dict()
         self.experimental = dict()
-        self.temperature = 293.15
         self.parameters = self.standard_parameters
 
     @property
     def temperature(self) -> float:
         """Temperature of the system expressed in Kelvin units.
 
-        Value of this parameter is passed down to :term:`data array`\\s created with the
-        subscription mechanism (as in ``array = tslr[genre]``) provided that the target
-        data array class supports a parameter named *t* in it's constructor.
+        Value of this parameter is passed to :term:`data array`\\s created with the
+        :meth:`.Conformers.arrayed` method, provided that the target data array class
+        supports a parameter named *t* in it's constructor.
 
         .. versionadded:: 0.9.1
 
@@ -316,16 +308,17 @@ class Tesliper:
         ------
         ValueError
             if set to a value lower than zero.
+
+        Notes
+        -----
+        It's actually just a proxy to :meth:`self.conformers.temperatue
+        <.Conformers.temperature>`.
         """
-        return vars(self)["temperature"]
+        return self.conformers.temperature
 
     @temperature.setter
     def temperature(self, value):
-        if value <= 0:
-            raise ValueError(
-                "Temperature of the system must be higher than absolute zero."
-            )
-        vars(self)["temperature"] = value
+        self.conformers.temperature = value
 
     @property
     def energies(self) -> Dict[str, gw.Energies]:

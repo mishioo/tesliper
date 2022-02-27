@@ -217,7 +217,7 @@ def test_export_job_file(extracted, wanted_files):
     }
 
 
-@given(value=st.floats(min_value=0, allow_nan=False))
+@given(value=st.floats(min_value=0, allow_nan=False, exclude_min=True))
 def test_subscription_temperature(value):
     tslr = Tesliper()
     tslr.temperature = value

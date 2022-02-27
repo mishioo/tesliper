@@ -23,7 +23,8 @@ class ArchiveWriter:
         ├───arguments: {input_dir=str, output_dir=str, wanted_files=[str]}
         ├───parameters: {"ir": {params}, ..., "roa": {params}}
         ├───conformers
-        │   ├───arguments: {"allow_data_inconsistency": bool}
+        │   ├───arguments: {"allow_data_inconsistency": bool,
+        │   │               "temperature_of_the_system": float}
         │   ├───filenames: [str]
         │   ├───kept: [bool]
         │   └───data
@@ -130,11 +131,7 @@ class ArchiveWriter:
     def write(self, obj: "tesliper.Tesliper"):
         with self:
             self._write_arguments(
-                obj.input_dir,
-                obj.output_dir,
-                obj.wanted_files,
-                obj.temperature,
-                obj.quantum_software,
+                obj.input_dir, obj.output_dir, obj.wanted_files, obj.quantum_software
             )
             self._write_parameters(obj.parameters)
             self._write_conformers(obj.conformers)
@@ -150,7 +147,6 @@ class ArchiveWriter:
         input_dir: Union[Path, str] = None,
         output_dir: Union[Path, str] = None,
         wanted_files: Iterable[str] = None,
-        temperature: float = None,
         quantum_software: str = None,
     ):
         with self.root.open("arguments.json", mode="w") as handle:
@@ -160,7 +156,6 @@ class ArchiveWriter:
                         "input_dir": str(input_dir) if input_dir else None,
                         "output_dir": str(output_dir) if output_dir else None,
                         "wanted_files": list(wanted_files) if wanted_files else None,
-                        "temperature": temperature,
                         "quantum_software": quantum_software or None,
                     }
                 )
@@ -177,18 +172,17 @@ class ArchiveWriter:
 
     def _write_conformers(self, conformers: Conformers):
         self._write_conformers_arguments(
-            allow_data_inconsistency=conformers.allow_data_inconsistency
+            allow_data_inconsistency=conformers.allow_data_inconsistency,
+            temperature_of_the_system=conformers.temperature,
         )
         self._write_filenames(conformers.filenames)
         self._write_kept(conformers.kept)
         for filename in conformers.filenames:
             self._write_mol(filename=filename, mol=conformers[filename])
 
-    def _write_conformers_arguments(self, allow_data_inconsistency: bool):
+    def _write_conformers_arguments(self, **kwargs):
         with self.root.open("conformers/arguments.json", mode="w") as handle:
-            handle.write(
-                self.jsonencode({"allow_data_inconsistency": allow_data_inconsistency})
-            )
+            handle.write(self.jsonencode(kwargs))
 
     def _write_filenames(self, filenames: List[str]):
         with self.root.open("conformers/filenames.json", mode="w") as handle:
