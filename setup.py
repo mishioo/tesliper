@@ -72,6 +72,7 @@ setup(
     install_requires=["numpy", "openpyxl"],
     extras_require=extras_require,
     scripts=["bin/tesliper_gui.py"],
+    entry_points={"console_scripts": ["tesliper-gui=tesliper.gui:run"]},
     package_data={"tesliper": ["tesliper.ico"]},
     classifiers=[
         "Intended Audience :: Science/Research",
