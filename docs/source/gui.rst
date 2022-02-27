@@ -13,7 +13,12 @@ systems, unfortunately, but you may start the GUI from the command line as well:
 .. code-block:: bash
 
     $ python -m pip install tesliper[gui]  # only once
-    $ python -m tesliper.gui  # starts GUI
+    $ tesliper-gui  # starts GUI
+
+.. note::
+
+    If you'd like to start the graphical interface from the local copy, you may also
+    run it as a module with ``python -m tesliper.gui``.
 
 Please note that the first launch may take additional time. After the application
 starts, a window like the one bellow will appear. It's actual looks will depend on your

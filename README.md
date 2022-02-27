@@ -161,7 +161,7 @@ tslr.export_job_file(  # prepare files for next step of calculations
 ## A graphical interface
 If you are using `tesliper` as a standalone application, simply double click on the
 `Tesliper.exe` file to start the application. To invoke it from the command line,
-run `python -m tesliper.gui`. GUI consists of three panels and a number of controls.
+just run `tesliper-gui`. GUI consists of three panels and a number of controls.
 The panels are: "Extracted data", "Energies list", and "Spectra view". First two
 offer a list of conformers read so far using "Chose files" and "Chose folder" buttons
 on the left. The last enables to preview calculated spectra.
