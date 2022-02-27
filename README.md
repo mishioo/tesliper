@@ -204,11 +204,28 @@ submitting a [new issue](https://github.com/mishioo/tesliper/issues/new).
 If you have a suggestion how `tesliper` can be improved, please let me know as well!
 
 ## Participating in code
-If you'd like to contribute to `tesliper`'s codebase, that's even better!
-If there is a specific bug that you know how to fix or a feature you'd like to develop,
-please let me know via [issues](https://github.com/mishioo/tesliper/issues).
+If you'd like to contribute to `tesliper`'s codebase, that's even better! If there is a
+specific bug that you know how to fix or a feature you'd like to develop, please let me
+know via [issues](https://github.com/mishioo/tesliper/issues). To start coding, get your
+working copy of `tesliper`'s source code by cloning the repository and then setup your
+environment by installing development dependencies (probably to a virtual environment):
+```
+python -m pip install .[dev]
+```
+Please remember to add/update relevant tests along with your code changes.
+Make sure the test suite passes by running
+```
+python -m pytest test
+```
 To get your change introduced to the codebase, please make a Pull Request to the
 `fixes` branch for bug fixes or to the `dev` branch for new features.
+
+`tesliper`'s codebase is formatted with [`black`](https://black.readthedocs.io/) and
+[`isort`](https://pycqa.github.io/isort/), please use these tools before issuing a Pull
+Request. If you prefer to not need to remember about it, you may use a pre-commit
+configuration available in this repository. To include it in your workflow, simply run
+`pre-commit install` in your copy's root directory. Note, that this configuration
+also sets up [`flake8`](https://flake8.pycqa.org/) linter.
 
 If at a loss, do not hesitate to reach to me directly! :)
 
