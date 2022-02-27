@@ -503,6 +503,30 @@ returns a reference to this attribute.
     single averaged spectrum using a given spectra genre and energies genre. Value
     returned by this method is not automatically stored.
 
+Temperature of the system
+'''''''''''''''''''''''''
+
+Boltzmann distribution depends on the temperature of the system, which is assumed to be
+the room temperature, expressed as :math:`298.15\ \mathrm{Kelvin}`
+(:math:`25.0^{\circ}\mathrm{C}`). You can change it by setting
+:math:`.Tesliper.temperature` attribute to the desired value. This must be done before
+calculation of the average spectrum to have an effect.
+
+.. code-block:: python
+
+    >>> tslr.temperature
+    298.15  # default value in Kelvin
+    >>> averaged = tslr.average_spectra()  # averages available spectra
+    >>> tslr.temperature = 300.0  # in Kelvin
+    >>> high_avg = tslr.average_spectra()
+    >>> assert not averaged == high_avg  # resulting average is different
+
+.. note::
+
+    :meth:`.Tesliper.temperature` value must be a positive number, absolute zero or
+    lower is not allowed, as it would cause problems in calculation of Boltzmann
+    distribution. An attempt to set temperature to equal or below :math:`0\ \mathrm{K}`
+    will raise a `ValueError`.
 
 Comparing with experiment
 -------------------------
