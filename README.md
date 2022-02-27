@@ -53,9 +53,12 @@ user interface. See below for details.
 Python 3.6+
 numpy
 openpyxl
-tkinter (optional, for GUI)
 matplotlib (optional, for GUI)
 ```
+
+`tesliper` uses `tkinter` to deliver the graphical interface. It is included in
+most Python distributions, but please be aware, that some might miss it. You will
+need to install it manually in such case.
 
 ## Installing to your Python distribution
 

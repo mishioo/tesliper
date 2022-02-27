@@ -37,5 +37,9 @@ This software needs at least Python 3.6 to run. It also uses some additional pac
 
     numpy
     openpyxl
-    tkinter (optional, for GUI)
     matplotlib (optional, for GUI)
+
+.. note::
+    ``tesliper`` uses ``tkinter`` to deliver the graphical interface. It is included in
+    most Python distributions, but please be aware, that some might miss it. You will
+    need to install it manually in such case.
