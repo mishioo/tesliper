@@ -18,10 +18,7 @@ build: false
 
 install:
   - python -m pip install -U pip
-  - python -m pip install -r requirements.txt
-  - python -m pip install pytest
-  - python -m pip install pytest-cov
-  - python -m pip install hypothesis
+  - python -m pip install .[test]
   - python -m pip install coveralls
 
 test_script:
