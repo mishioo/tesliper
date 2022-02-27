@@ -509,7 +509,7 @@ Temperature of the system
 Boltzmann distribution depends on the temperature of the system, which is assumed to be
 the room temperature, expressed as :math:`298.15\ \mathrm{Kelvin}`
 (:math:`25.0^{\circ}\mathrm{C}`). You can change it by setting
-:math:`.Tesliper.temperature` attribute to the desired value. This must be done before
+:meth:`.Tesliper.temperature` attribute to the desired value. This must be done before
 calculation of the average spectrum to have an effect.
 
 .. code-block:: python
