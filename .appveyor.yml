@@ -1,13 +1,21 @@
-version: 0.8.0-{branch}-{build}
+version: 0.9.0-{branch}-{build}
 
-image:
-  - Visual Studio 2019
-  - Ubuntu
-
-stack: python 3.6
 
 environment:
-  PYTHON: "C:\\Python36"
+  matrix:
+    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
+      PYTHON: "C:\\Python36"
+    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
+      PYTHON: "C:\\Python37"
+    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
+      PYTHON: "C:\\Python38"
+    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
+      PYTHON: "C:\\Python39"
+    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
+      PYTHON: "C:\\Python310"
+    - APPVEYOR_BUILD_WORKER_IMAGE: Ubuntu
+      stack: python 3
+    - APPVEYOR_BUILD_WORKER_IMAGE: macOS
   COVERALLS_REPO_TOKEN:
     secure: 64bL5OipIuqAwg0nGwbra4tIVBheT7jwIKgDuGuV2SefqhwLATu0dSgc/w+ecUE0
 
@@ -16,12 +24,12 @@ init:
 
 build: false
 
+matrix:
+  fast_finish: true
+
 install:
   - python -m pip install -U pip
-  - python -m pip install -r requirements.txt
-  - python -m pip install pytest
-  - python -m pip install pytest-cov
-  - python -m pip install hypothesis
+  - python -m pip install .[test]
   - python -m pip install coveralls
 
 test_script:
