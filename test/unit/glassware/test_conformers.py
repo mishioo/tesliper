@@ -260,9 +260,24 @@ def test_move_to_end(full, key, last):
     assert all(full._indices[k] == i for i, k in enumerate(full.filenames))
 
 
-def test_arrayd_default_parameter(full):
+def test_arrayed_default_parameter(full):
     zpe = full.arrayed("zpe")
     assert 298.15 == zpe.t
+
+
+def test_arrayed_override_default_parameter(full):
+    zpe = full.arrayed("zpe", t=300)
+    assert 300 == zpe.t
+
+
+def test_arrayed_unknown_kwarg_raises(full):
+    with pytest.raises(TypeError):
+        full.arrayed("zpe", unknown=1)
+
+
+def test_arrayed_not_strict_ignores(full):
+    # only checking if doesn't raise an exception
+    _ = full.arrayed("zpe", strict=False, unknown=1)
 
 
 def test_arrayd_empty(full):

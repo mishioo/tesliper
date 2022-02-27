@@ -229,6 +229,7 @@ class FilterEnergies(CollapsiblePane):
     def __init__(self, parent, view, **kwargs):
         super().__init__(parent, text="Energies and structure", **kwargs)
         self.view = view
+        root = self.winfo_toplevel()
 
         ttk.Label(self.content, text="Show:").grid(column=0, row=0, sticky="new")
         self.show_var = tk.StringVar()
@@ -256,6 +257,29 @@ class FilterEnergies(CollapsiblePane):
         self.energies_choice = EnergiesChoice(self.content, width=12)
         self.energies_choice.grid(column=1, row=1, sticky="nwe")
 
+        # Temperature value
+        t_frame = tk.Frame(self.content)
+        t_frame.grid(column=0, row=2, columnspan=2, sticky="we")
+        t_frame.columnconfigure((0, 1, 2), weight=1)
+        ttk.Label(t_frame, text="Temperature").grid(column=0, row=0, sticky="new")
+        self.temperature = NumericEntry(
+            t_frame,
+            scroll_rate=1,
+            decimal_digits=2,
+            min_value=0,
+            include_min_value=False,
+        )
+        self.temperature.grid(column=1, row=0)
+        ttk.Label(t_frame, text="K").grid(column=2, row=0, sticky="new")
+        self.temperature.var.set(self.tesliper.temperature)
+        self.temperature.bind("<FocusOut>", self.on_temperature_changed, "+")
+        self.temperature.bind("<MouseWheel>", self.on_temperature_changed, "+")
+        self.temperature.bind("<Button-4>", self.on_temperature_changed, "+")
+        self.temperature.bind("<Button-5>", self.on_temperature_changed, "+")
+        root.bind("<<DataExtracted>>", self.update_temperature, "+")
+        root.bind("<<Clear>>", self.update_temperature, "+")
+        root.changer.register([self.temperature], "tesliper")
+
         proxy = {
             "genre": self.energies_choice.get_genre,
             "show": lambda: self.show_ref[self.show_var.get()],
@@ -263,21 +287,20 @@ class FilterEnergies(CollapsiblePane):
         }
         # filter by energy value
         LabelSeparator(self.content, text="Range sieve").grid(
-            column=0, row=2, columnspan=2, sticky="nwe"
+            column=0, row=3, columnspan=2, sticky="nwe"
         )
         self.range = FilterRange(self.content, view=self.view, proxy=proxy)
-        self.range.grid(column=0, row=3, columnspan=2, sticky="news")
+        self.range.grid(column=0, row=4, columnspan=2, sticky="news")
 
         # RMSD sieve
         LabelSeparator(self.content, text="RMSD sieve").grid(
-            column=0, row=4, columnspan=2, sticky="nwe"
+            column=0, row=5, columnspan=2, sticky="nwe"
         )
         self.rmsd = FilterRMSD(self.content, view=self.view, proxy=proxy)
-        self.rmsd.grid(column=0, row=5, columnspan=2, sticky="news")
+        self.rmsd.grid(column=0, row=6, columnspan=2, sticky="news")
 
         self.show_combo.bind("<<ComboboxSelected>>", self.on_show_selected)
         self.energies_choice.bind("<<ComboboxSelected>>", self.on_energies_selected)
-        root = self.winfo_toplevel()
         root.bind("<<DataExtracted>>", self.on_show_selected, "+")
         root.bind("<<KeptChanged>>", self.on_show_selected, "+")
         root.changer.register([self.show_combo, self.energies_choice], "energies")
@@ -296,6 +319,17 @@ class FilterEnergies(CollapsiblePane):
         if _event is not None:
             logger.debug(f"Event caught by {self}.on_energies_selected handler.")
         self.range.set_upper_and_lower()
+
+    def update_temperature(self, _event=None):
+        self.temperature.var.set(self.tesliper.temperature)
+
+    def on_temperature_changed(self, _event=None):
+        if _event is not None:
+            logger.debug(f"Event caught by {self}.on_temperature_changed handler.")
+        value = self.temperature.get()
+        self.tesliper.temperature = float(value)
+        # we need it's views-updating side effects
+        self.event_generate("<<KeptChanged>>")
 
 
 OVERVIEW_GENRES = "dip rot vosc vrot losc lrot raman1 roa1 scf zpe ent ten gib".split()
@@ -721,6 +755,7 @@ class CalculateSpectra(CollapsiblePane):
         )
         self.live_prev.grid(column=0, row=2, sticky="w")
         self.live_prev.var = var
+        root.bind("<<KeptChanged>>", self.live_preview_callback, "+")
         # previously labeled 'Recalculate'
         self.recalc_b = ttk.Button(
             frame, text="Redraw", state="disabled", command=self.recalculate_command

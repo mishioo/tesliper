@@ -17,6 +17,11 @@ logger = lgg.getLogger(__name__)
 class SingleSpectrum:
     """Represents a single spectrum: experimental, averaged from set of conformers, or
     calculated for only one conformer.
+
+    Notes
+    -----
+    Calling ``len()`` on this class' instance will show a number of data points
+    in the spectrum.
     """
 
     _vibrational_units = {
@@ -188,7 +193,16 @@ class SingleSpectrum:
 
 
 class Spectra(SingleSpectrum):
-    """Represents a collection of spectra calculated for a number of conformers."""
+    """Represents a collection of spectra calculated for a number of conformers.
+
+    .. versionchanged:: 0.9.1
+        Corrected ``len()`` behavior.
+
+    Notes
+    -----
+    Calling ``len()`` on this class' instance will show how many conformers'
+    spectra it contains.
+    """
 
     filenames = ArrayProperty(check_against=None, dtype=str)
     abscissa = ArrayProperty(check_against=None)
@@ -340,3 +354,9 @@ class Spectra(SingleSpectrum):
             averaged = np.average(self.values, axis=0)
             factor = dw.find_offset(spectrum.x, spectrum.y, self.abscissa, averaged)
         self.offset = factor
+
+    def __len__(self):
+        # must override SingleSpecrum's implementation, because it may have an abscisa
+        # but contain no data for conformers
+        # e.g. when created in calculations of spectra from an empty activities array
+        return len(self.filenames)

@@ -3,6 +3,8 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from hypothesis import given
+from hypothesis import strategies as st
 
 from tesliper import Tesliper
 
@@ -213,3 +215,30 @@ def test_export_job_file(extracted, wanted_files):
     assert {f.name for f in files} == {
         Path(f).with_suffix(".gjf").name for f in wanted_files
     }
+
+
+@given(value=st.floats(min_value=0, allow_nan=False, exclude_min=True))
+def test_subscription_temperature(value):
+    tslr = Tesliper()
+    tslr.temperature = value
+    array = tslr["zpe"]
+    assert array.t == value
+
+
+def test_get_averaged_spectrum(calculated):
+    spc = calculated.get_averaged_spectrum("ir", "zpe")
+    assert spc.genre == "ir"
+    assert spc.averaged_by == "zpe"
+
+
+def test_get_averaged_calculate(calculated, extracted):
+    e = extracted.get_averaged_spectrum("ir", "zpe")
+    c = calculated.get_averaged_spectrum("ir", "zpe")
+    assert e.values.tolist() == c.values.tolist()
+
+
+def test_get_average_raises_missing(tesliper):
+    assert "ir" not in tesliper.spectra
+    assert not tesliper.conformers.has_genre("dip")
+    with pytest.raises(ValueError):
+        tesliper.get_averaged_spectrum("ir", "zpe")

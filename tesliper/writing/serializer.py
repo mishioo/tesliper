@@ -23,7 +23,8 @@ class ArchiveWriter:
         ├───arguments: {input_dir=str, output_dir=str, wanted_files=[str]}
         ├───parameters: {"ir": {params}, ..., "roa": {params}}
         ├───conformers
-        │   ├───arguments: {"allow_data_inconsistency": bool}
+        │   ├───arguments: {"allow_data_inconsistency": bool,
+        │   │               "temperature_of_the_system": float}
         │   ├───filenames: [str]
         │   ├───kept: [bool]
         │   └───data
@@ -171,18 +172,17 @@ class ArchiveWriter:
 
     def _write_conformers(self, conformers: Conformers):
         self._write_conformers_arguments(
-            allow_data_inconsistency=conformers.allow_data_inconsistency
+            allow_data_inconsistency=conformers.allow_data_inconsistency,
+            temperature_of_the_system=conformers.temperature,
         )
         self._write_filenames(conformers.filenames)
         self._write_kept(conformers.kept)
         for filename in conformers.filenames:
             self._write_mol(filename=filename, mol=conformers[filename])
 
-    def _write_conformers_arguments(self, allow_data_inconsistency: bool):
+    def _write_conformers_arguments(self, **kwargs):
         with self.root.open("conformers/arguments.json", mode="w") as handle:
-            handle.write(
-                self.jsonencode({"allow_data_inconsistency": allow_data_inconsistency})
-            )
+            handle.write(self.jsonencode(kwargs))
 
     def _write_filenames(self, filenames: List[str]):
         with self.root.open("conformers/filenames.json", mode="w") as handle:

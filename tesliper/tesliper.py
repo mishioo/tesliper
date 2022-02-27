@@ -295,6 +295,32 @@ class Tesliper:
         self.parameters = self.standard_parameters
 
     @property
+    def temperature(self) -> float:
+        """Temperature of the system expressed in Kelvin units.
+
+        Value of this parameter is passed to :term:`data array`\\s created with the
+        :meth:`.Conformers.arrayed` method, provided that the target data array class
+        supports a parameter named *t* in it's constructor.
+
+        .. versionadded:: 0.9.1
+
+        Raises
+        ------
+        ValueError
+            if set to a value lower than zero.
+
+        Notes
+        -----
+        It's actually just a proxy to :meth:`self.conformers.temperatue
+        <.Conformers.temperature>`.
+        """
+        return self.conformers.temperature
+
+    @temperature.setter
+    def temperature(self, value):
+        self.conformers.temperature = value
+
+    @property
     def energies(self) -> Dict[str, gw.Energies]:
         """Data for each energies' genre as :class:`.Energies` data array. Returned
         dictionary is of form {"genre": :class:`.Energies`} for each of the genres:
@@ -319,7 +345,7 @@ class Tesliper:
             and :class:`.Energies` data arrays as values.
         """
         keys = gw.Energies.associated_genres
-        return {k: self.conformers.arrayed(k) for k in keys}
+        return {k: self[k] for k in keys}
 
     @property
     def activities(self) -> Dict[str, _activities_types]:
@@ -347,7 +373,7 @@ class Tesliper:
             :class:`.SpectralActivities` data arrays as values.
         """
         keys = dw.DEFAULT_ACTIVITIES.values()
-        return {k: self.conformers.arrayed(k) for k in keys}
+        return {k: self[k] for k in keys}
 
     @property
     def wanted_files(self) -> Optional[Set[str]]:
@@ -622,8 +648,8 @@ class Tesliper:
             bar_name = dw.DEFAULT_ACTIVITIES[genre]
         except KeyError:
             bar_name = genre
-        with self.conformers.trimmed_to([conformer]) as confs:
-            bar = confs.arrayed(bar_name)
+        with self.conformers.trimmed_to([conformer]):
+            bar = self[bar_name]
         sett_from_args = {
             k: v
             for k, v in zip(
@@ -690,9 +716,17 @@ class Tesliper:
         self.spectra.update(output)
         return output
 
-    def get_averaged_spectrum(self, spectrum: str, energy: str) -> gw.SingleSpectrum:
+    def get_averaged_spectrum(
+        self, spectrum: str, energy: str, temperature: Optional[float] = None
+    ) -> gw.SingleSpectrum:
         """Average previously calculated spectra using populations derived from
         specified energies.
+
+        .. versionadded:: 0.9.1
+            The optional *temperature* parameter.
+        .. versionchanged:: 0.9.1
+            If spectra needed for averaging was not calulated so far,
+            it will try to calulate it instead of raising a KeyError.
 
         Parameters
         ----------
@@ -702,16 +736,36 @@ class Tesliper:
         energy : str
             Genre of energies, that should be used to calculate populations
             of conformers. These populations will be used as weights for averaging.
+        temperature : float, optional
+            Temperature used for calculation of the Boltzmann distribution for spectra
+            averaging. If not given, :meth:`Tesliper.temperature` value is used.
 
         Returns
         -------
         SingleSpectrum
             Calculated averaged spectrum.
+
+        Raises
+        ------
+        ValueError
+            If no data for calculation of requested spectrum is available.
         """
-        # TODO: add fallback if spectra was nat calculated yet
-        spectra = self.spectra[spectrum]
+        try:
+            spectra = self.spectra[spectrum]
+        except KeyError:
+            array = self[dw.DEFAULT_ACTIVITIES[spectrum]]
+            spectra = array.calculate_spectra(**self.parameters[spectrum])
+            if not spectra:
+                raise ValueError(
+                    f"No data for {spectrum} calculation; "
+                    f"appropriate data is not available or was trimmed off."
+                )
         with self.conformers.trimmed_to(spectra.filenames):
-            en = self.conformers.arrayed(energy)
+            en = (
+                self[energy]
+                if temperature is None
+                else self.conformers.arrayed(genre=energy, t=temperature)
+            )
         output = spectra.average(en)
         return output
 

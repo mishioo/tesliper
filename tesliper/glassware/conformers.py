@@ -130,6 +130,12 @@ class Conformers(OrderedDict):
     in this class or by direct changes to :attr:`.kept` attribute. See its
     documentation for more information.
 
+    Attributes
+    ----------
+    primary_genres
+        Class attribute. Data genres considered most important, used as default when
+        checking for conformers completeness (see :meth:`.trim_incomplete` method).
+
     Notes
     -----
     Inherits from collections.OrderedDict.
@@ -139,7 +145,13 @@ class Conformers(OrderedDict):
         "dip rot vosc vrot losc lrot raman1 roa1 scf zpe ent ten gib".split()
     )
 
-    def __init__(self, *args, allow_data_inconsistency=False, **kwargs):
+    def __init__(
+        self,
+        *args,
+        allow_data_inconsistency: bool = False,
+        temperature_of_the_system: float = 298.15,
+        **kwargs,
+    ):
         """
         Parameters
         ----------
@@ -148,24 +160,51 @@ class Conformers(OrderedDict):
         allow_data_inconsistency : bool, optional
             specifies if data inconsistency should be allowed in created DataArray
             object instances, defaults to False
+        temperature_of_the_system : float, optional
+            Temperature of the system in Kelvin units, must be zero or higher.
+            Defaults to room temperature = 298.15 K.
         **kwargs
             list of arbitrary keyword arguments for creation of underlying
             dictionary
-        primary_genres
-            Class attribute. Data genres considered most important, used as default when
-            checking for conformers completeness (see :meth:`.trim_incomplete` method).
         """
         self.allow_data_inconsistency = allow_data_inconsistency
+        self.temperature = temperature_of_the_system
         self.kept = []
         self.filenames = []
         self._indices = {}
         super().__init__(*args, **kwargs)
+
+    @property
+    def temperature(self) -> float:
+        """Temperature of the system expressed in Kelvin units.
+
+        Value of this parameter is passed to :term:`data array`\\s created with the
+        :meth:`.arrayed` method, provided that the target data array class supports a
+        parameter named *t* in it's constructor.
+
+        .. versionadded:: 0.9.1
+
+        Raises
+        ------
+        ValueError
+            if set to a value lower than zero.
+        """
+        return vars(self)["temperature"]
+
+    @temperature.setter
+    def temperature(self, value):
+        if value <= 0:
+            raise ValueError(
+                "Temperature of the system must be higher than absolute zero."
+            )
+        vars(self)["temperature"] = value
 
     def clear(self):
         """Remove all items from the Conformers instance."""
         self._kept = []
         self.filenames = []
         self._indices = {}
+        self.temperature = 298.15
         super().clear()
 
     @recursive_repr()
@@ -232,7 +271,9 @@ class Conformers(OrderedDict):
     def copy(self):
         "conformers.copy() -> a shallow copy of conformers"
         cp = self.__class__(
-            allow_data_inconsistency=self.allow_data_inconsistency, **self
+            allow_data_inconsistency=self.allow_data_inconsistency,
+            temperature_of_the_system=self.temperature,
+            **self,
         )
         cp.kept = self.kept
         return cp
@@ -401,8 +442,13 @@ class Conformers(OrderedDict):
             else:
                 self[key] = value
 
-    def arrayed(self, genre: str, full: bool = False, **kwargs) -> AnyArray:
+    def arrayed(
+        self, genre: str, full: bool = False, strict: bool = True, **kwargs
+    ) -> AnyArray:
         """Lists requested data and returns as appropriate :class:`.DataArray` instance.
+
+        .. versionadded:: 0.9.1
+            The *strict* parameter.
 
         Parameters
         ----------
@@ -411,6 +457,10 @@ class Conformers(OrderedDict):
         full
             Boolean indicating if full set of data should be taken, ignoring
             any trimming conducted earlier. Defaults to ``False``.
+        strict
+            Boolean indicating if additional kwargs that doesn't match signature of data
+            array's constructor should cause an exception as normally (``strict =
+            True``) or be silently ignored (``strict = False``). Defaults to ``True``.
         kwargs
             Additional keyword parameters passed to data array constructor.
             Any explicitly given parameters will take precedence over automatically
@@ -420,6 +470,10 @@ class Conformers(OrderedDict):
         -------
         DataArray
             Arrayed data of desired genre as appropriate :class:`.DataArray` object.
+
+        Notes
+        -----
+        For now, the special "filenames" genre always ignores *kwargs*.
         """
         try:
             cls = _ARRAY_CONSTRUCTORS[genre]  # ArrayBase subclasses
@@ -443,29 +497,35 @@ class Conformers(OrderedDict):
                 f"Returning an empty array."
             )
             filenames, confs, values = [], [], []
-        params = cls.get_init_params()
-        params["genre"] = genre
-        params["filenames"] = filenames
-        params["values"] = values
-        params["allow_data_inconsistency"] = self.allow_data_inconsistency
-        for key, value in params.items():
+        default_params = cls.get_init_params()
+        default_params["genre"] = genre
+        default_params["filenames"] = filenames
+        default_params["values"] = values
+        default_params["allow_data_inconsistency"] = self.allow_data_inconsistency
+        init_params = {}
+        for key, value in default_params.items():
             if key in kwargs:
                 # explicitly given keyword parameters take precedence
+                init_params[key] = kwargs.pop(key)
                 continue
-            if not isinstance(params[key], Parameter):
+            if key == "t":
+                # if not given explicitly, temperature is taken form self
+                init_params[key] = self.temperature
+                continue
+            if not isinstance(default_params[key], Parameter):
                 # if value for parameter is already established, just take it
-                kwargs[key] = value
+                init_params[key] = value
                 continue
-            param_genre = (  # maybe key is not a param's genre name
+            param_genre = (  # maybe ``key`` is not a param's genre name
                 value.genre_getter(genre) if hasattr(value, "genre_getter") else key
             )
             try:
-                kwargs[key] = [conf[param_genre] for conf in confs]
+                init_params[key] = [conf[param_genre] for conf in confs]
             except KeyError:
-                # set param to its default value
-                # or raise an error if it don't have one
+                # can't retrieve ``param_genre`` data from each included conformer
+                # set param to its default value or raise an error if it don't have one
                 if value.default is not value.empty:
-                    kwargs[key] = value.default
+                    init_params[key] = value.default
                 else:
                     raise TesliperError(
                         f"One or more conformers does not provide value for "
@@ -473,10 +533,14 @@ class Conformers(OrderedDict):
                         "object. You may provide missing values as a keyword parameters"
                         " to the `Conformers.arrayed()` method call."
                     )
-            if not kwargs[key] and value.default is not value.empty:
+            if not init_params[key] and value.default is not value.empty:
                 # genre produces an empty array, but parameter has default value
-                kwargs[key] = value.default
-        return cls(**kwargs)
+                init_params[key] = value.default
+        if kwargs and strict:
+            # any kwargs not popped till now are not expected by the ``cls.__init__()``
+            # if ``strict`` handling requested, add them anyway to cause an exception
+            init_params.update(**kwargs)
+        return cls(**init_params)
 
     def by_index(self, index: int) -> dict:
         """Returns data for conformer on desired index."""
