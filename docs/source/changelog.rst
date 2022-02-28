@@ -1,6 +1,24 @@
 Change Log
 ==========
 
+v. 0.9.1
+--------
+
+Bug Fixes:
+    - Fixed ``ImportError`` occurring in Python 3.10.
+    - Corrected creation of ``"filanemes"`` pseudo-genre.
+    - Corrected ``len()`` behavior with ``Spectra`` instances.
+
+New Features:
+    - Added "top-level" temperature setting in both, API and GUI.
+    - Allowed ignoring of unexpected keyword arguments in ``Conformers.arrayed()``.
+
+Other Changes:
+    - Moved requirements to setup.py file.
+    - Added ``tesliper-gui`` entry point.
+    - ``Tesliper.get_averaged_spectrum()`` now tries to calculate missing spectra.
+    - Minor supplementation to documentation and READEME.
+
 v. 0.9.0
 --------
 

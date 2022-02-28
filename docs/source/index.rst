@@ -189,8 +189,8 @@ References
    :hidden:
    :caption: Appendix
 
-   Index <genindex>
    Change Log <changelog>
+   Index <genindex>
 
 
 .. |check| unicode:: U+2714
