@@ -217,16 +217,21 @@ Make sure the test suite passes by running
 ```
 python -m pytest test
 ```
-To get your change introduced to the codebase, please make a Pull Request to the
-`fixes` branch for bug fixes or to the `dev` branch for new features.
+
+Although [`mypy`](https://mypy.readthedocs.io/) is not incorporated in `tesliper`'s
+development (yet!), I believe that type hints greatly improve the experience of using
+the package. Please, add them to the new code you submit. If you're willing to
+supplement typing of the existing code, that would be very much welcome!
 
 `tesliper`'s codebase is formatted with [`black`](https://black.readthedocs.io/) and
-[`isort`](https://pycqa.github.io/isort/), please use these tools before issuing a Pull
-Request. If you prefer to not need to remember about it, you may use a pre-commit
-configuration available in this repository. To include it in your workflow, simply run
-`pre-commit install` in your copy's root directory. Note, that this configuration
-also sets up [`flake8`](https://flake8.pycqa.org/) linter.
+[`isort`](https://pycqa.github.io/isort/), please use these tools before submitting your
+code contribution. To make it easier, you may use a pre-commit configuration available
+in this repository. To include it in your workflow, simply run `pre-commit install` in
+your copy's root directory. Note, that this configuration also sets up
+[`flake8`](https://flake8.pycqa.org/) linter.
 
+To get your change introduced to the codebase, please make a Pull Request to the `fixes`
+branch for quick bug fixes or to the `dev` branch for new features and bigger changes.
 If at a loss, do not hesitate to reach to me directly! :)
 
 ## Roadmap
