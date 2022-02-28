@@ -266,3 +266,5 @@ to test the software:
 - Joanna Rode [![orcid_id][orcid_logo] 0000-0003-0592-4053](https://orcid.org/0000-0003-0592-4053)
 - Magdalena Jawiczuk [![orcid_id][orcid_logo] 0000-0003-2576-4042](https://orcid.org/0000-0003-2576-4042)
 - Marcin Górecki [![orcid_id][orcid_logo] 0000-0001-7472-3875](https://orcid.org/0000-0001-7472-3875)
+
+as well as to people, who reviewed the project: [@alejandrogallo](https://github.com/alejandrogallo) and [@arepstein](https://github.com/arepstein).
