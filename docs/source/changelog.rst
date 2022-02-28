@@ -1,6 +1,12 @@
 Change Log
 ==========
 
+v. 0.9.2
+--------
+
+Bug Fixes:
+    - Fixed ``__version__`` and other metadata attributes broken in 0.9.1.
+
 v. 0.9.1
 --------
 
