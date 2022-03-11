@@ -5,6 +5,7 @@
 [![PyPI pyversions](https://img.shields.io/pypi/pyversions/tesliper.svg)](https://pypi.python.org/pypi/tesliper/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![License](https://img.shields.io/badge/License-BSD_2--Clause-orange.svg)](https://opensource.org/licenses/BSD-2-Clause)
+[![status](https://joss.theoj.org/papers/3dedbebd87078d759ac2c40afaf47138/status.svg)](https://joss.theoj.org/papers/3dedbebd87078d759ac2c40afaf47138)
 
 <img align="right" width="100" height="100" src="https://raw.githubusercontent.com/mishioo/tesliper/master/tesliper/tesliper.ico">
 
