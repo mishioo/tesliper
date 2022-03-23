@@ -8,7 +8,7 @@
 
 <img align="right" width="100" height="100" src="https://raw.githubusercontent.com/mishioo/tesliper/master/tesliper/tesliper.ico">
 
-# `tesliper`
+# tesliper
 
 `tesliper`: Theoretical Spectroscopist's Little Helper is a program for batch processing
 of Gaussian output files, focused on calculations of vibrational, electronic, and
@@ -26,7 +26,7 @@ easily setup a next calculations step with batch export to `.gjf` Gaussian input
 packages (see below or requirements.txt). It may be used as a package or as a
 stand-alone application with dedicated GUI.
 
-- [`tesliper`](#tesliper)
+- [tesliper](#tesliper)
 - [Getting Started](#getting-started)
   - [Requirements](#requirements)
   - [Installing to your Python distribution](#installing-to-your-python-distribution)
