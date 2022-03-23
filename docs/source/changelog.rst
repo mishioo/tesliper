@@ -1,6 +1,15 @@
 Change Log
 ==========
 
+v. 0.9.3
+--------
+
+GUI:
+    - Added button for recursive extraction.
+
+Other Changes:
+    - Now warning will be issued after reading abnormally terminated files.
+
 v. 0.9.2
 --------
 
