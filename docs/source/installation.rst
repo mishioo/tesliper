@@ -30,6 +30,11 @@ instead. Some users of unix-like systems may also need to instal ``tkinter`` man
 if it is not included in their distribution by default. Please refer to relevant online
 resources on how to do this in your system, if that is your case.
 
+.. note::
+    Reminder for zsh users to quote the braces like this ``'tesliper[gui]'``
+    or like this ``tesliper\[gui]`` when installing extras. This is necessary, because
+    normally zsh uses ``some[thing]`` syntax for pattern matching.
+
 Requirements
 ------------
 
