@@ -1146,30 +1146,35 @@ class ExtractData(ttk.LabelFrame):
         self.b_man_extract = ttk.Button(
             self, text="Choose files", command=self.man_extract
         )
-        self.b_man_extract.grid(column=0, row=0, sticky="nwe")
+        self.b_man_extract.grid(column=0, columnspan=2, row=0, sticky="nwe")
         self.b_auto_extract = ttk.Button(
             self, text="Choose folder", command=self.from_dir
         )
         self.b_auto_extract.grid(column=0, row=1, sticky="nwe")
+        self.b_recursive_extract = ttk.Button(
+            self, text="Recursive", command=self.recursive
+        )
+        self.b_recursive_extract.grid(column=1, row=1, sticky="nwe")
         self.ignore_unknown = tk.BooleanVar()
         self.check_ignore_unknown = ttk.Checkbutton(
             self, text="Ignore unknown conformers", variable=self.ignore_unknown
         )
-        self.check_ignore_unknown.grid(column=0, row=2, sticky="nwe")
+        self.check_ignore_unknown.grid(column=0, columnspan=2, row=2, sticky="nwe")
         self.winfo_toplevel().changer.register(self.check_ignore_unknown, "tesliper")
-
-    # TODO: add recursive extraction
 
     @property
     def tesliper(self):
         return self.winfo_toplevel().tesliper
 
-    def from_dir(self):
+    def from_dir(self, recursive=False):
         work_dir = askdirectory()
         if not work_dir:
             return
         wanted = self.tesliper.conformers.keys() if self.ignore_unknown.get() else None
-        self.extract(path=work_dir, wanted_files=wanted)
+        self.extract(path=work_dir, wanted_files=wanted, recursive=recursive)
+
+    def recursive(self):
+        self.from_dir(recursive=True)
 
     def man_extract(self):
         files = askopenfilenames(
@@ -1189,10 +1194,13 @@ class ExtractData(ttk.LabelFrame):
         self.extract(directory, filenames)
 
     @ThreadedMethod(progbar_msg="Extracting...")
-    def extract(self, path, wanted_files=None):
+    def extract(self, path, wanted_files=None, recursive=False):
         root = self.winfo_toplevel()
         try:
-            for file, data in self.tesliper.extract_iterate(path, wanted_files):
+            iterator = self.tesliper.extract_iterate(
+                path, wanted_files, recursive=recursive
+            )
+            for file, data in iterator:
                 root.progtext.set(f"Extracting {file}...")
                 self.view.insert("", tk.END, text=file)
         except TypeError as err:
