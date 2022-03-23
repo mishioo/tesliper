@@ -242,7 +242,7 @@ class GaussianParser(ParserBase):
         except StopIteration:
             filename = getattr(self._iterator, "name", None)
             filename = f'"{filename}" file' if filename else None
-            logger.info(
+            logger.debug(
                 f"Unexpected stop of iteration occurred while parsing "
                 f"{filename or self._iterator}. Job didn't finish or content may be "
                 f"corrupted."

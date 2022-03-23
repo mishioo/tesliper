@@ -9,7 +9,7 @@
 
 <img align="right" width="100" height="100" src="https://raw.githubusercontent.com/mishioo/tesliper/master/tesliper/tesliper.ico">
 
-# `tesliper`
+# tesliper
 
 `tesliper`: Theoretical Spectroscopist's Little Helper is a program for batch processing
 of Gaussian output files, focused on calculations of vibrational, electronic, and
@@ -27,7 +27,7 @@ easily setup a next calculations step with batch export to `.gjf` Gaussian input
 packages (see below or requirements.txt). It may be used as a package or as a
 stand-alone application with dedicated GUI.
 
-- [`tesliper`](#tesliper)
+- [tesliper](#tesliper)
 - [Getting Started](#getting-started)
   - [Requirements](#requirements)
   - [Installing to your Python distribution](#installing-to-your-python-distribution)
@@ -218,6 +218,14 @@ Make sure the test suite passes by running
 ```
 python -m pytest test
 ```
+or, if you'd like to also generate the coverage report, you can invoke the pytest
+with the pytest-cov plugin (included in the "dev" installation), as shown below.
+The .coveragerc file includes plugin's configuration (i.e. to omit GUI code).
+```
+python -m pytest --cov=tesliper --cov-config=.coveragerc test
+```
+If you contribute code to `tesliper`, the test coverage badge will be updated by the CI
+service after your changes are merged.
 
 Although [`mypy`](https://mypy.readthedocs.io/) is not incorporated in `tesliper`'s
 development (yet!), I believe that type hints greatly improve the experience of using
