@@ -223,12 +223,21 @@ class Soxhlet:
             Two item tuple with name of parsed file as first and extracted
             data as second item, for each file associated with Soxhlet instance.
         """
+        terminated_abnormally = False
         for file in self.output_files:
             logger.debug(f"Starting extraction from file: {file}")
             with file.open() as handle:
                 data = self.parser.parse(handle)
             logger.debug("file done.\n")
+            terminated_abnormally = terminated_abnormally or not data.get(
+                "normal_termination", True
+            )
             yield file.stem, data
+        if terminated_abnormally:
+            logger.warning(
+                "One or more of the parsed files may have terminated abnormally. "
+                "Make sure to adjust your workflow accordingly."
+            )
 
     def extract(self) -> dict:
         """Extracts data from files associated with :class:`.Soxhlet` instance (*via*
