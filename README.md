@@ -217,6 +217,14 @@ Make sure the test suite passes by running
 ```
 python -m pytest test
 ```
+or, if you'd like to also generate the coverage report, you can invoke the pytest
+with the pytest-cov plugin (included in the "dev" installation), as shown below.
+The .coveragerc file includes plugin's configuration (i.e. to omit GUI code).
+```
+python -m pytest --cov=tesliper --cov-config=.coveragerc test
+```
+If you contribute code to `tesliper`, the test coverage badge will be updated by the CI
+service after your changes are merged.
 
 Although [`mypy`](https://mypy.readthedocs.io/) is not incorporated in `tesliper`'s
 development (yet!), I believe that type hints greatly improve the experience of using
