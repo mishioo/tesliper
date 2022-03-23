@@ -44,10 +44,13 @@ Reading files
 To load data, use controls in the ``Extract data`` section. ``Choose files`` button
 allows you to select individual files to read using the popup dialog. ``Choose folder``
 button shows a similar dialog, but allowing you to select a single directory - all
-Gaussian output files in this directory (but not subdirectories) will be read.
+Gaussian output files in this directory (but not subdirectories) will be read. Finally,
+using the ``Recursive`` button will also read files form all subdirectories,
+recursively.
 
 .. image:: _static/screenshots/16426972102.png
 .. image:: _static/screenshots/16426972279.png
+.. image:: _static/screenshots/16426972380.png
 
 .. note::
 
