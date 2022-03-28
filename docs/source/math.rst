@@ -10,7 +10,7 @@ To simulate a spectrum, each band's theoretical signal intensity, derived from q
 chemical calculations of corresponding optical activity, must be expressed as a
 broadened peak, instead of the single scalar value. To simulate peak's shape one of the
 curve fitting functions is used. ``tesliper`` implements two, most commonly used, such
-functions: gaussian function [#gaussian]_ and lorentzian function [#lorentzian]_.
+functions: gaussian function\ [#gaussian]_ and lorentzian function\ [#lorentzian]_.
 
 For each point on the simulated spectrum's abscissa, the corresponding signal intensity
 is calculated by applying the fitting function to all bands of the conformer and summing
@@ -172,7 +172,7 @@ Population of conformers
 
 Population of conformers is calculated according to the Boltzmann probability
 distribution that "gives the probability that a system will be in a certain state as a
-function of that state's energy and the temperature of the system." [#boltzmann]_ In
+function of that state's energy and the temperature of the system."\ [#boltzmann]_ In
 this context each conformer is considered one of the possible states of the system (a
 studied molecule).
 
@@ -250,8 +250,8 @@ where:
 Rotating with Kabsch algorithm
 """"""""""""""""""""""""""""""
 
-Optimal rotation of one conformer onto another is achieved using a Kabsch algorithm
-[#kabsch]_ (also known as Wahba's problem [#wanba]_). Interpreting positions of each
+Optimal rotation of one conformer onto another is achieved using a Kabsch algorithm\
+[#kabsch]_ (also known as Wahba's problem\ [#wanba]_). Interpreting positions of each
 conformers' atoms as a matrix, we find the covariance matrix :math:`H` of these
 matrices (:math:`P` and :math:`Q`):
 
@@ -259,7 +259,7 @@ matrices (:math:`P` and :math:`Q`):
 
     H = P^\intercal Q
 
-and then we use the singular value decomposition (SVD) [#svd]_ routine to get :math:`U`
+and then we use the singular value decomposition (SVD)\ [#svd]_ routine to get :math:`U`
 and :math:`V` unitary matrices.
 
 .. math::
@@ -279,7 +279,7 @@ right-handed coordinate system.
 
     To allow for calculation of th best rotation between sets of molecules and to
     compromise between efficiency and simplicity of implementation, ``tesliper`` uses
-    Einstein summation convention [#einsum]_ *via* :func:`numpy.einsum` function. The
+    Einstein summation convention\ [#einsum]_ *via* :func:`numpy.einsum` function. The
     implementation is as follows:
 
     .. literalinclude:: ../../tesliper/datawork/geometry.py
@@ -296,7 +296,7 @@ right-handed coordinate system.
 Calculating RMSD of atomic positions
 """"""""""""""""""""""""""""""""""""
 
-Once conformers are aligned, the value of RMSD [#rmsd]_ is calculated simply by finding
+Once conformers are aligned, the value of RMSD\ [#rmsd]_ is calculated simply by finding
 a distance between each equivalent atoms and averaging their squares and finding the
 root of this average:
 
