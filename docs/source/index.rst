@@ -99,14 +99,14 @@ and allows to easily filter parsed data.
    *  - Conditional Filtering
       - |check|        
       - |cross|          
-      - |check|           
+      - |cross|           
       - |cross|          
       - |cross|           
       - |cross|
    *  - Job File Creation
       - |check|        
       - |cross|          
-      - |check|           
+      - |cross|           
       - |check|          
       - |check|           
       - |check|
