@@ -9,6 +9,7 @@ GUI:
 
 Other Changes:
     - Now warning will be issued after reading abnormally terminated files.
+    - Minor corrections in the documentation.
 
 v. 0.9.2
 --------
