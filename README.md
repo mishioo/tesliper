@@ -5,7 +5,7 @@
 [![PyPI pyversions](https://img.shields.io/pypi/pyversions/tesliper.svg)](https://pypi.python.org/pypi/tesliper/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![License](https://img.shields.io/badge/License-BSD_2--Clause-orange.svg)](https://opensource.org/licenses/BSD-2-Clause)
-[![status](https://joss.theoj.org/papers/3dedbebd87078d759ac2c40afaf47138/status.svg)](https://joss.theoj.org/papers/3dedbebd87078d759ac2c40afaf47138)
+[![DOI](https://joss.theoj.org/papers/10.21105/joss.04164/status.svg)](https://doi.org/10.21105/joss.04164)
 
 <img align="right" width="100" height="100" src="https://raw.githubusercontent.com/mishioo/tesliper/master/tesliper/tesliper.ico">
 
@@ -42,6 +42,7 @@ stand-alone application with dedicated GUI.
   - [Participating in code](#participating-in-code)
   - [Roadmap](#roadmap)
   - [Acknowledgements](#acknowledgements)
+- [How to cite](#how-to-cite)
 
 # Getting Started
 
@@ -277,3 +278,30 @@ to test the software:
 - Marcin Górecki [![orcid_id][orcid_logo] 0000-0001-7472-3875](https://orcid.org/0000-0001-7472-3875)
 
 as well as to people, who reviewed the project: [@alejandrogallo](https://github.com/alejandrogallo) and [@arepstein](https://github.com/arepstein).
+
+# How to cite
+
+I'm very happy to announce, that `tesliper` has been published in the [Journal of Open
+Source Software](https://joss.theoj.org/papers/10.21105/joss.04164)! If you find
+`tesliper` useful in your research, please give it a credit by citing it:
+
+- Więcław, M. M., (2022). tesliper: a theoretical spectroscopist's little helper.
+  *Journal of Open Source Software*, 7(72), 4164, DOI:
+  [10.21105/joss.04164](https://doi.org/10.21105/joss.04164)
+
+```
+@article{tesliper2022,
+  doi = {10.21105/joss.04164},
+  url = {https://doi.org/10.21105/joss.04164},
+  year = {2022},
+  publisher = {The Open Journal},
+  volume = {7},
+  number = {72},
+  pages = {4164},
+  author = {Michał M. Więcław},
+  title = {tesliper: a theoretical spectroscopist's little helper},
+  journal = {Journal of Open Source Software}
+}
+```
+
+
