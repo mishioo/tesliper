@@ -55,10 +55,10 @@ ComputeVOA, ChemCraft). Other packages  lack important features, like comparison
 conformers' geometry (SpecDis, CDspecTech, GaussView) or population-based spectra
 averaging (ComputeVOA, ChemCraft, GaussView).
 
-Even with adoption of one or more of the mentioned software, the process is often
-suboptimal, incomplete, or cannot be done in an automated fashion. Many research groups
+Even with adoption of one or more of the software packages mentioned above, the process is often
+suboptimal, incomplete, or unable to be done in an automated fashion. Many research groups
 tackle this problem with home-brewed scripting solutions that are usually not easily
-adjusted or extended, or with manual work, which may be extremely time consuming. There
+adjusted or extended, or with manual work, which may be extremely time-consuming. There
 is a clear need for a simple interface to automate tedious parts of the typical spectra
 simulation workflow. `tesliper` aims to satisfy this need.
 
